@@ -529,7 +529,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '1.9.1';
+const VERSION = '1.9.2';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 招式表 moves.js 里写的是基准帧数，M() 统一换算；想再快 / 慢一点，只改 TEMPO。
@@ -2516,8 +2516,8 @@ function cloneJ(J) {
 const atWall = F => F.x <= WALL_L + 2 || F.x >= WALL_R - 2;
 const stop = n => Math.round(n * HITSTOP);
 const darkSash = F => F.text || C.cin;          // 写在纸上的字用的颜色（随人物颜色变，太浅的用深一点的）
-// 1.9.1：讲规则的字（谁克谁、该站挡还是蹲挡、背后挡不住、站着的抄不到）只在打桩练习里出，实战里只出招名和结果
-const teach = () => game.mode === 'train';
+// 1.9.2：画面上飘的字只出招名和结果（拼、压、化解、卸、破招 ×1.2、倒栽葱 ×1.3、伤害…），不出讲规则的字
+// （谁克谁、该站挡还是蹲挡、背后挡不住、站着的抄不到）—— 这些写进打桩练习的数值面板（info.why），不飘在人身上
 const CRASH_NAME = '倒栽葱';                     // 空中出招被克制、打下来（倒地更久）
 // 记数值（打桩练习面板用，不影响胜负）：这一下的招式、伤害、帧差、本套连击伤害
 function note(A, B, dmg, how) {
@@ -2664,7 +2664,8 @@ function evade(A, B) {
   A.move.done = true; A.move.evaded = true;
   B.move.beatVs = A.move.def.tier;
   sparks(B.x + B.facing * 16, B.J.sh[1], B.facing, 6, 6, B.sash, 1.0, 0.3);
-  tag(B.x, B.J.head[1] - 40, teach() ? TIER_NAME[B.move.def.tier] + '克' + TIER_NAME[A.move.def.tier] + ' · 化解' : '化解', darkSash(B), 20);
+  tag(B.x, B.J.head[1] - 40, '化解', darkSash(B), 20);
+  B.info = { label: B.move.def.label, dmg: 0, how: '化解', why: TIER_NAME[B.move.def.tier] + '克' + TIER_NAME[A.move.def.tier], adv: null, t: B.clock };
   Sound.whoosh(0.6);
 }
 
@@ -2738,13 +2739,14 @@ function applyHit(A, B, how) {
   game.freeze = stop((d.stop || 4) + (label ? 2 : 0));
   if (d.shake) game.shake = Math.max(game.shake, d.shake);
   hitFx(d.fx, c, A, B);
-  const relLabel = !!beatVs && label === TIER_NAME[d.tier] + '克' + TIER_NAME[beatVs];   // 「腿克重」这种：实战里不出字
-  if (label && (!relLabel || teach())) tag(B.x + dir * 10, B.J.head[1] - 36, label + ' ×' + lmul, C.cin, 21);
+  const relLabel = !!beatVs && label === TIER_NAME[d.tier] + '克' + TIER_NAME[beatVs];   // 「腿克重」这种：不飘字，只进打桩面板
+  if (label && !relLabel) tag(B.x + dir * 10, B.J.head[1] - 36, label + ' ×' + lmul, C.cin, 21);
   if (m.dashIn) tag(A.x, A.J.head[1] - 60, '冲势 ×' + DASH_IN_MUL, darkSash(A), 20);
   note(A, B, dmg, [label, m.dashIn ? '冲势' : null].filter(Boolean).join(' · ') || '打中');
+  // 对方在挡却挡不住：为什么（打桩面板上写给出招的人看）
+  if (backHit) A.info.why = '打在背后，挡不住';
+  else if (wrongGuard) A.info.why = d.height === 'low' ? '下段：站着挡不住' : '上段：蹲着挡不住';
   if (offBalance) tag(B.x, B.J.head[1] - 62, '失衡', C.cin, 24);
-  if (wrongGuard && teach()) tag(B.x, B.J.head[1] - 10, d.height === 'low' ? '下段！要蹲挡' : '上段！要站挡', C.cin, 17);
-  if (backHit && teach()) tag(B.x, B.J.head[1] - 10, '背后挨打，挡不住', C.cin, 17);
   tag(c.x + dir * 10, c.y - 14, (m.air ? '空中 ' : '') + '-' + dmg, C.ink, 18);
   const sx0 = A.J.head[0] - dir * 52, sy0 = A.J.head[1] - 46;
   if (d.stamp) { stamp(sx0, sy0, d.stamp, 30); A.stats.specials++; }
@@ -2855,8 +2857,8 @@ function overpower(W, L) {
   L.clashed = false; L.hurtHeavy = true; L.kvx = dir * (mw.def.kb * 1.2 + 3);
   game.freeze = stop(10); game.shake = Math.max(game.shake, 6);
   clashFx(c.x, c.y, W, L); hitFx(mw.def.fx, c, W, L);
-  if (teach()) { tag(c.x, c.y - 70, `${nameW} 压 ${nameL}`, darkSash(W), 22); tag(c.x, c.y - 46, `起手 ${TIER_NAME[leadW]}克${TIER_NAME[leadL]}`, C.ink, 16); }
-  else tag(c.x, c.y - 56, '压', darkSash(W), 36);
+  tag(c.x, c.y - 56, '压', darkSash(W), 36);
+  W.info.why = `起手 ${TIER_NAME[leadW]}克${TIER_NAME[leadL]}`; L.info.why = `起手 ${TIER_NAME[leadL]}被${TIER_NAME[leadW]}克`;
   tag(L.x, L.J.head[1] - 14, '-' + dL, C.ink, 18); tag(W.x, W.J.head[1] - 14, '-' + dW, C.ink, 15);
   Sound.clash(); Sound.hit(0.7);
 }
@@ -2905,7 +2907,7 @@ function grabMiss(A, B, why) {
   if (m.missTag) return;
   m.missTag = true;
   if (why === 'duck') tag(B.x, B.J.head[1] - 30, '蹲身闪过', C.ink, 22);
-  else if (teach()) tag(A.x, A.J.head[1] - 34, '站着的抄不到', C.ink, 18);
+  A.info = { label: m.def.label, dmg: 0, how: '抓空', why: why === 'duck' ? '站着的擒拿抓不到蹲着的（要蹲 + 拿）' : '抄腿抓不到站着的', adv: null, t: A.clock };
 }
 function dodged(A, B) {
   const m = A.move;
@@ -3773,7 +3775,8 @@ function drawTrainPanel() {
     const fd = I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : '';
     const sys = I.tier ? `（${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}）` : '';
     row('招式', `${I.label}${sys}  ${fd}`, y + 40);
-    row('这下', `${I.how}  -${I.dmg}`, y + 62, I.how === '被挡' ? C.indigo : C.ink);
+    // why：为什么（谁克谁、对方为什么没挡住、为什么没抓到）—— 讲规则的字只在这里写，不飘在人身上（1.9.2）
+    row('这下', `${I.how}${I.dmg > 0 ? '  -' + I.dmg : ''}${I.why ? '　' + I.why : ''}`, y + 62, I.how === '被挡' ? C.indigo : C.ink);
     const adv = I.down ? '击倒' : I.adv == null ? '—' : (I.adv > 0 ? '+' : '') + I.adv + ' 帧' + (I.adv > 0 ? '（你先动）' : I.adv < 0 ? '（对方先动）' : '（一起动）');
     row('帧差', adv, y + 84, I.adv > 0 || I.down ? C.cin : C.ink);
   }
