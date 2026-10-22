@@ -488,7 +488,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <dt><i>蹲</i>+<i>拿</i></dt><dd>抄腿<small>抓蹲着、蹲挡的人（抱腿摔），接住出腿和扫堂腿（抄腿摔）；抓不到站着的</small></dd>
         <dt><i>被抓住</i>马上<i>拿</i></dt><dd>挣脱<small>擒住刚开始那一下按拿就挣开（接腿、抄腿、借力摔挣不脱）</small></dd>
         <dt><i>倒地</i>按住<i>方向</i></dt><dd>滚身起<small>起身时往那边滚开，躲开守在你起身处的人</small></dd>
-        <dt><i>空</i><i>蹲</i>+<i>踢</i></dt><dd>千斤坠<small>先往上一腾（前摇长），再斜着踩下去，上段。专踩蹲着、蹲挡的 ×1.3，踩中托天掌 ×1.5 还踩倒；踩中后接 踢 / 重 / 拳 = 二起脚 / 盖步砸拳 / 落步冲拳。怕站着的拳：迎面挨一拳就摔个倒栽葱 ×1.4</small></dd>
+        <dt><i>空</i><i>蹲</i>+<i>踢</i></dt><dd>千斤坠<small>先往上一腾（前摇长），再朝对手斜着踩下去（离得近就几乎直着往下跺），上段。专踩蹲着、蹲挡的 ×1.3，踩中托天掌 ×1.5 还踩倒；踩中后接 踢 / 重 / 拳 = 二起脚 / 盖步砸拳 / 落步冲拳。怕站着的拳：迎面挨一拳就摔个倒栽葱 ×1.4</small></dd>
         <dt><i>重</i>+<i>踢</i></dt><dd>爆气 / 泼墨<small>挨打时花半格气震开；气满放必杀</small></dd>
       </dl>
     </div>
@@ -552,7 +552,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '1.9.3';
+const VERSION = '1.9.4';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -606,6 +606,9 @@ const DIVE_AA_MUL = 1.5;                 // 踩中正在出托天掌、冲天炮
 const DIVE_PUNCH_MUL = 1.4;              // 千斤坠半路被站着的拳（短拳系、重拳系）打中：倒栽葱，伤害加成
 const DIVE_AA_ALT = 92;                  // 站着的招能打到多高的千斤坠（别的空中招是 AIR_SAFE）：拳迎着踩下来的脚打
 const DIVE_RIDE = 4.2 / TEMPO;           // 踩中后顺着这一脚往下落（不往上弹），很快落在对手面前接连招
+// 1.9.4 千斤坠瞄准：出脚那一帧按对手在哪重新定朝向；对手近了就踩得陡一点（最陡直着往下踩）—— 以前离得近会踩过头、甚至转身往反方向踩
+const DIVE_AIM = 20;                     // 脚往下够得着对手那一帧，两人中心还差多远（近身时按这个定斜度，脚正好落在对手身上）
+const DIVE_LAND_GAP = 56;                // 踩中后落在对手面前多远（近身直着踩下来的，顺势往后带一点，不落在对手身上）
 // 空中的腿（飞踢、千斤坠）撞上地上的腿：空中那个人往后翻滚飞回去（1.9.0）
 const TUMBLE_VX = 8.4 / TEMPO, TUMBLE_VZ = 6 / TEMPO;   // 翻回去的横向速度（飞得远）、往上弹
 const TUMBLE_KEEP = 0.5, TUMBLE_LAND = 7;               // 吃地上那一腿几成伤害；落地硬直
@@ -679,7 +682,8 @@ const NET = {
 };
 
 // 骨骼长度与配色
-const BONE = { torso: 44, neck: 6, head: 13, ua: 24, fa: 25, th: 34, sh: 35 };
+// 1.9.4 手臂比例（Jack：小臂短一点、大臂长一点）：大臂 24 → 26.5、小臂 25 → 22.5，整条胳膊一样长（够得着的地方不变）
+const BONE = { torso: 44, neck: 6, head: 13, ua: 26.5, fa: 22.5, th: 34, sh: 35 };
 const THICK = 1.6;                        // 线条粗细倍率（1.8.0 从 1.3 加粗；1.7.0 去掉了身体外面那圈纸色白边）
 const FIST_R = 3.5;                       // 拳头半径（× THICK）。1.9.0 从 4.8 改小，只比手腕粗一点
 const C = { ink: '#17181a', indigo: '#28518f', cin: '#b8321d', gam: '#d39c1f', paper: '#ebeae2', paper2: '#dcdad0', dust: '#8d8a7e' };
@@ -767,15 +771,18 @@ function evalKeys(keys, t) {
 
 // 跳跃三段：上升（蹬直、提膝）→ 顶点（收腿团身）→ 下落（伸腿找地）。
 // 1.9.1：手不往上举 —— 大臂往前后张开、肘往上提（fe / be = -1，肘弯朝上），小臂往下垂，像收着的翅膀
-const P_JUP = { hy: 48, tor: 10, head: -6, ff: [22, 44], bf: [-18, 6], fh: [26, 34], bh: [-16, 34], fe: -1, be: -1 };
-const P_JTOP = { hy: 48, tor: 20, head: -2, ff: [16, 50], bf: [-2, 44], fh: [22, 36], bh: [-12, 34], fe: -1, be: -1 };
-const P_JDN = { hy: 48, tor: 6, head: -2, ff: [28, 12], bf: [-20, 22], fh: [32, 30], bh: [-30, 28], fe: -1, be: -1 };
+// 1.9.4（Jack：大臂再往下一点）：大臂都往下压了十几度（前臂从差不多平着 → 斜向下 40° 左右），小臂还是往下垂
+const P_JUP = { hy: 48, tor: 10, head: -6, ff: [22, 44], bf: [-18, 6], fh: [21, 40], bh: [-15, 39], fe: -1, be: -1 };
+const P_JTOP = { hy: 48, tor: 20, head: -2, ff: [16, 50], bf: [-2, 44], fh: [18, 41], bh: [-7, 39], fe: -1, be: -1 };
+const P_JDN = { hy: 48, tor: 6, head: -2, ff: [28, 12], bf: [-20, 22], fh: [29, 36], bh: [-26, 37], fe: -1, be: -1 };
 // 跑着起跳：飞身 —— 身子前倾、前腿提膝、后腿往后蹬直，像跨栏；两臂一前一后张开、小臂往下垂（展翅）
-const P_JLEAP = { hy: 48, tor: 24, head: -8, ff: [36, 42], bf: [-54, 20], fh: [38, 28], bh: [-40, 26], fe: -1, be: -1 };
-const P_JLEAP_DN = { hy: 48, tor: 12, head: -4, ff: [32, 18], bf: [-34, 16], fh: [36, 30], bh: [-36, 28], fe: -1, be: -1 };   // 飞身往下落：两腿往下找地，手还张着
+const P_JLEAP = { hy: 48, tor: 24, head: -8, ff: [36, 42], bf: [-54, 20], fh: [35, 34], bh: [-37, 32], fe: -1, be: -1 };
+const P_JLEAP_DN = { hy: 48, tor: 12, head: -4, ff: [32, 18], bf: [-34, 16], fh: [32, 36], bh: [-33, 34], fe: -1, be: -1 };   // 飞身往下落：两腿往下找地，手还张着
 const POSE = {
-  // 待机站姿（1.9.3，Jack：腿别往下弯那么多）：后腿站着、几乎直着撑在身子下面，前腿往前伸一点点（不往后弯）
-  stance: mk({ hy: 66, ff: [30, 0], bf: [-10, 0] }),
+  // 待机站姿（1.9.4，Jack：前腿别往前伸那么多，两腿岔开站就行，后腿别弯）：两腿各往外斜一点，站成一个「人」字，
+  // 两条腿都差不多直（膝盖只弯一点点），两脚一共岔开 30（以前前脚 +30、后脚 -10，前腿直直地往前戳）。
+  // 两条腿一样长：要是后腿完全竖直伸直，前脚往前就够不着地，所以两条腿一起往外斜
+  stance: mk({ hy: 66.7, ff: [15, 0], bf: [-15, 0] }),
   run: mk({ tor: 26, head: -16, hy: 54, fe: 0.2, be: 0.2 }),   // 跑步只用到这几个，手脚每帧现算（fighter.js runPose）
   crouch: mk({ hy: 38, tor: 26, head: -12, ff: [32, 0], bf: [-30, 0], fh: [26, 2], bh: [14, 12] }),
   block: mk({ hy: 56, tor: 0, head: 10, dx: -4, fh: [12, -30], bh: [18, -10], ff: [24, 0], bf: [-30, 0] }),
@@ -1749,11 +1756,28 @@ function dashInFx(F) {
    1.9.0：气跟着「连招」走 —— 连得越多越旺：2 连拳脚上冒火苗，4 连起身上发光，6 连以上整个人烧起来（F.heat）。
    普通重招不再冒一圈气（以前重拳前摇身上有一圈红光），只在出手的拳 / 脚 / 肩上聚一点气，看得出要来重的；
    泼墨、爆气、卸力、气满照旧有气
+   1.9.4（Jack：连招中后期的气要夸张得多、越往后越红越有气势）：连招的火单独算（emitQi 下半段），颜色用头带色调艳的那一版（vivid），
+   火苗更多、更大、更不透明，4 连起有一部分火苗烧到身子前面；身上的红光更亮更宽（render.js drawFighter），脚下烧红一片；
+   3 连起每打中一下身上炸开一圈气浪（comboFx），5 连起再往四面迸火星、画面亮一下
    ============================================================ */
 const QI = [];
 const addQi = o => { o.max = o.life; QI.push(o); };
-// 连击数 → 气有多旺（0~1）
-const comboHeat = n => n >= 2 ? Math.min(1, 0.25 + 0.13 * (n - 2)) : 0;
+// 连击数 → 火有多旺（1.9.4：0 ~ 1.3，以前最多 1、要 7 连才到顶）：2 连 0.3、3 连 0.5、4 连 0.7、5 连 0.9、6 连 1.1、7 连以上 1.3
+const comboHeat = n => n >= 2 ? Math.min(1.3, 0.1 + 0.2 * (n - 1)) : 0;
+// 头带色调艳一点（饱和度拉满、亮度提一点）：连招的火、红光、气浪都用这个颜色，纸上看得清
+const vividCache = {};
+function vivid(col) {
+  if (vividCache[col]) return vividCache[col];
+  const n = parseInt(col.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l0 = (mx + mn) / 2, d = mx - mn;
+  const s0 = d ? d / (1 - Math.abs(2 * l0 - 1)) : 0;
+  const h = !d ? 0 : mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;   // 0~6
+  const s = Math.min(1, s0 * 1.25 + 0.1), l = clamp(l0 * 1.1, 0.42, 0.55);
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(h % 2 - 1)), m = l - c / 2;
+  const [R, G, B] = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
+  const hex = v => Math.round((v + m) * 255).toString(16).padStart(2, '0');
+  return (vividCache[col] = '#' + hex(R) + hex(G) + hex(B));
+}
 function qiLevel(F) {
   const m = F.state === 'attack' ? F.move : null, d = m && m.def;
   let a = 0, gather = null, glow = 0;
@@ -1763,31 +1787,57 @@ function qiLevel(F) {
     else if (m.name === 'dash' && m.t < 10) a = 0.2;
   }
   if (F.state === 'parry') { a = Math.max(a, 0.6); glow = Math.max(glow, 0.5); }
-  const h = F.heat || 0;
-  if (h > a) a = h;
-  if (h > 0.5) glow = Math.max(glow, (h - 0.5) * 1.6);
+  const h = F.heat || 0;                                                                     // 连招的火另外冒（emitQi），这里只管身上的红光
+  if (h > 0.4) glow = Math.max(glow, Math.min(1.25, (h - 0.4) * 1.4));                      // 4 连起发红光，6、7 连最亮
   if (F.qi >= QI_MAX && F.state !== 'down' && F.state !== 'ko') a = Math.max(a, 0.3);   // 气满：一直冒着一点，提醒能放泼墨
   return { a, gather, glow };
+}
+// 连招打中的气浪（1.9.4）：3 连起每打中一下，身上炸开一圈火色的气浪，越连越大（3 连一小圈，6 连最大）；
+// 4 连起脚下也荡开一圈；5 连起再往四面迸火星、画面亮一下
+function comboFx(F) {
+  const n = F.combo;
+  if (n < 3 || !F.J) return;
+  const col = vivid(F.sash), y = F.J.hip[1] - 28, k = Math.min(1, (n - 3) / 3);
+  ring(F.x, y, 14, 52 + 98 * k, 3 + 9 * k, col, 14 + 10 * k, 0.85);
+  if (n >= 4) ring(F.x, FLOOR - 2, 10, 50 + 70 * k, 3 + 5 * k, col, 18, 0.22);              // 脚下也荡开一圈
+  if (n >= 5) { for (const d of [1, -1]) sparks(F.x, y, d, 4 + n, 8 + n, col, 1.6, 0.7, 20); flashTo(0.06 + 0.03 * Math.min(4, n - 5)); }
 }
 const QI_BONES = [['hip', 'neck'], ['hip', 'neck'], ['neck', 'head'], ['sh', 'fe'], ['fe', 'fh'], ['sh', 'be'], ['be', 'bh'], ['hip', 'fk'], ['fk', 'ff'], ['hip', 'bk'], ['bk', 'bf']];
 const QI_LIMBS = [['fe', 'fh'], ['be', 'bh'], ['fk', 'ff'], ['bk', 'bf']];       // 连得少：只在拳脚上冒
 function emitQi(F) {
-  // 连击的气：连上就往上涨（快），断了慢慢退（大约一秒）
+  // 连击的火：连上就往上涨（快），断了慢慢退（大约一秒）
   const tgt = F.comboLive ? comboHeat(F.combo) : 0, h0 = F.heat || 0;
   F.heat = h0 + (tgt - h0) * (tgt > h0 ? 0.3 : 0.03);
   const { a, gather, glow } = qiLevel(F);
   F.qiGlow += (glow - F.qiGlow) * 0.2;
   if (reduceMotion || !F.J) return;
-  const J = F.J, dir = F.facing, hot = F.heat > 0.7;
+  const J = F.J, dir = F.facing, h = F.heat;
+  const spot = bones => {                                    // 在这些骨头上随便挑一点
+    const [p0, p1] = bones[(Math.random() * bones.length) | 0], u = Math.random();
+    return [J[p0][0] + (J[p1][0] - J[p0][0]) * u + rnd(-7, 7), J[p0][1] + (J[p1][1] - J[p0][1]) * u + rnd(-7, 7)];
+  };
+  // 招式的气（泼墨、爆气、卸力、冲刺、气满）
   let n = a * (2 + 2.6 * a);
   while (n > 0 && a > 0.02) {
     if (n < 1 && Math.random() > n) break;
     n--;
-    const bones = a < 0.45 && F.heat > 0.1 ? QI_LIMBS : QI_BONES;
-    const [p0, p1] = bones[(Math.random() * bones.length) | 0], u = Math.random();
-    const x = J[p0][0] + (J[p1][0] - J[p0][0]) * u + rnd(-7, 7), y = J[p0][1] + (J[p1][1] - J[p0][1]) * u + rnd(-7, 7);
-    if (Math.random() < (hot ? 0.7 : 0.84)) addQi({ k: 'flame', f: F.idx, x, y, vx: -dir * rnd(0.1, 0.7) + rnd(-0.25, 0.25), vy: -rnd(1.2, 2.6) * (0.8 + a * 0.4), r: rnd(4, 8) * (0.7 + a * 0.6), a: rnd(0.22, 0.36) * (0.5 + a * 0.6), life: rnd(16, 28) | 0, ph: rnd(0, 6.3), hot: hot && Math.random() < 0.45 });
+    const [x, y] = spot(QI_BONES);
+    if (Math.random() < 0.84) addQi({ k: 'flame', f: F.idx, x, y, vx: -dir * rnd(0.1, 0.7) + rnd(-0.25, 0.25), vy: -rnd(1.2, 2.6) * (0.8 + a * 0.4), r: rnd(4, 8) * (0.7 + a * 0.6), a: rnd(0.22, 0.36) * (0.5 + a * 0.6), life: rnd(16, 28) | 0, ph: rnd(0, 6.3) });
     else addQi({ k: 'ember', f: F.idx, x, y, vx: -dir * rnd(0, 0.8) + rnd(-0.4, 0.4), vy: -rnd(1.4, 3), r: rnd(1.2, 2.2), a: 0.9, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
+  }
+  // 连招的火（1.9.4）：2、3 连只在拳脚上冒；4 连起整个人冒火，一部分火苗烧到身子前面；越往后火苗越多、越大、越不透明、窜得越高
+  if (h > 0.05) {
+    const col = vivid(F.sash), big = h > 0.6, hm = Math.min(1, h);
+    let k = h * (2.5 + 5 * h);                                // 每帧几个：2 连 1.2、4 连 4.2、6 连 8.8、7 连以上 11.7
+    while (k > 0) {
+      if (k < 1 && Math.random() > k) break;
+      k--;
+      const [x, y] = spot(h < 0.55 ? QI_LIMBS : QI_BONES);
+      if (Math.random() < 0.8) addQi({ k: 'flame', f: F.idx, col, x, y, vx: -dir * rnd(0.1, 0.9) + rnd(-0.3, 0.3), vy: -rnd(1.4, 3) * (0.8 + 0.5 * h),
+        r: rnd(4.5, 8.5) * (0.75 + 0.85 * h), a: rnd(0.38, 0.6) * (0.55 + 0.45 * hm), life: rnd(16, 30) | 0, ph: rnd(0, 6.3),
+        hot: big && Math.random() < 0.5, fr: big && Math.random() < 0.3 });
+      else addQi({ k: 'ember', f: F.idx, col, x, y, vx: -dir * rnd(0, 1) + rnd(-0.5, 0.5), vy: -rnd(1.6, 3.4) * (0.8 + 0.4 * h), r: rnd(1.4, 2.6) * (0.8 + 0.4 * h), a: 1, life: rnd(16, 30) | 0, ph: rnd(0, 6.3) });
+    }
   }
   // 重招蓄力：气从四周往出手的拳 / 脚 / 肩上聚（小一点，只是提示）
   if (gather && J[gather] && Math.random() < 0.7) {
@@ -1807,7 +1857,7 @@ function updateQi() {
     }
     if (--p.life <= 0) QI.splice(i, 1);
   }
-  if (QI.length > 400) QI.splice(0, QI.length - 400);
+  if (QI.length > 600) QI.splice(0, QI.length - 600);           // 1.9.4 连招烧旺了火苗多，上限从 400 提到 600
 }
 </script>
 <script>
@@ -1823,6 +1873,15 @@ function updateQi() {
    ============================================================ */
 const ACTIONABLE = new Set(['idle', 'run', 'crouch', 'block']);
 const dirOf = h => (h.right ? 1 : 0) - (h.left ? 1 : 0);
+/* 1.9.4 出招不冲过人：招式的前冲（lunge）冲进对手身子里（两人中心只差 gap ≤ 一个身子半宽）就停，
+   不会冲过对手、招打在身后的空气上（以前跑着贴脸按重，铁山靠会冲过去打空）。
+   对手在空中不挡（能从底下钻过去）；冲刺是 script 动作，不走这里（就是要穿过去） */
+const lungeStop = (gap, o) => !o.airborne && gap >= 0 && gap <= PUSH;
+// 对手正起跳下蹲：马上要跳出去的水平速度（和 update 里 jumpsquat 那段一样算）
+function takeoffVx(o) {
+  const dir = dirOf(o.inp.held);
+  return o.takeoffV > 0 && dir !== -o.facing ? o.facing * Math.max(o.takeoffV * RUN_CARRY, JUMP_VX) : dir * JUMP_VX;
+}
 /* ---------- 跑步循环 ----------
    一条腿一个周期 u∈[0,1)：0 脚在身前落地 → 0~RUN_ST 踩地往后蹬（脚相对髋匀速后移 = 跑速，不打滑）
    → 离地、脚跟往后上方收 → 提膝往前带 → 小腿前伸准备落地。另一条腿差半个周期；两脚都离地时身体腾空。
@@ -1859,12 +1918,14 @@ function throwPath(u, x0) {
   return [x, Math.max(0.01, alt), K[i][3] + (K[i + 1][3] - K[i][3]) * t];
 }
 // 手：u 是同侧腿的相位。返回手相对肩膀的位置（世界方向，已经算进上身前倾 tor）
-// 1.9.0：摆幅加大 —— 往前摆时手送到肩膀前面、差不多和肩一样高（往前够），往后摆时整条胳膊甩到身后
+// 1.9.0：摆幅加大 —— 往前摆时手送到肩膀前面，往后摆时整条胳膊甩到身后
+// 1.9.4（Jack：小臂别往前伸那么多，往前上一点）：往前摆时大臂少抬一点（80° → 70°）、肘弯得更多，
+// 小臂斜着往前上（摆到最前面时小臂高过水平 50° 多），手不再平平地往前够；往后甩不变
 function runArm(u, tor, amp) {
   const c = Math.cos(TAU * (u - 0.04));                  // c=1：同侧腿刚落地 → 这只手摆到最后
   const fwd = c < 0;
-  const th = ((fwd ? -c * 80 : -c * 66) * amp + 6 - tor * 0.6) * D2R;   // 上臂离竖直向下的角度（正 = 往前）
-  const ph = (fwd ? 70 + 26 * c : 60 - 26 * c) * D2R;                    // 肘弯：往前送时打开一些（手往前够），往后甩时半张
+  const th = ((fwd ? -c * 70 : -c * 66) * amp + 6 - tor * 0.6) * D2R;   // 上臂离竖直向下的角度（正 = 往前）
+  const ph = (fwd ? 72 - 14 * c : 72 - 38 * c) * D2R;                    // 肘弯：往前送时弯得多（小臂朝前上），往后甩时半张
   const ex = Math.sin(th) * BONE.ua, ey = Math.cos(th) * BONE.ua;
   return [ex + Math.sin(th + ph) * BONE.fa, ey + Math.cos(th + ph) * BONE.fa];
 }
@@ -1935,12 +1996,76 @@ class Fighter {
     const dx = this.opp.x - this.x;
     if (dx && Math.abs(dx) < FACE_SNAP) this.facing = dx > 0 ? 1 : -1;
   }
-  // 对手在哪一边（1.9.0）。ahead = 估多少帧以后（这一招出手时）：在空中的一方按水平速度往前推（自己跳过对手头顶、
-  // 对手跳过我头顶都算），最多推 14 帧
-  oppSide(ahead) {
-    const o = this.opp, k = Math.min(ahead || 0, 14);
-    const dx = o.x + (o.airborne ? o.vx * k : 0) - (this.x + (this.airborne ? this.vx * k : 0));
-    return Math.abs(dx) < 3 ? this.facing : dx > 0 ? 1 : -1;      // 几乎重叠时不转
+  /* 出招朝哪边（1.9.4 aimSide，代替 1.9.0 的 oppSide）。
+     把这一招从按下到判定结束这几帧，两个人会走到哪，照 update / separate 的算法推一遍：
+       自己 —— 这一招的前冲（贴到对手身上就停）、跑着 / 冲刺带的惯性、在空中的水平速度（千斤坠腾起来时只剩三成）；
+       对手 —— 在空中的照惯性飞、会落地，正起跳下蹲的按马上要跳的方向跳；在地上跑、冲刺不猜（从身边挤过去、冲刺穿过去算他躲开了）；
+       两人都在地上、身子叠着就互相推开（软碰撞）。
+     朝左、朝右各推一遍：判定那几帧里打得到对手的帧多的那边赢（地上的招还要看对手是不是跳得太高）；
+     一样多（都打得到 / 都打不到）就看判定开始那一帧，朝哪边对手更在面前（差不多就不转；对手还蹲着没起跳，就当他不跳来算）。
+     1.9.0 只估「出手那一帧」，自己的前冲、千斤坠腾起来减速都没算进去：跳着往前、离对手近的时候按千斤坠，会转身往反方向踩。
+     只用加减乘除，联机两边算出来一样 */
+  aimSide(d) {
+    const me = this, o = this.opp, air = this.airborne, S = d.S, n = d.dive ? S : S + d.A;   // 千斤坠只看出脚那一帧（出脚时还会再瞄一次，见 aimDive）
+    const lg = !air && !d.script && d.lunge ? d.lunge : null, lstep = lg ? lg[2] / (lg[1] - lg[0]) : 0;
+    const keep = dirOf(this.inp.held) ? 1 : AIR_DRAG, okeep = dirOf(o.inp.held) ? 1 : AIR_DRAG;
+    const run = this.state === 'run' ? this.facing * this.runSpeed() * 0.5 : 0;   // 跑着出招带的惯性（startAttack / beginMove 里加的）
+    const dashIn = !air && !d.script && d.kind !== 'push' && ((this.state === 'attack' && !!this.move && this.move.name === 'dash') || this.clock - this.dashEnd <= DASH_IN_WIN);
+    // 地上的招打得到多高（和 combat.js reaches 一样）：对空招更高；对手在出千斤坠、空中出腿时另算；擒拿只抓得到离地 24 以内的（grabIntent）
+    const om = o.state === 'attack' ? o.move : null;
+    const reachUp = air ? Infinity : d.kind === 'grab' ? 24 : Math.max(d.antiAir || AIR_SAFE, om && om.def.dive ? DIVE_AA_ALT : 0,
+      d.tier === 'kick' && d.height !== 'low' && om && om.air && om.def.kind === 'kick' ? KICK_AA_ALT : 0);
+    const sim = (f, fly) => {                               // fly = false：对手正起跳下蹲也当他不跳（只用来定「一样多」时转不转）
+      let sx = me.x, kv = me.kvx + run + (dashIn ? f * 5 : 0), sv = air ? me.vx * (d.dive ? 0.3 : 1) : 0;
+      let ox = o.x, oz = o.alt, ovz = o.vz, okv = o.kvx, ov = o.airborne ? o.vx : 0, oAir = o.airborne;
+      let squat = fly && o.state === 'jumpsquat' ? Math.max(1, 3 - o.t) : 0;
+      const oStep = () => {                                  // 对手走一帧
+        ox += okv; okv *= 0.82;
+        if (squat > 0) { ox += o.facing * o.takeoffV; if (--squat > 0) return; ov = takeoffVx(o); ovz = JUMP_V; oz = 0.01; oAir = true; }
+        if (!oAir) return;
+        oz += ovz; ovz -= GRAV; ox += ov; ov *= okeep;
+        if (oz <= 0) { oz = 0; oAir = false; okv += ov * 0.5; ov = 0; }
+      };
+      const meMove = () => { sx += kv; kv *= 0.82; if (air) { sx += sv; if (!d.dive) sv *= keep; } };
+      const push = () => {                                   // 两人都在地上、身子叠着：互相推开（和 combat.js separate 一样）
+        const dd = ox - sx, ad = Math.abs(dd);
+        if (air || oAir || ad >= 2 * PUSH) return;
+        const p = Math.min((2 * PUSH - ad) / 2, SOFT_PUSH), s = dd > 0 ? 1 : dd < 0 ? -1 : (me.facing > 0 ? 1 : -1);
+        sx -= s * p; ox += s * p;
+      };
+      // 按下这一帧：自己 update 剩下的物理照走；对手这一帧要是还没动（他排在后面）也走一下；最后推挤
+      meMove(); if (me.idx === 0) oStep(); push();
+      let hits = 0, side = 0;
+      for (let t = 1; t <= n; t++) {                         // t = 这一招走到第几帧（判定帧是 S+1 ~ S+A）
+        if (me.idx === 1) oStep();
+        if (lg && t - 1 >= lg[0] && t - 1 < lg[1] && !(f * (ox - sx) >= 0 && f * (ox - sx) <= PUSH && !oAir)) sx += f * lstep;
+        meMove();
+        if (me.idx === 0) oStep();
+        if (t === Math.min(S + 1, n)) side = ox - sx;
+        if (t > S && f * (ox - sx) >= -6 && f * (ox - sx) <= d.reach && oz <= reachUp) hits++;
+        push();
+      }
+      return { hits, front: f * side };                     // front：判定开始那一帧对手在我面前多远（负数 = 在身后）
+    };
+    let a = sim(this.facing, true), b = sim(-this.facing, true);
+    if (a.hits !== b.hits) return a.hits > b.hits ? this.facing : -this.facing;
+    // 对手还蹲着没起跳（人还在地上、在面前）：两边都打不中的话不按他「会跳到哪」转身 —— 他人明明在面前，一按就转身往后打像 bug；
+    // 已经跳起来了才按落点算（他从头顶飞过去，转身迎他是对的）
+    if (o.state === 'jumpsquat') { a = sim(this.facing, false); b = sim(-this.facing, false); }
+    // 一样多：转过去以后对手明显更在面前才转（两边各按各的前冲算 —— 只按现在朝向的那一遍算，往前冲一下就把自己「冲过了」对手，
+    // 对手明明在面前也会转身往后打）。门槛和 autoFace 一样：判定那一刻对手到了身后 FACE_HYST 以外才转 ——
+    // 也就是「要是没出招、站着不动，这时候会不会自动转过去」；对手从头顶跳过去、正好在头上时不乱转
+    return b.front > a.front + 2 * FACE_HYST ? -this.facing : this.facing;
+  }
+  /* 千斤坠出脚那一帧（1.9.4）：按对手这时候在哪重新定朝向（腾空那十几帧里对手可能跑到身后、自己也可能飘过了头），
+     再定往前下踩的斜度 —— 对手离得够远就照常斜着踩（DIVE_VX）；近了就踩得陡一点，最陡直着往下踩，
+     让脚够得着对手的那一帧两人中心差 DIVE_AIM：脚落在对手身上，不会踩过头、也不会往反方向踩 */
+  aimDive(m) {
+    const o = this.opp;
+    const f0 = Math.max(1, Math.ceil((this.alt - o.alt - m.def.vreach) / DIVE_VZ));   // 再过几帧脚往下够得着对手
+    const dx = o.x + (o.airborne ? o.vx * f0 : 0) - this.x;
+    if (Math.abs(dx) >= 3) this.facing = dx > 0 ? 1 : -1;
+    m.dvx = clamp((dx * this.facing - DIVE_AIM) / f0, 0, DIVE_VX);
   }
   // 自动面向对手：对手在身后超过 FACE_HYST 才转（两人重叠时不来回抖）
   autoFace() {
@@ -1998,10 +2123,11 @@ class Fighter {
     if (air && (this.airUsed || kind === 'grab')) return false;
     if (!cancel && this.chainIdle > CHAIN_WIN) { this.chain = []; this.rushStamped = false; }
     const h = this.inp.held, dir = dirOf(h), o = this.opp;
-    // 1.9.0 朝向吸附：先估这一招出手时对手在哪边（toward，对手在空中按他快落到哪算）。
+    // 1.9.0 朝向吸附：先估这一招判定时对手在哪边（toward，1.9.4 起按 aimSide 推：自己的前冲、跳的惯性、对手跳到哪都算进去）。
     // 对手在 ASSIST_R 以内、或者没按方向 → 朝对手打（近身乱按方向也不打空）；远了才照按的方向打
-    const guess = pickVariant(kind, air ? [] : this.chain, air, h.down ? 'down' : '');
-    const toward = this.oppSide(guess ? MOVES[guess].S : 6);
+    const runMod = !air && this.state === 'run' && this.runT >= RUN_CHARGE;
+    const guess = pickVariant(kind, air ? [] : this.chain, air, h.down ? 'down' : runMod ? 'run' : '');
+    const toward = guess ? this.aimSide(MOVES[guess]) : this.facing;
     const dist = Math.abs(o.x - this.x);
     // 按住「后」（离开对手的方向）+ 拿，对手就在面前 → 面朝对手，抓住直接过肩摔（1.8.0）
     const backThrow = kind === 'grab' && !air && !h.down && dir !== 0 && dir === -toward && dist <= MOVES.grab.reach + 16;
@@ -2077,7 +2203,7 @@ class Fighter {
   groundCtl(locked) {
     const h = this.inp.held, dir = dirOf(h);
     if (locked) { if (this.state !== 'win') this.state = 'idle'; this.runT = 0; return; }
-    if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.oppSide(MOVES.super.S); this.beginMove('super', null); return; }
+    if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.aimSide(MOVES.super); this.beginMove('super', null); return; }
     if (this.clock - this.dashT <= 3) { this.dashT = -999; this.facing = this.dashDir; this.startScript('dash'); Sound.whoosh(0.5); return; }
     if (this.takePress(['up'])) { this.takeoffV = this.state === 'run' ? this.runSpeed() : 0; this.state = 'jumpsquat'; this.t = 0; return; }
     if (this.state === 'block' && h.block && this.takePress(['jab'])) { this.beginMove('shove', null); return; }
@@ -2191,8 +2317,9 @@ class Fighter {
     if (this.airborne) {
       const m = this.move, atkAir = this.state === 'attack' && m && m.air;
       const dive = atkAir && m.def.dive, diving = dive && !m.hit && !m.blocked && m.t > m.S;
-      // 千斤坠：前摇里先腾起来、重力减半（在高处顿一下）；出脚后沿斜线匀速往前下方踩（不受重力）
-      if (diving) { this.vz = -DIVE_VZ; this.vx = this.facing * DIVE_VX; }
+      // 千斤坠：前摇里先腾起来、重力减半（在高处顿一下）；出脚后沿斜线匀速往前下方踩（不受重力）。
+      // 1.9.4：斜度是出脚那一帧按对手远近定的（m.dvx，见 aimDive），近了踩得陡
+      if (diving) { this.vz = -DIVE_VZ; this.vx = this.facing * (m.dvx === undefined ? DIVE_VX : m.dvx); }
       this.alt += this.vz;
       if (!diving) this.vz -= dive && m.t <= m.S ? GRAV * 0.5 : GRAV;     // 千斤坠前摇：在高处悬一下（1.9.0 悬得更久，看得见要踩了）
       if (this.state === 'tumble') this.x += this.vx;      // 翻滚：横向匀速飞回去（飞得远），方向键管不了
@@ -2225,11 +2352,13 @@ class Fighter {
       const k = this.takePress(['jab', 'heavy', 'kick', 'grab'], true);
       if (k && this.canCancel(k)) { this.takePress([k]); this.startAttack(k, true); return; }
     }
-    if (d.lunge && !m.air) {
-      const [a, b, px] = d.lunge, tb = this.baseTime();
-      if (tb >= a && tb < b) this.x += this.facing * px / (b - a);
-    }
     const o = this.opp;
+    if (d.lunge && !m.air) {
+      // 前冲：贴到对手身上就停，不冲过人（1.9.4，冲刺除外）
+      const [a, b, px] = d.lunge, tb = this.baseTime();
+      if (tb >= a && tb < b && (d.script || !lungeStop((o.x - this.x) * this.facing, o))) this.x += this.facing * px / (b - a);
+    }
+    if (d.dive && m.t === m.S && !m.hit && !m.blocked) this.aimDive(m);   // 千斤坠这一帧出脚：重新瞄（1.9.4）
     if (m.name === 'dash') {
       // 冲刺第 DASH_CANCEL 帧起可以直接按招打出去（带冲势）
       if (!locked && m.t >= DASH_CANCEL) { const k = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (k && this.startAttack(k, false)) return; }
@@ -2383,10 +2512,11 @@ class Fighter {
     const t = this.tgt, ck = this.clock;
     switch (this.state) {
       case 'idle': {
-        // 待机：膝盖一屈一伸，身子轻轻起伏（1.9.3 放慢到约 1.3 秒一次）；两只拳头慢半拍跟着画小圈，看起来在「呼吸」
+        // 待机「呼吸」（1.9.3 放慢到约 1.3 秒一次）：上身轻轻起伏，两只拳头慢半拍跟着画小圈。
+        // 1.9.4（Jack：下半身别晃那么多）：髋只上下动 0.4（以前 3，后腿膝盖跟着一弯一直），腿基本不动
         copyPose(t, POSE.stance);
         const ph = ck * TAU / 80, c = Math.cos(ph);
-        t.hy -= 3 * c; t.tor += 1.6 * c; t.head -= 1.3 * Math.cos(ph - 0.5);
+        t.hy -= 0.4 * c; t.tor += 1.6 * c; t.head -= 1.3 * Math.cos(ph - 0.5);
         t.fh[1] += 3.6 * Math.cos(ph - 0.9); t.fh[0] += 1.8 * Math.sin(ph - 0.9);
         t.bh[1] += 3 * Math.cos(ph - 1.3); t.bh[0] -= 1.5 * Math.sin(ph - 1.3);
         return t;
@@ -2411,6 +2541,8 @@ class Fighter {
       case 'attack': {
         const m = this.move;
         copyPose(t, evalKeys(m.def.keys, this.baseTime()));
+        // 1.9.4 千斤坠近身踩得陡（见 aimDive）：身子跟着立直一点，脚冲着底下的人，不是斜着往前伸
+        if (m.def.dive && !m.bounce && m.dvx !== undefined) t.rot *= 0.3 + 0.7 * m.dvx / DIVE_VX;
         // 千斤坠踩中：顺着这一脚蹲着落下来；被挡：往后翻一个跟头弹开
         if (m.def.dive && m.bounce) {
           if (m.hit) { copyPose(t, POSE.land); t.rot = -10; t.ff[0] = 40; t.ff[1] = 8; }
@@ -2771,8 +2903,11 @@ function applyHit(A, B, how) {
     B.move = null; B.chain = []; B.chainIdle = 99; B.runT = 0;
   }
   if (d.dive) {
-    // 千斤坠踩中：顺着这一脚落下来、落在对手面前。没踩倒的话这一下算「腿起手」—— 落地 踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳
-    A.vz = -DIVE_RIDE; A.vx = -dir * 0.8;
+    // 千斤坠踩中：顺着这一脚落下来、落在对手面前。没踩倒的话这一下算「腿起手」—— 落地 踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳。
+    // 1.9.4：近身直着踩下来的，落地前顺势往后带到对手面前 DIVE_LAND_GAP（不落在对手身上）
+    let fall = 0;
+    for (let z = A.alt, vz = -DIVE_RIDE; z > 0 && fall < 60; fall++) { z += vz; vz -= GRAV; }   // 还要几帧落地（和 update 一样算）
+    A.vz = -DIVE_RIDE; A.vx = -dir * clamp((DIVE_LAND_GAP - (B.x - A.x) * dir) / Math.max(1, fall), 0.8, 4);
     if (B.state === 'hit') { A.chain = ['kick']; A.chainIdle = 0; }
   }
   if (crash) crashFx(B, dir);
@@ -3052,6 +3187,7 @@ function bumpCombo(A, B) {
   A.comboLive = true;
   if (A.combo >= 2) A.comboT = 90;
   A.stats.maxCombo = Math.max(A.stats.maxCombo, A.combo);
+  comboFx(A);                                           // 1.9.4：3 连起每打中一下身上炸开一圈气浪（只是画面）
 }
 // 推挤：软碰撞。身体重叠时每帧最多推开 SOFT_PUSH，跑着能挤过去、换到对面
 function separate(a, b) {
@@ -3494,6 +3630,16 @@ function drawFighter(F) {
   const sw = 38 * (1 - Math.min(F.alt, 200) / 320);
   ctx.fillStyle = 'rgba(23,24,26,.16)';
   ctx.beginPath(); ctx.ellipse(F.x + F.facing * F.disp.dx * 0.5, FLOOR + 3, F.state === 'down' || F.state === 'ko' ? 58 : sw, 5.5, 0, 0, Math.PI * 2); ctx.fill();
+  // 1.9.4 连招烧旺了（4 连起）：脚下烧红一片，一明一暗
+  const heat = F.heat || 0;
+  if (heat > 0.45 && !reduceMotion) {
+    const k = Math.min(1, (heat - 0.45) / 0.75), R = 46 + 44 * k, a = (0.2 + 0.32 * k) * (0.85 + 0.15 * Math.sin(F.clock * 0.5));
+    ctx.save(); ctx.translate(F.x, FLOOR + 2); ctx.scale(1, 0.2);
+    const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, R), col = vivid(F.sash);
+    gr.addColorStop(0, rgbaOf(col, a)); gr.addColorStop(0.55, rgbaOf(col, a * 0.5)); gr.addColorStop(1, rgbaOf(col, 0));
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
   // 气：火苗（在身体后面）
   drawQi(F, false);
   // 残影
@@ -3521,14 +3667,20 @@ function drawFighter(F) {
       ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
     }
   });
-  // 运气时身上一层半透明的光（头带颜色）：重招蓄力 / 霸体 / 爆气 / 泼墨 / 卸力。只画模糊的影子、不画实心的边，
-  // 所以是一团光而不是描边（1.7.0 去掉了常驻的纸色白边）
+  // 运气时身上一层半透明的光（头带颜色）：重招蓄力 / 霸体 / 爆气 / 泼墨 / 卸力 / 连招。只画模糊的影子、不画实心的边，
+  // 所以是一团光而不是描边（1.7.0 去掉了常驻的纸色白边）。
+  // 1.9.4 连招的红光：用调艳的头带色，越连光越宽越亮（连得多再加一层更大的光晕），一胀一缩
   if (F.qiGlow > 0.04 && !reduceMotion) {
-    const tf = ctx.getTransform(), s = Math.hypot(tf.a, tf.b), D = 6000;
-    ctx.save(); ctx.shadowColor = F.sash; ctx.shadowBlur = 16 * s; ctx.shadowOffsetX = D;
-    ctx.translate(-D / s, 0);
-    drawSkeleton(J, F.sash, Math.min(1, F.qiGlow * (0.75 + 0.15 * Math.sin(F.clock * 0.45))), 1, 6);
-    ctx.restore();
+    const tf = ctx.getTransform(), s = Math.hypot(tf.a, tf.b), D = 6000, hk = Math.min(1, heat);
+    const col = heat > 0.4 ? vivid(F.sash) : F.sash, pulse = 0.8 + 0.2 * Math.sin(F.clock * 0.45);
+    const layer = (blur, alpha, grow) => {
+      ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * s; ctx.shadowOffsetX = D;
+      ctx.translate(-D / s, 0);
+      drawSkeleton(J, col, Math.min(1, alpha), 1, grow);
+      ctx.restore();
+    };
+    layer(16 + 10 * hk, F.qiGlow * pulse, 6 + 6 * hk);
+    if (F.qiGlow > 0.6) layer(34, (F.qiGlow - 0.5) * pulse, 14);
   }
   ctx.shadowColor = 'rgba(23,24,26,.35)'; ctx.shadowBlur = 2.5;
   drawSkeleton(J, F.color, 1, 0.62);
@@ -3895,6 +4047,8 @@ function tint(col) {
   const n = parseInt(col.slice(1), 16), mix = v => Math.round(v + (250 - v) * 0.6);
   return (tints[col] = `rgb(${mix(n >> 16 & 255)},${mix(n >> 8 & 255)},${mix(n & 255)})`);
 }
+// #rrggbb + 透明度 → rgba(...)（1.9.4 连招脚下烧红那一片用）
+const rgbaOf = (col, a) => { const n = parseInt(col.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
 // 火苗（1.9.0）：一条往上收尖的火舌，底下浓、上面淡，里面一道浅色的芯；hot = 旺火（连招连得多），芯更亮更大
 const flameSprites = {};
 function flameSprite(col, hot) {
@@ -3933,21 +4087,22 @@ function qiSprite(col) {
 }
 function drawQi(F, front) {
   for (const p of QI) {
-    if (p.f !== F.idx || (p.k === 'flame') === front) continue;
-    const u = 1 - p.life / p.max;
+    // 火苗画在身后，火星、聚气画在身前；1.9.4 连招烧旺了，有一部分火苗（fr）烧到身前
+    if (p.f !== F.idx || (p.k === 'flame' && !p.fr) === front) continue;
+    const u = 1 - p.life / p.max, col = p.col || F.sash;      // col：连招的火用调艳的头带色（fx.js vivid）
     if (p.k === 'flame') {
-      ctx.globalAlpha = Math.min(1, p.a * Math.min(1, u * 5) * (1 - u) * 2.4);
+      ctx.globalAlpha = Math.min(1, p.a * Math.min(1, u * 5) * (1 - u) * 2.4) * (p.fr ? 0.8 : 1);
       const r = p.r;
       ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(clamp(p.vx * 0.25 + Math.sin(p.ph) * 0.18, -0.6, 0.6));   // 火舌跟着飘的方向歪、一抖一抖
-      ctx.drawImage(flameSprite(F.sash, p.hot), -r, -r * 2.6, r * 2, r * 3.4);
+      ctx.drawImage(flameSprite(col, p.hot), -r, -r * 2.6, r * 2, r * 3.4);
       ctx.restore();
     } else if (p.k === 'ember') {
       ctx.globalAlpha = p.a * (1 - u) * (0.55 + 0.45 * Math.sin(p.ph * 3));
-      ctx.fillStyle = F.sash; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
     } else {
       ctx.globalAlpha = p.a * Math.min(1, u * 3);
       const r = p.r * (1.4 - u * 0.6);
-      ctx.drawImage(qiSprite(F.sash), p.x - r, p.y - r, r * 2, r * 2);
+      ctx.drawImage(qiSprite(col), p.x - r, p.y - r, r * 2, r * 2);
     }
   }
   ctx.globalAlpha = 1;
