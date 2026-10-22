@@ -24,7 +24,7 @@ body{font-family:var(--ui);font-size:14px;line-height:1.65}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0}
-.wrap{max-width:1232px;margin:0 auto;padding-block:16px 44px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.wrap{max-width:1632px;margin:0 auto;padding-block:16px 44px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand b{font-family:var(--brush);font-weight:400;font-size:30px;line-height:1;color:var(--paper)}
@@ -37,7 +37,7 @@ html,body{margin:0}
 .tbtn:focus-visible,.ibtn:focus-visible,.seg button:focus-visible,.tc:focus-visible{outline:2px solid var(--cinnabar);outline-offset:2px}
 .tbtn[disabled]{opacity:.4;cursor:default}
 
-.stage{position:relative;width:100%;max-width:min(1200px,calc((100dvh - 120px) * 2));min-width:0;margin-inline:auto;aspect-ratio:2/1;background:var(--paper);border-radius:3px;box-shadow:0 0 0 1px #11161a,0 0 0 7px var(--silk-3),0 24px 60px rgba(0,0,0,.45);overflow:hidden;display:grid;place-items:center;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.stage{position:relative;width:100%;max-width:min(1600px,calc((100dvh - 120px) * 2));min-width:0;margin-inline:auto;aspect-ratio:2/1;background:var(--paper);border-radius:3px;box-shadow:0 0 0 1px #11161a,0 0 0 7px var(--silk-3),0 24px 60px rgba(0,0,0,.45);overflow:hidden;display:grid;place-items:center;user-select:none;-webkit-user-select:none;touch-action:manipulation}
 .stage canvas{display:block;width:100%;height:auto;aspect-ratio:2/1}
 @media (max-width:640px){.stage{aspect-ratio:auto;min-height:350px;max-width:100%}.stage.playing{min-height:0;aspect-ratio:2/1}}
 @media (max-width:420px){.pad{grid-template-columns:repeat(3,48px);grid-template-rows:repeat(2,48px)}.acts{grid-template-columns:repeat(3,52px)}.tc{height:48px;font-size:20px}}
@@ -198,16 +198,22 @@ details#manualBox .netbox{margin-top:6px}
 .kbtn{padding:5px 10px;min-width:88px}
 #keysPanel .ibtn{font-size:20px;padding:8px 18px 7px;min-width:110px}
 
-/* 1.7.0 游戏区（顶栏 + 画面 + 打桩条 + 触屏键）：全屏时整块放大 */
+/* 1.7.0 游戏区（顶栏 + 画面 + 打桩条 + 触屏键）：全屏时整块放大
+   2.0（Jack：全屏要占满电脑屏幕）：全屏时画面铺满整个屏幕（不再留 2:1 以外的黑边 —— 屏幕高就往上下多画、宽就往左右多画，见 render.js），
+   顶栏的按钮缩到右下角、半透明（鼠标移过去才亮），打桩条浮在画面底下 */
 .play{display:flex;flex-direction:column;gap:14px}
-.play:fullscreen{background:var(--silk);padding:8px 12px;gap:8px;justify-content:center;width:100vw;height:100vh;overflow:hidden}
-.play:-webkit-full-screen{background:var(--silk);padding:8px 12px;gap:8px;justify-content:center;width:100vw;height:100vh;overflow:hidden}
+.play:fullscreen{background:var(--silk);padding:0;gap:0;width:100vw;height:100vh;overflow:hidden;position:relative;display:block}
+.play:-webkit-full-screen{background:var(--silk);padding:0;gap:0;width:100vw;height:100vh;overflow:hidden;position:relative;display:block}
 .play::backdrop{background:var(--silk)}
-.play:fullscreen .stage{max-width:min(100%,calc((100dvh - 64px) * 2));box-shadow:none;border-radius:2px}
-.play:-webkit-full-screen .stage{max-width:min(100%,calc((100vh - 64px) * 2));box-shadow:none;border-radius:2px}
-.play:fullscreen:has(#trainbar:not([hidden])) .stage{max-width:min(100%,calc((100dvh - 124px) * 2))}
-.play:fullscreen .brand span{display:none}
-.play:fullscreen .topbar{flex-wrap:nowrap}
+.play:fullscreen .stage,.play:-webkit-full-screen .stage{position:absolute;inset:0;width:100%;height:100%;max-width:none;aspect-ratio:auto;margin:0;box-shadow:none;border-radius:0}
+.play:fullscreen .stage canvas,.play:-webkit-full-screen .stage canvas{width:100%;height:100%;aspect-ratio:auto}
+.play:fullscreen .topbar,.play:-webkit-full-screen .topbar{position:absolute;right:12px;bottom:10px;z-index:8;flex-wrap:nowrap;opacity:.32;transition:opacity .2s}
+.play:fullscreen .topbar:hover,.play:fullscreen .topbar:focus-within{opacity:1}
+.play:fullscreen .topbar .tbtn{background:rgba(31,38,41,.78)}
+.play:fullscreen .brand,.play:-webkit-full-screen .brand{display:none}
+.play:fullscreen .trainbar,.play:-webkit-full-screen .trainbar{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:7;max-width:calc(100% - 300px);background:rgba(49,58,61,.86)}
+.play:fullscreen .touch,.play:-webkit-full-screen .touch{position:absolute;left:12px;right:12px;bottom:12px;z-index:7;pointer-events:none}
+.play:fullscreen .touch .tc{pointer-events:auto;opacity:.75}
 .toast{position:absolute;left:50%;top:19%;transform:translateX(-50%);z-index:5;margin:0;padding:7px 14px;border-radius:3px;background:rgba(23,24,26,.84);color:var(--paper);font-size:13px;line-height:1.5;pointer-events:none;max-width:92%;text-align:center}
 .row.tight{gap:6px}
 
@@ -225,6 +231,19 @@ details#manualBox .netbox{margin-top:6px}
 .sw.rand span{font-size:16px}
 kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24,26,.3);min-width:22px;height:22px}
 #netLooks{margin:2px 0 4px}
+
+/* 场景（2.0）：选场景的按钮 —— 一张小图 + 名字 */
+.stages{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;width:100%}
+.stg{display:flex;flex-direction:column;align-items:center;gap:4px;padding:5px 5px 6px;border:1.5px solid rgba(23,24,26,.22);border-radius:4px;background:rgba(255,255,255,.5);cursor:pointer;font:400 19px/1 var(--brush);color:var(--ink)}
+.stg img{display:block;width:200px;height:100px;border-radius:2px;background:var(--paper-2)}
+.stg:hover{background:#fff}
+.stg:focus-visible{outline:2px solid var(--cinnabar);outline-offset:2px}
+.stg[aria-pressed="true"]{border-color:var(--cinnabar);box-shadow:inset 0 0 0 1.5px var(--cinnabar);background:#fff}
+.stg[disabled]{cursor:default;opacity:.55}
+.stg[disabled][aria-pressed="true"]{opacity:1}
+.stages.sm .stg{font-size:16px;padding:4px 4px 5px}
+.stages.sm .stg img{width:120px;height:60px}
+@media (max-width:640px){.stg img{width:140px;height:70px}.stages.sm .stg img{width:96px;height:48px}}
 </style>
 </head>
 <body>
@@ -263,6 +282,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <div class="row tight">
           <button class="tbtn dark" id="btnKeys" type="button">⌨ 键位设置</button>
           <button class="tbtn dark" id="btnLooks" type="button">人物颜色</button>
+          <button class="tbtn dark" id="btnStage" type="button">场景：<span id="stageName">朱日远山</span></button>
           <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
         </div>
         <p class="hint" id="menuMsg">五局三胜 · 人机/联机每回合 300 秒，双人不限时 · 键位、克制和连招表在下方</p>
@@ -330,6 +350,8 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
           <p class="status" id="netStatus">已连接</p>
           <p class="step">选你的颜色（对方选了的那个会变暗，点不了）</p>
           <div class="swatches" id="netLooks"></div>
+          <p class="step" id="netStageHint">场景（房主选）</p>
+          <div class="stages sm" id="netStages"></div>
           <button class="ibtn" id="btnNetStart" type="button">开始对战</button>
         </div>
         <p class="err" id="netErr" role="alert"></p>
@@ -381,6 +403,15 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
       </div>
     </div>
 
+    <div class="overlay dim scroll" id="stagePanel" hidden>
+      <div class="panel looks">
+        <p class="big sm">场景</p>
+        <p class="hint">人机、双人对战在这张图上打（打桩固定在练武场；联机由房主选）。点一下就记住，菜单后面的画面就是预览。</p>
+        <div class="stages" id="stageList"></div>
+        <div class="row"><button class="ibtn" id="btnStageDone" type="button">好了</button></div>
+      </div>
+    </div>
+
     <div class="overlay dim scroll" id="pvpPanel" hidden>
       <div class="panel looks">
         <p class="big sm">双人选色</p>
@@ -389,6 +420,8 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <div class="swatches" id="pvpLook0"></div>
         <p class="step">玩家二</p>
         <div class="swatches" id="pvpLook1"></div>
+        <p class="step">场景</p>
+        <div class="stages sm" id="pvpStages"></div>
         <div class="row">
           <button class="ibtn" id="btnPvpGo" type="button">开始对战</button>
           <button class="ibtn ghost" id="btnPvpBack" type="button">返回</button>
@@ -479,6 +512,8 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <dt><i>蹲</i>+<i>踢</i></dt><dd>扫堂腿<small>下段，击倒。被蹲挡住会挨踩腿</small></dd>
         <dt><i>蹲</i>+<i>重</i></dt><dd>托天掌<small>对空，打下跳过来的人</small></dd>
         <dt><i>跑</i>+<i>重</i></dt><dd>铁山靠<small>能硬吃两下拳，撞远</small></dd>
+        <dt><i>挡</i>+<i>←</i>/<i>→</i></dt><dd>边挡边走<small>按住格挡再按方向：举着手慢慢走，往前往后都行，一直面朝对手、照样挡得住</small></dd>
+        <dt><i>挡</i>+<i>→</i><i>→</i></dt><dd>闪身<small>按住格挡朝对手双击（挡住的硬直里也行）：压低身子从他身边钻到身后。钻的时候站着打的拳打不中你，躲过了接着出招 ×1.3；重拳、腿、下段、擒拿截得住它，挨了吃 ×1.3</small></dd>
         <dt><i>挡住</i>后<i>拳</i></dt><dd>推挡<small>把对方推开并打断</small></dd>
         <dt><i>挡住</i>后<i>重</i></dt><dd>截拳<small>花 25 气从格挡里打出一拳，出手前打不中你</small></dd>
         <dt><i>蹲挡住扫堂腿</i>后<i>踢</i></dt><dd>踩腿<small>一脚踩倒，算挡后反击 ×1.5</small></dd>
@@ -488,6 +523,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <dt><i>蹲</i>+<i>拿</i></dt><dd>抄腿<small>抓蹲着、蹲挡的人（抱腿摔），接住出腿和扫堂腿（抄腿摔）；抓不到站着的</small></dd>
         <dt><i>被抓住</i>马上<i>拿</i></dt><dd>挣脱<small>擒住刚开始那一下按拿就挣开（接腿、抄腿、借力摔挣不脱）</small></dd>
         <dt><i>倒地</i>按住<i>方向</i></dt><dd>滚身起<small>起身时往那边滚开，躲开守在你起身处的人</small></dd>
+        <dt><i>起身</i></dt><dd>起身硬直<small>被打倒的人站起来那几帧挨得了打、还动不了：对面算好时机出短拳、擒拿必中；重拳、腿太慢，要提前出才压得住，压早了打空就该你反打</small></dd>
         <dt><i>空</i><i>蹲</i>+<i>踢</i></dt><dd>千斤坠<small>先往上一腾（前摇长），再朝对手斜着踩下去（离得近就几乎直着往下跺），上段。专踩蹲着、蹲挡的 ×1.3，踩中托天掌 ×1.5 还踩倒；踩中后接 踢 / 重 / 拳 = 二起脚 / 盖步砸拳 / 落步冲拳。怕站着的拳：迎面挨一拳就摔个倒栽葱 ×1.4</small></dd>
         <dt><i>重</i>+<i>踢</i></dt><dd>爆气 / 泼墨<small>挨打时花半格气震开；气满放必杀</small></dd>
       </dl>
@@ -495,9 +531,10 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
     <div class="card">
       <h3>攻防规则</h3>
       <ul>
-        <li><em>格挡</em>：伤害只吃三成；被挡的一方「势破」，下一记短拳前摇 +4 帧。</li>
+        <li><em>格挡</em>：伤害只吃三成；被挡的一方「势破」，下一记短拳前摇 +4 帧。按住格挡再按方向能边挡边走（往后退也一直面朝对手）。</li>
         <li><em>高低</em>：下盘拳、扫堂腿是下段，要蹲着挡；空中招是上段，要站着挡。</li>
         <li><em>连击衰减</em>：同一套里每多挨一下，硬直更短、被推得更远、伤害更低，连四五下就断。</li>
+        <li><em>倒地</em>：躺一会儿 → 起身（打不中）→ 起身硬直（站起来那几帧，打得中、动不了）→ 能动。倒了就是起身后被动：对面能压你起身，你能滚身起。</li>
         <li><em>擒拿</em>挡不住，但站着抓不到蹲着的人（要用蹲+拿「抄腿」，抄腿又抓不到站着的）；对方出腿时擒拿 = 接腿摔，跳起来踢的倒地更久。被抓住马上按拿能挣脱。</li>
         <li><em>防守反击</em>：挡住以后打中对方还没收完的那一招 = 挡后反击 ×1.3，那一招是击倒招 ×1.5；卸力后打中 ×1.35；击倒招打空了被打收招 = 破绽 ×1.25。被打中的硬直也更长，好接连招。</li>
         <li><em>朝向</em>：按着方向不出招就是跑，马上朝那边跑（没有后退，也不会被吸回去）。不按左右（站着、蹲着）、格挡、挡住的硬直里，自动面向对手，对手跳到身后马上转过来。出招时对手在近身范围内一律朝他打（乱按方向也不打空，对手在空中按他快落到哪算），远了才照你按的方向。背对着挨打挡不住。</li>
@@ -543,7 +580,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
     <div class="card wide">
       <h3>帧数表</h3>
       <div class="scrollx"><table><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody id="frameTable"></tbody></table></div>
-      <p class="note">1 帧 = 1/60 秒（1.8.0 整体慢约 7%，1.9.3 出招、挨打再慢约 5%）。射程是两人中心距（像素，含前冲），空中招式伤害已含 ×1.35。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。血量 500，五局三胜。</p>
+      <p class="note">1 帧 = 1/60 秒（1.8.0 整体慢约 7%，1.9.3 出招再慢约 5%；2.0 起手招（中立时出的第一招）前摇、后摇再一起慢一点，看得清对面出什么）。射程是两人中心距（像素，含前冲），空中招式伤害已含 ×1.35。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。血量 500，五局三胜。</p>
     </div>
   </section>
 </main>
@@ -552,15 +589,21 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '1.9.4';
+const VERSION = '2.0.0';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
 // 跑、跳的速度不变（那些按 TEMPO 算）。招式表 moves.js 里写的是基准帧数，M() 统一换算。
-// 想整体再快 / 慢一点改 TEMPO；只想改出招、挨打这些帧数改 HIT_TEMPO。
 // 只用乘除（联机两边算出来一样），不用 Math.pow
-const TEMPO = 1.07, TEMPO2 = TEMPO * TEMPO, HIT_TEMPO = 1.05;
+// 2.0 节奏分三种（Jack：中立时看不清对面出什么；前后摇要「平等」—— 我后摇长一点，你前摇也长一点；挨打、倒地那种后摇改回去一点）：
+//   TF  —— 招式的前摇 / 判定 / 后摇、挨打硬直、格挡硬直、各种窗口（和 1.9.3 一样）
+//   TFO —— 起手招（从中立出的第一招：短拳、重拳、腿踢、擒拿、托天掌、铁山靠、抄腿、空中三招）的前摇和后摇再一起慢 OPEN_TEMPO：
+//          看得清对面在出什么；后摇跟着一样长，谁打空了被反打的机会还是一样（平等）。连招里接的招不变，真连不受影响
+//   TFH —— 「挨了打的后摇」：倒地、起身、失衡、拼招震退这些，改回 1.9.2 的节奏（去掉 1.9.3 多慢的 5%）
+const TEMPO = 1.07, TEMPO2 = TEMPO * TEMPO, HIT_TEMPO = 1.05, OPEN_TEMPO = 1.12, REACT_TEMPO = 1;
 const TF = n => Math.round(n * TEMPO * HIT_TEMPO);
+const TFO = n => Math.round(n * TEMPO * HIT_TEMPO * OPEN_TEMPO);
+const TFH = n => Math.round(n * TEMPO * REACT_TEMPO);
 
 // 场地（逻辑坐标，画布按比例缩放）。W 是画面宽；场地 STAGE_W 比画面宽，镜头跟着两人左右移
 const W = 1200, H = 600, FLOOR = 520, PUSH = 25;                    // PUSH = 身体半宽
@@ -568,9 +611,10 @@ const STAGE_W = 1600, WALL_L = 64, WALL_R = STAGE_W - 64;           // 1.7.0 场
 const START_GAP = 360;                   // 开局两人站在场地正中、相距多远
 // 镜头（1.8.0）：人物放大。人机 / 联机 / 打桩：镜头跟着自己，对手可以在画面外（画面边上有箭头）；
 // 双人对战：两人都要在画面里 —— 镜头随距离缩放（近了放大、远了拉远），两人最远 MAXD_PVP
-const ZOOM = 1.62;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22）
+// 2.0（Jack：人物再大一点，大小粗细一起放大）：1.62 → 1.76。全屏时屏幕比 2:1 高（16:9、16:10），多出来的高度再放大一点（render.js zoomBoost）
+const ZOOM = 1.76;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62）
 const ZOOM_PVP_MIN = 1.24, CAM_MARGIN = 80;   // 双人对战最远时拉到多远；人离画面边至少留多少（场地坐标）
-const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）
+const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）。画面宽窄怎么变它都不变（是规则）
 const MAX_HP = 500;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500）
 const DUMMY_HP = 3000, DUMMY_REFILL = 0.3;   // 打桩：木桩血量；掉到三成以下、一套打完就自动回满
 
@@ -578,11 +622,21 @@ const DUMMY_HP = 3000, DUMMY_REFILL = 0.3;   // 打桩：木桩血量；掉到�
 const RUN_START = 4.2 / TEMPO, RUN_MAX = 6.8 / TEMPO, RUN_ACC = 0.4 / TEMPO2;    // 起步速度、最高速度、每帧加速（1.8.0 按节奏放慢）
 const DTAP_WIN = 12;                     // 同一方向双击间隔（帧）以内 = 冲刺
 const DASH_CANCEL = 5;                   // 冲刺第几帧起可以直接按招打出去（无敌帧结束前一点）
+const DASH_TURN_KV = 4;                 // 2.0 冲刺里回身出招：还被冲刺带着往原来的方向滑（不带冲势），冲过人再回身打够不太着
 const DASH_IN_WIN = TF(8);               // 冲刺结束后几帧内出的第一招都算「冲势」
 const DASH_IN_MUL = 1.2, DASH_IN_BSTUN = 4;   // 冲势：伤害倍率；被挡时对方多挨的格挡硬直（冲进去压得住）
 const RUN_CHARGE = TF(8);                // 跑满多少帧后按重拳变「铁山靠」
 const SOFT_PUSH = 2.0 / TEMPO;                   // 两人身体重叠时每帧互相推开多少（软碰撞：跑着能挤过去换边）
 const FACE_SNAP = 52;                    // 两人贴得比这还近时，不按方向 / 出招会自动转向对方（朝向吸附）
+// 2.0 边挡边走（Jack）：按住格挡 + 方向（不蹲）= 举着手慢慢走，往前往后都行，一直面朝对手、照样挡得住
+const BLOCK_WALK = 1.8 / TEMPO;          // 边挡边走的速度（跑步起步是 4.2）
+// 2.0 闪身（边挡边冲刺）：按住格挡、朝对手双击方向（格挡中、挡住的硬直里都行）—— 压低身子从对手身边钻过去、到他身后。
+//   钻的途中短拳系（站着打的拳：短拳、连珠、摆拳、顶肘、落步冲拳…）打不中你（闪），躲过了接着出的第一招算「闪身反击」×1.3；
+//   但别的都打得中：重拳、腿、下段、对空、空中招、擒拿 —— 冲进去的时候挨打，吃「截住闪身」×1.3、硬直更长
+const SLIP_PAST = 62, SLIP_MIN = 70, SLIP_MAX = 150;   // 钻到对手身后多远（两人中心）；最少 / 最多冲多远
+const SLIP_CANCEL = TF(9);               // 闪身第几帧起能直接出招
+const SLIP_IN_WIN = TF(6);               // 闪身结束后几帧内出的第一招也算「闪身反击」（要躲过了才算）
+const SLIP_COUNTER_MUL = 1.3, SLIP_CAUGHT_MUL = 1.3, SLIP_CAUGHT_STUN = TF(5);   // 闪身反击 / 截住闪身的伤害倍率；截住时多几帧硬直
 // 1.9.0 朝向吸附加强（防打背身）：
 //   · 不按左右（站着、蹲着）、格挡、挡住的硬直里：一律自动面向对手（不管远近），对手跑到身后马上转过来；
 //   · 出招：对手在 ASSIST_R 以内，一律朝对手打（近身乱按方向也不会打空；对手在空中按他落点算）；更远才照按的方向；
@@ -621,8 +675,14 @@ const PAIR_WIN = 3;                      // 「重+踢」两键间隔几帧内�
 const HITSTOP = 0.85;                    // 打中时的停顿（顿帧）倍率，越小节奏越快（1.8.0 从 0.8 加一点，看得清打中了没）
 const BLOCK_KEEP = 0.3;                  // 格挡后承受的伤害比例
 const SLOW_JAB_FRAMES = TF(90), SLOW_JAB_ADD = 4;   // 被挡后「势破」持续帧数、下一记短拳前摇增加帧数
-const LIE_GROUND = TF(46), LIE_AIR = TF(86), GETUP = TF(18); // 接腿摔倒地帧数（地面/空中）、起身帧数
-const LIE_CRASH = TF(62);                // 倒栽葱（空中出招被克制打下来）倒地更久（1.9.0）
+// 倒地（2.0，Jack：倒地起身的后摇太长；起身后要有几帧「挨打又动不了」，给对面先出手）：
+//   躺着 LIE_* → 起身 GETUP（打不中、动不了，从躺着撑到蹲着）→ 起身硬直 RISE（站起来那几帧：打得中、还动不了）→ 能动。
+//   RISE 的长短：对面在你刚能挨打那一帧出短拳（前摇 5）来得及打中；出腿踢（前摇 16）来不及 —— 你先能挡。
+//   重拳、腿这些慢招要提前出、算好时机（压起身）才压得住；压早了打空，就该你反打。起身时按住方向 = 滚身起，滚开再站起来
+const LIE_HIT = TFH(28);                 // 普通击倒躺多久（1.9.4 是 40，没跟着节奏换算）
+const LIE_GROUND = TFH(40), LIE_AIR = TFH(76); // 接腿摔倒地帧数（地面/空中）
+const GETUP = TFH(13), RISE = TFH(9);    // 起身（打不中）、起身硬直（打得中、动不了）。1.9.4：起身 20 帧，起来马上能动
+const LIE_CRASH = TFH(52);               // 倒栽葱（空中出招被克制打下来）倒地更久（1.9.0）
 const ROUND_FRAMES = 300 * 60, WIN_ROUNDS = 3;   // 人机/联机每回合 300 秒；双人不限时；五局三胜（1.8.0，以前三局两胜）
 const STEP_MS = 1000 / 60;
 
@@ -630,9 +690,9 @@ const STEP_MS = 1000 / 60;
 const TRADE_LEAD = 3;      // 被打中时自己的招还差 ≤3 帧就出来 = 已经出手，算「交手」而不是被破招
 const BEAT_LEAD = 8;       // 自己的招主系克制对方、且 ≤8 帧内就出来：对方这一下被化解（打空），自己的招照出
 const CLASH_KEEP = 0.5;    // 平（拼招）：各吃对方伤害的五成
-const CLASH_STUN = TF(11), CLASH_KB = 7.5;   // 拼招后双方硬直、互相震退的力度
+const CLASH_STUN = TFH(11), CLASH_KB = 7.5;   // 拼招后双方硬直、互相震退的力度
 const PRESS_KEEP = 0.3;    // 压：主系相同、起手克制。被压的吃全额，压人的只吃三成
-const PRESS_STUN = TF(8);      // 压人的一方小硬直（被压的吃正常硬直，所以压人的能接着打）
+const PRESS_STUN = TFH(8);     // 压人的一方小硬直（被压的吃正常硬直，所以压人的能接着打）
 const COUNTER_MUL = 1.2;   // 破招：打在对方前摇里；迎击：打在全速跑过来、或冲刺收尾的人身上
 const BEAT_MUL = 1.3;      // 克：主系克制，克制方单方面打中
 const ARMOR_KEEP = 0.5;    // 霸体硬吃短拳时吃的伤害比例
@@ -646,12 +706,12 @@ const JAB_CHAIN_MAX = 6;                 // 一串最多 6 拳，第 6 拳是收
 // 防守反击
 const PARRY_WIN = 6;       // 刚按下格挡的 6 帧内被打中 = 卸力（背对着挡不了，也卸不了）
 const PARRY_LOCK = 24;     // 两次按格挡间隔不足 24 帧，第二次没有卸力判定（防乱按）
-const PARRY_STUN = TF(22);   // 被卸力的一方失衡帧数
+const PARRY_STUN = TFH(22);  // 被卸力的一方失衡帧数
 const PARRY_POSE = 6;      // 卸力成功后的收势帧（期间可以直接出招反打）
-const PUSH_KB = 12, PUSH_STUN = TF(9);       // 推挡：把对方推开的力度、打断对方的硬直
+const PUSH_KB = 12, PUSH_STUN = TFH(9);      // 推挡：把对方推开的力度、打断对方的硬直
 // 1.8.0 防守反击的收益（打得越险的招，被反击时吃得越重）
 const PUNISH_MUL = 1.3, PUNISH_KD_MUL = 1.5;   // 挡后反击：打在自己刚挡住的那一招的收招里 ×1.3；那一招是击倒招 ×1.5
-const PUNISH_STUN = TF(5);               // 挡后反击、卸力反击打中多 5 帧硬直（好接连招）
+const PUNISH_STUN = TF(5);               // 挡后反击、卸力反击、闪身反击打中多 5 帧硬直（好接连招）
 const WHIFF_KD_MUL = 1.25;               // 破绽：击倒招打空 / 被躲开，打它的收招
 const PARRY_MUL = 1.35;                  // 卸力反击：卸力后趁对方失衡打中；卸掉的是击倒招按 PUNISH_KD_MUL
 const GC_COST = 25;                      // 截拳（挡住后按重）耗气
@@ -661,7 +721,7 @@ const HOLD_GAP = 54;                     // 擒住时把对手带到身前多近
 const ROLL_DIST = 96;                    // 倒地起身时按住方向：滚身起，往那边滚这么远
 const QI_MAX = 100, QI_BURST = 50;       // 气：满格 100；爆气消耗 50，泼墨消耗 100
 const QI_PER_HP = 1 / 6;                 // 掉 / 打掉多少血换多少气（血量 6 倍，气按比例折算，涨气速度和以前一样）
-const BURST_RANGE = 180, BURST_KB = 13, BURST_STUN = TF(17);   // 爆气震开的范围、力度、对方硬直
+const BURST_RANGE = 180, BURST_KB = 13, BURST_STUN = TFH(17);  // 爆气震开的范围、力度、对方硬直
 const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着格挡：只被推开一点、几乎不硬直，爆气方的后摇就能被打
 
 // 联机（P2P）
@@ -801,14 +861,23 @@ const POSE = {
   recoil: mk({ tor: -18, head: -20, dx: -12, hy: 56, fh: [34, -30], bh: [20, -26], ff: [30, 0], bf: [-36, 0] }), // 拼招震退
   parry: mk({ tor: -6, head: 8, dx: -6, hy: 56, fh: [46, -34], fe: -1, bh: [12, -18], ff: [24, 0], bf: [-32, 0] }),
   fall: mk({ rot: -60, tor: -16, head: -24, ff: [38, 34], bf: [14, 26], fh: [-14, -34], bh: [-26, -24] }),
-  lie: mk({ rot: -88, tor: 0, head: -12, ff: [22, 8], bf: [-2, 2], fh: [-14, 12], bh: [-26, 18] }),
+  /* 躺着（2.0，Jack：身子和腿要躺在地上，头也在地上、发带平铺在地上，两手平放在身体两边，看着合人体）：
+     整个人转 -90°（rot）就是仰面平躺：身体坐标里「往下」= 地上往脚那边，「往前」= 往上。
+     所以脚的目标点 [0, x] 在身体坐标里正下方 = 平平放在地上；膝盖往「前」弯 = 往上拱一点（腿稍微弯着）。
+     上身抬 4°、头再仰 10°：后脑勺正好垫在地上，身子那条线贴着地（只往地里穿两三像素，不会因为头圆、整个人被垫高一截）。
+     两只手从肩膀顺着身子往脚那边伸直，放在身体两边（侧面看就叠在身子上）。lie 一条腿稍微弯；lieFlat 两腿伸直 —— 每次倒地换着来 */
+  lie: mk({ rot: -90, tor: 4, head: 10, hy: 64, air: 0, ff: [0, 0], bf: [0, -4], fh: [-3, 48.4], bh: [-2, 47.8], fe: 1, be: 1 }),
+  lieFlat: mk({ rot: -90, tor: 4, head: 10, hy: 64, air: 0, ff: [0, -5], bf: [-1, -4], fh: [-3, 48.4], bh: [-2, 47.8], fe: 1, be: 1 }),
+  // 起身硬直（2.0）：从蹲着站起来、两手还垂在下面没护住 —— 一看就知道「现在打得着他」
+  rise: mk({ hy: 48, tor: 18, head: -2, dx: -2, ff: [24, 0], bf: [-26, 0], fh: [22, 12], bh: [10, 18] }),
   win: mk({ tor: -2, head: -16, fh: [6, -56], bh: [18, -6], ff: [22, 0], bf: [-24, 0] }),
 };
+// 起身（2.0：20 帧 → GETUP 13 帧左右）：躺着 → 撑起来坐着 → 蹲着；接着起身硬直（RISE）从蹲着站起来（fighter.js target 'rise'）
 const GETUP_KEYS = [
   [0, POSE.lie, 'io'],
-  [10, mk({ rot: -38, tor: 34, hy: 30, head: 0, ff: [32, 0], bf: [2, 0], fh: [-12, 32], bh: [-22, 36] }), 'io'],
-  [18, POSE.crouch, 'io'],
-  [GETUP, POSE.stance, 'io'],
+  [GETUP * 0.4, mk({ rot: -38, tor: 34, hy: 30, head: 0, ff: [32, 0], bf: [2, 0], fh: [-12, 32], bh: [-22, 36] }), 'io'],
+  [GETUP * 0.78, mk({ hy: 36, tor: 30, head: -8, ff: [30, 0], bf: [-26, 0], fh: [24, 14], bh: [10, 20] }), 'io'],
+  [GETUP, POSE.rise, 'io'],
 ];
 
 
@@ -843,13 +912,16 @@ function ik(px, py, tx, ty, a, b, hx, hy) {
    keys 关键帧按「阶段」写：0 起手 → 1 出手（判定开始）→ 2 判定结束 → 3 收招完。改 S/A/R 动画自动跟着变
         script 动作（擒拿后续、撤步…）的 keys 写 0~1，表示整段动作的进度
    1.8.0：这里写的帧数是「基准帧数」，M() 统一乘节奏 TEMPO 取整（config.js），帧数表显示的是换算后的
+   2.0：open = 起手招（从中立出的第一招）：前摇、后摇按 TFO 换算（比别的招再慢一点，看得清；前后摇一起长 = 平等）；
+        lie（倒地多久）按 TFH 换算（挨了打的后摇改回 1.9.2 的节奏）
    ============================================================ */
 const TIER_OF_KIND = { jab: 'light', heavy: 'heavy', kick: 'kick' };
-const TIME_KEYS = ['S', 'A', 'R', 'stun', 'bstun', 'lie', 'evThrow', 'evPush', 'evSlam', 'evWave', 'evHit', 'evHit2'];
+const TIME_KEYS = ['S', 'A', 'R', 'stun', 'bstun', 'evThrow', 'evPush', 'evSlam', 'evWave', 'evHit', 'evHit2'];
 function M(o) {
   o.base = { S: o.S, A: o.A, R: o.R };          // 换算前的基准帧数（测试核对节奏用）
-  for (const k of TIME_KEYS) if (typeof o[k] === 'number' && o[k] > 0) o[k] = TF(o[k]);
-  for (const k of ['inv', 'sinv', 'airInv']) if (o[k]) o[k] = o[k].map(TF);
+  for (const k of TIME_KEYS) if (typeof o[k] === 'number' && o[k] > 0) o[k] = (o.open && (k === 'S' || k === 'R') ? TFO : TF)(o[k]);
+  if (o.lie) o.lie = TFH(o.lie);
+  for (const k of ['inv', 'sinv', 'airInv', 'slipInv']) if (o[k]) o[k] = o[k].map(TF);
   if (o.lunge) o.lunge = [TF(o.lunge[0]), TF(o.lunge[1]), o.lunge[2]];
   if (o.armor) o.armor = Object.assign({}, o.armor, { from: TF(o.armor.from) });
   o.tier = o.tier || TIER_OF_KIND[o.kind] || o.kind;
@@ -872,7 +944,7 @@ const P_LOW = { hy: 36, tor: 32, head: -12, ff: [34, 0], bf: [-30, 0] };
 const MOVES = {
   /* ---- 拳系（light）：快，近身抢先；被重拳霸体吃掉，但能打断腿 ---- */
   // 短拳：前手从胸口直接往前弹出去，第一帧就往前走、不往回收（1.7.0：以前也先往回收一下，和重拳的起手分不清）
-  jab: M({ kind: 'jab', label: '短拳', S: 4, A: 3, R: 7, dmg: 5, reach: 92, stun: 13, bstun: 7, kb: 2.2, stop: 4, power: .3,
+  jab: M({ kind: 'jab', label: '短拳', open: true, S: 4, A: 3, R: 7, dmg: 5, reach: 92, stun: 13, bstun: 7, kb: 2.2, stop: 4, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 4, 5],
     keys: [[0, {}], [1, P_JAB, 'back'], [2, P_JAB], [3, {}]] }),
   jab2: M({ kind: 'jab', label: '后手直拳', tag: '后手直拳', S: 4, A: 3, R: 7, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
@@ -892,7 +964,7 @@ const MOVES = {
     limb: 'fh', fx: 'rushEnd', ghost: true, lunge: [1, 5, 8], ender: true, noCancel: true,
     keys: [[0, { tor: 10, dx: -6, fh: [4, -6] }], [1, { tor: 40, dx: 22, hy: 52, head: -14, fh: [66, -4], bh: [-10, -10], ff: [46, 0], bf: [-34, 0] }, 'back'],
       [2, { tor: 40, dx: 22, hy: 52, head: -14, fh: [66, -4], bh: [-10, -10], ff: [46, 0], bf: [-34, 0] }], [3, {}]] }),
-  lowJab: M({ kind: 'jab', label: '下盘拳', S: 5, A: 3, R: 8, dmg: 4, reach: 88, stun: 12, bstun: 7, kb: 2, stop: 4, power: .3, height: 'low',
+  lowJab: M({ kind: 'jab', label: '下盘拳', open: true, S: 5, A: 3, R: 8, dmg: 4, reach: 88, stun: 12, bstun: 7, kb: 2, stop: 4, power: .3, height: 'low',
     limb: 'fh', fx: 'low', lunge: [1, 5, 4],
     keys: [[0, J_(P_LOW, { fh: [24, -10] })], [1, J_(P_LOW, { tor: 40, dx: 10, fh: [58, 26], bh: [8, -14] }), 'back'],
       [2, J_(P_LOW, { tor: 40, dx: 10, fh: [58, 26], bh: [8, -14] })], [3, J_(P_LOW, { fh: [24, -10] })]] }),
@@ -910,7 +982,7 @@ const MOVES = {
 
   /* ---- 重系（heavy）：前摇里带霸体，能硬吃一记短拳；怕腿 ---- */
   // 重拳：先往后蓄 —— 身子后坐、后手拉到耳朵后面、前手伸出去瞄（拳头上聚墨气），再拧腰把后手砸出去。和短拳反着来，一眼分得开
-  heavy: M({ kind: 'heavy', label: '重拳', S: 11, A: 4, R: 13, dmg: 12, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
+  heavy: M({ kind: 'heavy', label: '重拳', open: true, S: 11, A: 4, R: 13, dmg: 12, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [6, 11, 14], armor: { n: 1, from: 2, vs: ['light'] },
     keys: [[0, {}], [0.3, { tor: -2, dx: -8, hy: 56, head: 2, fh: [40, -14], bh: [-22, -32], ff: [30, 0], bf: [-36, 0] }, 'out'],
       [0.9, { tor: -14, dx: -14, hy: 57, head: 6, fh: [46, -10], bh: [-38, -40], ff: [32, 0], bf: [-42, 0] }],
@@ -940,46 +1012,47 @@ const MOVES = {
       [1, { bh: [26, -66], hy: 70, tor: -14, dx: 14, bf: [-12, 14], head: -20, fh: [4, -8], air: 8 }, 'out'],
       [2, { bh: [26, -66], hy: 70, tor: -14, dx: 14, bf: [-12, 14], head: -20, fh: [4, -8], air: 8 }], [3, {}]] }),
   // 蹲+重：托天掌（对空）
-  palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', S: 7, A: 5, R: 15, dmg: 10, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
+  palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', open: true, S: 7, A: 5, R: 15, dmg: 10, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
     limb: 'fh', fx: 'palm', ghost: true, lunge: [2, 7, 6], launchAir: 9, antiAir: 160, airInv: [1, 12], ender: true, noCancel: true,
     keys: [[0, J_(P_LOW, { fh: [20, 10], bh: [10, 14] })], [0.5, J_(P_LOW, { hy: 32, fh: [24, 22], bh: [14, 24], tor: 36 })],
       [1, { hy: 68, tor: -8, head: -22, fh: [30, -64], bh: [18, -60], ff: [30, 0], bf: [-20, 8], air: 6, dx: 8 }, 'out'],
       [2, { hy: 68, tor: -8, head: -22, fh: [30, -64], bh: [18, -60], ff: [30, 0], bf: [-20, 8], air: 6, dx: 8 }], [3, {}]] }),
   // 跑+重：铁山靠
-  shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', S: 10, A: 5, R: 16, dmg: 13, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
+  shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 13, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
     keys: [[0, { tor: 30 }], [0.5, { tor: 6, spin: 40, dx: -6, hy: 54, fh: [6, -6], bh: [-6, 0], ff: [30, 0], bf: [-30, 0] }],
       [1, { tor: 44, spin: 70, dx: 34, hy: 48, head: 6, fh: [-2, 8], bh: [-16, 10], ff: [52, 0], bf: [-36, 0] }, 'out'],
       [2, { tor: 44, spin: 70, dx: 34, hy: 48, head: 6, fh: [-2, 8], bh: [-16, 10], ff: [52, 0], bf: [-36, 0] }], [3, { spin: 0 }]] }),
 
-  /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ---- */
-  kick: M({ kind: 'kick', label: '腿踢', S: 13, A: 5, R: 14, dmg: 10, reach: 134, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
+  /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ----
+     2.0（Jack：腿踢还是超标，尤其距离）：腿踢射程 134 → 126，腿系连招、飞踢也一起短 4~10 */
+  kick: M({ kind: 'kick', label: '腿踢', open: true, S: 13, A: 5, R: 14, dmg: 10, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
     limb: 'ff', fx: 'kick', lunge: [6, 13, 12],
     keys: [[0, {}], [0.55, { ff: [26, 58], tor: -6, bf: [-20, 0], fh: [22, -26], bh: [2, -10], head: 0 }],
       [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [30, 44], tor: -12, dx: 16 }], [3, {}]] }),
   // 拳→踢
-  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 12, reach: 128, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
+  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 12, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
     limb: 'bf', fx: 'whip', lunge: [5, 10, 10],
     keys: [[0, {}], [0.5, { bf: [8, 52], tor: -10, ff: [22, 0], fh: [20, -24], spin: 20 }],
       [1, { bf: [92, 92], tor: -44, dx: 22, ff: [8, 0], fh: [-6, -30], bh: [-24, 0], head: 18, spin: 30 }, 'back'],
       [2, { bf: [92, 92], tor: -44, dx: 22, ff: [8, 0], fh: [-6, -30], bh: [-24, 0], head: 18, spin: 30 }],
       [2.4, { bf: [22, 44], tor: -12, dx: 12, spin: 10 }], [3, {}]] }),
   // 踢→踢：二起脚（腾空连环踢，击倒）
-  twinKick: M({ kind: 'kick', label: '二起脚', stamp: '二起脚', lead: 'kick', S: 8, A: 5, R: 16, dmg: 11, reach: 120, stun: 18, bstun: 11, kb: 6, stop: 9, shake: 6, power: .9,
+  twinKick: M({ kind: 'kick', label: '二起脚', stamp: '二起脚', lead: 'kick', S: 8, A: 5, R: 16, dmg: 11, reach: 116, stun: 18, bstun: 11, kb: 6, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'twinKick', ghost: true, lunge: [2, 8, 22], launch: 6, ender: true, noCancel: true,
     keys: [[0, { ff: [30, 30] }], [0.5, { air: 22, tor: 4, ff: [24, 60], bf: [-10, 30], fh: [26, -44], bh: [-18, -40] }],
       [1, { air: 30, tor: -38, head: 16, dx: 16, ff: [12, 54], bf: [84, 104], fh: [-10, -34], bh: [-30, -12] }, 'back'],
       [2, { air: 26, tor: -38, head: 16, dx: 16, ff: [12, 54], bf: [84, 104], fh: [-10, -34], bh: [-30, -12] }],
       [2.5, { air: 6, tor: 6, ff: [30, 10], bf: [-20, 12] }], [3, {}]] }),
   // 拳拳踢：转身蹬
-  backKick: M({ kind: 'kick', label: '转身蹬', stamp: '转身蹬', lead: 'light', S: 8, A: 5, R: 16, dmg: 12, reach: 120, stun: 19, bstun: 11, kb: 11, stop: 9, shake: 6, power: .9,
+  backKick: M({ kind: 'kick', label: '转身蹬', stamp: '转身蹬', lead: 'light', S: 8, A: 5, R: 16, dmg: 12, reach: 116, stun: 19, bstun: 11, kb: 11, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'backKick', ghost: true, lunge: [2, 8, 12], ender: true, noCancel: true,
     keys: [[0, {}], [0.5, { spin: 130, tor: 24, head: 10, bf: [-30, 34], ff: [10, 0], fh: [18, -10], bh: [8, -6] }],
       [1, { spin: 180, tor: 50, head: 16, dx: 16, bf: [-100, 58], ff: [8, 0], fh: [22, 12], bh: [10, 18], hy: 56 }, 'back'],
       [2, { spin: 180, tor: 50, head: 16, dx: 16, bf: [-100, 58], ff: [8, 0], fh: [22, 12], bh: [10, 18], hy: 56 }],
       [2.5, { spin: 270, tor: 20, bf: [-20, 20] }], [3, { spin: 360 }]] }),
   // 重→踢：旋风腿（击倒）
-  whirl: M({ kind: 'kick', label: '旋风腿', stamp: '旋风腿', lead: 'heavy', S: 12, A: 6, R: 16, dmg: 15, reach: 132, stun: 19, bstun: 13, kb: 6, stop: 10, shake: 8, power: 1, heavy: true,
+  whirl: M({ kind: 'kick', label: '旋风腿', stamp: '旋风腿', lead: 'heavy', S: 12, A: 6, R: 16, dmg: 15, reach: 126, stun: 19, bstun: 13, kb: 6, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'ff', fx: 'whirl', ghost: true, lunge: [4, 12, 16], launch: 7, ender: true, noCancel: true,
     keys: [[0, {}], [0.4, { spin: 90, tor: -4, ff: [12, 36], air: 8, fh: [-10, -40], bh: [-20, -30] }],
       [0.75, { spin: 220, ff: [64, 66], tor: -24, air: 22, fh: [-8, -28], bh: [-22, -6] }],
@@ -989,7 +1062,7 @@ const MOVES = {
   // 蹲+踢：扫堂腿（下段，击倒）
   // 1.8.0：扫堂腿太好用（快、远、下段、击倒）→ 前摇长一点、射程短一点（比腿踢近）、收招更长、倒地时间短一点；
   //        反制多了：蹲挡后踩腿、抄腿接住、跳过去打它收招（破绽）、近身短拳打失衡
-  sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 8, reach: 114, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
+  sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 8, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
     limb: 'ff', fx: 'sweep', lunge: [3, 10, 10], launch: 3, lie: 26, ender: true, noCancel: true,
     // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前，后手往后伸着保持平衡（不是伸手去够）
     keys: [[0, J_(P_LOW, {})], [0.45, { hy: 26, tor: 20, head: -6, spin: 20, dx: -4, ff: [14, 10], bf: [-10, 0], fh: [10, 28], bh: [-20, 26] }],
@@ -1001,19 +1074,19 @@ const MOVES = {
      1.7.0：出手时整个人往前下方倾（rot），拳脚真的够得着对面；判定持续到快落地，同一个距离什么时候出都打得到；
      往下够的深度统一 AIR_VREACH。前摇没出完就落地 = 落地后马上在地上出这一招（fighter.js onLand），按了一定有反应 */
   // 空中挥拳：拳头先甩到脑后，人往前一扑，从上往前下方砸过去
-  airJab: M({ kind: 'jab', label: '空中挥拳', tier: 'air', lead: 'light', height: 'high', S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
+  airJab: M({ kind: 'jab', label: '空中挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
     keys: [[0, JT], [0.55, J_(JT, { rot: 4, tor: -10, head: -8, fh: [-22, -52], bh: [24, -8], ff: [18, 46], bf: [-4, 40] })],
       [1, { rot: 22, tor: 34, head: -10, fh: [62, 10], bh: [-18, -18], ff: [16, 40], bf: [-34, 24] }, 'back'],
       [2, { rot: 24, tor: 36, head: -10, fh: [60, 14], bh: [-18, -18], ff: [16, 40], bf: [-34, 24] }], [3, JD]] }),
   // 泰山压顶：后仰把双拳举过头顶，再整个人往前下方卷下去砸（1.9.0 伤害 12 → 11：打蹲着的人让给千斤坠）
-  airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', S: 7, A: 10, R: 8, dmg: 11, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+  airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 7, A: 10, R: 8, dmg: 11, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'hammer', air: true,
     keys: [[0, JT], [0.7, { rot: -8, tor: -30, head: -14, fh: [-14, -62], bh: [-24, -56], ff: [16, 54], bf: [2, 48] }],
       [1, { rot: 26, tor: 56, head: 22, fh: [40, 50], bh: [32, 54], ff: [20, 22], bf: [-24, 34] }, 'out'],
       [2, { rot: 28, tor: 56, head: 22, fh: [40, 52], bh: [32, 56], ff: [20, 22], bf: [-24, 34] }], [3, JD]] }),
   // 飞踢：先把膝盖收到胸口，身体后仰，整个人前倾着一脚往前下方蹬出去
-  airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', S: 6, A: 12, R: 7, dmg: 10, reach: 134, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
+  airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 6, A: 12, R: 7, dmg: 10, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, JT], [0.6, { rot: -6, tor: 12, head: -6, ff: [8, 60], bf: [-6, 46], fh: [26, -42], bh: [-18, -36] }],
       [1, { rot: 14, tor: -40, head: 16, ff: [96, 22], bf: [-12, 50], fh: [-14, -30], bh: [-32, -12] }, 'back'],
@@ -1031,7 +1104,7 @@ const MOVES = {
   /* ---- 擒拿（挡不住；出腿时被拿 = 接腿摔；被任何正在判定中的打击打断）----
      1.8.0：抓住以后先「擒住」一小会儿 —— 这时候按 拳 = 提膝撞，踢 = 别腿摔，重 / 后 = 过肩摔，什么都不按 = 推开；
      被抓的人在擒住刚开始那几帧按「拿」能挣脱。蹲着的人站着抓不到（要用蹲+拿「抄腿」）；抄腿只抓蹲着的和出腿的 */
-  grab: M({ kind: 'grab', label: '擒拿', S: 6, A: 4, R: 15, dmg: 5, reach: 84, power: .4,
+  grab: M({ kind: 'grab', label: '擒拿', open: true, S: 6, A: 4, R: 15, dmg: 5, reach: 84, power: .4,
     limb: 'fh', lunge: [2, 6, 8],
     keys: [[0, {}], [0.4, { fh: [10, 0], bh: [4, 4], tor: 4, dx: -4, hy: 56 }],
       [1, { fh: [54, 40], bh: [50, 44], tor: 36, dx: 18, hy: 50, ff: [40, 0], bf: [-24, 0], head: -12 }, 'out'],
@@ -1055,7 +1128,7 @@ const MOVES = {
       [0.7, { fh: [36, 50], bh: [26, 54], tor: 48, dx: 12, hy: 42, head: 12 }], [1, {}]] }),
   // 抄腿（蹲+拿）：压低身子往前一扑，两手抄对方的腿。抓得到：出腿的（含扫堂腿 → 抄腿摔）、蹲着 / 蹲挡的（→ 擒住 → 抱腿摔）；
   // 站着的人抓不到（抓空，收招长）
-  lowGrab: M({ kind: 'grab', label: '抄腿', low: true, height: 'low', S: 8, A: 4, R: 16, dmg: 0, reach: 88, power: .5,
+  lowGrab: M({ kind: 'grab', label: '抄腿', low: true, height: 'low', open: true, S: 8, A: 4, R: 16, dmg: 0, reach: 88, power: .5,
     limb: 'fh', lunge: [2, 8, 14],
     keys: [[0, J_(P_LOW, { fh: [20, 8], bh: [10, 12] })], [0.5, J_(P_LOW, { hy: 34, tor: 22, fh: [6, 10], bh: [-6, 14], dx: -4 })],
       [1, { hy: 30, tor: 56, dx: 20, head: -16, fh: [60, 52], bh: [54, 56], ff: [44, 0], bf: [-34, 0] }, 'out'],
@@ -1118,6 +1191,14 @@ const MOVES = {
       [0.12, { hy: 46, tor: 38, head: -16, dx: 8, ff: [46, 8], bf: [-58, 14], fh: [12, 2], bh: [-34, 6] }, 'out'],
       [0.45, { hy: 44, tor: 36, head: -14, dx: 10, ff: [48, 2], bf: [-58, 6], fh: [14, 0], bh: [-34, 4] }],
       [0.7, { hy: 46, tor: 18, head: -8, dx: 4, ff: [42, 0], bf: [-44, 0], fh: [28, -24], bh: [14, -18] }], [1, {}]] }),
+  // 闪身（2.0，边挡边冲刺）：按住格挡、朝对手双击方向（格挡中、挡住的硬直里都行）。压低身子、两手护着头，从对手身边钻过去到他身后。
+  // 钻的那十来帧（slipInv）站着打的拳系打不中（闪），别的照样打得中（截住闪身 ×1.3）。冲多远按对手在哪算（fighter.js beginSlip），
+  // 前冲的距离写在这一招自己身上（move.lungePx）；第 SLIP_CANCEL 帧起能直接出招
+  slip: M({ kind: 'script', label: '闪身', S: 0, A: 0, R: 22, script: true, lunge: [0, 11, 110], slipInv: [0, 11],
+    keys: [[0, { hy: 46, tor: 26, head: 2, dx: -2, fh: [12, -28], bh: [20, -12], fe: -1, ff: [28, 0], bf: [-30, 0] }],
+      [0.14, { hy: 38, tor: 46, head: -6, dx: 12, fh: [16, -24], bh: [22, -8], fe: -1, ff: [50, 6], bf: [-50, 12] }, 'out'],
+      [0.48, { hy: 38, tor: 44, head: -6, dx: 12, fh: [16, -24], bh: [22, -8], fe: -1, ff: [46, 2], bf: [-52, 8] }],
+      [0.72, { hy: 52, tor: 12, head: 6, dx: 2, fh: [12, -28], bh: [18, -12], fe: -1, ff: [26, 0], bf: [-30, 0] }], [1, {}]] }),
   // 爆气：挨打或格挡时按「重+踢」，花 50 气把对方震开
   burst: M({ kind: 'script', label: '爆气', S: 0, A: 0, R: 22, script: true, inv: [0, 18], evWave: 3,
     keys: [[0, { tor: 30, hy: 46, head: 10, fh: [8, 12], bh: [4, 14] }],
@@ -1188,7 +1269,10 @@ const COUNTERS = [
   ['连段压制', '推挡、卸力、截拳、爆气；连击衰减，同一套四五下就断'],
   ['爆气', '面朝它格挡：只被推开一点，不硬直，它的后摇能打；站远一点够不着；冲刺无敌躲开'],
   ['泼墨', `它出手前擒拿抓住它；卸力；格挡只掉三成，挡住后反击 ×${PUNISH_KD_MUL}；跳起躲开；冲刺无敌`],
-  ['滚身起', '它滚完要转身：别把招提前放在它起身的地方，等它站稳再出；它往哪滚是看得见的'],
+  ['滚身起', '往你脚下滚到你身后：看见了转身出拳还来得及（它滚完站起来那几帧是起身硬直）；往后滚：看见了再追就晚了，只能它一起身就猜着冲过去 —— 猜错了冲过头，回身打够不着'],
+  ['起身（2.0）', '被打倒的一方站起来那几帧挨得了打、动不了：对面短拳这种快招算好时机必中，重拳、腿要提前出（压起身）；被压的按住方向滚身起躲开，压早了的打空，轮到你反打'],
+  ['闪身（边挡边冲刺）', `它只躲得过站着打的拳系：出重拳、腿、下段、擒拿截住它 ×${SLIP_CAUGHT_MUL}；挡住以后先别急着按短拳连打，停一拍看它钻不钻`],
+  ['边挡边走', '擒拿（挡不住）、下段（站着挡）、劈挂掌和空中招（蹲着挡）；它走得慢，跑过去就贴上了'],
 ];
 
 // 取消：打中或被挡后，在后摇里能接哪一类
@@ -1225,7 +1309,7 @@ function pickVariant(kind, chain, air, mod) {
   }
   return 'grab';
 }
-const reachOf = k => ({ jab: 96, heavy: 112, kick: 134, grab: 84, 'd:jab': 92, 'd:kick': 124, 'd:heavy': 100, 'd:grab': 96 })[k] || 90;
+const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, 'd:kick': 120, 'd:heavy': 100, 'd:grab': 96 })[k] || 90;
 </script>
 <script>
 'use strict';
@@ -1742,6 +1826,26 @@ function dashLines(F) {
     streak(F.x - F.facing * rnd(20, 40), y, F.x - F.facing * rnd(90, 150), y, rnd(1.6, 3), F.color, 10);
   }
 }
+// 闪身（2.0）：起步一道贴地的笔刷弧 + 扬尘；钻的途中身后拉出头带色和墨色的细线
+function slipFx(F) {
+  const y = F.J ? F.J.hip[1] : FLOOR - 60;
+  swipe(F.x + F.facing * 10, y - 6, 40, F.facing > 0 ? 0 : Math.PI, 1.6, 5, F.sash, 12);
+  dust(F.x - F.facing * 12, FLOOR, 4);
+}
+function slipLines(F) {
+  const y0 = F.J ? F.J.hip[1] : FLOOR - 60;
+  for (let i = 0; i < 2; i++) {
+    const y = y0 + rnd(-40, 10);
+    streak(F.x - F.facing * rnd(16, 30), y, F.x - F.facing * rnd(80, 130), y, rnd(1.4, 2.6), i ? F.sash : F.color, 9);
+  }
+}
+// 闪身躲过一拳：那一拳擦着头过去 —— 出拳方向一道细弧、几点火花往两边散
+function slipDodgeFx(B, A) {
+  const J = B.J, y = J ? J.head[1] + 6 : FLOOR - 120, dir = A.facing;
+  swipe(B.x, y, 30, dir > 0 ? Math.PI : 0, 2.2, 4, B.sash, 12);
+  sparks(B.x, y, dir, 5, 5, B.sash, 1.4, 0.6, 12);
+  for (let i = 0; i < 3; i++) { const yy = y + rnd(-12, 12); streak(B.x - dir * 50, yy, B.x + dir * 30, yy, 1.6, A.color, 8); }
+}
 // 冲势：冲刺后的第一招。脚下扬尘、身后墨线拉长、头上一个「冲」字
 function dashInFx(F) {
   const y = F.J ? F.J.sh[1] : FLOOR - 90;
@@ -1947,10 +2051,11 @@ class Fighter {
     this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.rushStamped = false;
     this.clock = 0; this.serial = 0; this.walkPhase = 0; this.runT = 0; this.airT = 0; this.leapJump = false;
     this.carried = false; this.carry0 = 0; this.carryRot = 0; this.slam = false; this.qiGlow = 0; this.heat = 0; this.hitFlash = 0; this.hitShake = 0;
+    this.lieKind = 0; this.gwalk = 0; this.slipEnd = -999; this.slipGot = false;   // 2.0：躺姿（画面）、边挡边走（画面）、闪身反击
     this.qi = 0; this.reel = false; this.clashed = false; this.noParry = false;
     this.guardOn = -1; this.stompFor = -1; this.reelBy = -1; this.reelKD = false; this.rollDir = 0; this.heldAt = -999;
     this.prevBlock = false; this.blockPress = -999; this.parryOK = false;
-    this.prevL = false; this.prevR = false; this.tapL = -999; this.tapR = -999; this.dashT = -999; this.dashDir = facing;
+    this.prevL = false; this.prevR = false; this.tapL = -999; this.tapR = -999; this.dashT = -999; this.dashDir = facing; this.dashFace = facing;
     this.trail = []; this.ghosts = []; this.history = [];
     this.stats = { hits: 0, maxCombo: 0, blocks: 0, specials: 0, parries: 0, clashes: 0, presses: 0, punishes: 0, escapes: 0 };
     copyPose(this.disp, POSE.stance); this.hipY = -62; this.J = null;
@@ -2005,18 +2110,21 @@ class Fighter {
      一样多（都打得到 / 都打不到）就看判定开始那一帧，朝哪边对手更在面前（差不多就不转；对手还蹲着没起跳，就当他不跳来算）。
      1.9.0 只估「出手那一帧」，自己的前冲、千斤坠腾起来减速都没算进去：跳着往前、离对手近的时候按千斤坠，会转身往反方向踩。
      只用加减乘除，联机两边算出来一样 */
+  // 正在冲刺、冲刺的前冲还没走完（这时回身出招，人还往原来的方向滑）
+  dashTurning() { const m = this.move; return this.state === 'attack' && !!m && m.name === 'dash' && m.t < m.def.lunge[1]; }
   aimSide(d) {
     const me = this, o = this.opp, air = this.airborne, S = d.S, n = d.dive ? S : S + d.A;   // 千斤坠只看出脚那一帧（出脚时还会再瞄一次，见 aimDive）
     const lg = !air && !d.script && d.lunge ? d.lunge : null, lstep = lg ? lg[2] / (lg[1] - lg[0]) : 0;
     const keep = dirOf(this.inp.held) ? 1 : AIR_DRAG, okeep = dirOf(o.inp.held) ? 1 : AIR_DRAG;
     const run = this.state === 'run' ? this.facing * this.runSpeed() * 0.5 : 0;   // 跑着出招带的惯性（startAttack / beginMove 里加的）
     const dashIn = !air && !d.script && d.kind !== 'push' && ((this.state === 'attack' && !!this.move && this.move.name === 'dash') || this.clock - this.dashEnd <= DASH_IN_WIN);
+    const turnKv = this.dashTurning() ? this.facing * DASH_TURN_KV : 0;   // 冲刺里回身：往原来的方向滑（startAttack）
     // 地上的招打得到多高（和 combat.js reaches 一样）：对空招更高；对手在出千斤坠、空中出腿时另算；擒拿只抓得到离地 24 以内的（grabIntent）
     const om = o.state === 'attack' ? o.move : null;
     const reachUp = air ? Infinity : d.kind === 'grab' ? 24 : Math.max(d.antiAir || AIR_SAFE, om && om.def.dive ? DIVE_AA_ALT : 0,
       d.tier === 'kick' && d.height !== 'low' && om && om.air && om.def.kind === 'kick' ? KICK_AA_ALT : 0);
     const sim = (f, fly) => {                               // fly = false：对手正起跳下蹲也当他不跳（只用来定「一样多」时转不转）
-      let sx = me.x, kv = me.kvx + run + (dashIn ? f * 5 : 0), sv = air ? me.vx * (d.dive ? 0.3 : 1) : 0;
+      let sx = me.x, kv = me.kvx + run + (dashIn && f === me.dashFace ? f * 5 : 0) + (f !== me.facing ? turnKv : 0), sv = air ? me.vx * (d.dive ? 0.3 : 1) : 0;
       let ox = o.x, oz = o.alt, ovz = o.vz, okv = o.kvx, ov = o.airborne ? o.vx : 0, oAir = o.airborne;
       let squat = fly && o.state === 'jumpsquat' ? Math.max(1, 3 - o.t) : 0;
       const oStep = () => {                                  // 对手走一帧
@@ -2066,6 +2174,17 @@ class Fighter {
     const dx = o.x + (o.airborne ? o.vx * f0 : 0) - this.x;
     if (Math.abs(dx) >= 3) this.facing = dx > 0 ? 1 : -1;
     m.dvx = clamp((dx * this.facing - DIVE_AIM) / f0, 0, DIVE_VX);
+  }
+  oppSide() { return this.opp.x >= this.x ? 1 : -1; }
+  /* 闪身（2.0，边挡边冲刺）：按着挡、朝对手双击。从对手身边钻过去，落到他身后 SLIP_PAST 那么远（太近太远按 SLIP_MIN / SLIP_MAX 算）。
+     冲多远开头就定好（按两人这时候的位置，联机两边算出来一样），存在这一招身上 */
+  beginSlip() {
+    const o = this.opp, f = this.oppSide();
+    this.facing = f; this.stunT = 0; this.lowBlock = false; this.gwalk = 0; this.runT = 0;
+    this.startScript('slip');
+    this.move.lungePx = clamp(Math.abs(o.x - this.x) + SLIP_PAST, SLIP_MIN, SLIP_MAX);
+    this.slipGot = false;
+    slipFx(this); Sound.whoosh(0.7);
   }
   // 自动面向对手：对手在身后超过 FACE_HYST 才转（两人重叠时不来回抖）
   autoFace() {
@@ -2135,6 +2254,8 @@ class Fighter {
     if (face !== this.facing) {
       // 跑着转身出招：原来往哪跑的惯性留着（往后滑着出手），也不算「跑起来」（不会变铁山靠）
       if (this.state === 'run') { this.kvx += this.facing * this.runSpeed() * 0.5; this.state = 'idle'; this.runT = 0; }
+      // 2.0 冲刺里回身出招：人还被冲刺带着往原来的方向滑（不带冲势），冲过了头再回身打就够不太着
+      else if (this.dashTurning()) this.kvx += this.facing * DASH_TURN_KV;
       this.facing = face;
     }
     const mod = h.down ? 'down' : (!air && this.state === 'run' && this.runT >= RUN_CHARGE) ? 'run' : '';
@@ -2153,10 +2274,15 @@ class Fighter {
     if (this.state === 'run') this.kvx += this.facing * this.runSpeed() * 0.5;   // 跑动中出招带惯性
     // 冲势：冲刺途中（无敌帧快结束时）或冲刺刚结束出的第一招
     const fromDash = this.state === 'attack' && this.move && this.move.name === 'dash';
-    const dashIn = !air && !d.script && d.kind !== 'push' && (fromDash || this.clock - this.dashEnd <= DASH_IN_WIN);
+    // 2.0：冲势只给往冲刺方向打的那一招（冲过人再回身打不带冲势，见 startAttack 的 DASH_TURN_KV）
+    const dashIn = !air && !d.script && d.kind !== 'push' && this.facing === this.dashFace && (fromDash || this.clock - this.dashEnd <= DASH_IN_WIN);
     if (dashIn) { this.kvx += this.facing * 5; this.dashEnd = -999; dashInFx(this); }
+    // 2.0 闪身反击：闪身躲过了一拳，从闪身里（或者刚闪完）出的第一招
+    const fromSlip = this.state === 'attack' && this.move && this.move.name === 'slip';
+    const slipIn = !air && !d.script && this.slipGot && (fromSlip || this.clock - this.slipEnd <= SLIP_IN_WIN);
+    if (slipIn || fromSlip) this.slipGot = false;
     this.move = { def: d, name, t: 0, S, hit: false, blocked: false, done: false, air, slowed, serial: ++this.serial,
-      armorLeft: d.armor ? d.armor.n : 0, press: kind, dashIn };
+      armorLeft: d.armor ? d.armor.n : 0, press: kind, dashIn, slipIn };
     this.stompFor = -1;
     this.state = 'attack'; this.runT = 0;
     if (d.cost) this.qi -= d.cost;
@@ -2202,15 +2328,26 @@ class Fighter {
   }
   groundCtl(locked) {
     const h = this.inp.held, dir = dirOf(h);
+    this.gwalk = 0;
     if (locked) { if (this.state !== 'win') this.state = 'idle'; this.runT = 0; return; }
     if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.aimSide(MOVES.super); this.beginMove('super', null); return; }
-    if (this.clock - this.dashT <= 3) { this.dashT = -999; this.facing = this.dashDir; this.startScript('dash'); Sound.whoosh(0.5); return; }
+    if (this.clock - this.dashT <= 3) {
+      this.dashT = -999;
+      // 2.0：按着挡（不蹲）朝对手双击 = 闪身（从他身边钻过去）；不按挡、或者按着挡往后双击，还是普通冲刺
+      if (h.block && !h.down && this.dashDir === this.oppSide()) { this.beginSlip(); return; }
+      this.facing = this.dashDir; this.dashFace = this.dashDir; this.startScript('dash'); Sound.whoosh(0.5); return;
+    }
     if (this.takePress(['up'])) { this.takeoffV = this.state === 'run' ? this.runSpeed() : 0; this.state = 'jumpsquat'; this.t = 0; return; }
     if (this.state === 'block' && h.block && this.takePress(['jab'])) { this.beginMove('shove', null); return; }
     const k = this.takePress(['jab', 'heavy', 'kick', 'grab']);
     if (k && this.startAttack(k, false)) return;
     // 格挡、蹲：一律面向对手（1.9.0；挡背后、蹲着背对人都没用，乱按的方向不算）
-    if (h.block) { this.autoFace(); this.state = 'block'; this.lowBlock = !!h.down; this.runT = 0; return; }
+    if (h.block) {
+      this.autoFace(); this.state = 'block'; this.lowBlock = !!h.down; this.runT = 0;
+      // 2.0 边挡边走：按着挡 + 方向（不蹲）= 举着手慢慢走，往前往后都行（不转身，一直面朝对手，照样挡得住）
+      if (!h.down && dir) { this.x += dir * BLOCK_WALK; this.gwalk = dir * this.facing; this.walkPhase += BLOCK_WALK / 44; }
+      return;
+    }
     if (h.down) { this.autoFace(); this.state = 'crouch'; this.runT = 0; return; }
     if (dir) {
       if (dir !== this.facing) { this.facing = dir; this.runT = 0; }   // 掉头
@@ -2289,6 +2426,8 @@ class Fighter {
       case 'blockstun':
         this.lowBlock = !!h.down;
         this.autoFace();                 // 挡住的硬直里对手绕到身后：跟着转过去接着挡（1.9.0）
+        // 2.0 闪身：挡住的硬直里按着挡、朝对手双击 → 不等硬直完，直接从他身边钻过去
+        if (!locked && h.block && !h.down && this.clock - this.dashT <= 3 && this.dashDir === this.oppSide()) { this.dashT = -999; this.beginSlip(); break; }
         if (!locked && this.tryBurst()) break;
         if (!locked && this.stompReady() && this.takePress(['kick'])) { this.beginMove('stomp', 'kick'); break; }        // 蹲挡住扫堂腿 → 踩腿
         if (!locked && this.qi >= GC_COST && this.takePress(['heavy'])) { this.beginMove('jieQuan', null); break; }      // 挡住后按重 → 截拳
@@ -2304,10 +2443,14 @@ class Fighter {
         } else if (this.downPhase === 'getup') {
           if (this.rollDir) this.x += this.rollDir * ROLL_DIST / GETUP;
           if (++this.t >= GETUP) {
-            this.state = 'idle'; this.downPhase = null;
+            // 2.0：起身完了先是「起身硬直」RISE 帧：站起来那几帧，打得中、还动不了（给对面先出手）
+            this.state = 'rise'; this.downPhase = null; this.t = 0;
             if (this.rollDir) { this.facing = this.opp.x >= this.x ? 1 : -1; this.rollDir = 0; }
           }
         }
+        break;
+      case 'rise':
+        if (++this.t >= RISE) this.state = 'idle';
         break;
       case 'ko': case 'win': break;
     }
@@ -2354,9 +2497,14 @@ class Fighter {
     }
     const o = this.opp;
     if (d.lunge && !m.air) {
-      // 前冲：贴到对手身上就停，不冲过人（1.9.4，冲刺除外）
-      const [a, b, px] = d.lunge, tb = this.baseTime();
+      // 前冲：贴到对手身上就停，不冲过人（1.9.4，冲刺、闪身除外）。闪身冲多远写在这一招身上（lungePx）
+      const [a, b] = d.lunge, px = m.lungePx !== undefined ? m.lungePx : d.lunge[2], tb = this.baseTime();
       if (tb >= a && tb < b && (d.script || !lungeStop((o.x - this.x) * this.facing, o))) this.x += this.facing * px / (b - a);
+    }
+    if (m.name === 'slip') {
+      // 闪身第 SLIP_CANCEL 帧起可以直接按招打出去（躲过了一拳的话带「闪身反击」）
+      if (!locked && m.t >= SLIP_CANCEL) { const k = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (k && this.startAttack(k, false)) return; }
+      if (m.t > 0 && m.t < d.lunge[1] && m.t % 2 === 0) slipLines(this);
     }
     if (d.dive && m.t === m.S && !m.hit && !m.blocked) this.aimDive(m);   // 千斤坠这一帧出脚：重新瞄（1.9.4）
     if (m.name === 'dash') {
@@ -2399,6 +2547,7 @@ class Fighter {
     m.t++;
     if (m.t >= m.S + d.A + d.R) {
       if (m.name === 'dash') this.dashEnd = this.clock;
+      if (m.name === 'slip') this.slipEnd = this.clock;
       this.move = null; this.chainIdle = 0;
       if (this.airborne) { this.state = 'air'; this.airUsed = true; } else this.state = 'idle';
     }
@@ -2427,7 +2576,7 @@ class Fighter {
     let nx = this.x - this.facing * THROW_LAND;
     if (nx < WALL_L || nx > WALL_R) { nx = clamp(nx, WALL_L, WALL_R); this.x = clamp(nx + this.facing * THROW_LAND, WALL_L, WALL_R); }
     o.x = nx; o.alt = Math.max(o.alt, 0.01);
-    o.knockDown(-3, -this.facing * 2, 44, o.hp <= 0); o.slam = true; if (o.hp <= 0) o.hp = 0;
+    o.knockDown(-3, -this.facing * 2, TFH(31), o.hp <= 0); o.slam = true; if (o.hp <= 0) o.hp = 0;
     this.stats.hits++; this.stats.specials++; this.gainQi(dmg * 0.4 * QI_PER_HP); o.gainQi(dmg * 0.9 * QI_PER_HP);
     bumpCombo(this, o); noteGrab(this, dmg, pt ? '借力摔' : '过肩摔');
     game.freeze = 7; game.shake = Math.max(game.shake, 8);
@@ -2472,7 +2621,8 @@ class Fighter {
     this.state = ko ? 'ko' : 'down'; this.downPhase = 'fall'; this.t = 0;
     this.vz = vz; if (this.alt <= 0) this.alt = 0.01; this.kvx = kvx; this.vx = 0;
     this.lieT = lie; this.move = null; this.chain = []; this.chainIdle = 99; this.grabbed = false; this.carried = false; this.slam = false;
-    this.rollDir = 0; this.stompFor = -1;
+    this.rollDir = 0; this.stompFor = -1; this.gwalk = 0;
+    this.lieKind = this.lieKind ? 0 : 1;                  // 躺姿换着来：一条腿稍弯 / 两腿伸直（只是画面）
     this.reel = false; this.clashed = false; this.runT = 0;
   }
   // AI 看到的对手快照
@@ -2485,6 +2635,7 @@ class Fighter {
       phase: !m ? null : m.t <= m.S ? 's' : m.t <= m.S + d.A ? 'a' : 'r', confirmed: !!(m && (m.hit || m.blocked)),
       sLeft: m ? m.S - m.t : 0, armored: this.armored(null),
       blocking: this.state === 'block' || this.state === 'blockstun', down: this.state === 'down' || this.state === 'ko',
+      rise: this.state === 'rise', getup: this.state === 'down' && this.downPhase === 'getup', roll: this.state === 'down' && this.downPhase === 'getup' ? this.rollDir : 0, slip: !!(m && m.name === 'slip'), gwalk: this.state === 'block' ? this.gwalk : 0,
       air: this.airborne, alt: this.alt, vz: this.vz, stun: this.state === 'hit' || this.state === 'blockstun',
       dash: !!(m && m.name === 'dash'), run: this.state === 'run' && this.runT >= RUN_CHARGE,
       held: this.grabbed, low: lowProfile(this), lowBlock: this.lowBlock,
@@ -2523,7 +2674,22 @@ class Fighter {
       }
       case 'run': return this.runPose(t);
       case 'crouch': return copyPose(t, POSE.crouch);
-      case 'block': return copyPose(t, this.lowBlock ? POSE.cblock : POSE.block);
+      case 'block': {
+        copyPose(t, this.lowBlock ? POSE.cblock : POSE.block);
+        if (this.gwalk && !this.lowBlock) {
+          // 2.0 边挡边走：手举着不动，脚下小碎步一前一后交替挪；往后退时身子往后坐一点，往前压时往前探一点
+          const ph = this.walkPhase * TAU, s = Math.sin(ph), c = Math.cos(ph);
+          t.ff[0] += 9 * s; t.ff[1] = Math.max(0, 6 * c); t.bf[0] -= 9 * s; t.bf[1] = Math.max(0, -6 * c);
+          t.hy += 1.2 * Math.abs(c) - 1;
+          if (this.gwalk > 0) { t.tor += 4; t.dx += 3; } else { t.tor -= 4; t.dx -= 3; t.head += 3; }
+        }
+        return t;
+      }
+      case 'rise': {
+        // 2.0 起身硬直：从蹲着站起来，两手还垂着没护住（POSE.rise），最后几帧顺到站姿
+        const u = clamp(this.t / RISE, 0, 1);
+        return lerpPose(POSE.rise, POSE.stance, EASE.io(u), t, false);
+      }
       case 'blockstun': copyPose(t, this.lowBlock ? POSE.cblock : POSE.block); t.dx -= 8; t.tor -= 8; t.head += 6; return t;
       case 'parry': return copyPose(t, POSE.parry);
       case 'jumpsquat': return copyPose(t, POSE.squat);
@@ -2559,8 +2725,9 @@ class Fighter {
         if (this.airborne) return copyPose(t, POSE.hurtAir);
         if (this.grabbed && this.stunT > 12) return copyPose(t, POSE.pulled);
         return copyPose(t, this.hurtHeavy ? POSE.hurtH : POSE.hurtL);
-      case 'down': case 'ko':
-        if (this.downPhase === 'fall') return copyPose(t, this.slam ? POSE.lie : POSE.fall);   // 被摔：背着地直接砸下去
+      case 'down': case 'ko': {
+        const lie = this.lieKind ? POSE.lieFlat : POSE.lie;
+        if (this.downPhase === 'fall') return copyPose(t, this.slam ? lie : POSE.fall);   // 被摔：背着地直接砸下去
         if (this.downPhase === 'getup' && this.rollDir) {
           // 滚身起：团身沿地滚过去（往面朝的方向 = 前滚，反过来 = 后滚），最后几帧站起来
           const u = this.t / GETUP;
@@ -2568,7 +2735,8 @@ class Fighter {
           return copyPose(t, POSE.crouch);
         }
         if (this.downPhase === 'getup') return copyPose(t, evalKeys(GETUP_KEYS, this.t));
-        return copyPose(t, POSE.lie);
+        return copyPose(t, lie);
+      }
       case 'win': {
         copyPose(t, POSE.win); const s = Math.sin(ck * 0.08); t.fh[1] += s * 2; t.hy += s; return t;
       }
@@ -2592,7 +2760,7 @@ class Fighter {
         this.trail.push({ x: e[0], y: e[1], life: 8 });
         if (m.def.ghost && m.t % 2 === 0) this.ghosts.push({ J: cloneJ(this.J), life: 10 });
       }
-      if (m && (m.name === 'dash' || (m.dashIn && m.t <= m.S + m.def.A)) && m.t % 2 === 0) this.ghosts.push({ J: cloneJ(this.J), life: 6, dash: true });
+      if (m && (m.name === 'dash' || (m.name === 'slip' && m.t < 14) || (m.dashIn && m.t <= m.S + m.def.A)) && m.t % 2 === 0) this.ghosts.push({ J: cloneJ(this.J), life: 6, dash: true });
       // 跑起来以后，每一脚落地扬一点尘
       if (st === 'run' && this.runT > RUN_CHARGE) {
         const step = Math.floor(this.walkPhase * 2);
@@ -2723,6 +2891,9 @@ const airKick = F => liveMove(F) && F.move.air && F.move.def.kind === 'kick';   
 const groundKick = F => liveMove(F) && !F.move.air && F.move.def.tier === 'kick' && F.move.def.height !== 'low';   // 地上的腿（扫堂腿、踩腿贴地，不算）
 const diving = F => liveMove(F) && !!F.move.def.dive;                                     // 千斤坠还在往下踩
 const aaProof = F => liveMove(F) && !!F.move.def.aaProof;                                 // 千斤坠：对空招打不到它
+// 2.0 闪身：正在钻（slipInv 那几帧）的人，站着打的拳系（不算下盘拳、空中挥拳、推挡）打不中他
+const slipping = F => F.state === 'attack' && !!F.move && F.move.name === 'slip' && F.inFrames('slipInv');
+const slipDodges = m => !m.air && m.def.tier === 'light' && m.def.height !== 'low' && m.def.kind === 'jab';
 function grabIntent(A, B) {
   const m = A.move;
   if (A.state !== 'attack' || !m || m.def.kind !== 'grab' || m.done || !A.inActive() || B.invuln()) return null;
@@ -2763,6 +2934,7 @@ function strikeIntent(A, B) {
   if (!reaches(A, B, m)) return null;
   if (shielded(A, B, m)) return null;
   if (m.def.evadeCrouch && B.isCrouching()) return 'dodge';
+  if (slipping(B) && slipDodges(m)) return 'slip';
   return 'hit';
 }
 // 剩下还没冲完的前冲距离
@@ -2780,6 +2952,7 @@ function committed(B, A, lead) {
   if (!reaches(B, A, m, lungeLeft(B) + 6)) return false;
   if (A.invuln() || shielded(B, A, m)) return false;
   if (m.def.evadeCrouch && A.isCrouching()) return false;
+  if (slipping(A) && slipDodges(m)) return false;
   return true;
 }
 
@@ -2789,6 +2962,8 @@ function resolve(a, b) {
   let sa = strikeIntent(a, b), sb = strikeIntent(b, a);
   if (sa === 'dodge') { dodged(a, b); sa = null; }
   if (sb === 'dodge') { dodged(b, a); sb = null; }
+  if (sa === 'slip') { slippedBy(a, b); sa = null; }
+  if (sb === 'slip') { slippedBy(b, a); sb = null; }
   if (ga === 'duck' || ga === 'whiff') { grabMiss(a, b, ga); ga = null; }   // 蹲着的抓不到 / 抄腿抓不到站着的
   if (gb === 'duck' || gb === 'whiff') { grabMiss(b, a, gb); gb = null; }
   const holdy = g => g === 'grab' || g === 'tackle';
@@ -2864,9 +3039,13 @@ function applyHit(A, B, how) {
   else if (inRecovery && bm.def.launch && !bm.hit) punish = ['破绽', WHIFF_KD_MUL];
   else if (B.state === 'hit' && B.reel && B.reelBy === A.idx) punish = ['卸力反击', B.reelKD ? PUNISH_KD_MUL : PARRY_MUL];
   let lmul = 1;
+  // 2.0 闪身：钻的时候挨了打（重拳、腿、下段这些它躲不过的）= 截住闪身；闪身躲过一拳、紧接着出的招打中 = 闪身反击
+  const caughtSlip = B.state === 'attack' && !!B.move && B.move.name === 'slip';
   if (beatVs) { label = TIER_NAME[d.tier] + '克' + TIER_NAME[beatVs]; lmul = BEAT_MUL; }
   else if (inStartup) { label = '破招'; lmul = COUNTER_MUL; }
   else if (punish) { label = punish[0]; lmul = punish[1]; A.stats.punishes++; }
+  else if (caughtSlip) { label = '截住闪身'; lmul = SLIP_CAUGHT_MUL; }
+  else if (m.slipIn) { label = '闪身反击'; lmul = SLIP_COUNTER_MUL; A.stats.punishes++; }
   else if (charging) { label = '迎击'; lmul = COUNTER_MUL; }
   // 1.9.0 空中交手：空中出招被克制它的招打中 = 倒栽葱（倒地更久）；千斤坠被站着的拳打中再 ×1.4
   const wasAir = B.airborne;
@@ -2886,6 +3065,7 @@ function applyHit(A, B, how) {
   const backHit = B.isBlocking() && !front;
   // 拳打在正在出腿（单脚站着）的人身上 → 失衡倒地
   const offBalance = !!bm && d.tier === 'light' && bm.def.tier === 'kick' && !bm.air && bm.t >= 4 && bm.t <= bm.S + bm.def.A;
+  const rising = B.state === 'rise';                    // 2.0 打在起身硬直里（打桩面板上写一句）
 
   B.hp -= dmg; m.hit = true; A.stats.hits++;
   bumpCombo(A, B);
@@ -2894,10 +3074,11 @@ function applyHit(A, B, how) {
   B.reel = false; B.clashed = false; B.grabbed = false;
   if (B.hp <= 0) { B.hp = 0; B.knockDown(5, dir * (d.kb * 0.6 + 2), 40, true); }
   else if (crash) B.knockDown(punchDive ? 2.5 : d.launch || d.launchAir || 4, dir * (d.kb * 0.6 + 2.5), LIE_CRASH, false);
-  else if (offBalance) B.knockDown(3.5, dir * 2.5, 30, false);
-  else if (d.launch || (d.launchAir && wasAir) || diveKD) B.knockDown(d.launch || d.launchAir || 3, dir * (d.kb * 0.6 + 2), d.lie || 40, false);
+  else if (offBalance) B.knockDown(3.5, dir * 2.5, LIE_HIT - 4, false);
+  else if (d.launch || (d.launchAir && wasAir) || diveKD) B.knockDown(d.launch || d.launchAir || 3, dir * (d.kb * 0.6 + 2), d.lie || LIE_HIT, false);
   else {
-    B.state = 'hit'; B.stunT = Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n) + (m.air ? 4 : 0) + (punish && label === punish[0] ? PUNISH_STUN : 0);
+    const bonusStun = (punish && label === punish[0]) || label === '闪身反击' ? PUNISH_STUN : label === '截住闪身' ? SLIP_CAUGHT_STUN : 0;
+    B.state = 'hit'; B.stunT = Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n) + (m.air ? 4 : 0) + bonusStun;
     B.hurtHeavy = !!d.heavy || d.kind === 'kick';
     B.kvx = dir * d.kb * (1 + KB_GROW * n); if (wasAir) { B.vz = Math.max(B.vz, 2.5); B.vx = 0; }
     B.move = null; B.chain = []; B.chainIdle = 99; B.runT = 0;
@@ -2922,6 +3103,8 @@ function applyHit(A, B, how) {
   // 对方在挡却挡不住：为什么（打桩面板上写给出招的人看）
   if (backHit) A.info.why = '打在背后，挡不住';
   else if (wrongGuard) A.info.why = d.height === 'low' ? '下段：站着挡不住' : '上段：蹲着挡不住';
+  else if (rising) A.info.why = '打在起身硬直里：刚站起来，还挡不了';
+  else if (label === '截住闪身') A.info.why = '闪身只躲得过站着打的拳';
   if (offBalance) tag(B.x, B.J.head[1] - 62, '失衡', C.cin, 24);
   tag(c.x + dir * 10, c.y - 14, (m.air ? '空中 ' : '') + '-' + dmg, C.ink, 18);
   const sx0 = A.J.head[0] - dir * 52, sy0 = A.J.head[1] - 46;
@@ -3089,6 +3272,17 @@ function dodged(A, B) {
   const m = A.move;
   if (!m.dodged) { m.dodged = true; tag(B.x, B.J.head[1] - 30, '闪', C.ink, 26); }
 }
+// 2.0 闪身躲过一拳：这一拳打空（收不回来、也接不了连招）；钻过去的人记一笔 —— 接着出的第一招算「闪身反击」
+function slippedBy(A, B) {
+  const m = A.move;
+  m.done = true; m.slipped = true;
+  B.slipGot = true; B.move.evaded = true;
+  slipDodgeFx(B, A);
+  tag(B.x, B.J.head[1] - 34, '闪', darkSash(B), 30);
+  B.info = { label: '闪身', dmg: 0, how: '闪过', why: '闪身躲得过站着打的拳，接着出招 ×' + SLIP_COUNTER_MUL, adv: null, t: B.clock };
+  A.info = { label: m.def.label, dmg: 0, how: '被闪过', why: '对面在闪身：站着打的拳打不中，换重拳、腿、下段、擒拿截它', adv: null, t: A.clock };
+  Sound.whoosh(0.8);
+}
 function tech(a, b) {
   a.move.done = b.move.done = true; a.kvx = -a.facing * 6; b.kvx = -b.facing * 6;
   tag((a.x + b.x) / 2, FLOOR - 150, '拆', C.ink, 30); Sound.block(); game.freeze = stop(6);
@@ -3173,7 +3367,7 @@ function kneeHit(A, B, second, left) {
 function slamDown(A, B, name) {
   const trip = name === 'trip', dmg = trip ? TRIP_DMG : TACKLE_DMG;
   grabDamage(A, B, dmg, trip ? '别腿摔' : '抱腿摔', true);
-  B.knockDown(trip ? -1.5 : -2.5, A.facing * (trip ? 2.5 : 4), TF(trip ? 50 : 46), B.hp <= 0); B.slam = true;
+  B.knockDown(trip ? -1.5 : -2.5, A.facing * (trip ? 2.5 : 4), TFH(trip ? 40 : 38), B.hp <= 0); B.slam = true;
   if (B.hp <= 0) B.hp = 0;
   game.freeze = stop(8); game.shake = Math.max(game.shake, 7);
   dust(B.x, FLOOR, 9, true);
@@ -3198,8 +3392,8 @@ function separate(a, b) {
   if (ad > maxD) { const s = d > 0 ? 1 : -1, ex = (ad - maxD) / 2; a.x += s * ex; b.x -= s * ex; return; }
   const rolling = F => F.state === 'down' && F.downPhase === 'getup' && F.rollDir;
   if (rolling(a) || rolling(b)) return;             // 滚身起能从人脚下滚过去
-  const dashing = F => F.state === 'attack' && F.move && F.move.name === 'dash';
-  if (ad >= min || a.airborne || b.airborne || dashing(a) || dashing(b)) return;   // 闪步时身子能穿过去
+  const dashing = F => F.state === 'attack' && F.move && (F.move.name === 'dash' || F.move.name === 'slip');
+  if (ad >= min || a.airborne || b.airborne || dashing(a) || dashing(b)) return;   // 冲刺、闪身时身子能穿过去
   const push = Math.min((min - ad) / 2, SOFT_PUSH), s = d > 0 ? 1 : d < 0 ? -1 : (a.facing > 0 ? 1 : -1);
   a.x -= s * push; b.x += s * push;
   a.x = clamp(a.x, WALL_L, WALL_R); b.x = clamp(b.x, WALL_L, WALL_R);
@@ -3225,13 +3419,17 @@ const PLANS = {
 // react 反应帧；block 格挡率；lowRead 高低判断对的概率；parry 卸力；push 推挡；burst 爆气；read 读招克制；
 // catch 接腿；duck 蹲躲飞踢；aa 对空；step 闪步；low 用下段；sup 放泼墨；
 // 1.8.0：tech 被擒住时挣脱；gc 挡住后截拳；stomp 蹲挡住扫堂腿后踩腿；scoop 看到扫堂腿出抄腿；roll 倒地滚身起；其余同旧版
+// 2.0：slip 挡住拳以后闪身钻过去；gwalk 边挡边往后退；oki 压起身（对手站起来那几帧出快招）；catchSlip 看到闪身出重拳 / 腿截住
 const LEVELS = {
   easy: { react: 22, block: .2, lowRead: .25, parry: .03, push: .05, burst: .15, read: .08, catch: .12, duck: .25, aa: .12, step: .08, low: .1, sup: .3,
-    punish: .25, combo: .45, aggr: .5, jump: .5, grabBlock: .2, idle: .5, tech: .05, gc: .05, stomp: .2, scoop: .05, roll: .15 },
+    punish: .25, combo: .45, aggr: .5, jump: .5, grabBlock: .2, idle: .5, tech: .05, gc: .05, stomp: .2, scoop: .05, roll: .15,
+    slip: .03, gwalk: .15, oki: .15, catchSlip: .1 },
   normal: { react: 11, block: .46, lowRead: .55, parry: .12, push: .25, burst: .45, read: .3, catch: .35, duck: .5, aa: .4, step: .25, low: .2, sup: .7,
-    punish: .55, combo: .78, aggr: .85, jump: .8, grabBlock: .45, idle: .25, tech: .2, gc: .2, stomp: .55, scoop: .2, roll: .35 },
+    punish: .55, combo: .78, aggr: .85, jump: .8, grabBlock: .45, idle: .25, tech: .2, gc: .2, stomp: .55, scoop: .2, roll: .35,
+    slip: .12, gwalk: .3, oki: .45, catchSlip: .35 },
   hard: { react: 8, block: .66, lowRead: .8, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
-    punish: .85, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .1, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55 },
+    punish: .85, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .1, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
+    slip: .22, gwalk: .45, oki: .75, catchSlip: .55 },
 };
 function weighted(list) {
   let sum = 0; for (const [, w] of list) sum += w;
@@ -3247,7 +3445,10 @@ class Brain {
     this.lastSeen = -1; this.airPlan = null; this.jumpDir = 0; this.lowBlock = false; this.seq = [];
     this.techFor = -1; this.guardFor = -1; this.holdFor = -1; this.rollPick = null;   // 1.8.0：每次被抓 / 挡住 / 抓住人只掷一次骰子
     this.antiDive = false;                                                             // 1.9.0：等着用拳迎千斤坠
+    this.slipSeq = []; this.slipFor = -1; this.okiFor = -1; this.gwalkT = 0; this.okiSpot = 0;            // 2.0：闪身的双击、压起身、边挡边退
   }
+  // 闪身：按着挡、朝对手双击（三帧：按 → 松 → 按）。挡住的硬直里也要按完，所以不和 seq 共用（seq 挨打时会清掉）
+  slipIn() { this.slipSeq = [1, 0, 1]; }
   dashAway() { this.seq = [{ back: 1 }, {}, { back: 1 }]; }
   dashIn() { this.seq = [{ fwd: 1 }, {}, { fwd: 1 }]; }
   tick(locked) {
@@ -3265,8 +3466,13 @@ class Brain {
     const press = a => { face(); if (a.startsWith('d:')) { H.down = true; a = a.slice(2); } f.inp.press(a, f.clock); };
     const pair = () => { face(); f.inp.press('heavy', f.clock); f.inp.press('kick', f.clock); };
 
+    // 闪身双击（按着挡）：挨打、倒地就作废
+    if (this.slipSeq.length) {
+      if (f.state === 'hit' || f.state === 'down' || f.state === 'rise') this.slipSeq = [];
+      else { H.block = true; if (this.slipSeq.shift()) go(1); return; }
+    }
     // 多帧操作（闪步双击、跑动）；被打断就作废
-    if (f.state === 'hit' || f.state === 'down' || f.state === 'blockstun') this.seq = [];
+    if (f.state === 'hit' || f.state === 'down' || f.state === 'blockstun' || f.state === 'rise') this.seq = [];
     if (this.seq.length) {
       const st = this.seq.shift();
       if (st.back) go(-1); if (st.fwd) go(1);
@@ -3278,13 +3484,14 @@ class Brain {
       if (o.move && o.move.name === 'hold' && this.techFor !== o.move.serial) { this.techFor = o.move.serial; if (R() < L.tech) f.inp.press('grab', f.clock); }
       return;
     }
-    // 倒地：起身时滚开（往墙的反方向）
+    // 倒地：起身时滚开（往墙的反方向）；起身硬直里什么也做不了
     if (f.state === 'down') {
       if (this.rollPick === null) this.rollPick = R() < L.roll ? (R() < 0.5 ? 1 : -1) : 0;
       if (this.rollPick) { let d = this.rollPick * toward; if (f.x + d * ROLL_DIST < WALL_L + 20 || f.x + d * ROLL_DIST > WALL_R - 20) d = -d; if (d > 0) H.right = true; else H.left = true; }
       return;
     }
     this.rollPick = null;
+    if (f.state === 'rise') return;
     // 挨打 / 格挡硬直：爆气挣脱、推挡；1.8.0：蹲挡住扫堂腿踩腿、挡住后截拳
     if (f.state === 'hit' || f.state === 'blockstun') {
       if (f.qi >= QI_BURST && !f.grabbed && (f.state === 'hit' ? f.comboTaken >= 2 && R() < L.burst * 0.08 : R() < L.burst * 0.006)) { pair(); return; }
@@ -3294,6 +3501,8 @@ class Brain {
           this.guardFor = om.serial;
           if (f.stompReady() && R() < L.stomp) { H.down = true; f.inp.press('kick', f.clock); H.block = true; return; }
           if (f.qi >= GC_COST && R() < L.gc) { f.inp.press('heavy', f.clock); return; }
+          // 2.0 挡住的是拳（拳系连打）：闪身从他身边钻过去
+          if (om.def.tier === 'light' && !om.air && om.def.height !== 'low' && dist < 110 && R() < L.slip) { this.slipIn(); H.block = true; return; }
         }
         if (dist < 110 && R() < L.push * 0.1) f.inp.press('jab', f.clock);
         H.block = true; H.down = this.lowBlock;
@@ -3301,6 +3510,10 @@ class Brain {
       return;
     }
     if (f.state === 'attack') {
+      // 2.0 闪身躲过了一拳：钻过去马上反打（闪身反击）
+      if (f.move.name === 'slip' && f.slipGot && f.move.t >= SLIP_CANCEL && R() < L.punish) {
+        this.plan = dist <= 90 ? ['jab', 'jab', 'heavy'] : ['heavy', 'kick']; press(this.plan.shift()); return;
+      }
       // 擒住了：挑一种后续（背靠墙多用过肩摔把人换到墙边）
       if (f.move.name === 'hold' && f.move.holdKind === 'grab' && !f.move.pick && this.holdFor !== f.move.serial) {
         this.holdFor = f.move.serial;
@@ -3340,10 +3553,41 @@ class Brain {
         return;
       }
     }
-    if (this.blockT > 0 && (f.actionable() || f.state === 'blockstun')) { this.blockT--; H.block = true; H.down = this.lowBlock; face(); return; }
+    // 格挡中：不按方向（按着挡会转身面朝对手；2.0 起按着方向是边挡边走）。偶尔边挡边往后退（离墙远的时候）
+    if (this.blockT > 0 && (f.actionable() || f.state === 'blockstun')) {
+      this.blockT--; H.block = true; H.down = this.lowBlock;
+      if (this.gwalkT > 0 && !this.lowBlock && f.state === 'block') { this.gwalkT--; const bx = f.x - toward * 60; if (bx > WALL_L + 20 && bx < WALL_R - 20) go(-1); }
+      return;
+    }
     if (!f.actionable()) return;
     this.jumpDir = 0;
     if (this.duckT > 0) { this.duckT--; H.down = true; return; }
+
+    // 2.0 压起身：对手倒地 → 走到他跟前；他起身时算好时机出快招（短拳 / 擒拿），正好打在起身硬直里，接连招。
+    // 他滚不滚、往哪滚，要反应 L.react 帧才看得清（s 是 L.react 帧以前的他）：没看清之前按他躺的地方算，看清了再追。
+    // 每次倒地掷一次骰子，不压的话照旧
+    if (o.state === 'down' || o.state === 'rise') {
+      if (this.okiRoll == null) this.okiRoll = R() < L.oki;
+      if (o.state === 'down' && o.downPhase !== 'getup') this.okiSpot = o.x;
+      if (this.okiRoll) {
+        const seen = !!s.roll || !s.down;                                     // 看见他在滚 / 已经看见他站起来
+        const land = !seen ? this.okiSpot : o.downPhase === 'getup' && o.rollDir ? o.x + o.rollDir * ROLL_DIST * (1 - o.t / GETUP) : o.x;
+        const gap = Math.abs(land - f.x), tw = land >= f.x ? 1 : -1, S = MOVES.jab.S;
+        const left = o.state === 'rise' ? 0 : o.downPhase === 'getup' ? GETUP - o.t : 99;
+        if (gap <= MOVES.jab.reach - 4 && left <= S + 1 && (o.state !== 'rise' || o.t + S + 1 < RISE)) {
+          this.okiRoll = false;
+          this.plan = R() < 0.25 && gap <= MOVES.grab.reach - 6 ? ['grab'] : pick([['jab', 'jab', 'heavy'], ['jab', 'kick'], ['jab', 'jab', 'jab', 'jab']]).slice();
+          if (tw > 0) H.right = true; else H.left = true;
+          const a = this.plan.shift(); if (a.startsWith('d:')) { H.down = true; } f.inp.press(kindOf(a), f.clock);
+          return;
+        }
+        if (o.state === 'rise') this.okiRoll = false;                         // 来不及了：算了
+        else if (gap > 74) { if (tw > 0) H.right = true; else H.left = true; return; }
+        else return;                                                          // 站在跟前等他起来
+      }
+    } else this.okiRoll = null;
+    // 2.0 看见对手在闪身（钻过来）：出重拳 / 腿截他（他只躲得过拳）
+    if (s.slip && dist <= 130 && R() < L.catchSlip * 0.4) { press(dist <= 100 ? 'heavy' : 'kick'); return; }
 
     // 连招没打中：短时间内继续按完
     if (this.plan.length) {
@@ -3362,7 +3606,7 @@ class Brain {
       // 千斤坠：别蹲、别出托天掌（正中它下怀）—— 站着等它下来用拳迎，或者站挡
       if (s.name === 'dive') {
         if (R() < L.aa) { this.antiDive = true; face(); return; }
-        f.noParry = true; this.lowBlock = false; this.blockT = Math.max(10, s.remain + 10); H.block = true; face(); return;
+        f.noParry = true; this.lowBlock = false; this.blockT = Math.max(10, s.remain + 10); H.block = true; return;
       }
       // 飞踢：蹲下躲；或者地上出腿迎上去，把它顶得翻滚回去
       if (s.name === 'airKick' && dist >= 110 && R() < L.aa * 0.35) { press('kick'); return; }
@@ -3377,7 +3621,11 @@ class Brain {
         const tryParry = eta >= 0 && eta <= PARRY_WIN - 2 && R() < L.parry;
         f.noParry = !tryParry;
         this.lowBlock = s.height === 'low' ? R() < L.lowRead : s.height === 'high' ? R() > L.lowRead : R() < 0.3;
-        this.blockT = Math.max(8, s.remain + 6); H.block = true; H.down = this.lowBlock; face(); return;
+        this.blockT = Math.max(8, s.remain + 6); H.block = true; H.down = this.lowBlock;
+        // 2.0 挡的是拳、离得近：有时候直接闪身钻过去
+        if (s.tier === 'light' && !s.air && s.height !== 'low' && dist < 100 && eta >= 2 && R() < L.slip * 0.6) { this.blockT = 0; this.slipIn(); }
+        else if (R() < L.gwalk * 0.3) this.gwalkT = 10 + (R() * 16 | 0);
+        return;
       }
       if (s.kind === 'grab' && R() < L.block * 0.6) { if (R() < L.step) this.dashAway(); return; }
     }
@@ -3397,7 +3645,7 @@ class Brain {
     if (dist < 86 && s.atk && R() < L.step * 0.05) { if (R() < 0.3) this.dashIn(); else this.dashAway(); return; }
     // 对手跳过来：托天掌
     if (s.air && !s.atk && s.vz < 0 && s.alt < 120 && dist < 110 && R() < L.aa * 0.2) { press('d:heavy'); return; }
-    if (!s.down && !s.atk && dist <= 100 && R() < L.block * 0.012) { f.noParry = true; this.blockT = 14 + (R() * 14 | 0); this.lowBlock = R() < 0.4; H.block = true; H.down = this.lowBlock; face(); return; }
+    if (!s.down && !s.atk && dist <= 100 && R() < L.block * 0.012) { f.noParry = true; this.blockT = 14 + (R() * 14 | 0); this.lowBlock = R() < 0.4; if (!this.lowBlock && R() < L.gwalk) this.gwalkT = this.blockT; H.block = true; H.down = this.lowBlock; return; }
     if (!s.down) {
       if (dist > 130 && dist < 280 && R() < L.jump * 0.01) {      // 跑几步再跳（带惯性飞过去）
         this.seq = []; const run = 3 + (R() * 6 | 0);
@@ -3412,7 +3660,7 @@ class Brain {
         this.seq = []; for (let i = 0; i < 10; i++) this.seq.push({ fwd: 1 });
         this.seq.push({ fwd: 1, press: 'heavy' }); return;
       }
-      if (dist > 98 && dist <= 140 && R() < L.aggr * 0.045) { press(dist <= 120 && R() < L.low ? 'd:kick' : 'kick'); return; }
+      if (dist > 98 && dist <= 134 && R() < L.aggr * 0.045) { press(dist <= 118 && R() < L.low ? 'd:kick' : 'kick'); return; }
       if (dist <= 92 && R() < L.aggr * 0.09) { this.plan = weighted(this.plans).slice(); press(this.plan.shift()); return; }
       if (dist <= 82 && R() < 0.008 * L.aggr) { press('grab'); return; }
     }
@@ -3466,119 +3714,32 @@ class Dummy {
    ============================================================ */
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
-let scale = 1, dpr = 1, bg = null;
+/* 画面大小（2.0，Jack：全屏要占满电脑屏幕，注意屏幕实际尺寸和浏览器的适配）：
+   逻辑画面不再固定 1200×600 —— 宽高比跟着画布走：比 2:1 窄（16:9、16:10、4:3）就宽 1200、往上下多露一些；比 2:1 宽（带鱼屏）就高 600、左右多露。
+   VW×VH = 逻辑画面大小；FY = 地线在画面上的高度（多出来的高度大部分给天上）；scale = 逻辑像素 → CSS 像素；pxr = CSS 像素 → 屏幕物理像素
+   （devicePixelRatio：高分屏、Windows 缩放 125%/150%、浏览器缩放都算进去；画布太大时封顶，保证帧率）。
+   W / H 还是 1200 / 600：规则里用到的（双人对战两人最远距离）不跟着屏幕变。背景、地面在 stage.js */
+let scale = 1, pxr = 1, VW = W, VH = H, FY = FLOOR;
+const viewFor = (cw, ch) => {                         // CSS 宽高 → 逻辑画面（测试也用）
+  const asp = cw / Math.max(1, ch);
+  const vw = asp >= W / H ? H * asp : W, vh = asp >= W / H ? H : W / asp;
+  return { vw, vh, fy: Math.round(vh - (H - FLOOR) - (vh - H) * 0.25) };
+};
+// 画面比 2:1 高（地线往下挪了）：人再放大一点（最多 12%），多出来的高度不全给天
+const zoomBoost = () => clamp(1 + (FY - FLOOR) / FLOOR * 0.6, 1, 1.12);
 function resize() {
   const r = cv.getBoundingClientRect();
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const cw = Math.max(320, r.width | 0);
-  cv.width = Math.round(cw * dpr); cv.height = Math.round(cw / 2 * dpr);
-  scale = cw / W;
-  if (!bg) bg = makeBg();
+  const cw = Math.max(320, r.width), ch = Math.max(160, r.height || r.width / 2);
+  let k = Math.min(window.devicePixelRatio || 1, 3);
+  const CAP = 10.5e6;                                 // 画布最多约 1000 万像素（4K 全屏 + 高 DPR 时降一点分辨率）
+  if (cw * ch * k * k > CAP) k = Math.sqrt(CAP / (cw * ch));
+  const v = viewFor(cw, ch);
+  VW = v.vw; VH = v.vh; FY = v.fy;
+  cv.width = Math.round(cw * k); cv.height = Math.round(ch * k);
+  scale = cw / VW; pxr = k;
 }
-function seeded(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
-/* 背景分两层（1.7.0 场地比画面宽）：
-   远景 bg（纸、朱日、远山、山雾、飞鸟、题款）跟镜头慢慢动（视差 PAR）；
-   地面 ground（地线、草、石头、场地两头的木桩）画在场地坐标里，跟人一起动 */
-const PAR = 0.35, GX0 = -240, GUP = 120, GDN = 96;   // 地面图：从场地 x=-240 画到 STAGE_W+240，地线上方 120、下方 96
-let bgW = W + 80, ground = null;
-const camHalf = () => W / (2 * ZOOM);     // 镜头放得最大时，画面一半宽（远景图按这个算够不够宽）
-function makeBg() {
-  const half = camHalf();
-  bgW = Math.ceil(W + 80 + (STAGE_W - 2 * half) * PAR);
-  const BW = bgW, k = 1.5, c = document.createElement('canvas');
-  c.width = Math.ceil(BW * k); c.height = H * k;
-  const g = c.getContext('2d'); g.scale(k, k);
-  const R = seeded(7);
-  g.fillStyle = C.paper; g.fillRect(0, 0, BW, H);
-  // 纸纹
-  const t = document.createElement('canvas'); t.width = t.height = 128;
-  const tg = t.getContext('2d'), id = tg.createImageData(128, 128);
-  for (let i = 0; i < id.data.length; i += 4) { const v = R() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 10; }
-  tg.putImageData(id, 0, 0);
-  g.fillStyle = g.createPattern(t, 'repeat'); g.fillRect(0, 0, BW, H);
-  g.strokeStyle = 'rgba(120,118,104,.07)'; g.lineWidth = 0.6;
-  for (let i = 0; i < 180 * BW / W; i++) { const x = R() * BW, y = R() * H, a = R() * Math.PI; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10 + 4, x + Math.cos(a) * 22, y + Math.sin(a) * 22); g.stroke(); }
-  // 朱日
-  const sunX = BW * 0.6;
-  g.fillStyle = 'rgba(184,50,29,.13)'; g.beginPath(); g.arc(sunX, 168, 58, 0, Math.PI * 2); g.fill();
-  g.fillStyle = 'rgba(184,50,29,.06)'; g.beginPath(); g.arc(sunX, 168, 74, 0, Math.PI * 2); g.fill();
-  // 远山
-  const ridge = (base, amp, alpha, seed, freq) => {
-    const r = seeded(seed), ph = [r() * 9, r() * 9, r() * 9];
-    g.beginPath(); g.moveTo(0, H);
-    for (let x = 0; x <= BW; x += 6) {
-      const y = base - amp * (0.55 * Math.sin(x * freq + ph[0]) + 0.3 * Math.sin(x * freq * 2.3 + ph[1]) + 0.15 * Math.sin(x * freq * 5.1 + ph[2]) + 0.2 * (r() - 0.5) * 0.4);
-      g.lineTo(x, y);
-    }
-    g.lineTo(BW, H); g.closePath();
-    const gr = g.createLinearGradient(0, base - amp, 0, base + 120);
-    gr.addColorStop(0, `rgba(36,40,42,${alpha})`); gr.addColorStop(0.5, `rgba(36,40,42,${alpha * 0.45})`); gr.addColorStop(1, 'rgba(36,40,42,0)');
-    g.fillStyle = gr; g.fill();
-  };
-  ridge(360, 70, 0.10, 3, 0.006);
-  ridge(410, 60, 0.16, 11, 0.009);
-  // 山雾
-  const mist = g.createLinearGradient(0, 400, 0, 470);
-  mist.addColorStop(0, 'rgba(235,234,226,0)'); mist.addColorStop(0.6, 'rgba(235,234,226,.75)'); mist.addColorStop(1, 'rgba(235,234,226,.2)');
-  g.fillStyle = mist; g.fillRect(0, 395, BW, 80);
-  ridge(486, 34, 0.2, 23, 0.012);
-  // 飞鸟
-  g.strokeStyle = 'rgba(23,24,26,.55)'; g.lineWidth = 1.6; g.lineCap = 'round';
-  [[-92, 120, 1], [-62, 104, .8], [-70, 138, .7], [-122, 150, .6], [260, 92, .55], [282, 82, .45]].forEach(([dx, y, s]) => {
-    const x = sunX + dx;
-    g.beginPath(); g.moveTo(x - 9 * s, y - 2 * s); g.quadraticCurveTo(x - 4 * s, y - 6 * s, x, y); g.quadraticCurveTo(x + 4 * s, y - 6 * s, x + 9 * s, y - 3 * s); g.stroke();
-  });
-  // 题款
-  const ix = BW - 120;
-  g.fillStyle = 'rgba(23,24,26,.38)'; g.font = `30px ${BRUSH}`; g.textAlign = 'center'; g.textBaseline = 'middle';
-  '以武会友'.split('').forEach((ch, i) => g.fillText(ch, ix, 150 + i * 34));
-  g.fillStyle = 'rgba(184,50,29,.55)'; g.fillRect(ix - 13, 292, 26, 26);
-  g.fillStyle = 'rgba(235,234,226,.9)'; g.font = `19px ${BRUSH}`; g.fillText('斗', ix, 306);
-  ground = makeGround();
-  return c;
-}
-// 地面（场地坐标）：地线、草、碎石，场地两头各一根木桩 —— 看得出墙在哪
-function makeGround() {
-  const GW = STAGE_W - 2 * GX0, GH = GUP + GDN, k = 1.5, c = document.createElement('canvas');
-  c.width = Math.ceil(GW * k); c.height = Math.ceil(GH * k);
-  const g = c.getContext('2d'); g.scale(k, k); g.translate(-GX0, GUP - FLOOR);   // 之后直接用场地坐标画
-  const R = seeded(19);
-  const fg = g.createLinearGradient(0, FLOOR, 0, FLOOR + GDN);
-  fg.addColorStop(0, 'rgba(70,72,66,.16)'); fg.addColorStop(1, 'rgba(70,72,66,.03)');
-  g.fillStyle = fg; g.fillRect(GX0, FLOOR, GW, GDN);
-  for (let pass = 0; pass < 4; pass++) {
-    g.strokeStyle = `rgba(23,24,26,${[0.7, 0.3, 0.18, 0.12][pass]})`; g.lineWidth = [3, 6, 1.5, 9][pass];
-    g.beginPath(); let y = FLOOR + pass * 1.2;
-    g.moveTo(GX0, y);
-    for (let x = GX0; x <= GX0 + GW; x += 30) { y = FLOOR + pass * 1.4 + (R() - 0.5) * 2.2; g.lineTo(x, y); }
-    g.stroke();
-  }
-  // 草
-  g.strokeStyle = 'rgba(23,24,26,.35)'; g.lineWidth = 1.2; g.lineCap = 'round';
-  for (let i = 0; i < 26 * GW / W; i++) {
-    const x = GX0 + R() * GW, h = 4 + R() * 9;
-    g.beginPath(); g.moveTo(x, FLOOR + 1); g.quadraticCurveTo(x + 2, FLOOR - h * 0.6, x + 5 * (R() - 0.3), FLOOR - h); g.stroke();
-  }
-  // 碎石
-  g.fillStyle = 'rgba(23,24,26,.22)';
-  for (let i = 0; i < 14 * GW / W; i++) { const x = GX0 + R() * GW, w = 3 + R() * 6; g.beginPath(); g.ellipse(x, FLOOR + 4 + R() * 30, w, w * 0.45, 0, 0, Math.PI * 2); g.fill(); }
-  // 场地两头的木桩：一根歪着的旧木桩，缠一道朱红绳
-  for (const [x, lean] of [[WALL_L - 30, -0.06], [WALL_R + 30, 0.06]]) {
-    g.save(); g.translate(x, FLOOR + 2); g.rotate(lean);
-    g.fillStyle = 'rgba(23,24,26,.82)';
-    g.beginPath(); g.moveTo(-6, 0); g.lineTo(-4.5, -78); g.quadraticCurveTo(0, -84, 4.5, -79); g.lineTo(6, 0); g.closePath(); g.fill();
-    g.strokeStyle = 'rgba(235,234,226,.35)'; g.lineWidth = 1;
-    for (let j = 0; j < 4; j++) { g.beginPath(); g.moveTo(-2 + j * 1.4, -6 - j * 9); g.lineTo(-1 + j * 1.2, -40 - j * 8); g.stroke(); }
-    g.fillStyle = 'rgba(184,50,29,.85)'; g.fillRect(-6.5, -62, 13, 4); g.fillRect(-6.5, -55, 13, 2.5);
-    g.strokeStyle = 'rgba(184,50,29,.8)'; g.lineWidth = 1.6;
-    g.beginPath(); g.moveTo(5, -58); g.quadraticCurveTo(12, -50, 9 + lean * 60, -38); g.stroke();
-    g.restore();
-    g.strokeStyle = 'rgba(23,24,26,.45)'; g.lineWidth = 1.3;
-    for (let j = 0; j < 5; j++) { const gx = x + (j - 2) * 6; g.beginPath(); g.moveTo(gx, FLOOR + 1); g.quadraticCurveTo(gx + 1, FLOOR - 8, gx + (j - 2) * 2.5, FLOOR - 14 - (j % 2) * 5); g.stroke(); }
-  }
-  c.w = GW; c.h = GH;
-  return c;
-}
+// 给场景用：这一帧画面多大、地线在哪、最大放大倍数（地面层按这个分辨率画）
+const viewInfo = () => ({ vw: VW, vh: VH, fy: FY, scale, pxr, zmax: ZOOM * zoomBoost() * 1.06 });
 
 /* 锥形骨骼（毛笔感） */
 function bone(a, b, wa, wb) {
@@ -3854,13 +4015,13 @@ function drawSeal(x, y, text, size, rot, alpha, sc, specks) {
   ctx.restore();
 }
 function drawStamps() {
-  const top = FLOOR - (FLOOR - 120) / camZ;
+  const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0)), top = FLOOR + (120 - FY - camLift * zz) / zz;   // 印章别盖到上面的血条
   for (const e of FX) {
     if (e.type !== 'stamp') continue;
     const age = e.max - e.life;
     const sc = age < 6 ? 1.7 - 0.7 * EASE.out(age / 6) : 1;
     const a = Math.min(1, age / 4) * Math.min(1, e.life / 18);
-    drawSeal(clamp(e.x, camX - W / (2 * camZ) + 50, camX + W / (2 * camZ) - 50), Math.max(top, e.y), e.text, e.size, e.rot, a, sc, e.specks);
+    drawSeal(clamp(e.x, camX - VW / (2 * camZ) + 50, camX + VW / (2 * camZ) - 50), Math.max(top, e.y), e.text, e.size, e.rot, a, sc, e.specks);
   }
   ctx.globalAlpha = 1;
 }
@@ -3870,7 +4031,7 @@ function drawOverlayFx() {
       const age = e.max - e.life;
       const sc = age < 10 ? 1.35 - 0.35 * EASE.out(age / 10) : 1 + (age - 10) * 0.0012;
       const a = Math.min(1, age / 6) * Math.min(1, e.life / 14);
-      ctx.save(); ctx.translate(W / 2, 255); ctx.scale(sc, sc); ctx.globalAlpha = a;
+      ctx.save(); ctx.translate(VW / 2, VH * 0.425); ctx.scale(sc, sc); ctx.globalAlpha = a;
       ctx.font = `${e.size}px ${BRUSH}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = 'rgba(235,234,226,.6)'; ctx.fillText(e.text, 3, 3);
       ctx.fillStyle = C.ink; ctx.fillText(e.text, 0, 0);
@@ -3881,7 +4042,7 @@ function drawOverlayFx() {
   ctx.globalAlpha = 1;
 }
 function hpBar(F, side) {
-  const x0 = side < 0 ? 46 : W - 46, len = 470, y = 26, h = 18;
+  const x0 = side < 0 ? 46 : VW - 46, len = 470, y = 26, h = 18;
   const dir = side < 0 ? 1 : -1;
   const pts = side < 0 ? [[x0, y], [x0 + len, y], [x0 + len - 12, y + h], [x0 + 8, y + h]] : [[x0, y], [x0 - len, y], [x0 - len + 12, y + h], [x0 - 8, y + h]];
   const path = () => { ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); };
@@ -3939,20 +4100,20 @@ function drawHud() {
   const [a, b] = game.p;
   hpBar(a, -1); hpBar(b, 1);
   // 计时（双人对战不限时，显示 ∞）
-  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(W / 2, 40, 29, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = C.ink; ctx.beginPath(); ctx.arc(VW / 2, 40, 29, 0, Math.PI * 2); ctx.fill();
   const frac = game.endless ? 1 : game.timer / ROUND_FRAMES;
-  ctx.strokeStyle = C.cin; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(W / 2, 40, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); ctx.stroke();
+  ctx.strokeStyle = C.cin; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(VW / 2, 40, 34, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); ctx.stroke();
   ctx.fillStyle = C.paper; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  if (game.endless) { ctx.font = `600 34px ${UIF}`; ctx.fillText('∞', W / 2, 38); }
-  else { const sec = String(Math.ceil(game.timer / 60)); ctx.font = `${sec.length > 2 ? 27 : 34}px ${BRUSH}`; ctx.fillText(sec, W / 2, 42); }
+  if (game.endless) { ctx.font = `600 34px ${UIF}`; ctx.fillText('∞', VW / 2, 38); }
+  else { const sec = String(Math.ceil(game.timer / 60)); ctx.font = `${sec.length > 2 ? 27 : 34}px ${BRUSH}`; ctx.fillText(sec, VW / 2, 42); }
   ctx.font = `16px ${BRUSH}`; ctx.fillStyle = C.ink;
   if (game.mode === 'train') drawTrainPanel();
-  else ctx.fillText(roundName(), W / 2, 88);
+  else ctx.fillText(roundName(), VW / 2, 88);
 }
 // 打桩练习的数值面板
 function drawTrainPanel() {
   const P = game.p[0], D = game.p[1], I = P.info;
-  const x = W / 2 - 215, y = 82, w = 430, h = 146;
+  const x = VW / 2 - 215, y = 82, w = 430, h = 146;
   ctx.fillStyle = 'rgba(235,234,226,.84)'; ctx.fillRect(x, y, w, h);
   ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
@@ -3981,23 +4142,26 @@ function drawTrainPanel() {
    双人对战（和菜单背景）：两人都要在画面里 —— 照两人中间，离得远就拉远（最远 ZOOM_PVP_MIN），近了放大到 ZOOM。
    人机 / 联机 / 打桩：镜头放大到 ZOOM、跟着自己。两人放得下就照中间；放不下就让自己靠边、朝对手那边多留地方，
    对手在画面外时画面边上画个箭头指着他。镜头只是画面，不进战斗逻辑（联机两边各看各的） */
-let camX = STAGE_W / 2, camZ = ZOOM;
+// 2.0：画面比 2:1 宽 / 高时按实际画面宽 VW 算；画面高（地线往下挪了）再放大一点 zoomBoost。
+// 镜头上抬 camLift（2.0）：有人跳得高（千斤坠腾起来）时镜头往上挪一点，头不顶到血条；只是画面
+let camX = STAGE_W / 2, camZ = ZOOM, camLift = 0;
 const localIdx = () => game.mode === 'online' && typeof Net !== 'undefined' && Net.role === 'guest' ? 1 : 0;
 function camGoal(mode, a, b, local) {
+  const zTop = ZOOM * zoomBoost();
   if (mode === 'pvp' || mode === 'attract') {
-    const top = mode === 'attract' ? ZOOM_PVP_MIN : ZOOM;       // 菜单背景不放大（不挡菜单按钮）
-    const zoom = clamp(W / (Math.abs(a.x - b.x) + 2 * CAM_MARGIN), ZOOM_PVP_MIN, top), half = W / (2 * zoom);
+    const top = mode === 'attract' ? ZOOM_PVP_MIN * zoomBoost() : zTop;       // 菜单背景不放大（不挡菜单按钮）
+    const zoom = clamp(VW / (Math.abs(a.x - b.x) + 2 * CAM_MARGIN), ZOOM_PVP_MIN, top), half = VW / (2 * zoom);
     return { x: clamp((a.x + b.x) / 2, half, STAGE_W - half), zoom };
   }
-  const me = local ? b : a, op = local ? a : b, half = W / (2 * ZOOM), dx = op.x - me.x;
+  const me = local ? b : a, op = local ? a : b, half = VW / (2 * zTop), dx = op.x - me.x;
   const x = Math.abs(dx) + 2 * CAM_MARGIN <= 2 * half ? (a.x + b.x) / 2 : me.x + Math.sign(dx) * (half - CAM_MARGIN);
-  return { x: clamp(x, half, STAGE_W - half), zoom: ZOOM };
+  return { x: clamp(x, half, STAGE_W - half), zoom: zTop };
 }
 // 对手在画面外：画面边上一个他颜色的箭头 + 名字 + 离多远
 function drawOffscreen(me, op) {
-  const sx = W / 2 + (op.x - camX) * camZ;
-  if (sx > -8 && sx < W + 8) return;
-  const right = sx >= W + 8, x = right ? W - 26 : 26, y = FLOOR - 150 * camZ;
+  const sx = VW / 2 + (op.x - camX) * camZ;
+  if (sx > -8 && sx < VW + 8) return;
+  const right = sx >= VW + 8, x = right ? VW - 26 : 26, y = FY - 150 * camZ;
   ctx.save(); ctx.translate(x, y); ctx.scale(right ? 1 : -1, 1);
   ctx.fillStyle = 'rgba(235,234,226,.8)'; ctx.beginPath(); ctx.arc(-8, 0, 30, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = op.color; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -15); ctx.lineTo(-3, 0); ctx.lineTo(-8, 15); ctx.closePath(); ctx.fill();
@@ -4007,25 +4171,28 @@ function drawOffscreen(me, op) {
   ctx.fillStyle = '#55564f'; ctx.font = `500 12px ${UIF}`; ctx.fillText(Math.round(Math.abs(op.x - me.x) / 10) * 10 + '', x + (right ? -6 : 6), y + 64);
 }
 function render() {
-  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  ctx.setTransform(pxr * scale, 0, 0, pxr * scale, 0, 0);
   let sx = 0, sy = 0;
   if (game.shake > 0.3 && !reduceMotion) { sx = rnd(-1, 1) * game.shake; sy = rnd(-1, 1) * game.shake * 0.6; }
   const [a, b] = game.p;
   const goal = camGoal(game.mode, a, b, localIdx());
   camZ += (goal.zoom - camZ) * 0.08; camX += (goal.x - camX) * 0.12;
-  const half = W / (2 * camZ);
+  const half = VW / (2 * camZ);
   camX = clamp(camX, half, STAGE_W - half);
+  // 镜头上抬：两人里飞得最高的离地超过 30 才抬，最多抬 48（场地像素）
+  camLift += (clamp((Math.max(a.alt, b.alt) - 30) * 0.35, 0, 48) - camLift) * 0.1;
+  Stage.use(Stage.forMode(game.mode), viewInfo());
   ctx.save(); ctx.translate(sx, sy);
-  if (bg) ctx.drawImage(bg, -40 - (camX - half) * PAR, -8, bgW, H + 16); else { ctx.fillStyle = C.paper; ctx.fillRect(0, 0, W, H); }
   const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0));     // 重击时镜头往里推一下（1.9.0，只是画面）
-  ctx.translate(W / 2, FLOOR); ctx.scale(zz, zz); ctx.translate(-camX, -FLOOR);
-  if (ground) ctx.drawImage(ground, GX0, FLOOR - GUP, ground.w, ground.h);
+  Stage.drawBack(ctx, camX, viewInfo(), camLift * zz);
+  ctx.translate(VW / 2, FY + camLift * zz); ctx.scale(zz, zz); ctx.translate(-camX, -FLOOR);
+  Stage.drawGround(ctx);
   const order = (b.state === 'attack' && a.state !== 'attack') ? [a, b] : [b, a];
   drawFighter(order[0]); drawFighter(order[1]);
   drawFx();
   drawStamps();
   ctx.restore();
-  if (game.flash > 0.01) { ctx.fillStyle = `rgba(245,244,238,${game.flash})`; ctx.fillRect(0, 0, W, H); }
+  if (game.flash > 0.01) { ctx.fillStyle = `rgba(245,244,238,${game.flash})`; ctx.fillRect(0, 0, VW, VH); }
   if (game.mode === 'pve' || game.mode === 'online' || game.mode === 'train') { const li = localIdx(); drawOffscreen(game.p[li], game.p[1 - li]); }
   if (game.mode !== 'attract') drawHud();
   if (!game.paused) drawOverlayFx();
@@ -4037,8 +4204,8 @@ function drawSoundHint() {
   const t = '声音被浏览器暂停了 · 按任意键或点一下画面就恢复';
   ctx.font = `500 13px ${UIF}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   const w = ctx.measureText(t).width + 24;
-  ctx.fillStyle = 'rgba(23,24,26,.72)'; ctx.fillRect(16, H - 46, w, 26);
-  ctx.fillStyle = C.paper; ctx.fillText(t, 28, H - 33);
+  ctx.fillStyle = 'rgba(23,24,26,.72)'; ctx.fillRect(16, VH - 46, w, 26);
+  ctx.fillStyle = C.paper; ctx.fillText(t, 28, VH - 33);
 }
 // 浅一点的同色（火花的芯、旺火的火心）：和纸色按六成混
 const tints = {};
@@ -4111,17 +4278,650 @@ function drawNetStatus() {
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   if (Net.reconnecting) {
     const left = Math.max(0, Math.ceil((Net.reconnectUntil - performance.now()) / 1000));
-    ctx.fillStyle = 'rgba(235,234,226,.82)'; ctx.fillRect(W / 2 - 190, 206, 380, 80);
-    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('对方掉线 · 重连中', W / 2, 236);
-    ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f'; ctx.fillText(`连回来就接着打（还等 ${left} 秒）`, W / 2, 266);
+    const y0 = VH * 0.343;
+    ctx.fillStyle = 'rgba(235,234,226,.82)'; ctx.fillRect(VW / 2 - 190, y0, 380, 80);
+    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('对方掉线 · 重连中', VW / 2, y0 + 30);
+    ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f'; ctx.fillText(`连回来就接着打（还等 ${left} 秒）`, VW / 2, y0 + 60);
   } else if (Net.stall > 30) {
-    ctx.fillStyle = 'rgba(235,234,226,.75)'; ctx.fillRect(W / 2 - 140, 216, 280, 60);
-    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('等待对方…', W / 2, 246);
+    const y0 = VH * 0.36;
+    ctx.fillStyle = 'rgba(235,234,226,.75)'; ctx.fillRect(VW / 2 - 140, y0, 280, 60);
+    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('等待对方…', VW / 2, y0 + 30);
   }
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = Net.desync ? C.cin : 'rgba(23,24,26,.5)';
   const rb = Net.rb, roll = rb && rb.stats.rollbacks ? ` · 回滚 ${(rb.stats.frames / Math.max(1, rb.stats.rollbacks)).toFixed(1)} 帧/次` : '';
-  ctx.fillText(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${Net.delay} 帧${roll}`, W / 2, H - 22);
+  ctx.fillText(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${Net.delay} 帧${roll}`, VW / 2, VH - 22);
 }
+</script>
+<script>
+'use strict';
+/* 场景（2.0）：三张水墨山水（朱日远山 / 松崖飞瀑 / 竹林夜月）可以挑，打桩固定用练武场。
+   只是画面，不进战斗逻辑：场地大小、墙的位置所有场景都一样（联机两边场景不一样也不会不同步，只是房主选的那张两边都用）。
+   每张图三层：
+     远景 far（视差 PAR_FAR）、中景 mid（视差 PAR_MID）—— 画在「画面坐标」里，地线对齐画面上的地线，跟着镜头慢慢挪；
+     地面 ground —— 画在场地坐标里，跟人一起动、一起缩放；
+     另外 near（可选）每帧现画，比如竹林两头那几根顶天的竹子（太高，放不进地面那一层）。
+   三层都先画在离屏画布上，分辨率按屏幕算（全屏、高分屏也清楚），每帧只贴图。画的时候只用「种子随机数」，每次画出来一样 */
+
+function seeded(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+const PAR_FAR = 0.12, PAR_MID = 0.38;     // 远景、中景跟镜头挪多少（地面是 1）
+const VW_MAX = 1600;                      // 画面最宽按这么宽准备（再宽的屏幕两边补纸色）
+const SKY_BELOW = 150;                    // 远景、中景在地线下面多画一截（地面那层盖住大半）
+const GX0 = -120, GUP = 190, GDN = 170;   // 地面层：从场地 x=GX0 画到 STAGE_W-GX0，地线上方 GUP、下方 GDN
+
+/* ---------- 画笔 ---------- */
+const INK = (a, c) => `rgba(${c || '23,24,26'},${a})`;
+// 纸：底色 + 细颗粒 + 纤维
+function paperFill(g, w, h, base, R, fiber) {
+  g.fillStyle = base; g.fillRect(0, 0, w, h);
+  const t = document.createElement('canvas'); t.width = t.height = 128;
+  const tg = t.getContext('2d'), id = tg.createImageData(128, 128);
+  for (let i = 0; i < id.data.length; i += 4) { const v = R() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 10; }
+  tg.putImageData(id, 0, 0);
+  g.fillStyle = g.createPattern(t, 'repeat'); g.fillRect(0, 0, w, h);
+  g.strokeStyle = fiber || 'rgba(120,118,104,.07)'; g.lineWidth = 0.6;
+  const n = Math.round(200 * (w / 1200) * (h / 600));
+  for (let i = 0; i < n; i++) {
+    const x = R() * w, y = R() * h, a = R() * Math.PI;
+    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a) * 10, y + Math.sin(a) * 10 + 4, x + Math.cos(a) * 22, y + Math.sin(a) * 22); g.stroke();
+  }
+}
+// 一道远山（连绵的山脊，往下淡进雾里）
+function ridge(g, w, base, amp, alpha, seed, freq, col) {
+  const r = seeded(seed), ph = [r() * 9, r() * 9, r() * 9];
+  g.beginPath(); g.moveTo(0, base + 200);
+  for (let x = 0; x <= w; x += 6) {
+    const y = base - amp * (0.55 * Math.sin(x * freq + ph[0]) + 0.3 * Math.sin(x * freq * 2.3 + ph[1]) + 0.15 * Math.sin(x * freq * 5.1 + ph[2]) + 0.04 * (r() - 0.5));
+    g.lineTo(x, y);
+  }
+  g.lineTo(w, base + 200); g.closePath();
+  const gr = g.createLinearGradient(0, base - amp, 0, base + 120);
+  gr.addColorStop(0, INK(alpha, col)); gr.addColorStop(0.5, INK(alpha * 0.45, col)); gr.addColorStop(1, INK(0, col));
+  g.fillStyle = gr; g.fill();
+}
+// 雾：一条横着的纸色，上下都淡
+function mist(g, w, y, h, a, col) {
+  const c = col || '235,234,226', gr = g.createLinearGradient(0, y, 0, y + h);
+  gr.addColorStop(0, `rgba(${c},0)`); gr.addColorStop(0.55, `rgba(${c},${a})`); gr.addColorStop(1, `rgba(${c},0)`);
+  g.fillStyle = gr; g.fillRect(0, y, w, h);
+}
+// 一团雾（圆的，往外淡）
+function mistBlob(g, x, y, rx, ry, a, col) {
+  g.save(); g.translate(x, y); g.scale(1, ry / rx);
+  const c = col || '235,234,226', gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+  gr.addColorStop(0, `rgba(${c},${a})`); gr.addColorStop(1, `rgba(${c},0)`);
+  g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rx, 0, Math.PI * 2); g.fill(); g.restore();
+}
+// 一座山峰：圆头、两肩往下散开（山水画里的「高远」），墨从山头往下淡；皴笔几道、山头点几个苔点
+function peak(g, cx, by, w, h, alpha, R, o) {
+  o = o || {};
+  const col = o.col, lean = o.lean || 0, sharp = o.sharp || 1.6, n = 26, pts = [];
+  for (let i = 0; i <= n; i++) {
+    const u = i / n, s = Math.sin(Math.PI * u);
+    const prof = Math.pow(s, sharp) * (1 - 0.18 * Math.abs(u - 0.5));
+    const wob = (R() - 0.5) * h * 0.035 + Math.sin(u * 17 + cx) * h * 0.012;
+    pts.push([cx - w / 2 + w * u + lean * h * prof * 0.25, by - h * prof + wob]);
+  }
+  g.beginPath(); g.moveTo(pts[0][0], by + 40);
+  for (const p of pts) g.lineTo(p[0], p[1]);
+  g.lineTo(pts[n][0], by + 40); g.closePath();
+  const gr = g.createLinearGradient(0, by - h, 0, by + 10);
+  gr.addColorStop(0, INK(alpha, col)); gr.addColorStop(0.45, INK(alpha * 0.62, col)); gr.addColorStop(1, INK(0, col));
+  g.fillStyle = gr; g.fill();
+  // 山头一道深一点的轮廓（只描上半截，往下就没了）
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 1; i < n; i++) {
+    const p = pts[i], q = pts[i + 1], top = 1 - (by - p[1]) / h;
+    if (top > 0.55) continue;
+    g.strokeStyle = INK(alpha * (1.1 - top * 1.4), col); g.lineWidth = 1.2 + (1 - top) * 1.6;
+    g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(q[0], q[1]); g.stroke();
+  }
+  // 皴：顺着山势往下的短干笔（短、一组一组的，靠近山头多、往下少）
+  const cun = o.cun == null ? 9 : o.cun;
+  for (let k = 0; k < cun; k++) {
+    const i = 3 + ((R() * (n - 6)) | 0), p = pts[i], side = i < n / 2 ? -1 : 1;
+    const depth = R() * R() * h * 0.5, x0 = p[0] - side * (4 + R() * 10), y0 = p[1] + 6 + depth;
+    for (let j = 0; j < 3; j++) {
+      const len = h * (0.04 + R() * 0.07), xx = x0 - side * j * 5, yy = y0 + j * 3;
+      g.strokeStyle = INK(alpha * (0.35 + R() * 0.35) * (1 - depth / h), col); g.lineWidth = 0.7 + R() * 1.1;
+      g.beginPath(); g.moveTo(xx, yy); g.quadraticCurveTo(xx - side * len * 0.35, yy + len * 0.55, xx - side * len * 0.15, yy + len); g.stroke();
+    }
+  }
+  // 苔点
+  const dots = o.dots == null ? 6 : o.dots;
+  g.fillStyle = INK(Math.min(0.9, alpha * 1.8), col);
+  for (let k = 0; k < dots; k++) {
+    const p = pts[3 + ((R() * (n - 6)) | 0)];
+    g.beginPath(); g.ellipse(p[0] + (R() - 0.5) * 6, p[1] + R() * 5, 1.2 + R() * 1.6, 0.9 + R(), R() * 3, 0, Math.PI * 2); g.fill();
+  }
+  return pts;
+}
+// 松：弯的树干 + 几层扁平的松针团（边上一圈刺）。lean 往哪边歪
+function pine(g, x, y, s, alpha, R, lean, col) {
+  lean = lean || 0;
+  const tx = x + lean * s * 0.45, ty = y - s;
+  g.strokeStyle = INK(alpha, col); g.lineCap = 'round';
+  // 树干（两笔：一粗一细，显得有树皮）
+  for (const [w, off] of [[s * 0.07, 0], [s * 0.03, s * 0.025]]) {
+    g.lineWidth = w; g.beginPath(); g.moveTo(x + off, y);
+    g.bezierCurveTo(x + lean * s * 0.05 + off, y - s * 0.4, tx - lean * s * 0.2, ty + s * 0.35, tx, ty); g.stroke();
+  }
+  // 松针团：一层一层往外伸
+  const tiers = 3 + ((R() * 2) | 0);
+  for (let i = 0; i < tiers; i++) {
+    const u = 0.35 + 0.65 * i / Math.max(1, tiers - 1), px = x + (tx - x) * u, py = y + (ty - y) * u;
+    const dir = i % 2 ? 1 : -1, len = s * (0.42 - 0.18 * u) * (0.8 + R() * 0.5);
+    const cx = px + dir * len * 0.55, cy = py - s * 0.04;
+    g.lineWidth = s * 0.025; g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px + dir * len * 0.3, py - s * 0.06, cx, cy); g.stroke();
+    needles(g, cx, cy, len * 0.75, s * 0.11, alpha, R, col);
+  }
+  needles(g, tx, ty - s * 0.03, s * 0.24, s * 0.1, alpha, R, col);
+}
+// 远处的小松（山脊上那种）：一根短树干 + 几层横着的墨点，底下宽、往上窄
+function dabPine(g, x, y, s, alpha, R, col) {
+  g.strokeStyle = INK(alpha, col); g.lineWidth = Math.max(1, s * 0.07); g.lineCap = 'round';
+  const top = x + (R() - 0.5) * s * 0.12;
+  g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + (R() - 0.5) * s * 0.15, y - s * 0.5, top, y - s); g.stroke();
+  for (let i = 0; i < 4; i++) {
+    const u = 0.32 + i * 0.2, tw = s * (0.46 - i * 0.09), cx = x + (top - x) * u + (R() - 0.5) * s * 0.1, cy = y - s * u;
+    g.fillStyle = INK(alpha * (0.75 + R() * 0.2), col);
+    g.beginPath(); g.ellipse(cx, cy, tw, s * 0.075, (R() - 0.5) * 0.25, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(cx + tw * 0.35, cy - s * 0.035, tw * 0.55, s * 0.05, 0, 0, Math.PI * 2); g.fill();
+  }
+}
+function needles(g, cx, cy, rx, ry, alpha, R, col) {
+  const n = 22;
+  g.fillStyle = INK(alpha * 0.85, col);
+  g.beginPath();
+  for (let i = 0; i <= n; i++) {
+    const a = Math.PI + Math.PI * i / n, spike = i % 2 ? 1 : 0.72 + R() * 0.1;
+    g.lineTo(cx + Math.cos(a) * rx * spike, cy + Math.sin(a) * ry * spike * 1.15);
+  }
+  g.quadraticCurveTo(cx, cy + ry * 0.55, cx - rx * 0.95, cy + ry * 0.05);
+  g.closePath(); g.fill();
+  g.strokeStyle = INK(alpha, col); g.lineWidth = 0.9;
+  for (let i = 0; i < 9; i++) {
+    const a = Math.PI * (1.05 + 0.9 * R()), r0 = rx * 0.3;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0 * 0.4); g.lineTo(cx + Math.cos(a) * rx * 1.08, cy + Math.sin(a) * ry * 1.25); g.stroke();
+  }
+}
+// 一根竹子：一节一节（节上一道深色的环），越往上越细一点
+function bamboo(g, x, yBot, yTop, wd, alpha, R, col, lean) {
+  lean = lean || 0;
+  let y = yBot, i = 0;
+  while (y > yTop) {
+    const seg = 46 + R() * 34, y2 = Math.max(yTop, y - seg), u0 = (yBot - y) / (yBot - yTop + 1), u1 = (yBot - y2) / (yBot - yTop + 1);
+    const x0 = x + lean * (yBot - y), x1 = x + lean * (yBot - y2), w0 = wd * (1 - 0.25 * u0), w1 = wd * (1 - 0.25 * u1);
+    const gr = g.createLinearGradient(x0 - w0 / 2, 0, x0 + w0 / 2, 0);
+    gr.addColorStop(0, INK(alpha * 0.95, col)); gr.addColorStop(0.45, INK(alpha * 0.55, col)); gr.addColorStop(1, INK(alpha * 0.9, col));
+    g.fillStyle = gr;
+    g.beginPath(); g.moveTo(x0 - w0 / 2, y - 1.5); g.lineTo(x1 - w1 / 2, y2 + 2.5); g.lineTo(x1 + w1 / 2, y2 + 2.5); g.lineTo(x0 + w0 / 2, y - 1.5); g.closePath(); g.fill();
+    // 节
+    g.strokeStyle = INK(Math.min(1, alpha * 1.3), col); g.lineWidth = Math.max(1, wd * 0.16);
+    g.beginPath(); g.moveTo(x1 - w1 * 0.62, y2 + 1); g.quadraticCurveTo(x1, y2 + 3.5, x1 + w1 * 0.62, y2 + 1); g.stroke();
+    y = y2 - 1.5; i++;
+  }
+}
+// 竹叶：两头尖的一片（一笔撇出去）
+function bambooLeaf(g, x, y, len, ang, alpha, col) {
+  const c = Math.cos(ang), s = Math.sin(ang), w = len * 0.16;
+  g.fillStyle = INK(alpha, col);
+  g.beginPath(); g.moveTo(x, y);
+  g.quadraticCurveTo(x + c * len * 0.4 - s * w, y + s * len * 0.4 + c * w, x + c * len, y + s * len);
+  g.quadraticCurveTo(x + c * len * 0.45 + s * w * 0.6, y + s * len * 0.45 - c * w * 0.6, x, y);
+  g.fill();
+}
+// 一簇竹叶（个、介字那样往下垂着散开）
+function leafCluster(g, x, y, n, size, alpha, R, col, side) {
+  side = side || (R() < 0.5 ? -1 : 1);
+  g.strokeStyle = INK(alpha * 0.8, col); g.lineWidth = Math.max(0.8, size * 0.03);
+  g.beginPath(); g.moveTo(x, y); g.lineTo(x + side * size * 0.5, y + size * 0.12); g.stroke();
+  for (let i = 0; i < n; i++) {
+    const ang = Math.PI / 2 + side * (0.25 + i * 0.32 + R() * 0.25) + (R() - 0.5) * 0.3;
+    bambooLeaf(g, x + side * size * 0.45 * (i / n), y + size * 0.12 * (i / n), size * (0.7 + R() * 0.45), ang, alpha * (0.75 + R() * 0.25), col);
+  }
+}
+function birds(g, list, col) {
+  g.strokeStyle = col || 'rgba(23,24,26,.55)'; g.lineWidth = 1.6; g.lineCap = 'round';
+  for (const [x, y, s] of list) {
+    g.beginPath(); g.moveTo(x - 9 * s, y - 2 * s); g.quadraticCurveTo(x - 4 * s, y - 6 * s, x, y); g.quadraticCurveTo(x + 4 * s, y - 6 * s, x + 9 * s, y - 3 * s); g.stroke();
+  }
+}
+// 地线：几遍深浅粗细不同的墨线叠出来
+function floorLine(g, x0, x1, y, R, col, w) {
+  w = w || 1;
+  for (let pass = 0; pass < 4; pass++) {
+    g.strokeStyle = INK([0.7, 0.3, 0.18, 0.12][pass], col); g.lineWidth = [3, 6, 1.5, 9][pass] * w;
+    g.beginPath(); let yy = y + pass * 1.2; g.moveTo(x0, yy);
+    for (let x = x0; x <= x1; x += 30) { yy = y + pass * 1.4 + (R() - 0.5) * 2.2; g.lineTo(x, yy); }
+    g.stroke();
+  }
+}
+function grassTufts(g, x0, x1, y, n, R, a) {
+  g.strokeStyle = INK(a || 0.35); g.lineWidth = 1.2; g.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const x = x0 + R() * (x1 - x0), h = 4 + R() * 9;
+    g.beginPath(); g.moveTo(x, y + 1); g.quadraticCurveTo(x + 2, y - h * 0.6, x + 5 * (R() - 0.3), y - h); g.stroke();
+  }
+}
+function pebbles(g, x0, x1, y, n, R, a) {
+  g.fillStyle = INK(a || 0.22);
+  for (let i = 0; i < n; i++) { const x = x0 + R() * (x1 - x0), w = 3 + R() * 6; g.beginPath(); g.ellipse(x, y + 4 + R() * 40, w, w * 0.45, 0, 0, Math.PI * 2); g.fill(); }
+}
+// 场地两头的木桩（墙在哪）：一根歪着的旧木桩，缠一道朱红绳
+function wallPost(g, x, y, lean) {
+  g.save(); g.translate(x, y + 2); g.rotate(lean);
+  g.fillStyle = 'rgba(23,24,26,.82)';
+  g.beginPath(); g.moveTo(-6, 0); g.lineTo(-4.5, -78); g.quadraticCurveTo(0, -84, 4.5, -79); g.lineTo(6, 0); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(235,234,226,.35)'; g.lineWidth = 1;
+  for (let j = 0; j < 4; j++) { g.beginPath(); g.moveTo(-2 + j * 1.4, -6 - j * 9); g.lineTo(-1 + j * 1.2, -40 - j * 8); g.stroke(); }
+  g.fillStyle = 'rgba(184,50,29,.85)'; g.fillRect(-6.5, -62, 13, 4); g.fillRect(-6.5, -55, 13, 2.5);
+  g.strokeStyle = 'rgba(184,50,29,.8)'; g.lineWidth = 1.6;
+  g.beginPath(); g.moveTo(5, -58); g.quadraticCurveTo(12, -50, 9 + lean * 60, -38); g.stroke();
+  g.restore();
+  g.strokeStyle = 'rgba(23,24,26,.45)'; g.lineWidth = 1.3;
+  for (let j = 0; j < 5; j++) { const gx = x + (j - 2) * 6; g.beginPath(); g.moveTo(gx, y + 1); g.quadraticCurveTo(gx + 1, y - 8, gx + (j - 2) * 2.5, y - 14 - (j % 2) * 5); g.stroke(); }
+}
+
+/* ---------- 四张图 ----------
+   远景 / 中景的 L：{ w, h, fy（地线在这一层里的高度）, R }，画面坐标（1 = 画面上一个逻辑像素）；
+   地面的 L：{ x0, x1, R }，直接用场地坐标画（地线 y = FLOOR） */
+const STAGES = {
+  /* 朱日远山（1.0 起的那张，2.0 重画大了、去掉右边的「以武会友」和「斗」）：纸、朱红的太阳、两道远山、山雾、飞鸟 */
+  sun: {
+    name: '朱日远山', pick: true, paper: '#ebeae2',
+    far(g, L) {
+      const { w, fy, R } = L;
+      paperFill(g, w, L.h, C.paper, R);
+      const sx = w * 0.58, sy = fy - 352;
+      g.fillStyle = 'rgba(184,50,29,.13)'; g.beginPath(); g.arc(sx, sy, 58, 0, Math.PI * 2); g.fill();
+      g.fillStyle = 'rgba(184,50,29,.06)'; g.beginPath(); g.arc(sx, sy, 74, 0, Math.PI * 2); g.fill();
+      for (let i = 0; i < 4; i++) mistBlob(g, w * (0.15 + 0.23 * i) + R() * 60, fy - 300 - R() * 120, 150 + R() * 90, 22 + R() * 12, 0.5);
+      ridge(g, w, fy - 160, 70, 0.10, 3, 0.006);
+      birds(g, [[-92, 120, 1], [-62, 104, .8], [-70, 138, .7], [-122, 150, .6], [260, 92, .55], [282, 82, .45]].map(([dx, y, s]) => [sx + dx, fy - 520 + y, s]));
+    },
+    mid(g, L) {
+      const { w, fy, R } = L;
+      ridge(g, w, fy - 110, 60, 0.16, 11, 0.009);
+      mist(g, w, fy - 125, 80, 0.75);
+      ridge(g, w, fy - 34, 34, 0.2, 23, 0.012);
+      // 近处山脊上稀稀拉拉几棵小松
+      for (let i = 0; i < 12; i++) { const x = 60 + R() * (w - 120); dabPine(g, x, fy - 36 - R() * 24, 22 + R() * 16, 0.34, R); }
+    },
+    ground(g, L) {
+      const { x0, x1, R } = L, GW = x1 - x0;
+      const fg = g.createLinearGradient(0, FLOOR, 0, FLOOR + GDN);
+      fg.addColorStop(0, 'rgba(70,72,66,.16)'); fg.addColorStop(1, 'rgba(70,72,66,.03)');
+      g.fillStyle = fg; g.fillRect(x0, FLOOR, GW, GDN);
+      floorLine(g, x0, x1, FLOOR, R);
+      grassTufts(g, x0, x1, FLOOR, Math.round(26 * GW / W), R);
+      pebbles(g, x0, x1, FLOOR, Math.round(14 * GW / W), R);
+      wallPost(g, WALL_L - 30, FLOOR, -0.06); wallPost(g, WALL_R + 30, FLOOR, 0.06);
+    },
+  },
+
+  /* 松崖飞瀑：远处一排淡淡的高峰、云雾；中景一面大崖，崖缝里一道瀑布落进雾里，崖上松树伸出来；
+     脚下是一块青石台子（地线下面是石台的正面，有裂纹、有苔），场地两头各一棵小松 */
+  falls: {
+    name: '松崖飞瀑', pick: true, paper: '#dedfda',
+    far(g, L) {
+      const { w, fy, R } = L;
+      paperFill(g, w, L.h, '#e9e8df', R);
+      const sky = g.createLinearGradient(0, 0, 0, fy);
+      sky.addColorStop(0, 'rgba(120,128,126,.10)'); sky.addColorStop(0.6, 'rgba(120,128,126,0)');
+      g.fillStyle = sky; g.fillRect(0, 0, w, fy);
+      // 远峰：两排，后面的更淡
+      for (let i = 0; i < 9; i++) peak(g, w * (i + 0.3 + R() * 0.4) / 9, fy - 70, 150 + R() * 110, 230 + R() * 170, 0.08, R, { sharp: 1.9, lean: (R() - 0.5) * 0.6, cun: 4, dots: 3 });
+      mist(g, w, fy - 230, 120, 0.8);
+      for (let i = 0; i < 7; i++) peak(g, w * (i + 0.1 + R() * 0.8) / 7, fy - 40, 190 + R() * 120, 170 + R() * 140, 0.13, R, { sharp: 1.5, lean: (R() - 0.5) * 0.5, cun: 7 });
+      for (let i = 0; i < 6; i++) mistBlob(g, R() * w, fy - 120 - R() * 200, 160 + R() * 120, 24 + R() * 16, 0.75);
+      birds(g, [[w * 0.32, fy - 400, 0.7], [w * 0.34, fy - 386, 0.55], [w * 0.31, fy - 372, 0.5]], 'rgba(23,24,26,.4)');
+    },
+    mid(g, L) {
+      const { w, fy, R } = L;
+      // 几面崖：左边一面大的带瀑布，右边两面小一点的石柱（按镜头能看到的那一段摆：中间左右各 ±700 以内）
+      const c = w / 2;
+      const cliffs = [[c - 430, 310, 520, true], [c + 290, 150, 320, false], [c + 600, 210, 440, false], [c - 760, 180, 380, false]];
+      for (const [cx, cw, ch, fall] of cliffs) {
+        const pts = peak(g, cx, fy - 20, cw, ch, 0.42, R, { sharp: 0.7, lean: (R() - 0.5) * 0.4, cun: 26, dots: 14 });
+        // 崖壁：竖着几道深的裂缝
+        g.lineCap = 'round';
+        for (let k = 0; k < 10; k++) {
+          const x = cx - cw * 0.4 + R() * cw * 0.8, top = fy - 20 - ch * (0.3 + R() * 0.55);
+          g.strokeStyle = INK(0.18 + R() * 0.2); g.lineWidth = 1 + R() * 1.6;
+          g.beginPath(); g.moveTo(x, top); g.quadraticCurveTo(x + (R() - 0.5) * 20, top + 40, x + (R() - 0.5) * 14, top + 60 + R() * 70); g.stroke();
+        }
+        if (fall) {
+          // 瀑布：从崖顶下面一点的缺口落下来，白的一条（纸色），两边描几道墨，越往下越宽、散成雾
+          const fx = cx + cw * 0.08, top = fy - 20 - ch * 0.78;
+          const gr = g.createLinearGradient(0, top, 0, fy - 30);
+          gr.addColorStop(0, 'rgba(244,243,236,.96)'); gr.addColorStop(0.85, 'rgba(244,243,236,.9)'); gr.addColorStop(1, 'rgba(244,243,236,0)');
+          g.fillStyle = gr;
+          g.beginPath(); g.moveTo(fx - 9, top); g.quadraticCurveTo(fx - 14, (top + fy) / 2, fx - 22, fy - 30); g.lineTo(fx + 24, fy - 30); g.quadraticCurveTo(fx + 15, (top + fy) / 2, fx + 10, top); g.closePath(); g.fill();
+          g.strokeStyle = INK(0.28); g.lineWidth = 1.1;
+          for (const s of [-1, 1]) { g.beginPath(); g.moveTo(fx + s * 10, top); g.quadraticCurveTo(fx + s * 15, (top + fy) / 2, fx + s * 23, fy - 40); g.stroke(); }
+          g.strokeStyle = 'rgba(160,166,164,.35)'; g.lineWidth = 0.8;
+          for (let k = 0; k < 7; k++) { const x = fx - 6 + k * 2.2 + R() * 2; g.beginPath(); g.moveTo(x, top + 10 + R() * 30); g.lineTo(x + (x - fx) * 0.6, fy - 50 - R() * 60); g.stroke(); }
+          for (let k = 0; k < 5; k++) mistBlob(g, fx + (R() - 0.5) * 90, fy - 40 - R() * 30, 70 + R() * 50, 26 + R() * 10, 0.85, '244,243,236');
+        }
+        // 崖上的松：从崖边斜着伸出来
+        const n = fall ? 3 : 1 + ((R() * 2) | 0);
+        for (let k = 0; k < n; k++) {
+          const p = pts[5 + ((R() * 16) | 0)], side = p[0] < cx ? -1 : 1;
+          pine(g, p[0], p[1] + 6, 40 + R() * 34, 0.62, R, side * (0.6 + R() * 0.6));
+          for (let j = 0; j < 3; j++) { const q = pts[4 + ((R() * 18) | 0)]; dabPine(g, q[0], q[1] + 4, 14 + R() * 10, 0.45, R); }
+        }
+      }
+      // 崖脚的雾
+      mist(g, w, fy - 120, 110, 0.7, '240,239,232');
+    },
+    ground(g, L) {
+      const { x0, x1, R } = L, GW = x1 - x0;
+      // 石台的正面：上面一道厚的边，往下是石头，墨往下淡
+      const fg = g.createLinearGradient(0, FLOOR, 0, FLOOR + GDN);
+      fg.addColorStop(0, 'rgba(60,64,62,.34)'); fg.addColorStop(0.35, 'rgba(60,64,62,.16)'); fg.addColorStop(1, 'rgba(60,64,62,.05)');
+      g.fillStyle = fg; g.fillRect(x0, FLOOR, GW, GDN);
+      // 石块的缝：横着的层理 + 竖着的裂
+      g.lineCap = 'round';
+      for (let i = 0; i < 46 * GW / W; i++) {
+        const x = x0 + R() * GW, y = FLOOR + 10 + R() * (GDN - 30), len = 20 + R() * 60;
+        g.strokeStyle = INK(0.1 + R() * 0.18); g.lineWidth = 0.8 + R() * 1.4;
+        g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + len * 0.5, y + (R() - 0.5) * 8, x + len, y + (R() - 0.5) * 6); g.stroke();
+      }
+      for (let i = 0; i < 14 * GW / W; i++) {
+        const x = x0 + R() * GW, y = FLOOR + 4;
+        g.strokeStyle = INK(0.18 + R() * 0.2); g.lineWidth = 1 + R();
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 12, y + 14 + R() * 20); g.lineTo(x + (R() - 0.5) * 20, y + 30 + R() * 40); g.stroke();
+      }
+      floorLine(g, x0, x1, FLOOR, R, null, 1.25);
+      // 台面上的苔点、小石子、草
+      g.fillStyle = INK(0.5);
+      for (let i = 0; i < 40 * GW / W; i++) { const x = x0 + R() * GW; g.beginPath(); g.ellipse(x, FLOOR - 1 + R() * 3, 1 + R() * 2, 0.8 + R(), 0, 0, Math.PI * 2); g.fill(); }
+      grassTufts(g, x0, x1, FLOOR, Math.round(14 * GW / W), R, 0.3);
+      // 场地两头：各一棵从石缝里长出来的小松
+      pine(g, WALL_L - 34, FLOOR + 2, 120, 0.82, R, -0.7);
+      pine(g, WALL_R + 34, FLOOR + 2, 128, 0.82, R, 0.7);
+      for (const x of [WALL_L - 34, WALL_R + 34]) { g.fillStyle = INK(0.55); g.beginPath(); g.ellipse(x, FLOOR + 3, 22, 7, 0, 0, Math.PI * 2); g.fill(); }
+    },
+  },
+
+  /* 竹林夜月：夜里，天上一层淡墨，一轮大月亮；远处一层淡淡的竹影，中景一片竹林垂着竹叶；
+     脚下是土路、落了些竹叶；场地两头各几根顶天的竹子（每帧现画：太高，放不进地面那一层） */
+  bamboo: {
+    name: '竹林夜月', pick: true, paper: '#9a9e9e',
+    far(g, L) {
+      const { w, fy, R } = L;
+      paperFill(g, w, L.h, '#e4e4dc', R, 'rgba(110,112,104,.06)');
+      const night = g.createLinearGradient(0, 0, 0, fy);
+      night.addColorStop(0, 'rgba(34,42,56,.40)'); night.addColorStop(0.55, 'rgba(34,42,56,.20)'); night.addColorStop(1, 'rgba(34,42,56,.06)');
+      g.fillStyle = night; g.fillRect(0, 0, w, L.h);
+      // 月亮：先把天上那一块洗亮（光晕），再画月亮
+      const mx = w * 0.64, my = fy - 330, mr = 62;
+      mistBlob(g, mx, my, 230, 230, 0.55, '236,236,228');
+      mistBlob(g, mx, my, 120, 120, 0.6, '244,243,236');
+      g.fillStyle = 'rgba(248,247,240,.97)'; g.beginPath(); g.arc(mx, my, mr, 0, Math.PI * 2); g.fill();
+      // 月面：几块很淡的影子，偏在一边（别对称，不然像张脸）
+      g.fillStyle = 'rgba(196,198,190,.16)';
+      for (const [dx, dy, rx, ry, a] of [[0.28, -0.18, 0.32, 0.2, 0.5], [0.12, 0.34, 0.26, 0.14, -0.3], [-0.42, 0.12, 0.14, 0.24, 0.2]]) {
+        g.beginPath(); g.ellipse(mx + dx * mr, my + dy * mr, rx * mr, ry * mr, a, 0, Math.PI * 2); g.fill();
+      }
+      // 月前一缕云
+      for (let i = 0; i < 3; i++) mistBlob(g, mx - 40 + i * 50, my + 30 + i * 6, 110, 10, 0.5, '214,216,210');
+      // 远处竹影：细细的、很淡，一片一片
+      for (let i = 0; i < 70 * w / 1200; i++) {
+        const x = R() * w, top = fy - 260 - R() * 260;
+        bamboo(g, x, fy + 40, top, 3 + R() * 3, 0.07 + R() * 0.05, R, '34,42,56', (R() - 0.5) * 0.04);
+      }
+      mist(g, w, fy - 150, 150, 0.55, '226,228,222');
+    },
+    mid(g, L) {
+      const { w, fy, R } = L;
+      // 中景竹林：灰一点、粗一点；竹叶都在高处，垂下来（人打架的那一截干净，看得清人）
+      const n = Math.round(20 * w / 1200);
+      for (let i = 0; i < n; i++) {
+        const x = (i + 0.2 + R() * 0.6) * w / n, wd = 6 + R() * 5, a = 0.15 + R() * 0.12, top = -40 - R() * 120;
+        bamboo(g, x, fy + 30, top, wd, a, R, '30,34,40', (R() - 0.5) * 0.03);
+        const k = 1 + ((R() * 3) | 0);
+        for (let j = 0; j < k; j++) leafCluster(g, x + (R() - 0.5) * 6, fy - 330 - R() * 260, 4 + ((R() * 3) | 0), 34 + R() * 18, a * 1.3, R, '30,34,40');
+      }
+      // 竹林脚下的雾
+      mist(g, w, fy - 70, 90, 0.6, '226,228,222');
+      // 几只萤火（亮点）
+      for (let i = 0; i < 16 * w / 1200; i++) { mistBlob(g, R() * w, fy - 40 - R() * 200, 6, 6, 0.6, '250,240,190'); }
+    },
+    ground(g, L) {
+      const { x0, x1, R } = L, GW = x1 - x0;
+      const fg = g.createLinearGradient(0, FLOOR, 0, FLOOR + GDN);
+      fg.addColorStop(0, 'rgba(56,58,58,.30)'); fg.addColorStop(1, 'rgba(56,58,58,.08)');
+      g.fillStyle = fg; g.fillRect(x0, FLOOR, GW, GDN);
+      floorLine(g, x0, x1, FLOOR, R, '30,32,36');
+      // 落叶：地上横七竖八几片竹叶；路边几个笋、小石子
+      for (let i = 0; i < 60 * GW / W; i++) {
+        const x = x0 + R() * GW, y = FLOOR + 2 + R() * (GDN - 40);
+        bambooLeaf(g, x, y, 10 + R() * 10, (R() - 0.5) * 0.6 + (R() < 0.5 ? 0 : Math.PI), 0.25 + R() * 0.25, '30,32,36');
+      }
+      for (let i = 0; i < 10 * GW / W; i++) bambooLeaf(g, x0 + R() * GW, FLOOR - 1, 9 + R() * 7, (R() < 0.5 ? 0.1 : Math.PI - 0.1), 0.5, '30,32,36');
+      pebbles(g, x0, x1, FLOOR, Math.round(10 * GW / W), R, 0.25);
+      for (const x of [WALL_L - 50, WALL_L - 18, WALL_R + 18, WALL_R + 50]) {          // 竹根、笋
+        g.fillStyle = INK(0.7, '30,32,36'); g.beginPath(); g.moveTo(x - 7, FLOOR + 2); g.quadraticCurveTo(x - 4, FLOOR - 16, x, FLOOR - 24); g.quadraticCurveTo(x + 4, FLOOR - 16, x + 7, FLOOR + 2); g.closePath(); g.fill();
+      }
+    },
+    // 场地两头顶天的竹子：每帧现画（场地坐标，和人一起缩放）
+    near(ctx) {
+      const R = seeded(77);
+      for (const [x0, side] of [[WALL_L - 70, -1], [WALL_R + 70, 1]]) {
+        for (let i = 0; i < 3; i++) {
+          const x = x0 + side * i * 26 - side * 14 * R(), wd = 13 - i * 2 + R() * 2;
+          bamboo(ctx, x, FLOOR + 4, FLOOR - 900, wd, 0.86 - i * 0.12, R, '24,26,30', -side * (0.006 + R() * 0.01));
+          for (let j = 0; j < 4; j++) leafCluster(ctx, x - side * 0.01 * (j * 120 + 200), FLOOR - 240 - j * 110 - R() * 50, 5, 34 + R() * 12, 0.8 - i * 0.1, R, '24,26,30', -side);
+        }
+      }
+    },
+  },
+
+  /* 练武场（打桩专用）：粉墙黛瓦的院墙、墙上一道月亮门（门里看得见远处的山和塔）、兵器架、两个木人桩、一面鼓、一面旗；
+     地上是方砖，场地两头是绑着红绳的旧木桩。线条规整一点，和山水那几张不一样 */
+  yard: {
+    name: '练武场', train: true, paper: '#ece9df',
+    far(g, L) {
+      const { w, fy, R } = L;
+      paperFill(g, w, L.h, '#ece9df', R);
+      ridge(g, w, fy - 150, 60, 0.09, 31, 0.005);
+      // 远处一座塔，雾里
+      const px = w * 0.5, base = fy - 120;
+      g.fillStyle = INK(0.13);
+      for (let i = 0; i < 7; i++) {
+        const y = base - i * 30, ww = 46 - i * 4;
+        g.fillRect(px - ww / 2 + 6, y - 22, ww - 12, 22);
+        g.beginPath(); g.moveTo(px - ww / 2 - 8, y - 20); g.quadraticCurveTo(px, y - 30, px + ww / 2 + 8, y - 20); g.lineTo(px + ww / 2 - 2, y - 26); g.quadraticCurveTo(px, y - 33, px - ww / 2 + 2, y - 26); g.closePath(); g.fill();
+      }
+      g.fillRect(px - 1.5, base - 7 * 30 - 30, 3, 26);
+      mist(g, w, fy - 200, 150, 0.7);
+      ridge(g, w, fy - 70, 40, 0.12, 37, 0.008);
+    },
+    mid(g, L) {
+      const { w, fy, R } = L;
+      const top = fy - 160, cap = 22;
+      // 院墙：白墙，下面一道淡淡的水渍；上面一溜黛瓦
+      const wall = g.createLinearGradient(0, top, 0, fy);
+      wall.addColorStop(0, 'rgba(246,245,238,1)'); wall.addColorStop(0.75, 'rgba(236,235,226,1)'); wall.addColorStop(1, 'rgba(206,204,194,1)');
+      g.fillStyle = wall; g.fillRect(0, top, w, fy - top + 40);
+      g.fillStyle = 'rgba(120,122,112,.08)';
+      for (let i = 0; i < 30 * w / 1200; i++) { const x = R() * w; g.beginPath(); g.ellipse(x, fy - 10 - R() * 30, 30 + R() * 60, 8 + R() * 16, 0, 0, Math.PI * 2); g.fill(); }
+      g.strokeStyle = INK(0.25); g.lineWidth = 1.2; g.beginPath(); g.moveTo(0, top + 6); g.lineTo(w, top + 6); g.stroke();
+      // 月亮门：在墙上挖一个圆洞（透过去看得见远景），再描一圈门框
+      const c = w / 2, gates = [c, c - 560, c + 560];
+      for (const gx of gates) {
+        const gy = fy - 64, gr = 66;
+        g.save(); g.globalCompositeOperation = 'destination-out';
+        g.beginPath(); g.arc(gx, gy, gr, 0, Math.PI * 2); g.rect(gx - gr * 0.72, gy, gr * 1.44, 80); g.fill();
+        g.restore();
+        g.strokeStyle = INK(0.5); g.lineWidth = 5; g.beginPath(); g.arc(gx, gy, gr + 2, Math.PI * 0.82, Math.PI * 2.18); g.stroke();
+        g.strokeStyle = INK(0.2); g.lineWidth = 2; g.beginPath(); g.arc(gx, gy, gr + 9, Math.PI * 0.86, Math.PI * 2.14); g.stroke();
+      }
+      // 瓦檐
+      g.fillStyle = INK(0.78); g.fillRect(0, top - cap * 0.55, w, cap * 0.55);
+      g.beginPath(); g.moveTo(0, top - cap * 0.55); g.lineTo(w, top - cap * 0.55); g.lineTo(w, top - cap); g.lineTo(0, top - cap); g.closePath(); g.fillStyle = INK(0.62); g.fill();
+      g.fillStyle = INK(0.85);
+      for (let x = 0; x < w; x += 13) { g.beginPath(); g.arc(x + 6.5, top + 1, 6, 0, Math.PI); g.fill(); }
+      g.fillStyle = INK(0.9); g.fillRect(0, top - cap - 5, w, 6);
+      // 兵器架：两根柱子一根横梁，斜靠几杆枪、棍（枪头下一撮红缨）
+      for (const rx of [c - 300, c + 330]) {
+        g.strokeStyle = 'rgba(74,52,34,.85)'; g.lineWidth = 5; g.lineCap = 'round';
+        for (const s of [-1, 1]) { g.beginPath(); g.moveTo(rx + s * 58, fy); g.lineTo(rx + s * 58, fy - 104); g.stroke(); }
+        g.lineWidth = 4; g.beginPath(); g.moveTo(rx - 66, fy - 96); g.lineTo(rx + 66, fy - 96); g.stroke();
+        g.beginPath(); g.moveTo(rx - 66, fy - 40); g.lineTo(rx + 66, fy - 40); g.stroke();
+        for (let k = 0; k < 6; k++) {
+          const x = rx - 48 + k * 19, lean = 0.08 + R() * 0.05, len = 150 + R() * 40, spear = k % 2 === 0;
+          const tx = x + lean * len, ty = fy - len;
+          g.strokeStyle = 'rgba(58,42,30,.9)'; g.lineWidth = 2.6; g.beginPath(); g.moveTo(x, fy - 2); g.lineTo(tx, ty); g.stroke();
+          if (spear) {
+            g.fillStyle = INK(0.85); g.beginPath(); g.moveTo(tx - 3, ty + 2); g.lineTo(tx + lean * 22, ty - 20); g.lineTo(tx + 3, ty + 2); g.closePath(); g.fill();
+            g.fillStyle = 'rgba(184,50,29,.85)'; g.beginPath(); g.moveTo(tx, ty + 2); g.quadraticCurveTo(tx - 9, ty + 14, tx - 3, ty + 20); g.quadraticCurveTo(tx + 6, ty + 14, tx, ty + 2); g.fill();
+          }
+        }
+      }
+      // 木人桩：一根粗木桩，上面两条斜伸的手臂、中间一条、下面一条腿
+      for (const mx of [c - 150, c + 170, c - 430, c + 450]) {
+        g.fillStyle = 'rgba(70,48,30,.9)';
+        g.beginPath(); g.moveTo(mx - 11, fy); g.lineTo(mx - 10, fy - 128); g.quadraticCurveTo(mx, fy - 136, mx + 10, fy - 128); g.lineTo(mx + 11, fy); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(70,48,30,.9)'; g.lineWidth = 5; g.lineCap = 'round';
+        for (const [y, dx, dy] of [[-104, 30, -6], [-104, -26, -8], [-82, 34, 4]]) { g.beginPath(); g.moveTo(mx + Math.sign(dx) * 8, fy + y); g.lineTo(mx + dx, fy + y + dy); g.stroke(); }
+        g.lineWidth = 6; g.beginPath(); g.moveTo(mx + 8, fy - 46); g.quadraticCurveTo(mx + 30, fy - 40, mx + 28, fy - 14); g.stroke();
+        g.strokeStyle = 'rgba(235,234,226,.25)'; g.lineWidth = 1;
+        for (let j = 0; j < 5; j++) { g.beginPath(); g.moveTo(mx - 4 + j * 2, fy - 10 - j * 20); g.lineTo(mx - 3 + j * 2, fy - 30 - j * 20); g.stroke(); }
+      }
+      // 鼓
+      for (const dx of [c - 700, c + 720]) {
+        g.strokeStyle = 'rgba(58,42,30,.9)'; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(dx - 30, fy); g.lineTo(dx - 10, fy - 60); g.moveTo(dx + 30, fy); g.lineTo(dx + 10, fy - 60); g.stroke();
+        g.fillStyle = 'rgba(160,44,26,.85)'; g.beginPath(); g.ellipse(dx, fy - 70, 34, 26, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(236,230,214,.9)'; g.beginPath(); g.ellipse(dx, fy - 70, 8, 24, 0, 0, Math.PI * 2); g.fill();
+        g.strokeStyle = INK(0.6); g.lineWidth = 1.5; g.beginPath(); g.ellipse(dx, fy - 70, 34, 26, 0, 0, Math.PI * 2); g.stroke();
+      }
+      // 旗：一根旗杆，挂一面长条红旗，下边一排穗
+      for (const fx of [c - 520, c + 600]) {
+        g.strokeStyle = 'rgba(58,42,30,.95)'; g.lineWidth = 3.5; g.beginPath(); g.moveTo(fx, fy); g.lineTo(fx, fy - 330); g.stroke();
+        g.fillStyle = INK(0.85); g.beginPath(); g.arc(fx, fy - 334, 5, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(176,46,28,.82)';
+        g.beginPath(); g.moveTo(fx + 2, fy - 322); g.lineTo(fx + 58, fy - 316); g.quadraticCurveTo(fx + 52, fy - 250, fx + 60, fy - 180); g.lineTo(fx + 2, fy - 186); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(176,46,28,.8)'; g.lineWidth = 1.2;
+        for (let k = 0; k < 9; k++) { const x = fx + 4 + k * 6.5; g.beginPath(); g.moveTo(x, fy - 184 + k * 0.6); g.lineTo(x + 1, fy - 172 + k * 0.6); g.stroke(); }
+        g.strokeStyle = 'rgba(23,24,26,.45)'; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(fx + 8, fy - 314); g.lineTo(fx + 50, fy - 309); g.quadraticCurveTo(fx + 45, fy - 250, fx + 52, fy - 192); g.lineTo(fx + 8, fy - 196); g.stroke();
+      }
+    },
+    ground(g, L) {
+      const { x0, x1, R } = L, GW = x1 - x0;
+      g.fillStyle = 'rgba(214,210,198,.55)'; g.fillRect(x0, FLOOR, GW, GDN);
+      // 方砖：越往下（越近）砖越高；竖缝错开
+      g.strokeStyle = INK(0.22); g.lineWidth = 1.2;
+      let y = FLOOR + 10, hh = 12, row = 0;
+      while (y < FLOOR + GDN) {
+        g.beginPath(); g.moveTo(x0, y); g.lineTo(x1, y); g.stroke();
+        const ww = 58 + row * 10, off = row % 2 ? ww / 2 : 0;
+        for (let x = x0 - off; x < x1; x += ww) {
+          g.beginPath(); g.moveTo(x, y - hh + 1); g.lineTo(x + (x - (x0 + x1) / 2) * 0.01, y - 1); g.stroke();
+        }
+        row++; hh = 12 + row * 6; y += hh;
+      }
+      g.fillStyle = INK(0.06);
+      for (let i = 0; i < 26 * GW / W; i++) { const x = x0 + R() * GW; g.fillRect(x, FLOOR + 4 + R() * 120, 20 + R() * 40, 4 + R() * 8); }
+      floorLine(g, x0, x1, FLOOR, R, null, 0.9);
+      pebbles(g, x0, x1, FLOOR, Math.round(6 * GW / W), R, 0.16);
+      wallPost(g, WALL_L - 30, FLOOR, -0.04); wallPost(g, WALL_R + 30, FLOOR, 0.04);
+    },
+  },
+};
+const STAGE_PICK = Object.keys(STAGES).filter(k => STAGES[k].pick);
+
+/* ---------- 场景管理：选哪张、按屏幕分辨率画成离屏图、每帧贴上去 ---------- */
+const Stage = {
+  pref: 'sun',                 // 人机 / 双人用的（菜单里选，存在 localStorage「modou.stage」）
+  online: 'sun',               // 联机：房主选的（net.js 同步过来）
+  id: null, layers: null, built: null, pending: 0,
+  load() { try { const v = localStorage.getItem('modou.stage'); if (STAGE_PICK.includes(v)) this.pref = v; } catch (e) {} },
+  setPref(id) { if (!STAGE_PICK.includes(id)) return; this.pref = id; try { localStorage.setItem('modou.stage', id); } catch (e) {} },
+  // 这一局用哪张：打桩 = 练武场；联机 = 房主选的；别的 = 自己选的
+  forMode(mode) { return mode === 'train' ? 'yard' : mode === 'online' ? this.online : this.pref; },
+  // 需要的分辨率（逻辑像素 → 屏幕物理像素）：远景、中景按画面缩放；地面还要乘上镜头放大
+  want(view) {
+    const k = view.scale * view.pxr;
+    return { back: clamp(k, 0.6, 2), ground: clamp(k * view.zmax, 1, 3.4), vw: view.vw, fy: view.fy, vh: view.vh };
+  },
+  // 每帧调：场景换了、分辨率差得多了就重画（窗口一直在拖时先用旧图拉伸，停下来再画清楚）
+  use(id, view) {
+    const w = this.want(view), b = this.built;
+    const stale = !b || b.id !== id || Math.abs(w.back / b.back - 1) > 0.12 || Math.abs(w.ground / b.ground - 1) > 0.12 || w.fy + 60 > b.top || w.vw > b.vw + 1;
+    if (!stale) return;
+    if (!b || b.id !== id || !this.layers) { this.build(id, w); return; }
+    clearTimeout(this.pending);
+    this.pending = setTimeout(() => this.build(id, this.want(view)), 180);
+  },
+  build(id, w) {
+    const S = STAGES[id] || STAGES.sun, R = n => seeded(n * 7919 + id.length * 131);
+    const top = Math.ceil(Math.max(w.fy, 520) + 70);               // 地线以上画多高（盖住画面最上面，再加一点镜头上抬的余量）
+    const vw = Math.max(w.vw, W);
+    const mk = (lw, lh, res, paint, seed) => {
+      const c = document.createElement('canvas');
+      c.width = Math.ceil(lw * res); c.height = Math.ceil(lh * res);
+      const g = c.getContext('2d'); g.scale(res, res);
+      paint(g, { w: lw, h: lh, fy: top, R: R(seed) });
+      c.lw = lw; c.lh = lh;
+      return c;
+    };
+    const farW = Math.ceil(vw + 160 + STAGE_W * PAR_FAR), midW = Math.ceil(vw + 160 + STAGE_W * PAR_MID), lh = top + SKY_BELOW;
+    const far = mk(farW, lh, w.back * 0.85, S.far, 1);
+    const mid = S.mid ? mk(midW, lh, w.back, S.mid, 2) : null;
+    const GW = STAGE_W - 2 * GX0, GH = GUP + GDN;
+    const gc = document.createElement('canvas');
+    gc.width = Math.ceil(GW * w.ground); gc.height = Math.ceil(GH * w.ground);
+    const gg = gc.getContext('2d'); gg.scale(w.ground, w.ground); gg.translate(-GX0, GUP - FLOOR);
+    S.ground(gg, { x0: GX0, x1: STAGE_W - GX0, R: R(3) });
+    this.layers = { far, mid, ground: gc, near: S.near || null };
+    this.built = { id, back: w.back, ground: w.ground, top, vw };
+    this.id = id;
+  },
+  // 远景、中景：画面坐标。地线对齐画面上的地线 fy（lift = 镜头上抬了多少，画面像素），按视差左右挪
+  drawBack(ctx, camX, view, lift) {
+    const L = this.layers;
+    ctx.fillStyle = (STAGES[this.id] || STAGES.sun).paper || C.paper;
+    ctx.fillRect(-20, -20, view.vw + 40, view.vh + 40);
+    if (!L) return;
+    const top = this.built.top;
+    for (const [c, par, py] of [[L.far, PAR_FAR, 0.25], [L.mid, PAR_MID, 0.5]]) {
+      if (!c) continue;
+      const x = view.vw / 2 - c.lw / 2 - (camX - STAGE_W / 2) * par, y = view.fy + lift * py - top;
+      ctx.drawImage(c, x, y, c.lw, c.lh);
+    }
+  },
+  // 地面：场地坐标（在镜头的变换里画）
+  drawGround(ctx) {
+    const L = this.layers;
+    if (!L) return;
+    ctx.drawImage(L.ground, GX0, FLOOR - GUP, STAGE_W - 2 * GX0, GUP + GDN);
+    if (L.near) L.near(ctx);
+  },
+  // 选场景按钮上的小图：远景 + 中景缩小画一张（只画一次，存起来）
+  thumbs: {},
+  thumb(id, tw, th) {
+    const key = id + tw + 'x' + th;
+    if (this.thumbs[key]) return this.thumbs[key];
+    const S = STAGES[id], LH = 560, k = th / LH, lw = Math.ceil(tw / k), top = LH * 0.88;
+    const c = document.createElement('canvas'); c.width = tw; c.height = th;
+    const g = c.getContext('2d');
+    const layer = (paint, seed) => {
+      const t = document.createElement('canvas'); t.width = tw; t.height = th;
+      const tg = t.getContext('2d'); tg.scale(k, k);
+      paint(tg, { w: lw, h: LH, fy: top, R: seeded(seed * 7919 + id.length * 131) });
+      return t;
+    };
+    g.drawImage(layer(S.far, 1), 0, 0);
+    if (S.mid) g.drawImage(layer(S.mid, 2), 0, 0);
+    g.fillStyle = 'rgba(23,24,26,.55)'; g.fillRect(0, top * k, tw, 2);
+    return (this.thumbs[key] = c.toDataURL('image/png'));
+  },
+};
+Stage.load();
 </script>
 <script>
 'use strict';
@@ -4306,7 +5106,7 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk']);
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};
@@ -4335,7 +5135,7 @@ function loadState(s) {
 function stateHash() {
   const s = [game.round, game.timer, game.phase, game.wins[0], game.wins[1], game.freeze];
   for (const F of game.p) s.push(F.hp, F.x.toFixed(3), F.alt.toFixed(3), F.state, F.move ? F.move.name + ':' + F.move.t : '-', F.stunT, F.slowJab, F.qi, F.comboTaken, F.runT, F.facing, F.vx.toFixed(3),
-    F.grabbed ? 1 : 0, F.rollDir, F.guardOn, F.stompFor, F.move && F.move.pick || '');
+    F.grabbed ? 1 : 0, F.rollDir, F.guardOn, F.stompFor, F.move && F.move.pick || '', F.slipGot ? 1 : 0, F.t);
   const str = s.join('|');
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -4723,6 +5523,7 @@ const Net = {
   pairStart(role) {
     this.role = role; this.versionBad = false; this.peerVersion = '';
     this.looks = { h: role === 'host' ? Looks.solo.me : null, g: null };
+    if (role === 'host') Stage.online = Stage.pref;               // 2.0 场景：房主先用自己菜单里选的那张，大厅里还能换
   },
 
   /* ---------- ① 房间码 ---------- */
@@ -4915,7 +5716,7 @@ const Net = {
       return;
     }
     // 选色：房主先用自己存的颜色；加入方在 hello 里说想要什么，房主定了发回去
-    if (this.role === 'host') { this.looks.g = settleLook(this.looks.h, m.want, this.looks.g); this.sendLooks(); }
+    if (this.role === 'host') { this.looks.g = settleLook(this.looks.h, m.want, this.looks.g); this.sendLooks(); this.sendStage(); }
     this.onOpen();
   },
   badVersion(v) {
@@ -4936,6 +5737,12 @@ const Net = {
     this.sendCtl({ t: 'look', want: id }); return true;
   },
   sendLooks() { this.sendCtl({ t: 'looks', h: this.looks.h, g: this.looks.g }); },
+  // 2.0 场景：房主说了算。房主在大厅里点一张，发给加入方；开打的 start 里也带着（只是画面，不影响同步）
+  pickStage(id) {
+    if (this.role !== 'host' || !STAGE_PICK.includes(id)) return false;
+    Stage.online = id; this.sendStage(); this.onLooks(); return true;
+  },
+  sendStage() { this.sendCtl({ t: 'stage', id: Stage.online }); },
   // 现在走的是直连还是中继（看浏览器选中的那对地址）
   async route() {
     if (!this.pc || !this.pc.getStats) return;
@@ -4976,12 +5783,13 @@ const Net = {
         if (!m.got) this.sendHello();
         this.linkUp(m);
         break;
-      case 'start': this.begin(m.delay, m.epoch, m.looks); break;
+      case 'start': this.begin(m.delay, m.epoch, m.looks, m.stage); break;
       case 'h': if (m.e === this.epoch) this.checkHash(m.f, m.h, 'r'); break;
       case 'bye': this.reconnecting = false; this.closed(true); break;
       // 选色：加入方要颜色 → 房主定了发回去；加入方收到房主定的结果
       case 'look': if (this.role === 'host') { this.looks.g = settleLook(this.looks.h, m.want, this.looks.g); this.sendLooks(); this.onLooks(); } break;
       case 'looks': if (this.role === 'guest' && lookOf(m.h) && lookOf(m.g)) { this.looks = { h: m.h, g: m.g }; this.onLooks(); } break;
+      case 'stage': if (this.role === 'guest' && STAGE_PICK.includes(m.id)) { Stage.online = m.id; this.onLooks(); } break;
     }
   },
   // 输入延迟：有回滚，只要单程延迟的一半左右（1~3 帧）；按键基本没有延迟感
@@ -4992,11 +5800,12 @@ const Net = {
     const d = this.pickDelay(), e = (this.epoch + 1) & 255;
     this.looks.g = settleLook(this.looks.h, this.looks.g, null);
     const looks = [this.looks.h, this.looks.g];
-    this.sendCtl({ t: 'start', delay: d, epoch: e, looks });
-    this.begin(d, e, looks);
+    this.sendCtl({ t: 'start', delay: d, epoch: e, looks, stage: Stage.online });
+    this.begin(d, e, looks, Stage.online);
   },
-  begin(delay, epoch, looks) {
+  begin(delay, epoch, looks, stage) {
     if (looks && lookOf(looks[0]) && lookOf(looks[1])) this.looks = { h: looks[0], g: looks[1] };
+    if (STAGE_PICK.includes(stage)) Stage.online = stage;
     this.delay = delay; this.epoch = epoch;
     this.hashes.clear(); this.acc = 0; this.desync = false; this.hashChecks = 0; this.stall = 0; this.adv = 0; this.holdN = 0;
     this.rb = new Rollback(delay, this.role);
@@ -5108,12 +5917,12 @@ async function unpackDesc(code) {
 
 const $ = id => document.getElementById(id);
 const menu = $('menu'), pauseEl = $('pause'), resultEl = $('result'), onlineEl = $('online'), keysEl = $('keysPanel');
-const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel');
+const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel'), stageEl = $('stagePanel');
 const btnPause = $('btnPause'), btnSound = $('btnSound');
 
 function showOverlay(el) {
-  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl]) o.hidden = o !== el;
-  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl].includes(el));
+  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl]) o.hidden = o !== el;
+  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl].includes(el));
   const t = el && el.querySelector('.ibtn:not([hidden])');
   if (t) setTimeout(() => t.focus({ preventScroll: true }), 0);
 }
@@ -5331,14 +6140,14 @@ Net.onOpen = () => {
   netView('lobby'); netErr('');
   $('netStatus').textContent = netStatusText();
   $('btnNetStart').hidden = Net.role !== 'host';
-  renderNetLooks();
+  renderNetLooks(); renderNetStages();
 };
 // 联机选色：自己的亮着，对方占着的变暗点不了；房主说了算（net.js settleLook）
 function renderNetLooks() {
   const me = Net.role === 'host' ? 'h' : 'g', my = Net.looks[me], th = Net.looks[me === 'h' ? 'g' : 'h'];
   $('netLooks').innerHTML = PALETTE.map(p => swatch(p, { on: p.id === my, taken: p.id === th ? '对方' : '' })).join('');
 }
-Net.onLooks = () => { if (!$('netLobby').hidden) renderNetLooks(); };
+Net.onLooks = () => { if (!$('netLobby').hidden) { renderNetLooks(); renderNetStages(); } };
 $('netLooks').addEventListener('click', e => {
   const b = e.target.closest('.sw'); if (!b || b.disabled) return;
   if (Net.pickLook(b.dataset.id)) { setMyLook(b.dataset.id); renderNetLooks(); }
@@ -5511,9 +6320,33 @@ $('soloCpu').addEventListener('click', e => {
   Looks.solo.cpu = b.dataset.id; Looks.save(); renderLookPanel();
   if (game.mode === 'attract') F2.setLook(b.dataset.id === 'random' ? cpuLook() : b.dataset.id);
 });
+/* ---------- 场景（2.0）：菜单「场景」里选（人机、双人用），双人开打前、联机大厅（房主选）也能换 ---------- */
+// 一排场景按钮：每个按钮一张小图（远景 + 中景缩小画的）+ 名字。sm = 小一号（双人、联机面板里）
+function stageButtons(cur, o) {
+  o = o || {};
+  const tw = o.sm ? 120 : 200, th = o.sm ? 60 : 100, k = Math.min(2, window.devicePixelRatio || 1);
+  return STAGE_PICK.map(id => `<button type="button" class="stg" data-stage="${id}" aria-pressed="${id === cur}"${o.lock ? ' disabled' : ''}>` +
+    `<img alt="" width="${tw}" height="${th}" src="${Stage.thumb(id, Math.round(tw * k), Math.round(th * k))}"><span>${STAGES[id].name}</span></button>`).join('');
+}
+function showStageName() { $('stageName').textContent = STAGES[Stage.pref].name; }
+function pickStage(id) { Stage.setPref(id); showStageName(); renderStagePanel(); if (!pvpEl.hidden) renderPvpStages(); }
+function renderStagePanel() { $('stageList').innerHTML = stageButtons(Stage.pref); }
+function renderPvpStages() { $('pvpStages').innerHTML = stageButtons(Stage.pref, { sm: true }); }
+$('btnStage').addEventListener('click', () => { renderStagePanel(); showOverlay(stageEl); });
+$('btnStageDone').addEventListener('click', () => showOverlay(menu));
+for (const id of ['stageList', 'pvpStages']) $(id).addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled) pickStage(b.dataset.stage); });
+// 联机大厅：房主点了算；加入方只看得到房主选的哪张
+function renderNetStages() {
+  const host = Net.role === 'host';
+  $('netStageHint').textContent = host ? '场景（你是房主，你来选）' : '场景（房主选的）';
+  $('netStages').innerHTML = stageButtons(Stage.online, { sm: true, lock: !host });
+}
+$('netStages').addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled && Net.pickStage(b.dataset.stage)) renderNetStages(); });
+showStageName();
+
 // 双人：开打前两边选（A/D、←/→ 也能换）。对方选了的变暗
 let pvpDraft = null;
-function openPvp() { pvpDraft = Looks.pvp.slice(); renderPvp(); showOverlay(pvpEl); }
+function openPvp() { pvpDraft = Looks.pvp.slice(); renderPvp(); renderPvpStages(); showOverlay(pvpEl); }
 function renderPvp() {
   for (const i of [0, 1]) $('pvpLook' + i).innerHTML = PALETTE.map(p => swatch(p, { on: p.id === pvpDraft[i], taken: p.id === pvpDraft[1 - i] ? (i ? '玩家一' : '玩家二') : '' })).join('');
   if (game.mode === 'attract') { F1.setLook(pvpDraft[0]); F2.setLook(pvpDraft[1]); }
@@ -5555,7 +6388,7 @@ async function enterFull() {
   catch (e) { toast('这个浏览器不让网页全屏。可以按 F11 用浏览器自己的全屏。'); return; }
   fsLocked = false;
   try { if (navigator.keyboard && navigator.keyboard.lock) { await navigator.keyboard.lock(['Escape']); fsLocked = true; } } catch (e) {}
-  toast(fsLocked ? '全屏中 · Esc 暂停 · 按住 Esc 两秒退出全屏（或点右上角「退出全屏」）'
+  toast(fsLocked ? '全屏中 · Esc 暂停 · 按住 Esc 两秒退出全屏（或点右下角「退出全屏」）'
     : '全屏中 · 按 Esc 退出全屏（对战会顺便暂停）· 想暂停又不退出全屏就按 P', 4500);
 }
 function exitFull() {
@@ -5585,7 +6418,7 @@ const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
   if (game.mode === 'attract' || game.paused || keyWait || e.button > 4) return null;
-  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden) return null;
+  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden) return null;
   const r = Keys.route('Mouse' + e.button, game.mode);           // 1.8.0：双人对战里鼠标也能用（谁绑了归谁）
   if (!r) return null;
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
@@ -5627,6 +6460,7 @@ window.addEventListener('keydown', e => {
   if (!pvpEl.hidden) { pvpKey(e); return; }
   if (!lookEl.hidden) { if (e.code === 'Escape') closeLooks(); return; }
   if (!setEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeSettings(); return; }
+  if (!stageEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
   if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
   if (e.code === 'Escape' || (e.code === 'KeyP' && !pBound())) {
     e.preventDefault();
@@ -5722,6 +6556,13 @@ function loop(now) {
 })();
 window.addEventListener('resize', resize);
 if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
+// 2.0：窗口拖到另一块屏幕（DPR 变了）、浏览器缩放 —— 重新按新的像素密度画（不然糊）
+(function watchDpr() {
+  if (!window.matchMedia) return;
+  const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`);
+  const on = () => { resize(); watchDpr(); };
+  if (mq.addEventListener) mq.addEventListener('change', on, { once: true }); else if (mq.addListener) mq.addListener(on);
+})();
 
 // 1.9.0 邀请链接：网址后面带着 #房间码（可能还带着房主的中继）打开 → 直接进联机面板、进这个房间
 function openInvite() {
@@ -5747,8 +6588,8 @@ function boot(data) {
   resize(); startAttract();
   openInvite();
   if (document.fonts && document.fonts.load) {
-    document.fonts.load('40px "Ma Shan Zheng"', '墨斗靛朱赭松黛紫苍随机以武会友第一二三四五回合战胜负已分时间到平局决胜局连击崩拳冲天炮鞭腿旋风腿泰山压顶飞踢接腿摔擒拿连珠快拳后手直拳摆拳势破挡闪拆破招空中倒地久被两败俱伤本重打等待对方联机不同步拼克制化解霸体卸失衡推开震爆气满可泼墨寸劲转身蹬扫堂托天掌铁山靠过肩下段上蹲站要拳重腿对必杀压起手顶肘劈挂落步冲盖砸二起脚千斤坠闪背后不住迎击势桩练习回满打截踩抄抱提膝别挣脱借力滚身反绽住翻断挨着撞掉线栽葱')
-      .then(() => { bg = makeBg(); }).catch(() => {});
+    document.fonts.load('40px "Ma Shan Zheng"', '墨斗靛朱赭松黛紫苍随机第一二三四五回合战胜负已分时间到平局决胜局连击崩拳冲天炮鞭腿旋风腿泰山压顶飞踢接腿摔擒拿连珠快拳后手直拳摆拳势破挡闪拆破招空中倒地久被两败俱伤本重打等待对方联机不同步拼克制化解霸体卸失衡推开震爆气满可泼墨寸劲转身蹬扫堂托天掌铁山靠过肩下段上蹲站要拳重腿对必杀压起手顶肘劈挂落步冲盖砸二起脚千斤坠闪背后不住迎击势桩练习回满打截踩抄抱提膝别挣脱借力滚身反绽住翻断挨着撞掉线栽葱朱日远山松崖飞瀑竹林夜月练武场')
+      .catch(() => {});
   }
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
 }
