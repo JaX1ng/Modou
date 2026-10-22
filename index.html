@@ -73,6 +73,7 @@ html,body{margin:0}
 .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:6px}
 .card{background:var(--silk-2);border:1px solid var(--silk-line);border-radius:4px;padding:16px 18px;min-width:0}
 .card h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-family:var(--brush);font-weight:400;font-size:22px;line-height:1.2;color:var(--paper)}
+.card h3 .h3sub{font-family:var(--ui);font-size:13px;color:var(--paper-dim)}
 .dot{width:10px;height:10px;border-radius:50%;flex:none}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;align-items:center;margin:0}
 .keys dt{color:var(--paper-dim);font-size:13px}
@@ -155,7 +156,7 @@ details.relay .row.tight{justify-content:flex-start;margin-top:6px;gap:6px}
 .cbtn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
 .cbtn.ghost:hover{background:var(--ink);color:var(--paper)}
 .status.sm{font-size:13px;margin-top:6px;min-height:1.2em}
-/* 1.9.0 对暗号 */
+/* 1.9.0 房间码 */
 .codebox input{flex:1;min-width:0;font:400 22px/1.2 var(--brush);color:var(--ink);background:rgba(255,255,255,.6);border:1.5px solid var(--ink);border-radius:2px;padding:6px 10px}
 .codebox input:focus-visible{outline:2px solid var(--cinnabar);outline-offset:1px}
 #netRoom .cbtn{min-width:88px}
@@ -277,19 +278,19 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
     <div class="overlay dim scroll" id="online" hidden>
       <div class="panel net">
         <p class="big sm">联机对战</p>
-        <p class="hint" id="netIntro">两边输入同一个暗号就能连上（或者把邀请链接发给对方，他点开就进）。找对方时经过公共信令服务器（只传连接信息），连上以后两台电脑点对点直连，打的时候不经过服务器。</p>
+        <p class="hint" id="netIntro">两边输入同一个房间码就能连上（或者把邀请链接发给对方，他点开就进）。找对方时经过公共信令服务器（只传连接信息），连上以后两台电脑点对点直连，打的时候不经过服务器。</p>
         <div class="netbox" id="netRoom">
-          <label class="step" for="roomCode">暗号（两边一样就行，随便起，比如「墨斗1022」）</label>
-          <div class="codebox"><input id="roomCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="输入暗号"><button class="cbtn" id="btnRoomJoin" type="button">对暗号</button></div>
+          <label class="step" for="roomCode">房间码（两边一样就行，随便起，比如「墨斗1022」）</label>
+          <div class="codebox"><input id="roomCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="输入房间码"><button class="cbtn" id="btnRoomJoin" type="button">进房间</button></div>
           <p class="status sm" id="roomStatus" role="status"></p>
           <div class="row tight" id="roomTools" hidden>
             <button class="cbtn ghost" id="btnInvite" type="button">复制邀请链接</button>
-            <button class="cbtn ghost" id="btnRoomLeave" type="button">换个暗号</button>
+            <button class="cbtn ghost" id="btnRoomLeave" type="button">换个房间</button>
           </div>
         </div>
         <details class="relay" id="relayBox">
           <summary>中继服务器 <span id="relaySum">未设置</span><small>校园网（eduroam）连不上时用</small></summary>
-          <p class="hint">eduroam 这类校园网不让两台电脑直接连。填一个 TURN 中继，直连不通时数据经它转发。<b>只要一边填</b>：对暗号时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，房间码会带过去。</p>
+          <p class="hint">eduroam 这类校园网不让两台电脑直接连。填一个 TURN 中继，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，房间码会带过去。</p>
           <textarea id="relayText" rows="4" spellcheck="false" placeholder="把中继后台复制的 ICE 数组整段粘进来&#10;（也可以粘 Metered 的 API 链接，或每行「turn:地址:端口 用户名 密码」）"></textarea>
           <div class="row tight">
             <button class="cbtn" id="btnRelaySave" type="button">保存并测试</button>
@@ -298,20 +299,20 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
           <p class="status sm" id="relayStatus" role="status"></p>
         </details>
         <details class="relay" id="manualBox">
-          <summary>手动连接<small>对暗号一直连不上（比如公共信令服务器打不开）时用：复制粘贴连接码，连信令都不经过服务器</small></summary>
+          <summary>手动连接<small>用房间码一直连不上（比如公共信令服务器打不开）时用：复制粘贴连接码，连信令都不经过服务器</small></summary>
         <div class="row" id="netChoose">
           <button class="ibtn" id="btnHost" type="button">我来建房</button>
           <button class="ibtn ghost" id="btnJoin" type="button">我去加入</button>
         </div>
         <div class="netbox" id="netHost" hidden>
-          <label class="step" for="hostCode">① 把房间码整段发给对方</label>
+          <label class="step" for="hostCode">① 把连接码整段发给对方</label>
           <div class="codebox"><textarea id="hostCode" readonly rows="3" placeholder="正在生成…"></textarea><button class="cbtn" id="copyHost" type="button">复制</button></div>
           <label class="step" for="hostAnswer">② 粘贴对方发回的应答码</label>
           <div class="codebox"><textarea id="hostAnswer" rows="3" placeholder="粘贴应答码"></textarea><button class="cbtn" id="btnConnect" type="button">连接</button></div>
         </div>
         <div class="netbox" id="netJoin" hidden>
-          <label class="step" for="joinCode">① 粘贴房主发来的房间码</label>
-          <div class="codebox"><textarea id="joinCode" rows="3" placeholder="粘贴房间码"></textarea><button class="cbtn" id="btnMakeAnswer" type="button">生成</button></div>
+          <label class="step" for="joinCode">① 粘贴房主发来的连接码</label>
+          <div class="codebox"><textarea id="joinCode" rows="3" placeholder="粘贴连接码"></textarea><button class="cbtn" id="btnMakeAnswer" type="button">生成</button></div>
           <label class="step" for="joinAnswer">② 把应答码整段发回给房主，然后等着</label>
           <div class="codebox"><textarea id="joinAnswer" readonly rows="3" placeholder="先完成第 ① 步"></textarea><button class="cbtn" id="copyJoin" type="button">复制</button></div>
           <p class="hint" id="netWait" hidden>发完就等着，别关这个页面。房主点「连接」后会自动连上（最多等 5 分钟）。</p>
@@ -331,8 +332,8 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
     <div class="overlay dim scroll" id="keysPanel" hidden>
       <div class="panel keyset">
         <p class="big sm">键位设置</p>
-        <div class="seg" role="group" aria-label="改谁的键位"><button type="button" data-who="0" aria-pressed="true">玩家一</button><button type="button" data-who="1" aria-pressed="false">玩家二</button></div>
-        <p class="hint" id="keyWhoHint">玩家一：人机、打桩、联机、双人对战都用这一套。</p>
+        <div class="seg" role="group" aria-label="改哪一套键位"><button type="button" data-who="0" aria-pressed="true">单人</button><button type="button" data-who="1" aria-pressed="false">双人·玩家一</button><button type="button" data-who="2" aria-pressed="false">双人·玩家二</button></div>
+        <p class="hint" id="keyWhoHint">单人：人机、联机、打桩用这一套。</p>
         <p class="hint">点一个格子，再按想用的键，或者按鼠标按键（右键、中键、侧键在哪按都行；左键要再点一下这一格）。按 Esc 取消，按退格清空这一格。设置存在这台电脑的浏览器里，换新版本文件也还在。</p>
         <table class="keytable"><thead><tr><th>动作</th><th>键位一</th><th>键位二</th></tr></thead><tbody id="keyRows"></tbody></table>
         <p class="err" id="keyMsg" role="alert"></p>
@@ -419,14 +420,19 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 
   <section class="legend" aria-label="键位与招式">
     <div class="card">
-      <h3><span class="dot" id="p1dot" style="background:var(--cinnabar)"></span>玩家一 · <span id="p1name">墨</span></h3>
-      <dl class="keys" id="p1keys"></dl>
-      <p class="note" id="soloKeys"></p>
+      <h3>单人键位<small class="h3sub">人机 · 联机 · 打桩</small></h3>
+      <dl class="keys" id="k0"></dl>
+      <p class="note">菜单「键位设置」→「单人」里改，和双人对战那两套互不影响。<kbd>Esc</kbd> 或 <kbd>P</kbd> 暂停。</p>
     </div>
     <div class="card">
-      <h3><span class="dot" id="p2dot" style="background:var(--gamboge)"></span>玩家二 · <span id="p2name">靛</span>（双人）</h3>
-      <dl class="keys" id="p2keys"></dl>
-      <p class="note">双人对战用，「键位设置」里切到玩家二能改。<kbd>Esc</kbd> 或 <kbd>P</kbd> 暂停。双人对战每回合不限时，五局三胜；开打前两边各选颜色。</p>
+      <h3><span class="dot" id="p1dot" style="background:var(--cinnabar)"></span>双人 · 玩家一 · <span id="p1name">墨</span></h3>
+      <dl class="keys" id="k1"></dl>
+      <p class="note" id="p1note"></p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" id="p2dot" style="background:var(--gamboge)"></span>双人 · 玩家二 · <span id="p2name">靛</span></h3>
+      <dl class="keys" id="k2"></dl>
+      <p class="note">双人对战两人一个键盘，「键位设置」里切到双人那两套能改。双人对战每回合不限时，五局三胜；开打前两边各选颜色。</p>
     </div>
     <div class="card">
       <h3>克制关系</h3>
@@ -438,7 +444,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <li>主系、起手都一样 = <em>平</em>（拼招），各掉五成血、互相震退。</li>
         <li>拳克腿：起腿时被拳打中会失衡倒地。腿克重：重拳起手被化解。重克拳：重拳前摇霸体硬吃一记短拳。</li>
         <li>打击克擒拿，擒拿克格挡；腿克对空，对空（托天掌、冲天炮）克空中招；空中互撞也按起手分压。完整对照看下面「组合克制总表」，每种技术的破法看「破解表」。</li>
-        <li><em>空中交手</em>：空中出招被克制它的招打中 = <em>坠机</em>，摔下来倒地更久；空中的腿撞上地上的腿 = 空中那个<em>翻滚回去</em>，只吃一半伤害、往后翻开一大段。</li>
+        <li><em>空中交手</em>：空中出招被克制它的招打中 = <em>倒栽葱</em>，摔下来倒地更久；空中的腿撞上地上的腿 = 空中那个<em>翻滚回去</em>，只吃一半伤害、往后翻开一大段。</li>
       </ul>
     </div>
     <div class="card">
@@ -459,7 +465,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <dt><i>蹲</i>+<i>拿</i></dt><dd>抄腿<small>抓蹲着、蹲挡的人（抱腿摔），接住出腿和扫堂腿（抄腿摔）；抓不到站着的</small></dd>
         <dt><i>被抓住</i>马上<i>拿</i></dt><dd>挣脱<small>擒住刚开始那一下按拿就挣开（接腿、抄腿、借力摔挣不脱）</small></dd>
         <dt><i>倒地</i>按住<i>方向</i></dt><dd>滚身起<small>起身时往那边滚开，躲开守在你起身处的人</small></dd>
-        <dt><i>空</i><i>蹲</i>+<i>踢</i></dt><dd>千斤坠<small>先往上一腾（前摇长），再斜着踩下去，上段。专踩蹲着、蹲挡的 ×1.3，踩中托天掌 ×1.5 还踩倒；踩中后接 踢 / 重 / 拳 = 二起脚 / 盖步砸拳 / 落步冲拳。怕站着的拳：迎面挨一拳就坠机 ×1.4</small></dd>
+        <dt><i>空</i><i>蹲</i>+<i>踢</i></dt><dd>千斤坠<small>先往上一腾（前摇长），再斜着踩下去，上段。专踩蹲着、蹲挡的 ×1.3，踩中托天掌 ×1.5 还踩倒；踩中后接 踢 / 重 / 拳 = 二起脚 / 盖步砸拳 / 落步冲拳。怕站着的拳：迎面挨一拳就摔个倒栽葱 ×1.4</small></dd>
         <dt><i>重</i>+<i>踢</i></dt><dd>爆气 / 泼墨<small>挨打时花半格气震开；气满放必杀</small></dd>
       </dl>
     </div>
@@ -523,7 +529,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '1.9.0';
+const VERSION = '1.9.1';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 招式表 moves.js 里写的是基准帧数，M() 统一换算；想再快 / 慢一点，只改 TEMPO。
@@ -572,7 +578,7 @@ const DIVE_HOP = 5 / TEMPO, DIVE_VX = 7 / TEMPO, DIVE_VZ = 9.5 / TEMPO;   // 千
 // 1.9.0 千斤坠 = 「坠」系：专破蹲着的防守和反击（尤其托天掌），怕站着的拳
 const DIVE_CROUCH_MUL = 1.3;             // 踩中蹲着 / 蹲挡 / 正在出下段招的人（踩蹲）
 const DIVE_AA_MUL = 1.5;                 // 踩中正在出托天掌、冲天炮的人：对空招打不到千斤坠，被一脚踩倒（踩断对空）
-const DIVE_PUNCH_MUL = 1.4;              // 千斤坠半路被站着的拳（短拳系、重拳系）打中：坠机，伤害加成
+const DIVE_PUNCH_MUL = 1.4;              // 千斤坠半路被站着的拳（短拳系、重拳系）打中：倒栽葱，伤害加成
 const DIVE_AA_ALT = 92;                  // 站着的招能打到多高的千斤坠（别的空中招是 AIR_SAFE）：拳迎着踩下来的脚打
 const DIVE_RIDE = 4.2 / TEMPO;           // 踩中后顺着这一脚往下落（不往上弹），很快落在对手面前接连招
 // 空中的腿（飞踢、千斤坠）撞上地上的腿：空中那个人往后翻滚飞回去（1.9.0）
@@ -588,7 +594,7 @@ const HITSTOP = 0.85;                    // 打中时的停顿（顿帧）倍率
 const BLOCK_KEEP = 0.3;                  // 格挡后承受的伤害比例
 const SLOW_JAB_FRAMES = TF(90), SLOW_JAB_ADD = 4;   // 被挡后「势破」持续帧数、下一记短拳前摇增加帧数
 const LIE_GROUND = TF(46), LIE_AIR = TF(86), GETUP = TF(18); // 接腿摔倒地帧数（地面/空中）、起身帧数
-const LIE_CRASH = TF(62);                // 坠机（空中出招被克制打下来）倒地更久（1.9.0）
+const LIE_CRASH = TF(62);                // 倒栽葱（空中出招被克制打下来）倒地更久（1.9.0）
 const ROUND_FRAMES = 300 * 60, WIN_ROUNDS = 3;   // 人机/联机每回合 300 秒；双人不限时；五局三胜（1.8.0，以前三局两胜）
 const STEP_MS = 1000 / 60;
 
@@ -633,12 +639,13 @@ const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着�
 // 联机（P2P）
 const NET = {
   ICE: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun.cloudflare.com:3478'] }], // 国内连不上可换成国内能访问的 STUN；中继（TURN）在联机面板里填，存在浏览器里
-  APP_ID: 'modou-ink-fight',   // 对暗号（Trystero）用的应用名：只有同一个游戏、同一个暗号的人会碰到一起
-  SIGNAL_N: 8,       // 对暗号时同时连几个公共信令中继（Nostr，只用来交换连接信息）。多连几个，个别中继挂了也找得到对方
+  APP_ID: 'modou-ink-fight',   // 房间码联机（Trystero）用的应用名：只有同一个游戏、同一个房间码的人会碰到一起
+  SIGNAL_N: 8,       // 房间码联机时同时连几个公共信令中继（Nostr，只用来交换连接信息）。多连几个，个别中继挂了也找得到对方
   SIGNAL_URLS: null, // 想指定信令中继就填 ['wss://…', …]；null = 用 Trystero 自带的列表（按 APP_ID 挑，两边挑的一样）
   DELAY: 0,          // 输入延迟帧数，0 = 按网络延迟自动算（1.9.0 有回滚，自动算出来是 1~3 帧）
   MAX_PRED: 10,      // 对方的输入最多先猜多少帧；再落后就停下来等（「等待对方…」）
-  RECONNECT_WAIT: 20000,   // 对暗号连上以后掉线：等同一个人回来多久（毫秒），回来了接着打（重新握手偶尔要等 10 秒）
+  RECONNECT_WAIT: 20000,   // 房间码联机连上以后掉线：等同一个人回来多久（毫秒），回来了接着打
+  HANDSHAKE_WAIT: 4000,    // Trystero 连上后的握手最多等多久（毫秒），超时就重来（偶尔一边的握手消息来早了被丢掉）
   HASH_EVERY: 120,   // 每多少帧互相核对一次状态，发现不同步会在画面上提示
   ICE_WAIT: 4000,    // 收集连接地址最多等多久（毫秒）
   ICE_WAIT_RELAY: 6500,   // 填了中继时多等一会儿（中继地址要跟中继服务器要）
@@ -734,13 +741,13 @@ function evalKeys(keys, t) {
 }
 
 // 跳跃三段：上升（蹬直、提膝）→ 顶点（收腿团身）→ 下落（伸腿找地）。
-// 1.9.0：手不再往头顶上举 —— 两手收在胸前、往两边微微张开，像收着的翅膀
-const P_JUP = { tor: 10, head: -6, ff: [22, 44], bf: [-18, 6], fh: [30, -8], bh: [-24, -4] };
-const P_JTOP = { tor: 20, head: -2, ff: [16, 50], bf: [-2, 44], fh: [30, 0], bh: [-26, 2] };
-const P_JDN = { tor: 6, head: -2, ff: [28, 12], bf: [-20, 22], fh: [34, -6], bh: [-30, -2] };
-// 跑着起跳：飞身 —— 身子前倾、前腿提膝、后腿往后蹬直，像跨栏；两臂往前后张开、肘微屈（展翅），不往上举
-const P_JLEAP = { tor: 24, head: -8, ff: [36, 42], bf: [-54, 20], fh: [32, 12], bh: [-36, 6] };
-const P_JLEAP_DN = { tor: 12, head: -4, ff: [32, 18], bf: [-34, 16], fh: [34, 8], bh: [-34, 4] };   // 飞身往下落：两腿往下找地，手还张着
+// 1.9.1：手不往上举 —— 大臂往前后张开、肘往上提（fe / be = -1，肘弯朝上），小臂往下垂，像收着的翅膀
+const P_JUP = { tor: 10, head: -6, ff: [22, 44], bf: [-18, 6], fh: [26, 34], bh: [-16, 34], fe: -1, be: -1 };
+const P_JTOP = { tor: 20, head: -2, ff: [16, 50], bf: [-2, 44], fh: [22, 36], bh: [-12, 34], fe: -1, be: -1 };
+const P_JDN = { tor: 6, head: -2, ff: [28, 12], bf: [-20, 22], fh: [32, 30], bh: [-30, 28], fe: -1, be: -1 };
+// 跑着起跳：飞身 —— 身子前倾、前腿提膝、后腿往后蹬直，像跨栏；两臂一前一后张开、小臂往下垂（展翅）
+const P_JLEAP = { tor: 24, head: -8, ff: [36, 42], bf: [-54, 20], fh: [38, 28], bh: [-40, 26], fe: -1, be: -1 };
+const P_JLEAP_DN = { tor: 12, head: -4, ff: [32, 18], bf: [-34, 16], fh: [36, 30], bh: [-36, 28], fe: -1, be: -1 };   // 飞身往下落：两腿往下找地，手还张着
 const POSE = {
   stance: mk(),
   run: mk({ tor: 26, head: -16, hy: 54, fe: 0.2, be: 0.2 }),   // 跑步只用到这几个，手脚每帧现算（fighter.js runPose）
@@ -980,7 +987,7 @@ const MOVES = {
       [2, { rot: 14, tor: -40, head: 16, ff: [96, 22], bf: [-12, 50], fh: [-14, -30], bh: [-32, -12] }], [3, JD]] }),
   // 千斤坠：空中按住蹲再踢。先往上一腾、团身（从高处起），再整个人斜成一条线，前脚笔直往前下方踩下去（打到会往后翻着弹开）
   // 1.9.0：主系「坠」—— 专破蹲着的防守和反击：踩蹲着 / 蹲挡 / 出下段的 ×1.3，对空招（托天掌、冲天炮）打不到它、反被踩倒 ×1.5；
-  //        怕站着的拳：被短拳系 / 重拳系迎着打中 = 坠机 ×1.4、倒地更久；站挡挡得住。前摇更慢（腾得更高）。
+  //        怕站着的拳：被短拳系 / 重拳系迎着打中 = 倒栽葱 ×1.4、倒地更久；站挡挡得住。前摇更慢（腾得更高）。
   //        踩中后弹起落在对手面前，这一下算「腿起手」：落地 踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳（都是真连）
   dive: M({ kind: 'kick', label: '千斤坠', stamp: '千斤坠', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 9, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
     limb: 'ff', fx: 'dive', air: true, ghost: true, dive: true, aaProof: true,
@@ -1098,7 +1105,7 @@ const MOVES = {
    3) 主系、起手都一样（或互不相克）→ 「平」：拼招，各吃五成、互相震退
    ============================================================ */
 const TIER_WIN = {
-  light: ['kick', 'grab', 'dive'],      // 1.9.0：站着的拳迎着打千斤坠 = 坠机
+  light: ['kick', 'grab', 'dive'],      // 1.9.0：站着的拳迎着打千斤坠 = 倒栽葱
   heavy: ['light', 'grab', 'dive'],
   kick: ['heavy', 'aa', 'grab'],        // 腿长，从下面踢中正往上托的对空招（地上的腿撞空中的腿 = 翻滚，见 combat.js tumble）
   aa: ['air', 'grab'],
@@ -1128,8 +1135,8 @@ const COUNTERS = [
   ['扫堂腿', `蹲挡住后按踢「踩腿」击倒；蹲+拿抄住它的腿；跳起躲开、落地打它收招 = 破绽 ×${WHIFF_KD_MUL}；贴身短拳打它失衡；卸力`],
   ['击倒招（扫堂腿、冲天炮、旋风腿、盖步砸拳、二起脚、踩腿、泼墨）', `挡住后打它收招 ×${PUNISH_KD_MUL}（挡后反击）；卸力后反打 ×${PUNISH_KD_MUL}；它打空了打收招 ×${WHIFF_KD_MUL}（破绽）；真被打倒了，起身时按住方向滚身起，躲开守在你起身处的人`],
   ['对空（托天掌、冲天炮）', '腿系从下面踢中（腿克对空）；千斤坠踩它（对空打不到千斤坠）；它在地上就是普通重招，前摇长，被挡后摇也长'],
-  ['空中招（挥拳、泰山压顶、飞踢）', `托天掌、冲天炮（对空克空中，打下来 = 坠机，倒地更久）；地上出腿迎上飞踢 = 把它顶得翻滚回去；空中互撞看起手分压；站挡、卸力；蹲下躲飞踢；往后退出它的射程，它落地有硬直`],
-  ['千斤坠', `站着的拳迎着打（短拳、重拳都行）= 坠机 ×${DIVE_PUNCH_MUL}、倒地更久；站挡挡得住，它弹起来还能再打；地上出腿迎上去 = 顶得它翻滚回去；它先往上腾一下，看得见；别蹲、别出托天掌（正中它下怀）`],
+  ['空中招（挥拳、泰山压顶、飞踢）', `托天掌、冲天炮（对空克空中，打下来 = 倒栽葱，倒地更久）；地上出腿迎上飞踢 = 把它顶得翻滚回去；空中互撞看起手分压；站挡、卸力；蹲下躲飞踢；往后退出它的射程，它落地有硬直`],
+  ['千斤坠', `站着的拳迎着打（短拳、重拳都行）= 倒栽葱 ×${DIVE_PUNCH_MUL}、倒地更久；站挡挡得住，它弹起来还能再打；地上出腿迎上去 = 顶得它翻滚回去；它先往上腾一下，看得见；别蹲、别出托天掌（正中它下怀）`],
   ['下段（下盘拳、扫堂腿）', '蹲挡；跳起躲开；扫堂腿是腿系，近身被拳克，蹲挡住还能踩腿'],
   ['上段（劈挂掌、所有空中招）', '站挡；劈挂掌是重系，被腿克'],
   ['擒拿 / 过肩摔 / 提膝 / 别腿摔', '任何打击在它抓到前打断它（打击克擒拿）；蹲下它就抓不到；同时擒拿 = 拆；被抓住马上按拿 = 挣脱；冲刺无敌、跳起都躲得开'],
@@ -1222,7 +1229,7 @@ class Pad {
   }
   clear() { this.pending.length = 0; for (const k in this.held) this.held[k] = false; }
 }
-const pads = [new Pad(), new Pad()];   // pads[0] = 本机玩家（人机/联机/双人的玩家一），pads[1] = 双人的玩家二
+const pads = [new Pad(), new Pad()];   // pads[0] = 本机玩家（人机/联机/打桩，或双人的玩家一），pads[1] = 双人的玩家二
 
 function applyInput(F, v) {
   for (let i = 0; i < HELD_ACTS.length; i++) F.inp.held[HELD_ACTS[i]] = !!(v & (1 << i));
@@ -1234,15 +1241,16 @@ const MAP_P1 = { KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', KeyF: 'j
 const MAP_P2 = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Comma: 'jab', Period: 'heavy', Slash: 'kick', KeyL: 'block', Semicolon: 'grab' };
 const MAP_P2X = { Numpad1: 'jab', Numpad2: 'heavy', Numpad3: 'kick', Numpad4: 'block', Numpad5: 'grab' };   // 玩家二第二格：小键盘
 
-/* ---------- 自定义键位（1.6.0 单人；1.8.0 起双人对战也用） ----------
-   玩家一：人机 / 打桩 / 联机 / 双人对战都用这一套；玩家二：双人对战用。每个动作两格。
-   存在浏览器里（localStorage「modou.keys」「modou.keys2」），每个人在自己电脑上改自己的，换新版本文件也还在。
+/* ---------- 自定义键位（1.6.0 单人；1.8.0 双人对战也能改；1.9.1 单人和双人分开） ----------
+   三套：单人（人机 / 联机 / 打桩）、双人对战的玩家一、双人对战的玩家二。每个动作两格。
+   存在浏览器里（localStorage「modou.keys」单人、「modou.keys1」双人玩家一、「modou.keys2」双人玩家二），换新版本文件也还在。
+   单人那套和双人那两套互不影响：单人随便用方向键、小键盘，不用管会不会和玩家二抢键。
    双人对战时，两人都绑了的键归玩家二（玩家一那个键在双人对战里不起作用，键位设置里会标出来）。
-   1.8.0：玩家一的第二格默认空着（以前默认是方向键 + J K L U I，双人对战时会和玩家二抢键、离玩家二的手太近） */
+   1.9.1 以前单人和双人的玩家一是同一套（存在 modou.keys）：第一次打开新版本时，双人的玩家一照抄这一套 */
 const ACTIONS = [['left', '左'], ['right', '右'], ['up', '跳'], ['down', '蹲'], ['jab', '短拳'], ['heavy', '重拳'], ['kick', '腿踢'], ['block', '格挡'], ['grab', '擒拿']];
 const ACT_NAME = Object.fromEntries(ACTIONS);
 const codeOf = (map, a) => Object.keys(map).find(k => map[k] === a) || null;
-const DEFAULT_KEYS = {}, DEFAULT_KEYS2 = {};
+const DEFAULT_KEYS = {}, DEFAULT_KEYS2 = {};          // 单人、双人玩家一默认一样；玩家二另一套
 for (const [a] of ACTIONS) { DEFAULT_KEYS[a] = [codeOf(MAP_P1, a), null]; DEFAULT_KEYS2[a] = [codeOf(MAP_P2, a), codeOf(MAP_P2X, a)]; }
 const NO_BIND = new Set(['Escape', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'OSLeft', 'OSRight', 'ContextMenu']);
 const cloneKeys = k => Object.fromEntries(ACTIONS.map(([a]) => [a, (k[a] || [null, null]).slice(0, 2).concat([null, null]).slice(0, 2)]));
@@ -1257,32 +1265,38 @@ function keyProblems(k) {
 function keyMapOf(k) { const m = {}; for (const [a] of ACTIONS) for (const c of k[a]) if (c) m[c] = a; return m; }
 // 两个玩家都绑了的键（双人对战时归玩家二）
 function sharedKeys(k1, k2) { const m2 = keyMapOf(k2); return new Set(Object.keys(keyMapOf(k1)).filter(c => m2[c])); }
+const KEY_STORE = ['modou.keys', 'modou.keys1', 'modou.keys2'];     // 单人、双人玩家一、双人玩家二
 const Keys = {
-  p1: cloneKeys(DEFAULT_KEYS), p2: cloneKeys(DEFAULT_KEYS2),
-  map: {}, map2: {},                    // map：玩家一；map2：玩家二
-  get solo() { return this.p1; },       // 1.7.0 的叫法
-  load() {
-    const read = (key, def) => {
+  solo: cloneKeys(DEFAULT_KEYS), p1: cloneKeys(DEFAULT_KEYS), p2: cloneKeys(DEFAULT_KEYS2),
+  map: {}, map1: {}, map2: {},                 // map：单人；map1 / map2：双人对战的玩家一 / 玩家二
+  // get：读存档（测试里传假的进来）。坏掉的、有冲突的存档不要，用默认
+  load(get) {
+    get = get || (k => { try { return localStorage.getItem(k); } catch (e) { return null; } });
+    const read = key => {
       try {
-        const v = JSON.parse(localStorage.getItem(key) || 'null');
+        const v = JSON.parse(get(key) || 'null');
         if (v && typeof v === 'object') { const k = cloneKeys(v); if (!keyProblems(k).dup.length) return k; }
       } catch (e) {}
-      return cloneKeys(def);
+      return null;
     };
-    this.p1 = read('modou.keys', DEFAULT_KEYS); this.p2 = read('modou.keys2', DEFAULT_KEYS2);
+    this.solo = read(KEY_STORE[0]) || cloneKeys(DEFAULT_KEYS);
+    this.p1 = read(KEY_STORE[1]) || cloneKeys(this.solo);           // 以前只有一套：双人的玩家一照抄
+    this.p2 = read(KEY_STORE[2]) || cloneKeys(DEFAULT_KEYS2);
     this.rebuild();
   },
-  rebuild() { this.map = keyMapOf(this.p1); this.map2 = keyMapOf(this.p2); },
-  save(k1, k2) {
-    this.p1 = cloneKeys(k1); if (k2) this.p2 = cloneKeys(k2); this.rebuild();
-    try { localStorage.setItem('modou.keys', JSON.stringify(this.p1)); localStorage.setItem('modou.keys2', JSON.stringify(this.p2)); } catch (e) {}
+  rebuild() { this.map = keyMapOf(this.solo); this.map1 = keyMapOf(this.p1); this.map2 = keyMapOf(this.p2); },
+  save(solo, p1, p2) {
+    this.solo = cloneKeys(solo); this.p1 = cloneKeys(p1); this.p2 = cloneKeys(p2); this.rebuild();
+    try { [this.solo, this.p1, this.p2].forEach((k, i) => localStorage.setItem(KEY_STORE[i], JSON.stringify(k))); } catch (e) {}
   },
-  route(code, mode) { return keyRoute(code, mode, this.map, this.map2); },
+  route(code, mode) { return keyRoute(code, mode, this.map, this.map1, this.map2); },
+  bound(code) { return !!(this.map[code] || this.map1[code] || this.map2[code]); },   // 哪一套里绑了这个键
 };
-// 这一局里这个键是谁的什么动作：[0 或 1, 动作]，没有就 null。双人对战两人都绑了的归玩家二；其他模式只有玩家一
-function keyRoute(code, mode, m1, m2) {
+// 这一局里这个键是谁的什么动作：[0 或 1, 动作]，没有就 null。
+// 双人对战用双人的两套（两人都绑了的归玩家二）；人机 / 联机 / 打桩只看单人那套
+function keyRoute(code, mode, ms, m1, m2) {
   if (mode === 'pvp') return m2[code] ? [1, m2[code]] : m1[code] ? [0, m1[code]] : null;
-  return m1[code] ? [0, m1[code]] : null;
+  return ms[code] ? [0, ms[code]] : null;
 }
 Keys.load();
 // 鼠标按键（1.7.0）：记成 Mouse0~4（MouseEvent.button）。3、4 是侧键（一般是「后退」「前进」）
@@ -1657,12 +1671,11 @@ function superFx(F) {
   Sound.stamp();
   flashTo(0.25);
 }
-// 坠机：空中被打下来 —— 往下拖的墨线、火花往下掉、挨打的人头上「坠机」
+// 倒栽葱：空中被打下来 —— 往下拖的墨线、火花往下掉（字由 combat.js 的「倒栽葱 ×1.3」出）
 function crashFx(B, dir) {
   const J = B.J;
   for (let i = 0; i < 5; i++) streak(B.x + rnd(-16, 16), J.hip[1] - rnd(50, 90), B.x + dir * rnd(4, 16), J.hip[1] + 26, 3, C.ink, 16);
   sparks(B.x, J.hip[1] - 20, dir, 10, 7, B.sash, 1.2, -0.9, 20);
-  tag(B.x, J.head[1] - 50, '坠机', C.cin, 30);
   Sound.crash();
 }
 // 翻滚：两条腿撞在一起 —— 两色冲击星、火花往两边迸，空中那个人身后一道翻滚的弧
@@ -2503,6 +2516,9 @@ function cloneJ(J) {
 const atWall = F => F.x <= WALL_L + 2 || F.x >= WALL_R - 2;
 const stop = n => Math.round(n * HITSTOP);
 const darkSash = F => F.text || C.cin;          // 写在纸上的字用的颜色（随人物颜色变，太浅的用深一点的）
+// 1.9.1：讲规则的字（谁克谁、该站挡还是蹲挡、背后挡不住、站着的抄不到）只在打桩练习里出，实战里只出招名和结果
+const teach = () => game.mode === 'train';
+const CRASH_NAME = '倒栽葱';                     // 空中出招被克制、打下来（倒地更久）
 // 记数值（打桩练习面板用，不影响胜负）：这一下的招式、伤害、帧差、本套连击伤害
 function note(A, B, dmg, how) {
   const m = A.move, d = m.def, left = m.S + d.A + d.R - m.t;
@@ -2648,7 +2664,7 @@ function evade(A, B) {
   A.move.done = true; A.move.evaded = true;
   B.move.beatVs = A.move.def.tier;
   sparks(B.x + B.facing * 16, B.J.sh[1], B.facing, 6, 6, B.sash, 1.0, 0.3);
-  tag(B.x, B.J.head[1] - 40, TIER_NAME[B.move.def.tier] + '克' + TIER_NAME[A.move.def.tier] + ' · 化解', darkSash(B), 20);
+  tag(B.x, B.J.head[1] - 40, teach() ? TIER_NAME[B.move.def.tier] + '克' + TIER_NAME[A.move.def.tier] + ' · 化解' : '化解', darkSash(B), 20);
   Sound.whoosh(0.6);
 }
 
@@ -2678,13 +2694,13 @@ function applyHit(A, B, how) {
   else if (inStartup) { label = '破招'; lmul = COUNTER_MUL; }
   else if (punish) { label = punish[0]; lmul = punish[1]; A.stats.punishes++; }
   else if (charging) { label = '迎击'; lmul = COUNTER_MUL; }
-  // 1.9.0 空中交手：空中出招被克制它的招打中 = 坠机（倒地更久）；千斤坠被站着的拳打中再 ×1.4
+  // 1.9.0 空中交手：空中出招被克制它的招打中 = 倒栽葱（倒地更久）；千斤坠被站着的拳打中再 ×1.4
   const wasAir = B.airborne;
   const crash = wasAir && !!bm && bm.air && beats(d.tier, bm.def.tier) > 0;
   const punchDive = crash && !!bm.def.dive && !m.air && (d.kind === 'jab' || d.kind === 'heavy') && /^(fh|bh|fe)$/.test(d.limb);
   // 千斤坠踩中：蹲着 / 蹲挡 / 出下段的 ×1.3（踩蹲）；正在出对空招的 ×1.5、踩倒（踩断对空）
   let diveKD = false;
-  if (crash) { label = '坠机'; lmul = punchDive ? DIVE_PUNCH_MUL : Math.max(lmul, BEAT_MUL); }
+  if (crash) { label = CRASH_NAME; lmul = punchDive ? DIVE_PUNCH_MUL : Math.max(lmul, BEAT_MUL); }
   else if (d.dive && bm && bm.def.tier === 'aa') { label = '踩断对空'; lmul = DIVE_AA_MUL; diveKD = true; }
   else if (d.dive && lowProfile(B)) { label = '踩蹲'; lmul = DIVE_CROUCH_MUL; }
   mul *= lmul;
@@ -2722,12 +2738,13 @@ function applyHit(A, B, how) {
   game.freeze = stop((d.stop || 4) + (label ? 2 : 0));
   if (d.shake) game.shake = Math.max(game.shake, d.shake);
   hitFx(d.fx, c, A, B);
-  if (label) tag(B.x + dir * 10, B.J.head[1] - 36, label + ' ×' + lmul, C.cin, 21);
+  const relLabel = !!beatVs && label === TIER_NAME[d.tier] + '克' + TIER_NAME[beatVs];   // 「腿克重」这种：实战里不出字
+  if (label && (!relLabel || teach())) tag(B.x + dir * 10, B.J.head[1] - 36, label + ' ×' + lmul, C.cin, 21);
   if (m.dashIn) tag(A.x, A.J.head[1] - 60, '冲势 ×' + DASH_IN_MUL, darkSash(A), 20);
   note(A, B, dmg, [label, m.dashIn ? '冲势' : null].filter(Boolean).join(' · ') || '打中');
   if (offBalance) tag(B.x, B.J.head[1] - 62, '失衡', C.cin, 24);
-  if (wrongGuard) tag(B.x, B.J.head[1] - 10, d.height === 'low' ? '下段！要蹲挡' : '上段！要站挡', C.cin, 17);
-  if (backHit) tag(B.x, B.J.head[1] - 10, '背后挨打，挡不住', C.cin, 17);
+  if (wrongGuard && teach()) tag(B.x, B.J.head[1] - 10, d.height === 'low' ? '下段！要蹲挡' : '上段！要站挡', C.cin, 17);
+  if (backHit && teach()) tag(B.x, B.J.head[1] - 10, '背后挨打，挡不住', C.cin, 17);
   tag(c.x + dir * 10, c.y - 14, (m.air ? '空中 ' : '') + '-' + dmg, C.ink, 18);
   const sx0 = A.J.head[0] - dir * 52, sy0 = A.J.head[1] - 46;
   if (d.stamp) { stamp(sx0, sy0, d.stamp, 30); A.stats.specials++; }
@@ -2838,8 +2855,8 @@ function overpower(W, L) {
   L.clashed = false; L.hurtHeavy = true; L.kvx = dir * (mw.def.kb * 1.2 + 3);
   game.freeze = stop(10); game.shake = Math.max(game.shake, 6);
   clashFx(c.x, c.y, W, L); hitFx(mw.def.fx, c, W, L);
-  tag(c.x, c.y - 70, `${nameW} 压 ${nameL}`, darkSash(W), 22);
-  tag(c.x, c.y - 46, `起手 ${TIER_NAME[leadW]}克${TIER_NAME[leadL]}`, C.ink, 16);
+  if (teach()) { tag(c.x, c.y - 70, `${nameW} 压 ${nameL}`, darkSash(W), 22); tag(c.x, c.y - 46, `起手 ${TIER_NAME[leadW]}克${TIER_NAME[leadL]}`, C.ink, 16); }
+  else tag(c.x, c.y - 56, '压', darkSash(W), 36);
   tag(L.x, L.J.head[1] - 14, '-' + dL, C.ink, 18); tag(W.x, W.J.head[1] - 14, '-' + dW, C.ink, 15);
   Sound.clash(); Sound.hit(0.7);
 }
@@ -2888,7 +2905,7 @@ function grabMiss(A, B, why) {
   if (m.missTag) return;
   m.missTag = true;
   if (why === 'duck') tag(B.x, B.J.head[1] - 30, '蹲身闪过', C.ink, 22);
-  else tag(A.x, A.J.head[1] - 34, '站着的抄不到', C.ink, 18);
+  else if (teach()) tag(A.x, A.J.head[1] - 34, '站着的抄不到', C.ink, 18);
 }
 function dodged(A, B) {
   const m = A.move;
@@ -3134,7 +3151,7 @@ class Brain {
       }
       return;
     }
-    // 1.9.0 对付千斤坠：看见对手出千斤坠，站着等它踩下来，进了拳的射程就出短拳迎上去（坠机）
+    // 1.9.0 对付千斤坠：看见对手出千斤坠，站着等它踩下来，进了拳的射程就出短拳迎上去（倒栽葱）
     if (this.antiDive && f.actionable()) {
       const om = o.move;
       if (!(o.state === 'attack' && om && om.def.dive && !om.hit && !om.blocked)) this.antiDive = false;
@@ -4195,8 +4212,8 @@ ${J}`;se.test(Q)&&(H(F),F=setTimeout(ne,Zo))},Ue=()=>{b.iceGatheringState==="com
 'use strict';
 /* P2P 联机（1.9.0 重做）
    连接两种：
-     ① 对暗号（默认）：两边输入同一个暗号，经公共信令（Trystero，走公共 Nostr 中继，只交换连接信息）找到对方，
-        之后 WebRTC 点对点直连，游戏数据不经过任何服务器。网址 #暗号 就是邀请链接。掉线后同一个人回来自动续上。
+     ① 房间码（默认）：两边输入同一个房间码，经公共信令（Trystero，走公共 Nostr 中继，只交换连接信息）找到对方，
+        之后 WebRTC 点对点直连，游戏数据不经过任何服务器。网址 #房间码 就是邀请链接。掉线后同一个人回来自动续上。
      ② 手动（备用）：复制粘贴连接码（以前的做法，连信令也不用）。
    同步：回滚帧同步（rollback）。两边各跑一份同样的游戏，每帧只互传输入。本机输入只延后 1~3 帧；对方的输入还没到，
         就先「猜」（照他上一帧按住的方向 / 格挡，不猜新按的招）往下算；真的输入到了、猜错了，回到那一帧用真的重算
@@ -4204,7 +4221,7 @@ ${J}`;se.test(Q)&&(H(F),F=setTimeout(ne,Zo))},Ue=()=>{b.iceGatheringState==="com
    传输：输入走「不保证顺序、不重传」的通道（丢了靠下一包补上），二进制小包：每包带上对方还没确认收到的那几帧（一般 2~6 帧、
         二三十字节；以前是 JSON、每包固定 16 帧、一百多字节）。
    中继（TURN，可选）：校园网（eduroam）这类网络不让两台电脑直接连，填一个 TURN 中继，连不上直连时数据经中继转发。
-        手动连接时房间码带上房主的中继；对暗号时邀请链接带上房主的中继（对方不用自己填）。 */
+        手动连接时连接码带上房主的中继；用房间码时邀请链接带上房主的中继（对方不用自己填）。 */
 
 /* ---------- 中继设置 ---------- */
 const Relay = {
@@ -4430,15 +4447,15 @@ class Rollback {
   }
 }
 
-/* ---------- 暗号、邀请链接 ---------- */
+/* ---------- 房间码、邀请链接 ---------- */
 // 自己指定信令中继（调试用；或者默认的公共中继都连不上时）：浏览器 localStorage「modou.signal」= ["wss://…", …]。
-// 注意 Trystero 一个页面只在第一次对暗号时连信令中继，之后改了要刷新页面
+// 注意 Trystero 一个页面只在第一次进房间时连信令中继，之后改了要刷新页面
 function signalOverride() {
   try { const v = JSON.parse(localStorage.getItem('modou.signal') || 'null'); return Array.isArray(v) && v.length ? v.map(String) : null; } catch (e) { return null; }
 }
-// 暗号：去掉空白，英文字母不分大小写，最多 24 个字
+// 房间码：去掉空白，英文字母不分大小写，最多 24 个字
 const normCode = s => String(s || '').replace(/\s+/g, '').toLowerCase().slice(0, 24);
-// 邀请链接 = 网址#暗号；房主填了中继就带上（&r=压缩后的中继），对方点开就连、不用自己填
+// 邀请链接 = 网址#房间码；房主填了中继就带上（&r=压缩后的中继），对方点开就连、不用自己填
 async function inviteLink(code, relay) {
   const base = location.href.split('#')[0];
   let h = '#' + encodeURIComponent(code);
@@ -4466,7 +4483,7 @@ async function unpackJson(s) {
   return JSON.parse(json);
 }
 
-// 对暗号时，两条通道开在 Trystero 连好的连接上。Trystero 会在同一个应用里复用连接（换个暗号又回来、短暂掉线），
+// 房间码联机时，两条通道开在 Trystero 连好的连接上。Trystero 会在同一个应用里复用连接（换个房间又回来、短暂掉线），
 // 连接还在的话原来那两条通道也还在：接着用（关掉再开同一个编号会撞车），连接换了新的才开新的
 const CHANNELS = new WeakMap();
 
@@ -4478,7 +4495,7 @@ const Net = {
   rb: null, acc: 0, stall: 0, adv: 0, holdN: 0,
   hashes: new Map(), desync: false, hashChecks: 0,
   looks: { h: 'ink', g: 'indigo' },
-  // 对暗号（1.9.0）
+  // 房间码联机（1.9.0）
   room: null, code: '', peerId: null, linkRelay: null, reconnecting: false, reconnectUntil: 0, lostAt: 0, kind: '',
   busy: null, busyIds: new Set(), versionBad: false,
   // 界面回调（ui.js 设置）
@@ -4488,7 +4505,7 @@ const Net = {
   embedded() { try { return window.self !== window.top; } catch (e) { return true; } },
   roomSupported() { return typeof Trystero !== 'undefined' && !!Trystero.joinRoom; },
 
-  // 断开当前连接（不退房间）。对暗号的通道不关，只是不再听它（连接归 Trystero 管，可能还会复用）
+  // 断开当前连接（不退房间）。房间码联机的通道不关，只是不再听它（连接归 Trystero 管，可能还会复用）
   reset() {
     clearInterval(this.pingTimer); clearTimeout(this.connTimer); clearTimeout(this.lostTimer);
     this.detach();
@@ -4509,11 +4526,11 @@ const Net = {
     this.looks = { h: role === 'host' ? Looks.solo.me : null, g: null };
   },
 
-  /* ---------- ① 对暗号 ---------- */
+  /* ---------- ① 房间码 ---------- */
   joinCode(code) {
     code = normCode(code);
-    if (!code) throw new Error('先输入一个暗号（两边要一样）');
-    if (!this.roomSupported()) throw new Error('这个文件里没有对暗号的组件，请用下面的「手动连接」');
+    if (!code) throw new Error('先输入一个房间码（两边要一样）');
+    if (!this.roomSupported()) throw new Error('这个文件里没有房间码联机的组件，请用下面的「手动连接」');
     this.leaveAll();
     this.kind = 'room'; this.code = code;
     this.relayUsed = mergeIce(Relay.list, this.linkRelay);
@@ -4522,6 +4539,9 @@ const Net = {
     if (urls) relayConfig.urls = urls;
     this.room = Trystero.joinRoom({ appId: NET.APP_ID, rtcConfig: { iceServers: ice }, relayConfig }, 'room:' + code, {
       onJoinError: d => { this.lastDiag = d && d.error ? String(d.error.message || d.error) : ''; this.onRoom('error'); },
+      // 连上以后 Trystero 两边要互相「握手」一下。偶尔一边的握手消息来得太早被丢掉，要等超时重来（默认 10 秒）：
+      // 握手只是直连上来回一两条消息，正常一秒都不用，所以等 4 秒就重来，配对卡住时快一点
+      handshakeTimeoutMs: NET.HANDSHAKE_WAIT,
     });
     // 房间里已经有两个人在打了：告诉后来的人「满了」
     this.busy = this.room.makeAction('busy', { onMessage: (d, meta) => this.gotBusy(meta && meta.peerId) });
@@ -4612,19 +4632,19 @@ const Net = {
       if (s === 'failed' || s === 'closed' || (s === 'disconnected' && this.open)) this.closed();
     };
   },
-  // 房主：生成房间码
+  // 房主：生成连接码
   async host() {
     this.newPc(null, 'host');
     this.wire(this.pc.createDataChannel('ctl', { ordered: true }));
     this.wire(this.pc.createDataChannel('in', { ordered: false, maxRetransmits: 0 }));
     await this.pc.setLocalDescription(await this.pc.createOffer());
     await waitIce(this.pc, hasTurn(this.relayUsed));
-    return packDesc(this.pc.localDescription, this.relayUsed);    // 房间码带上中继，对方不用自己填
+    return packDesc(this.pc.localDescription, this.relayUsed);    // 连接码带上中继，对方不用自己填
   },
-  // 加入方：吃房间码，生成应答码
+  // 加入方：吃连接码，生成应答码
   async join(code) {
     const { relay, version, ...desc } = await unpackDesc(code);
-    if (desc.type !== 'offer') throw new Error('这是应答码，不是房间码');
+    if (desc.type !== 'offer') throw new Error('这是应答码，不是连接码');
     checkVersion(version, '房主');
     this.newPc(relay, 'guest'); this.peerVersion = version;
     this.pc.ondatachannel = e => this.wire(e.channel);
@@ -4640,7 +4660,7 @@ const Net = {
   // 房主：吃应答码，开始连接
   async finish(code) {
     const { relay, version, ...desc } = await unpackDesc(code);
-    if (desc.type !== 'answer') throw new Error('这是房间码，不是应答码');
+    if (desc.type !== 'answer') throw new Error('这是连接码，不是应答码');
     checkVersion(version, '对方');
     if (!this.pc || this.role !== 'host' || this.kind !== 'manual') throw new Error('先点「我来建房」');
     if (this.pc.signalingState === 'stable') throw new Error('已经点过「连接」了，正在连，稍等一下（最多 20 秒）');
@@ -4675,7 +4695,7 @@ const Net = {
     else tip = '两边都有中继地址还是没通：中继额度用完了，或者凭据刚建还没生效（等两分钟再试）。';
     return `你这边：${say(L)}；对方：${say(R)}。${tip}`;
   },
-  // 两条通道都开了：开始打招呼。对暗号时两边各自开通道，对方那条可能还没开、头几条消息会丢，所以 hello 每半秒重发，直到收到对方的
+  // 两条通道都开了：开始打招呼。房间码联机时两边各自开通道，对方那条可能还没开、头几条消息会丢，所以 hello 每半秒重发，直到收到对方的
   checkOpen() {
     if (this.linked || !this.ctl || !this.inCh || this.ctl.readyState !== 'open' || this.inCh.readyState !== 'open') return;
     this.linked = true;
@@ -4739,7 +4759,7 @@ const Net = {
     const room = this.kind === 'room';
     this.reset();
     if (room) this.peerId = null;
-    this.onClose(was, room && !!this.room);                       // 对暗号：对方走了，自己还留在房间里等
+    this.onClose(was, room && !!this.room);                       // 房间码联机：对方走了，自己还留在房间里等
     if (room && this.room) this.onRoom('waiting');
   },
   leave() { this.sendCtl({ t: 'bye' }); setTimeout(() => this.leaveAll(), 50); },
@@ -4977,7 +4997,7 @@ btnSound.addEventListener('click', () => { Sound.init(); setSound(!Sound.on); })
 document.addEventListener('visibilitychange', () => { if (document.hidden && game.phase === 'fight' && !game.paused) setPaused(true); });
 
 /* ---------- 联机面板 ----------
-   1.9.0：上面是「对暗号」（默认），下面折起来的是「手动连接」（以前的复制粘贴连接码）。连上以后只显示大厅（选色、开始） */
+   1.9.0：上面是「房间码」（默认），下面折起来的是「手动连接」（以前的复制粘贴连接码）。连上以后只显示大厅（选色、开始） */
 function netView(v) {
   const lobby = v === 'lobby';
   for (const id of ['netIntro', 'netRoom', 'relayBox', 'manualBox']) $(id).hidden = lobby;
@@ -5003,7 +5023,7 @@ function openOnline(code) {
   showOverlay(onlineEl);
   if (code && ok && Net.roomSupported()) joinRoomUi(code);
 }
-// 对暗号：进房间等对方（暗号记下来，下次打开自动填上；网址后面挂上 #暗号，刷新也还在这个房间）
+// 房间码：进房间等对方（房间码记下来，下次打开自动填上；网址后面挂上 #房间码，刷新也还在这个房间）
 function joinRoomUi(raw) {
   netErr('');
   let code;
@@ -5017,18 +5037,18 @@ let roomHintT = 0;
 function roomUi(state) {
   const st = $('roomStatus'), inRoom = !!Net.room;
   $('roomTools').hidden = !inRoom; $('roomCode').disabled = inRoom; $('btnRoomJoin').disabled = inRoom;
-  $('btnRoomJoin').textContent = inRoom ? '已进房' : '对暗号';
+  $('btnRoomJoin').textContent = inRoom ? '已进房' : '进房间';
   st.className = 'status sm'; clearTimeout(roomHintT);
-  if (state === 'busy') { st.className = 'status sm bad'; st.textContent = '这个暗号已经有两个人在打了，换一个暗号吧。'; return; }
+  if (state === 'busy') { st.className = 'status sm bad'; st.textContent = '这个房间已经有两个人在打了，换一个房间码吧。'; return; }
   if (!state || !inRoom) { st.textContent = ''; return; }
   if (state === 'waiting') {
-    st.textContent = `暗号「${Net.code}」· 等对方进来…（让他输入同一个暗号，或者把邀请链接发给他）` + (hasTurn(Net.relayUsed) ? ' · 带着中继' : '');
+    st.textContent = `房间「${Net.code}」· 等对方进来…（让他输入同一个房间码，或者把邀请链接发给他）` + (hasTurn(Net.relayUsed) ? ' · 带着中继' : '');
     // 等了半分钟还没连上：对方要是已经进来了，多半是网络不让两台电脑直连
     roomHintT = setTimeout(() => {
       if (!Net.room || Net.open || onlineEl.hidden) return;
       st.textContent += hasTurn(Net.relayUsed)
-        ? '\n等了半分钟还没连上。如果对方已经输入同一个暗号了：两边刷新一下再试，或者用下面的「手动连接」。'
-        : '\n等了半分钟还没连上。如果对方已经输入同一个暗号了，多半是网络不让两台电脑直连（校园网常见）：在下面「中继服务器」里填一个中继（有一边填了就行），或者两边连同一个手机热点。';
+        ? '\n等了半分钟还没连上。如果对方已经输入同一个房间码了：两边刷新一下再试，或者用下面的「手动连接」。'
+        : '\n等了半分钟还没连上。如果对方已经输入同一个房间码了，多半是网络不让两台电脑直连（校园网常见）：在下面「中继服务器」里填一个中继（有一边填了就行），或者两边连同一个手机热点。';
     }, 30000);
   }
   else if (state === 'rejoining') st.textContent = '对方回来了，正在重新连…';
@@ -5063,7 +5083,7 @@ async function copyFrom(id, btn) {
 function netStatusText() {
   const ms = Math.round(Net.rtt), d = Net.pickDelay();
   const via = Net.via === 'relay' ? '经中继' : Net.via === 'direct' ? '直连' : '';
-  return `已连接${Net.code ? '（暗号「' + Net.code + '」）' : ''}${via ? ' · ' + via : ''} · 往返 ${ms || '…'} 毫秒 · 输入延迟 ${d} 帧` + (Net.role === 'host' ? '' : ' · 等对方点开始');
+  return `已连接${Net.code ? '（房间「' + Net.code + '」）' : ''}${via ? ' · ' + via : ''} · 往返 ${ms || '…'} 毫秒 · 输入延迟 ${d} 帧` + (Net.role === 'host' ? '' : ' · 等对方点开始');
 }
 /* ---------- 中继设置 ---------- */
 function relaySummary() {
@@ -5110,7 +5130,7 @@ $('netLooks').addEventListener('click', e => {
 Net.onStatus = () => { if (!$('netLobby').hidden) $('netStatus').textContent = netStatusText(); };
 Net.onClose = (wasOpen, stay) => {
   if (game.mode === 'online') { Net.leaveAll(); clearHash(); toMenu(wasOpen ? '对方断开了连接' : '连接失败'); }
-  else if (!onlineEl.hidden && stay) { netView('choose'); netErr('对方离开了。留在房间里等他回来，或者换个暗号。'); roomUi('waiting'); }
+  else if (!onlineEl.hidden && stay) { netView('choose'); netErr('对方离开了。留在房间里等他回来，或者换个房间。'); roomUi('waiting'); }
   else if (!onlineEl.hidden) {
     netView('choose'); roomUi(Net.room ? 'waiting' : null);
     if (wasOpen) netErr('对方断开了连接');
@@ -5124,7 +5144,7 @@ $('btnNetBack').addEventListener('click', () => { Net.leave(); clearHash(); toMe
 $('btnHost').addEventListener('click', async () => {
   netView('host'); netErr(''); $('hostCode').value = ''; roomUi(null);
   try { $('hostCode').value = await Net.host(); }
-  catch (e) { netErr('生成房间码失败：' + (e.message || e)); }
+  catch (e) { netErr('生成连接码失败：' + (e.message || e)); }
 });
 $('btnJoin').addEventListener('click', () => { Net.leaveAll(); roomUi(null); netView('join'); netErr(''); $('joinCode').focus(); });
 $('copyHost').addEventListener('click', e => copyFrom('hostCode', e.currentTarget));
@@ -5142,12 +5162,14 @@ $('btnConnect').addEventListener('click', async () => {
 });
 $('btnNetStart').addEventListener('click', () => Net.startAsHost());
 
-/* ---------- 键位设置面板（1.8.0：玩家一 / 玩家二两套，双人对战也用） ---------- */
-let keyDraft = null, keyWho = 0, keyWait = null, keyBack = null;   // 两套草稿、正在改谁的、正在等按键的格子 [动作, 第几格]、关掉后回到哪
-const WHO_HINT = ['玩家一：人机、打桩、联机、双人对战都用这一套。', '玩家二：双人对战用。'];
+/* ---------- 键位设置面板（1.9.1：单人 / 双人玩家一 / 双人玩家二 三套，互不影响） ---------- */
+let keyDraft = null, keyWho = 0, keyWait = null, keyBack = null;   // 三套草稿、正在改哪套、正在等按键的格子 [动作, 第几格]、关掉后回到哪
+const WHO_NAME = ['单人', '双人·玩家一', '双人·玩家二'];
+const WHO_HINT = ['单人：人机、联机、打桩用这一套。随便改（方向键、小键盘都行），不影响双人对战。',
+  '双人对战·玩家一。两人都绑了的键归玩家二。', '双人对战·玩家二。'];
 function openKeys(from) {
-  keyDraft = [cloneKeys(Keys.p1), cloneKeys(Keys.p2)]; keyWait = null; keyBack = from;
-  setKeyWho(game.mode === 'pvp' && from === 'pause' ? keyWho : 0); showOverlay(keysEl);
+  keyDraft = [cloneKeys(Keys.solo), cloneKeys(Keys.p1), cloneKeys(Keys.p2)]; keyWait = null; keyBack = from;
+  setKeyWho(game.mode === 'pvp' && from === 'pause' ? (keyWho || 1) : 0); showOverlay(keysEl);
 }
 function setKeyWho(w) {
   keyWho = w; keyWait = null;
@@ -5160,8 +5182,8 @@ function closeKeys() {
   if (keyBack === 'pause') showOverlay(pauseEl); else showOverlay(menu);
 }
 function renderKeys() {
-  const k = keyDraft[keyWho], pr = keyProblems(k), other = keyProblems(keyDraft[1 - keyWho]);
-  const shared = sharedKeys(keyDraft[0], keyDraft[1]);
+  const k = keyDraft[keyWho], pr = keyProblems(k);
+  const shared = keyWho ? sharedKeys(keyDraft[1], keyDraft[2]) : new Set();      // 两人都绑了的键只有双人那两套要管
   $('keyRows').innerHTML = ACTIONS.map(([a, n]) => `<tr><td>${n}</td>` + [0, 1].map(i => {
     const c = k[a][i], waiting = keyWait && keyWait[0] === a && keyWait[1] === i;
     const cls = waiting ? 'wait' : !c ? 'empty' : pr.dupCodes.has(c) ? 'bad' : shared.has(c) ? 'shared' : '';
@@ -5173,11 +5195,14 @@ function renderKeys() {
     msg.push(names.length > 1 ? `键位冲突：${keyName(c)} 同时是${names.join('和')}的键` : `${names[0]}两格都是 ${keyName(c)}`);
   }
   for (const a of pr.missing) msg.push(`「${ACT_NAME[a]}」还没有键`);
-  if (other.dup.length || other.missing.length) msg.push(`${keyWho ? '玩家一' : '玩家二'}那边还有没改好的`);
+  for (let w = 0; w < 3; w++) {
+    const o = keyProblems(keyDraft[w]);
+    if (w !== keyWho && (o.dup.length || o.missing.length)) msg.push(`「${WHO_NAME[w]}」那套还有没改好的`);
+  }
   $('keyMsg').textContent = msg.length ? msg.join('；') + '。改好才能保存。' : '';
   $('btnKeysSave').disabled = msg.length > 0;
   const info = [];
-  if (shared.size) info.push(`黄色的键两个人都绑了：${[...shared].map(keyName).join('、')}。人机 / 联机里照常是玩家一的；双人对战时归玩家二${keyWho ? '' : '，玩家一的这个键在双人对战里不起作用'}。`);
+  if (shared.size) info.push(`黄色的键两个人都绑了：${[...shared].map(keyName).join('、')}。双人对战时归玩家二${keyWho === 1 ? '，玩家一的这个键不起作用' : ''}。`);
   const usesP = keyDraft.some(d => Object.values(d).some(v => v.includes('KeyP')));
   if (usesP) info.push('P 原来也是暂停键；绑到动作上以后，暂停只用 Esc。');
   $('keyInfo').textContent = info.join(' ');
@@ -5209,23 +5234,22 @@ window.addEventListener('mousedown', e => {
 }, true);
 $('btnKeysSave').addEventListener('click', () => {
   if (keyDraft.some(d => keyProblems(d).dup.length)) return;
-  Keys.save(keyDraft[0], keyDraft[1]); showKeyCards(); closeKeys();
+  Keys.save(keyDraft[0], keyDraft[1], keyDraft[2]); showKeyCards(); closeKeys();
 });
-$('btnKeysReset').addEventListener('click', () => { keyDraft[keyWho] = cloneKeys(keyWho ? DEFAULT_KEYS2 : DEFAULT_KEYS); keyWait = null; renderKeys(); });
+$('btnKeysReset').addEventListener('click', () => { keyDraft[keyWho] = cloneKeys(keyWho === 2 ? DEFAULT_KEYS2 : DEFAULT_KEYS); keyWait = null; renderKeys(); });
 $('btnKeysCancel').addEventListener('click', closeKeys);
 $('btnKeys').addEventListener('click', () => openKeys('menu'));
 $('btnPauseKeys').addEventListener('click', () => openKeys('pause'));
-// 图例里两张键位卡：显示现在真正在用的键
+// 图例里三张键位卡（单人、双人玩家一、双人玩家二）：显示现在真正在用的键
 function showKeyCards() {
   const shared = sharedKeys(Keys.p1, Keys.p2);
-  [[Keys.p1, 'p1keys'], [Keys.p2, 'p2keys']].forEach(([k, id]) => {
-    const K = a => k[a].filter(Boolean).map(c => `<kbd${shared.has(c) && id === 'p1keys' ? ' title="双人对战时归玩家二"' : ''}>${keyName(c)}</kbd>`).join('') || '—';
+  [[Keys.solo, 'k0'], [Keys.p1, 'k1'], [Keys.p2, 'k2']].forEach(([k, id]) => {
+    const K = a => k[a].filter(Boolean).map(c => `<kbd${shared.has(c) && id === 'k1' ? ' title="双人对战时归玩家二"' : ''}>${keyName(c)}</kbd>`).join('') || '—';
     $(id).innerHTML = `<dt>移动</dt><dd>${K('left')}${K('right')} 按哪边朝哪边跑 · 跳 ${K('up')} 蹲 ${K('down')}</dd>` +
       `<dt>出招</dt><dd>短拳 ${K('jab')} 重拳 ${K('heavy')} 腿踢 ${K('kick')}</dd>` +
       `<dt>防守</dt><dd>格挡 ${K('block')} 按住 · 擒拿 ${K('grab')}</dd>`;
   });
-  $('soloKeys').textContent = '人机、打桩、联机、双人对战都用这套，菜单「键位设置」里能改。' +
-    (shared.size ? `${[...shared].map(keyName).join('、')} 玩家二也绑了：双人对战时归玩家二。` : '');
+  $('p1note').textContent = shared.size ? `${[...shared].map(keyName).join('、')} 玩家二也绑了：归玩家二。` : '';
 }
 showKeyCards();
 
@@ -5340,7 +5364,7 @@ if (!(playEl.requestFullscreen || playEl.webkitRequestFullscreen)) btnFull.hidde
 btnFull.addEventListener('click', () => { if (fsEl()) exitFull(); else enterFull(); btnFull.blur(); });
 $('btnPauseFull').addEventListener('click', exitFull);
 
-/* ---------- 鼠标（1.7.0）：键位里绑了鼠标按键，人机 / 打桩 / 联机时生效 ---------- */
+/* ---------- 鼠标（1.7.0）：键位里绑了鼠标按键就能用（单人那套在人机 / 打桩 / 联机里，双人那两套在双人对战里） ---------- */
 const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
@@ -5351,7 +5375,7 @@ function mouseAction(e) {
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
   return r;
 }
-const boundMouse = b => !!(Keys.map['Mouse' + b] || Keys.map2['Mouse' + b]);
+const boundMouse = b => Keys.bound('Mouse' + b);
 const boundSide = () => boundMouse(3) || boundMouse(4);
 window.addEventListener('mousedown', e => {
   if (e.button === 1 || ((e.button === 3 || e.button === 4) && (boundSide() || !keysEl.hidden))) e.preventDefault();   // 中键不滚屏、侧键不翻页
@@ -5374,7 +5398,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) Soun
 window.addEventListener('focus', () => Sound.wake());
 
 /* ---------- 键盘 ---------- */
-// 人机 / 打桩 / 联机：本机一个人，用玩家一的键位；双人对战：两套键位（1.8.0 起都能自己改）
+// 人机 / 打桩 / 联机：本机一个人，用单人那套键位；双人对战：双人的两套（1.9.1 起和单人分开）
 function route(code) {
   if (game.mode === 'attract') return null;
   const r = Keys.route(code, game.mode);
@@ -5482,7 +5506,7 @@ function loop(now) {
 window.addEventListener('resize', resize);
 if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
 
-// 1.9.0 邀请链接：网址后面带着 #暗号（可能还带着房主的中继）打开 → 直接进联机面板、进这个房间
+// 1.9.0 邀请链接：网址后面带着 #房间码（可能还带着房主的中继）打开 → 直接进联机面板、进这个房间
 function openInvite() {
   if (location.hash.length < 2 || game.mode === 'online') return;
   parseInvite(location.hash).then(({ code, relay }) => {
@@ -5501,7 +5525,7 @@ function boot(data) {
   resize(); startAttract();
   openInvite();
   if (document.fonts && document.fonts.load) {
-    document.fonts.load('40px "Ma Shan Zheng"', '墨斗靛朱赭松黛紫苍随机以武会友第一二三四五回合战胜负已分时间到平局决胜局连击崩拳冲天炮鞭腿旋风腿泰山压顶飞踢接腿摔擒拿连珠快拳后手直拳摆拳势破挡闪拆破招空中倒地久被两败俱伤本重打等待对方联机不同步拼克制化解霸体卸失衡推开震爆气满可泼墨寸劲转身蹬扫堂托天掌铁山靠过肩下段上蹲站要拳重腿对必杀压起手顶肘劈挂落步冲盖砸二起脚千斤坠闪背后不住迎击势桩练习回满打截踩抄抱提膝别挣脱借力滚身反绽住翻断挨着撞掉线')
+    document.fonts.load('40px "Ma Shan Zheng"', '墨斗靛朱赭松黛紫苍随机以武会友第一二三四五回合战胜负已分时间到平局决胜局连击崩拳冲天炮鞭腿旋风腿泰山压顶飞踢接腿摔擒拿连珠快拳后手直拳摆拳势破挡闪拆破招空中倒地久被两败俱伤本重打等待对方联机不同步拼克制化解霸体卸失衡推开震爆气满可泼墨寸劲转身蹬扫堂托天掌铁山靠过肩下段上蹲站要拳重腿对必杀压起手顶肘劈挂落步冲盖砸二起脚千斤坠闪背后不住迎击势桩练习回满打截踩抄抱提膝别挣脱借力滚身反绽住翻断挨着撞掉线栽葱')
       .then(() => { bg = makeBg(); }).catch(() => {});
   }
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
