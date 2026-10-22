@@ -166,6 +166,12 @@ details#manualBox .row{margin:6px 0}
 details#manualBox .netbox{margin-top:6px}
 .status.ok{color:#2f6b2f}.status.bad{color:var(--cinnabar)}
 
+/* 设置（1.9.3）：音量 */
+.volrow{display:flex;align-items:center;gap:10px;width:100%;max-width:420px}
+.volrow .cbtn{min-width:44px;font-size:20px;line-height:1}
+.volrow input[type=range]{flex:1;min-width:0;accent-color:var(--cinnabar);height:28px}
+.volrow b{min-width:2.4em;text-align:right;font:500 18px var(--ui);color:var(--ink)}
+
 /* 键位设置 */
 .tbtn.dark{color:var(--ink);border-color:rgba(23,24,26,.45);font-size:13px}
 .tbtn.dark:hover{background:rgba(23,24,26,.08)}
@@ -257,6 +263,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
         <div class="row tight">
           <button class="tbtn dark" id="btnKeys" type="button">⌨ 键位设置</button>
           <button class="tbtn dark" id="btnLooks" type="button">人物颜色</button>
+          <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
         </div>
         <p class="hint" id="menuMsg">五局三胜 · 人机/联机每回合 300 秒，双人不限时 · 键位、克制和连招表在下方</p>
       </div>
@@ -269,6 +276,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
           <button class="ibtn" id="btnResume" type="button">继续</button>
           <button class="ibtn ghost" id="btnRestart" type="button">重开</button>
           <button class="ibtn ghost" id="btnPauseKeys" type="button">键位</button>
+          <button class="ibtn ghost" id="btnPauseSet" type="button">设置</button>
           <button class="ibtn ghost" id="btnQuit" type="button">回菜单</button>
         </div>
         <button class="tbtn dark" id="btnPauseFull" type="button" hidden>退出全屏</button>
@@ -343,6 +351,21 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
           <button class="ibtn ghost" id="btnKeysReset" type="button">恢复默认</button>
           <button class="ibtn ghost" id="btnKeysCancel" type="button">取消</button>
         </div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="setPanel" hidden>
+      <div class="panel looks">
+        <p class="big sm">设置</p>
+        <p class="step">音量</p>
+        <div class="volrow">
+          <button class="cbtn ghost" id="volDown" type="button" aria-label="小声一点">−</button>
+          <input type="range" id="volRange" min="0" max="100" step="5" value="50" aria-label="音量">
+          <button class="cbtn ghost" id="volUp" type="button" aria-label="大声一点">＋</button>
+          <b id="volVal">50</b>
+        </div>
+        <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑的浏览器里。</p>
+        <div class="row"><button class="ibtn" id="btnSetDone" type="button">好了</button></div>
       </div>
     </div>
 
@@ -520,7 +543,7 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
     <div class="card wide">
       <h3>帧数表</h3>
       <div class="scrollx"><table><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody id="frameTable"></tbody></table></div>
-      <p class="note">1 帧 = 1/60 秒（1.8.0 整体比以前慢约 7%）。射程是两人中心距（像素，含前冲），空中招式伤害已含 ×1.35。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。血量 500，五局三胜。</p>
+      <p class="note">1 帧 = 1/60 秒（1.8.0 整体慢约 7%，1.9.3 出招、挨打再慢约 5%）。射程是两人中心距（像素，含前冲），空中招式伤害已含 ×1.35。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。血量 500，五局三胜。</p>
     </div>
   </section>
 </main>
@@ -529,13 +552,15 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '1.9.2';
+const VERSION = '1.9.3';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
-// 招式表 moves.js 里写的是基准帧数，M() 统一换算；想再快 / 慢一点，只改 TEMPO。
+// 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
+// 跑、跳的速度不变（那些按 TEMPO 算）。招式表 moves.js 里写的是基准帧数，M() 统一换算。
+// 想整体再快 / 慢一点改 TEMPO；只想改出招、挨打这些帧数改 HIT_TEMPO。
 // 只用乘除（联机两边算出来一样），不用 Math.pow
-const TEMPO = 1.07, TEMPO2 = TEMPO * TEMPO;
-const TF = n => Math.round(n * TEMPO);
+const TEMPO = 1.07, TEMPO2 = TEMPO * TEMPO, HIT_TEMPO = 1.05;
+const TF = n => Math.round(n * TEMPO * HIT_TEMPO);
 
 // 场地（逻辑坐标，画布按比例缩放）。W 是画面宽；场地 STAGE_W 比画面宽，镜头跟着两人左右移
 const W = 1200, H = 600, FLOOR = 520, PUSH = 25;                    // PUSH = 身体半宽
@@ -689,10 +714,10 @@ const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced
    fh/bh: 前手/后手 相对肩膀 [x,y]
    ff/bf: 前脚/后脚 [相对髋 x, 离地高度]
    ============================================================ */
-// 站姿（1.9.0 照街霸 Ryu / Luke）：身子直、略往后仰；两脚分得开、重心压低，前腿屈膝、后腿往后撑得直一些；
-// 前手拳护在下巴前，后手拳收在胸口，两肘往下沉
-const BASE = { rot: 0, spin: 0, tor: -3, head: 5, hy: 48, dx: 0, air: 0, fe: 1, be: 1,
-  fh: [28, -7], bh: [14, 9], ff: [31, 0], bf: [-43, 0] };
+// 出招时的底子（招式关键帧没写的部分都从这里来）：身子直、略往后仰；两脚前后分开、膝盖微屈（1.9.3 从 hy 48 抬到 56，
+// 后脚收近一点，不再蹲得那么低）；前手拳护在下巴前，后手拳收在胸口，两肘往下沉
+const BASE = { rot: 0, spin: 0, tor: -3, head: 5, hy: 56, dx: 0, air: 0, fe: 1, be: 1,
+  fh: [28, -7], bh: [14, 9], ff: [30, 0], bf: [-26, 0] };
 const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
 function mk(o) {
@@ -742,14 +767,15 @@ function evalKeys(keys, t) {
 
 // 跳跃三段：上升（蹬直、提膝）→ 顶点（收腿团身）→ 下落（伸腿找地）。
 // 1.9.1：手不往上举 —— 大臂往前后张开、肘往上提（fe / be = -1，肘弯朝上），小臂往下垂，像收着的翅膀
-const P_JUP = { tor: 10, head: -6, ff: [22, 44], bf: [-18, 6], fh: [26, 34], bh: [-16, 34], fe: -1, be: -1 };
-const P_JTOP = { tor: 20, head: -2, ff: [16, 50], bf: [-2, 44], fh: [22, 36], bh: [-12, 34], fe: -1, be: -1 };
-const P_JDN = { tor: 6, head: -2, ff: [28, 12], bf: [-20, 22], fh: [32, 30], bh: [-30, 28], fe: -1, be: -1 };
+const P_JUP = { hy: 48, tor: 10, head: -6, ff: [22, 44], bf: [-18, 6], fh: [26, 34], bh: [-16, 34], fe: -1, be: -1 };
+const P_JTOP = { hy: 48, tor: 20, head: -2, ff: [16, 50], bf: [-2, 44], fh: [22, 36], bh: [-12, 34], fe: -1, be: -1 };
+const P_JDN = { hy: 48, tor: 6, head: -2, ff: [28, 12], bf: [-20, 22], fh: [32, 30], bh: [-30, 28], fe: -1, be: -1 };
 // 跑着起跳：飞身 —— 身子前倾、前腿提膝、后腿往后蹬直，像跨栏；两臂一前一后张开、小臂往下垂（展翅）
-const P_JLEAP = { tor: 24, head: -8, ff: [36, 42], bf: [-54, 20], fh: [38, 28], bh: [-40, 26], fe: -1, be: -1 };
-const P_JLEAP_DN = { tor: 12, head: -4, ff: [32, 18], bf: [-34, 16], fh: [36, 30], bh: [-36, 28], fe: -1, be: -1 };   // 飞身往下落：两腿往下找地，手还张着
+const P_JLEAP = { hy: 48, tor: 24, head: -8, ff: [36, 42], bf: [-54, 20], fh: [38, 28], bh: [-40, 26], fe: -1, be: -1 };
+const P_JLEAP_DN = { hy: 48, tor: 12, head: -4, ff: [32, 18], bf: [-34, 16], fh: [36, 30], bh: [-36, 28], fe: -1, be: -1 };   // 飞身往下落：两腿往下找地，手还张着
 const POSE = {
-  stance: mk(),
+  // 待机站姿（1.9.3，Jack：腿别往下弯那么多）：后腿站着、几乎直着撑在身子下面，前腿往前伸一点点（不往后弯）
+  stance: mk({ hy: 66, ff: [30, 0], bf: [-10, 0] }),
   run: mk({ tor: 26, head: -16, hy: 54, fe: 0.2, be: 0.2 }),   // 跑步只用到这几个，手脚每帧现算（fighter.js runPose）
   crouch: mk({ hy: 38, tor: 26, head: -12, ff: [32, 0], bf: [-30, 0], fh: [26, 2], bh: [14, 12] }),
   block: mk({ hy: 56, tor: 0, head: 10, dx: -4, fh: [12, -30], bh: [18, -10], ff: [24, 0], bf: [-30, 0] }),
@@ -759,7 +785,7 @@ const POSE = {
   jup: mk(P_JUP), jtop: mk(P_JTOP), jdn: mk(P_JDN), leap: mk(P_JLEAP), leapDn: mk(P_JLEAP_DN),
   // 被过肩摔扛起来：被拽着一只手、身子缩着、腿乱蹬（整个人的转角 rot 由 fighter.js 按摔的进度算）
   thrown: mk({ tor: 14, head: 18, hy: 46, fh: [28, -44], bh: [-6, -40], ff: [30, 30], bf: [-14, 18] }),
-  tuck: mk({ tor: 40, head: 16, ff: [8, 52], bf: [-2, 46], fh: [20, 14], bh: [12, 18] }),
+  tuck: mk({ hy: 48, tor: 40, head: 16, ff: [8, 52], bf: [-2, 46], fh: [20, 14], bh: [12, 18] }),
   hurtL: mk({ tor: -22, head: -30, dx: -10, hy: 58, fh: [4, 0], bh: [-12, 6], ff: [30, 0], bf: [-30, 0] }),
   hurtH: mk({ tor: 38, head: 32, dx: -16, hy: 48, fh: [24, 24], bh: [12, 30], ff: [20, 0], bf: [-36, 0] }),
   hurtAir: mk({ rot: -30, tor: -14, head: -26, fh: [-10, -30], bh: [-24, -16], ff: [30, 26], bf: [2, 12] }),
@@ -1455,7 +1481,21 @@ function updateFx() {
    声音（WebAudio 合成，首次点击后开启）
    ============================================================ */
 const Sound = {
-  ctx: null, master: null, noise: null, on: true,
+  ctx: null, master: null, out: null, noise: null, on: true, vol: 50,
+  // 音量（1.9.3）：设置里 0~100，默认 50 = 比 1.9.2 响 30%；往上最多再响到 2.5 倍，0 = 没声。
+  // 调的是压缩器后面那一级（out），压缩器照样管着叠在一起的打击声不爆音
+  gainFor(v) { return v <= 0 ? 0 : 1.3 * Math.pow(v / 50, 1.32); },
+  setVol(v) {
+    this.vol = clamp(Math.round(v), 0, 100);
+    if (this.out) this.out.gain.setTargetAtTime(this.gainFor(this.vol), this.ctx.currentTime, 0.03);
+  },
+  // 设置里调音量时响一声给你听（菜单背景里平时不出声，这一下例外）
+  preview() {
+    this.init();
+    if (!this.ctx || !this.on || this.vol <= 0) return;
+    const play = () => { this.forced = true; try { this.hit(0.7); } finally { this.forced = false; } };
+    if (this.ctx.state === 'running') play(); else this.ctx.resume().then(play).catch(() => {});
+  },
   init() {
     if (this.ctx) { if (this.ctx.state !== 'running' && this.ctx.state !== 'closed') this.ctx.resume().catch(() => {}); return; }
     try {
@@ -1465,7 +1505,8 @@ const Sound = {
       // 1.9.0：总线上加一个压缩器 —— 打击声叠在一起不爆音，整体也能更响、更「实」
       const comp = this.ctx.createDynamicsCompressor();
       comp.threshold.value = -16; comp.knee.value = 10; comp.ratio.value = 4; comp.attack.value = 0.002; comp.release.value = 0.12;
-      comp.connect(this.ctx.destination);
+      this.out = this.ctx.createGain(); this.out.gain.value = this.gainFor(this.vol);
+      comp.connect(this.out); this.out.connect(this.ctx.destination);
       this.master = this.ctx.createGain(); this.master.gain.value = 0.62; this.master.connect(comp);
       const len = this.ctx.sampleRate * 1.0, buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate), d = buf.getChannelData(0);
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -1485,7 +1526,7 @@ const Sound = {
   },
   asleep() { return this.on && !!this.ctx && this.ctx.state !== 'running'; },
   ok() {
-    if (!this.on || !this.ctx || game.mode === 'attract' || game.quiet) return false;
+    if (!this.on || !this.ctx || this.vol <= 0 || (game.mode === 'attract' && !this.forced) || game.quiet) return false;
     if (this.ctx.state === 'running') return true;
     const now = performance.now();
     if (now - (this.lastWake || 0) > 500) { this.lastWake = now; this.wake(); }
@@ -2342,9 +2383,9 @@ class Fighter {
     const t = this.tgt, ck = this.clock;
     switch (this.state) {
       case 'idle': {
-        // 街霸式待机：膝盖一屈一伸，身子轻轻起伏（约 1 秒一次）；两只拳头慢半拍跟着画小圈，看起来在「呼吸」
+        // 待机：膝盖一屈一伸，身子轻轻起伏（1.9.3 放慢到约 1.3 秒一次）；两只拳头慢半拍跟着画小圈，看起来在「呼吸」
         copyPose(t, POSE.stance);
-        const ph = ck * TAU / 64, c = Math.cos(ph);
+        const ph = ck * TAU / 80, c = Math.cos(ph);
         t.hy -= 3 * c; t.tor += 1.6 * c; t.head -= 1.3 * Math.cos(ph - 0.5);
         t.fh[1] += 3.6 * Math.cos(ph - 0.9); t.fh[0] += 1.8 * Math.sin(ph - 0.9);
         t.bh[1] += 3 * Math.cos(ph - 1.3); t.bh[0] -= 1.5 * Math.sin(ph - 1.3);
@@ -4912,12 +4953,12 @@ async function unpackDesc(code) {
 
 const $ = id => document.getElementById(id);
 const menu = $('menu'), pauseEl = $('pause'), resultEl = $('result'), onlineEl = $('online'), keysEl = $('keysPanel');
-const lookEl = $('lookPanel'), pvpEl = $('pvpPanel');
+const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel');
 const btnPause = $('btnPause'), btnSound = $('btnSound');
 
 function showOverlay(el) {
-  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl]) o.hidden = o !== el;
-  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl].includes(el));
+  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl]) o.hidden = o !== el;
+  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl].includes(el));
   const t = el && el.querySelector('.ibtn:not([hidden])');
   if (t) setTimeout(() => t.focus({ preventScroll: true }), 0);
 }
@@ -4997,6 +5038,23 @@ $('btnAgain').addEventListener('click', restart);
 $('btnMenu').addEventListener('click', () => { if (game.mode === 'online') Net.leave(); toMenu(); });
 btnPause.addEventListener('click', () => setPaused(!game.paused));
 btnSound.addEventListener('click', () => { Sound.init(); setSound(!Sound.on); });
+/* ---------- 设置（1.9.3）：音量。不占打斗画面 —— 菜单「设置」、暂停里「设置」进来 ---------- */
+let setBack = null;
+function setVol(v, hear) {
+  Sound.setVol(v);
+  $('volRange').value = Sound.vol; $('volVal').textContent = Sound.vol;
+  try { localStorage.setItem('modou.vol', String(Sound.vol)); } catch (e) {}
+  if (hear) Sound.preview();
+}
+function openSettings(from) { setBack = from; setVol(Sound.vol, false); showOverlay(setEl); }
+function closeSettings() { showOverlay(setBack === 'pause' ? pauseEl : menu); }
+$('btnSettings').addEventListener('click', () => openSettings('menu'));
+$('btnPauseSet').addEventListener('click', () => openSettings('pause'));
+$('btnSetDone').addEventListener('click', closeSettings);
+$('volRange').addEventListener('input', e => setVol(+e.target.value, false));
+$('volRange').addEventListener('change', e => setVol(+e.target.value, true));       // 松手时响一声
+$('volDown').addEventListener('click', () => setVol(Sound.vol - 10, true));
+$('volUp').addEventListener('click', () => setVol(Sound.vol + 10, true));
 document.addEventListener('visibilitychange', () => { if (document.hidden && game.phase === 'fight' && !game.paused) setPaused(true); });
 
 /* ---------- 联机面板 ----------
@@ -5372,7 +5430,7 @@ const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
   if (game.mode === 'attract' || game.paused || keyWait || e.button > 4) return null;
-  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden) return null;
+  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden) return null;
   const r = Keys.route('Mouse' + e.button, game.mode);           // 1.8.0：双人对战里鼠标也能用（谁绑了归谁）
   if (!r) return null;
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
@@ -5413,6 +5471,7 @@ window.addEventListener('keydown', e => {
   if (!keysEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeKeys(); return; }
   if (!pvpEl.hidden) { pvpKey(e); return; }
   if (!lookEl.hidden) { if (e.code === 'Escape') closeLooks(); return; }
+  if (!setEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeSettings(); return; }
   if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
   if (e.code === 'Escape' || (e.code === 'KeyP' && !pBound())) {
     e.preventDefault();
@@ -5520,8 +5579,13 @@ function openInvite() {
 }
 window.addEventListener('hashchange', openInvite);
 function boot(data) {
-  let d = 'normal', snd = true;
-  try { d = localStorage.getItem('modou.diff') || d; snd = localStorage.getItem('modou.sound') !== '0'; } catch (e) {}
+  let d = 'normal', snd = true, vol = 50;
+  try {
+    d = localStorage.getItem('modou.diff') || d; snd = localStorage.getItem('modou.sound') !== '0';
+    const v = parseInt(localStorage.getItem('modou.vol'), 10); if (v >= 0 && v <= 100) vol = v;
+  } catch (e) {}
+  if (data && typeof data.vol === 'number') vol = data.vol;
+  setVol(vol, false);
   if (data && data.diff) d = data.diff;
   if (data && typeof data.sound === 'boolean') snd = data.sound;
   setDiff(LEVELS[d] ? d : 'normal'); setSound(snd);
@@ -5534,7 +5598,7 @@ function boot(data) {
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
 }
 const hot = window.claude && window.claude.hot;
-if (hot && hot.snapshot) { try { hot.snapshot(() => ({ diff: game.diff, sound: Sound.on })); } catch (e) {} }
+if (hot && hot.snapshot) { try { hot.snapshot(() => ({ diff: game.diff, sound: Sound.on, vol: Sound.vol })); } catch (e) {} }
 if (hot && hot.ready) hot.ready(boot); else boot(hot && hot.data ? hot.data : {});
 window.__modou = { game, F1, F2, MOVES, POSE, step, startMatch, Brain, render, FX, Net, pads, stateHash };
 </script>
