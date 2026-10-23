@@ -1,0 +1,15 @@
+// Windows depot（模板）。把 Modou-x.y.z-win-x64.zip 解压到 ContentBuilder/content/windows/，
+// 解压后那个文件夹里直接就是 Modou.exe、resources\、locales\ 等。
+"DepotBuild"
+{
+	"DepotID" "<WIN_DEPOT_ID>"
+	"ContentRoot" "..\content\windows\"
+	"FileMapping"
+	{
+		"LocalPath" "*"           // windows\ 里的全部文件
+		"DepotPath" "."           // 装到玩家电脑上游戏目录的根
+		"Recursive" "1"
+	}
+	"FileExclusion" "*.pdb"
+	"FileExclusion" "steam_appid.txt"   // 本地测试用的，不能发给玩家
+}

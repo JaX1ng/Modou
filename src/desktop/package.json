@@ -1,0 +1,147 @@
+{
+  "name": "modou",
+  "productName": "Modou",
+  "version": "2.1.0",
+  "description": "墨斗：水墨火柴人格斗（桌面版）",
+  "author": "JaX1ng",
+  "homepage": "https://github.com/JaX1ng/Modou",
+  "repository": "github:JaX1ng/Modou",
+  "private": true,
+  "main": "main.js",
+  "desktopName": "modou.desktop",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win --x64 --publish never",
+    "dist:linux": "electron-builder --linux --x64 --publish never",
+    "dist:mac": "electron-builder --mac --publish never"
+  },
+  "optionalDependencies": {
+    "steamworks.js": "0.4.0"
+  },
+  "devDependencies": {
+    "@expo-google-fonts/ma-shan-zheng": "0.4.3",
+    "@expo-google-fonts/noto-sans-sc": "0.4.4",
+    "electron": "44.9.3",
+    "electron-builder": "26.17.0"
+  },
+  "build": {
+    "appId": "io.github.jax1ng.modou",
+    "productName": "Modou",
+    "executableName": "Modou",
+    "copyright": "Copyright © 2026 JaX1ng",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "steam.js",
+      "steam.json",
+      "app/**",
+      "build/icon.png",
+      "!node_modules/@types/**",
+      "!node_modules/undici-types/**",
+      "!node_modules/steamworks.js/*.d.ts",
+      "!node_modules/steamworks.js/README.md"
+    ],
+    "asarUnpack": [
+      "node_modules/steamworks.js/**"
+    ],
+    "electronLanguages": [
+      "en-US",
+      "zh-CN",
+      "zh-TW"
+    ],
+    "npmRebuild": false,
+    "publish": null,
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signExecutable": false,
+      "files": [
+        "main.js",
+        "preload.js",
+        "steam.js",
+        "steam.json",
+        "app/**",
+        "!node_modules/@types/**",
+        "!node_modules/undici-types/**",
+        "!node_modules/steamworks.js/*.d.ts",
+        "!node_modules/steamworks.js/README.md",
+        "!node_modules/steamworks.js/dist/linux64/**",
+        "!node_modules/steamworks.js/dist/osx/**",
+        "!node_modules/steamworks.js/dist/win64/*.lib"
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Game",
+      "syncDesktopName": true,
+      "files": [
+        "main.js",
+        "preload.js",
+        "steam.js",
+        "steam.json",
+        "app/**",
+        "build/icon.png",
+        "!node_modules/@types/**",
+        "!node_modules/undici-types/**",
+        "!node_modules/steamworks.js/*.d.ts",
+        "!node_modules/steamworks.js/README.md",
+        "!node_modules/steamworks.js/dist/win64/**",
+        "!node_modules/steamworks.js/dist/osx/**"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dir",
+        "zip"
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.games",
+      "identity": "-",
+      "files": [
+        "main.js",
+        "preload.js",
+        "steam.js",
+        "steam.json",
+        "app/**",
+        "!node_modules/@types/**",
+        "!node_modules/undici-types/**",
+        "!node_modules/steamworks.js/*.d.ts",
+        "!node_modules/steamworks.js/README.md",
+        "!node_modules/steamworks.js/dist/win64/**",
+        "!node_modules/steamworks.js/dist/linux64/**"
+      ]
+    }
+  }
+}

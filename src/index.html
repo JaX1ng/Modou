@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>墨斗</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main class="wrap">
+  <div class="play" id="play">
+  <div class="topbar">
+    <div class="brand"><b>墨斗</b><i class="seal">拳</i><span>水墨火柴人格斗</span></div>
+    <div class="tools">
+      <button class="tbtn" id="btnPause" type="button" disabled>暂停 Esc</button>
+      <button class="tbtn" id="btnSound" type="button">声音：开</button>
+      <button class="tbtn" id="btnFull" type="button">⛶ 全屏</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" width="1200" height="600" aria-label="格斗场"></canvas>
+    <p class="toast" id="toast" role="status" hidden></p>
+
+    <div class="overlay menu" id="menu">
+      <div class="panel">
+        <h1 class="title">墨斗<i class="seal">拳</i></h1>
+        <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
+        <div class="row">
+          <button class="ibtn" id="btnPve" type="button">人机对战</button>
+          <div class="seg" role="group" aria-label="电脑难度">
+            <button type="button" id="dEasy" data-d="easy" aria-pressed="false">易</button>
+            <button type="button" id="dNormal" data-d="normal" aria-pressed="true">中</button>
+            <button type="button" id="dHard" data-d="hard" aria-pressed="false">难</button>
+            <button type="button" id="dHell" data-d="hell" aria-pressed="false" title="极难：拆招像机器一样快、会记你的习惯，专业高手才打得过 —— 但不是每一下都拆得了">极难</button>
+          </div>
+        </div>
+        <div class="row">
+          <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
+          <button class="ibtn ghost" id="btnOnline" type="button">联机对战</button>
+          <button class="ibtn ghost" id="btnTrain" type="button">训练场</button>
+        </div>
+        <div class="row tight">
+          <button class="tbtn dark" id="btnKeys" type="button">⌨ 键位设置</button>
+          <button class="tbtn dark" id="btnLooks" type="button">人物颜色</button>
+          <button class="tbtn dark" id="btnStage" type="button">场景：<span id="stageName">朱日远山</span></button>
+          <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
+          <button class="tbtn dark" id="btnLegend" type="button" hidden>招式表</button>
+          <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
+        </div>
+        <p class="hint" id="menuMsg">五局三胜 · 人机/联机每回合 300 秒，双人不限时 · 键位、克制和连招表在下方</p>
+      </div>
+    </div>
+
+    <div class="overlay dim" id="pause" hidden>
+      <div class="panel">
+        <p class="big">暂停</p>
+        <div class="row">
+          <button class="ibtn" id="btnResume" type="button">继续</button>
+          <button class="ibtn ghost" id="btnRestart" type="button">重开</button>
+          <button class="ibtn ghost" id="btnPauseKeys" type="button">键位</button>
+          <button class="ibtn ghost" id="btnPauseDrill" type="button" hidden>说明</button>
+          <button class="ibtn ghost" id="btnPauseSet" type="button">设置</button>
+          <button class="ibtn ghost" id="btnPauseLegend" type="button" hidden>招式表</button>
+          <button class="ibtn ghost" id="btnQuit" type="button">回菜单</button>
+        </div>
+        <button class="tbtn dark" id="btnPauseFull" type="button" hidden>退出全屏</button>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="online" hidden>
+      <div class="panel net">
+        <p class="big sm">联机对战</p>
+        <p class="hint" id="netIntro">两边输入同一个房间码就能连上（或者把邀请链接发给对方，他点开就进）。找对方时经过公共信令服务器（只传连接信息），连上以后两台电脑点对点直连，打的时候不经过服务器。</p>
+        <div class="netbox" id="netRoom">
+          <label class="step" for="roomCode">房间码（两边一样就行，随便起，比如「墨斗1022」）</label>
+          <div class="codebox"><input id="roomCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="输入房间码"><button class="cbtn" id="btnRoomJoin" type="button">进房间</button></div>
+          <p class="status sm" id="roomStatus" role="status"></p>
+          <div class="row tight" id="roomTools" hidden>
+            <button class="cbtn ghost" id="btnInvite" type="button">复制邀请链接</button>
+            <button class="cbtn ghost" id="btnRoomLeave" type="button">换个房间</button>
+          </div>
+        </div>
+        <details class="relay" id="relayBox">
+          <summary>中继服务器 <span id="relaySum">未设置</span><small>校园网（eduroam）连不上时用</small></summary>
+          <p class="hint">eduroam 这类校园网不让两台电脑直接连。填一个 TURN 中继，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，房间码会带过去。</p>
+          <textarea id="relayText" rows="4" spellcheck="false" placeholder="把中继后台复制的 ICE 数组整段粘进来&#10;（也可以粘 Metered 的 API 链接，或每行「turn:地址:端口 用户名 密码」）"></textarea>
+          <div class="row tight">
+            <button class="cbtn" id="btnRelaySave" type="button">保存并测试</button>
+            <button class="cbtn ghost" id="btnRelayClear" type="button">清除</button>
+          </div>
+          <p class="status sm" id="relayStatus" role="status"></p>
+        </details>
+        <details class="relay" id="manualBox">
+          <summary>手动连接<small>用房间码一直连不上（比如公共信令服务器打不开）时用：复制粘贴连接码，连信令都不经过服务器</small></summary>
+        <div class="row" id="netChoose">
+          <button class="ibtn" id="btnHost" type="button">我来建房</button>
+          <button class="ibtn ghost" id="btnJoin" type="button">我去加入</button>
+        </div>
+        <div class="netbox" id="netHost" hidden>
+          <label class="step" for="hostCode">① 把连接码整段发给对方</label>
+          <div class="codebox"><textarea id="hostCode" readonly rows="3" placeholder="正在生成…"></textarea><button class="cbtn" id="copyHost" type="button">复制</button></div>
+          <label class="step" for="hostAnswer">② 粘贴对方发回的应答码</label>
+          <div class="codebox"><textarea id="hostAnswer" rows="3" placeholder="粘贴应答码"></textarea><button class="cbtn" id="btnConnect" type="button">连接</button></div>
+        </div>
+        <div class="netbox" id="netJoin" hidden>
+          <label class="step" for="joinCode">① 粘贴房主发来的连接码</label>
+          <div class="codebox"><textarea id="joinCode" rows="3" placeholder="粘贴连接码"></textarea><button class="cbtn" id="btnMakeAnswer" type="button">生成</button></div>
+          <label class="step" for="joinAnswer">② 把应答码整段发回给房主，然后等着</label>
+          <div class="codebox"><textarea id="joinAnswer" readonly rows="3" placeholder="先完成第 ① 步"></textarea><button class="cbtn" id="copyJoin" type="button">复制</button></div>
+          <p class="hint" id="netWait" hidden>发完就等着，别关这个页面。房主点「连接」后会自动连上（最多等 5 分钟）。</p>
+        </div>
+        </details>
+        <div class="netbox" id="netLobby" hidden>
+          <p class="status" id="netStatus">已连接</p>
+          <p class="step">选你的颜色（对方选了的那个会变暗，点不了）</p>
+          <div class="swatches" id="netLooks"></div>
+          <p class="step" id="netStageHint">场景（房主选）</p>
+          <div class="stages sm" id="netStages"></div>
+          <button class="ibtn" id="btnNetStart" type="button">开始对战</button>
+        </div>
+        <p class="err" id="netErr" role="alert"></p>
+        <button class="ibtn ghost" id="btnNetBack" type="button">返回菜单</button>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="keysPanel" hidden>
+      <div class="panel keyset">
+        <p class="big sm">键位设置</p>
+        <div class="seg" role="group" aria-label="改哪一套键位"><button type="button" data-who="0" aria-pressed="true">单人</button><button type="button" data-who="1" aria-pressed="false">双人·玩家一</button><button type="button" data-who="2" aria-pressed="false">双人·玩家二</button></div>
+        <p class="hint" id="keyWhoHint">单人：人机、联机、训练场用这一套。</p>
+        <p class="hint">点一个格子，再按想用的键，或者按鼠标按键（右键、中键、侧键在哪按都行；左键要再点一下这一格）。按 Esc 取消，按退格清空这一格。设置存在这台电脑的浏览器里，换新版本文件也还在。</p>
+        <table class="keytable"><thead><tr><th>动作</th><th>键位一</th><th>键位二</th></tr></thead><tbody id="keyRows"></tbody></table>
+        <p class="err" id="keyMsg" role="alert"></p>
+        <p class="hint" id="keyInfo"></p>
+        <div class="row">
+          <button class="ibtn" id="btnKeysSave" type="button">保存</button>
+          <button class="ibtn ghost" id="btnKeysReset" type="button">恢复默认</button>
+          <button class="ibtn ghost" id="btnKeysCancel" type="button">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="setPanel" hidden>
+      <div class="panel looks">
+        <p class="big sm">设置</p>
+        <p class="step">音量</p>
+        <div class="volrow">
+          <button class="cbtn ghost" id="volDown" type="button" aria-label="小声一点">−</button>
+          <input type="range" id="volRange" min="0" max="100" step="5" value="50" aria-label="音量">
+          <button class="cbtn ghost" id="volUp" type="button" aria-label="大声一点">＋</button>
+          <b id="volVal">50</b>
+        </div>
+        <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>
+        <div class="row"><button class="ibtn" id="btnSetDone" type="button">确认</button></div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="lookPanel" hidden>
+      <div class="panel looks">
+        <p class="big sm">人物颜色</p>
+        <p class="hint">人机、训练场、联机时用（双人对战开打前两边另选）。点一下就记住，存在这台电脑的浏览器里。</p>
+        <p class="step">你的颜色</p>
+        <div class="swatches" id="soloMe"></div>
+        <p class="step">电脑的颜色（选「随机」每局换一个，不会和你撞色）</p>
+        <div class="swatches" id="soloCpu"></div>
+        <div class="row"><button class="ibtn" id="btnLooksDone" type="button">好了</button></div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="stagePanel" hidden>
+      <div class="panel looks">
+        <p class="big sm">场景</p>
+        <p class="hint">人机、双人对战在这张图上打（训练场固定在练武场；联机由房主选）。点一下就记住，菜单后面的画面就是预览。</p>
+        <div class="stages" id="stageList"></div>
+        <div class="row"><button class="ibtn" id="btnStageDone" type="button">好了</button></div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="pvpPanel" hidden>
+      <div class="panel looks">
+        <p class="big sm">双人选色</p>
+        <p class="hint">玩家一按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd>、玩家二按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd> 换颜色，也可以直接点。两边不能选一样的。</p>
+        <p class="step">玩家一</p>
+        <div class="swatches" id="pvpLook0"></div>
+        <p class="step">玩家二</p>
+        <div class="swatches" id="pvpLook1"></div>
+        <p class="step">场景</p>
+        <div class="stages sm" id="pvpStages"></div>
+        <div class="row">
+          <button class="ibtn" id="btnPvpGo" type="button">开始对战</button>
+          <button class="ibtn ghost" id="btnPvpBack" type="button">返回</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="drillPanel" hidden>
+      <div class="panel drills">
+        <p class="big sm">破招练习</p>
+        <p class="hint">木桩一遍一遍出同一招，你照说明破它。先选对手的招，再选一种破法 —— 一招常有好几种破法，分开练。每一课开始前有说明和演示，练的时候随时能再看；成功几次就过关打勾（记在这台电脑上）。</p>
+        <p class="step" id="drillSum"></p>
+        <div class="dlist" id="drillList"></div>
+        <div class="row"><button class="ibtn ghost" id="btnDrillClose" type="button">回训练场</button></div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="drillIntro" hidden>
+      <div class="panel drill">
+        <p class="step" id="diTopic"></p>
+        <p class="big sm" id="diName"></p>
+        <ol class="dhow" id="diHow"></ol>
+        <p class="dwhy" id="diWhy"></p>
+        <p class="hint" id="diNeed"></p>
+        <p class="hint dother" id="diOther"></p>
+        <div class="row">
+          <button class="ibtn" id="btnDrillGo" type="button">开始练习</button>
+          <button class="ibtn ghost" id="btnDrillDemo" type="button">看演示</button>
+          <button class="ibtn ghost" id="btnDrillList" type="button">换一课</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay dim" id="result" hidden>
+      <div class="panel">
+        <p class="big" id="resTitle">墨 胜</p>
+        <div class="stats" id="resStats"></div>
+        <div class="row">
+          <button class="ibtn" id="btnAgain" type="button">再战一局</button>
+          <p class="hint" id="resWait" hidden>等房主开下一局…</p>
+          <button class="ibtn ghost" id="btnMenu" type="button">回菜单</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="trainbar" id="trainbar" hidden>
+    <span class="tgroup" id="freeTools">
+      <span class="tlabel">木桩</span>
+      <span class="seg dark" role="group" aria-label="木桩动作">
+        <button type="button" data-dm="stand" aria-pressed="true">站着</button>
+        <button type="button" data-dm="crouch" aria-pressed="false">蹲着</button>
+        <button type="button" data-dm="block" aria-pressed="false">站挡</button>
+        <button type="button" data-dm="lowblock" aria-pressed="false">蹲挡</button>
+        <button type="button" data-dm="random" aria-pressed="false">乱挡</button>
+        <button type="button" data-dm="jump" aria-pressed="false">一直跳</button>
+      </span>
+      <button class="tbtn" id="btnQi" type="button" aria-pressed="false">无限气：关</button>
+      <button class="tbtn" id="btnTrainReset" type="button">复位</button>
+      <button class="tbtn hot" id="btnDrills" type="button">破招练习</button>
+    </span>
+    <span class="tgroup" id="drillTools" hidden>
+      <span class="tlabel drillname" id="drillLabel"></span>
+      <button class="tbtn" id="btnDrillInfo" type="button">说明</button>
+      <button class="tbtn" id="btnDrillReDemo" type="button">演示</button>
+      <button class="tbtn" id="btnDrillPick" type="button">换一课</button>
+      <button class="tbtn" id="btnDrillQuit" type="button">退出练习</button>
+    </span>
+  </div>
+
+  <div class="touch" id="touch" hidden>
+    <div class="pad">
+      <button class="tc u" data-a="up" type="button" aria-label="跳">跳</button>
+      <button class="tc l" data-a="left" type="button" aria-label="左">◀</button>
+      <button class="tc d" data-a="down" type="button" aria-label="蹲">蹲</button>
+      <button class="tc r" data-a="right" type="button" aria-label="右">▶</button>
+    </div>
+    <div class="acts">
+      <button class="tc" data-a="block" type="button">挡</button>
+      <button class="tc" data-a="grab" type="button">拿</button>
+      <span></span>
+      <button class="tc" data-a="jab" type="button">拳</button>
+      <button class="tc" data-a="heavy" type="button">重</button>
+      <button class="tc" data-a="kick" type="button">踢</button>
+    </div>
+  </div>
+  </div>
+
+  <section class="legend" id="legend" aria-label="键位与招式">
+    <button class="tbtn lgclose" id="btnLegendClose" type="button" hidden>关闭 Esc</button>
+    <div class="card">
+      <h3>单人键位<small class="h3sub">人机 · 联机 · 训练场</small></h3>
+      <dl class="keys" id="k0"></dl>
+      <p class="note">菜单「键位设置」→「单人」里改，和双人对战那两套互不影响。<kbd>Esc</kbd> 或 <kbd>P</kbd> 暂停。</p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" id="p1dot" style="background:var(--cinnabar)"></span>双人 · 玩家一 · <span id="p1name">墨</span></h3>
+      <dl class="keys" id="k1"></dl>
+      <p class="note" id="p1note"></p>
+    </div>
+    <div class="card">
+      <h3><span class="dot" id="p2dot" style="background:var(--gamboge)"></span>双人 · 玩家二 · <span id="p2name">靛</span></h3>
+      <dl class="keys" id="k2"></dl>
+      <p class="note">双人对战两人一个键盘，「键位设置」里切到双人那两套能改。双人对战每回合不限时，五局三胜；开打前两边各选颜色。</p>
+    </div>
+    <div class="card">
+      <h3>克制关系</h3>
+      <p class="tri"><b>拳</b><span>克</span><b>腿</b><span>克</span><b>重</b><span>克</span><b>拳</b></p>
+      <ul>
+        <li>每一招都有<em>起手</em>和<em>主系</em>：单招两者一样；连招的起手是第一下，主系是最后一下。比如「拳→重」崩拳 = 起手拳、主系重。</li>
+        <li>两边同时打中，先比<em>主系</em>：克制的一方<em>克</em>，单方面打中 ×1.3。</li>
+        <li>主系一样再比<em>起手</em>：克制的一方<em>压</em>，两边都打中，被压的吃全额、被打退，压人的只吃三成还能接着打。</li>
+        <li>主系、起手都一样 = <em>平</em>（拼招），各掉五成血、互相震退。</li>
+        <li>拳克腿：起腿时被拳打中会失衡倒地。腿克重：重拳起手被化解。重克拳：重拳前摇霸体硬吃一记短拳。</li>
+        <li>打击克擒拿，擒拿克格挡；腿克对空，对空（托天掌、冲天炮）克空中招；空中互撞也按起手分压。完整对照看下面「组合克制总表」，每种技术的破法看「破解表」。</li>
+        <li><em>空中交手</em>：空中出招被克制它的招打中 = <em>倒栽葱</em>，摔下来倒地更久；空中的腿撞上地上的腿 = 空中那个<em>翻滚回去</em>，只吃一半伤害、往后翻开一大段。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>进阶操作</h3>
+      <dl class="combo moves">
+        <dt><i>→</i><i>→</i></dt><dd>冲刺<small>同一方向双击，贴地滑出一大步，前几帧谁也碰不到你，能穿到对面身后</small></dd>
+        <dt><i>冲刺</i>中<i>招</i></dt><dd>冲势<small>冲刺途中或刚冲完出的第一招：伤害 ×1.2，被挡也压得住</small></dd>
+        <dt><i>蹲</i>+<i>拳</i></dt><dd>下盘拳<small>下段，要蹲挡</small></dd>
+        <dt><i>蹲</i>+<i>踢</i></dt><dd>扫堂腿<small>下段，击倒。被蹲挡住会挨踩腿</small></dd>
+        <dt><i>蹲</i>+<i>重</i></dt><dd>托天掌<small>对空，打下跳过来的人</small></dd>
+        <dt><i>跑</i>+<i>重</i></dt><dd>铁山靠<small>能硬吃两下拳，撞远</small></dd>
+        <dt><i>挡</i>+<i>←</i>/<i>→</i></dt><dd>边挡边走<small>按住格挡再按方向：举着手慢慢走，往前往后都行，一直面朝对手、照样挡得住</small></dd>
+        <dt><i>挡</i>+<i>→</i><i>→</i></dt><dd>闪身<small>按住格挡朝对手双击（挡住的硬直里也行）：压低身子从他身边钻到身后。只躲得过站着打的重拳系（重拳、崩拳、劈挂掌、铁山靠……），躲过了自动回身一肘，打中他背对着你踉跄；短拳、腿、下段、擒拿截得住它，挨了吃 ×1.3</small></dd>
+        <dt><i>挡住</i>后<i>拳</i></dt><dd>推挡<small>把对方推开并打断</small></dd>
+        <dt><i>挡住</i>后<i>重</i></dt><dd>截拳<small>花 25 气从格挡里打出一拳，出手前打不中你</small></dd>
+        <dt><i>蹲挡住扫堂腿</i>后<i>踢</i></dt><dd>踩腿<small>一脚踩倒，算挡后反击 ×1.5</small></dd>
+        <dt><i>刚按挡</i></dt><dd>卸力<small>被打前一瞬间按下：不掉血，对方失衡；接着打中 ×1.35，按拿 = 借力摔</small></dd>
+        <dt><i>拿</i></dt><dd>擒拿<small>抓住后：按拳 提膝撞、按踢 别腿摔、按重或后 过肩摔，不按 推开</small></dd>
+        <dt><i>后</i>+<i>拿</i></dt><dd>过肩摔<small>面前有人时按住后再拿，不转身，抓住直接摔到身后</small></dd>
+        <dt><i>蹲</i>+<i>拿</i></dt><dd>抄腿<small>抓蹲着、蹲挡的人（抱腿摔），接住出腿和扫堂腿（抄腿摔）；抓不到站着的</small></dd>
+        <dt><i>被抓住</i>马上<i>拿</i></dt><dd>挣脱<small>擒住刚开始那一下按拿就挣开（接腿、抄腿、借力摔挣不脱）</small></dd>
+        <dt><i>倒地</i>按住<i>方向</i></dt><dd>滚身起<small>起身时往那边滚开，躲开守在你起身处的人</small></dd>
+        <dt><i>起身</i></dt><dd>起身硬直<small>被打倒的人站起来那几帧挨得了打、还动不了：对面算好时机出短拳、擒拿必中；重拳、腿太慢，要提前出才压得住，压早了打空就该你反打</small></dd>
+        <dt><i>空</i><i>蹲</i>+<i>踢</i></dt><dd>千斤坠<small>先往上一腾（前摇长），再朝对手斜着踩下去（离得近就几乎直着往下跺），上段。专踩蹲着、蹲挡的 ×1.3，踩中托天掌 ×1.5 还踩倒；踩中后接 踢 / 重 / 拳 = 二起脚 / 盖步砸拳 / 落步冲拳。怕站着的拳：迎面挨一拳就摔个倒栽葱 ×1.4</small></dd>
+        <dt><i>重</i>+<i>踢</i></dt><dd>爆气 / 泼墨<small>挨打时花半格气爆开：对方倒地、掉 18 血（他面朝你格挡就只吃三成）；气满放必杀泼墨（40）</small></dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>攻防规则</h3>
+      <ul>
+        <li><em>格挡</em>：伤害只吃三成；被挡的一方「势破」，下一记短拳前摇 +4 帧。按住格挡再按方向能边挡边走（往后退也一直面朝对手）。</li>
+        <li><em>高低</em>：下盘拳、扫堂腿是下段，要蹲着挡；空中招是上段，要站着挡。</li>
+        <li><em>连击衰减</em>：同一套里每多挨一下，硬直更短、被推得更远、伤害更低，连四五下就断。</li>
+        <li><em>倒地</em>：躺一会儿 → 起身（打不中）→ 起身硬直（站起来那几帧，打得中、动不了）→ 能动。倒了就是起身后被动：对面能压你起身，你能滚身起。</li>
+        <li><em>擒拿</em>挡不住，但站着抓不到蹲着的人（要用蹲+拿「抄腿」，抄腿又抓不到站着的）；对方出腿时擒拿 = 接腿摔，跳起来踢的倒地更久。被抓住马上按拿能挣脱。</li>
+        <li><em>防守反击</em>：挡住以后打中对方还没收完的那一招 = 挡后反击 ×1.3，那一招是击倒招 ×1.5。重系、腿系的招被挡住收招更慢、也弹不远（击倒招更慢），挡住了上前一步就打得到；短拳被挡住还是推得开。卸力后打中 ×1.35；击倒招打空了被打收招 = 破绽 ×1.25。被打中的硬直也更长，好接连招。</li>
+        <li><em>朝向</em>：按着方向不出招就是跑，马上朝那边跑（没有后退，也不会被吸回去）。不按左右（站着、蹲着）、格挡、挡住的硬直里，自动面向对手，对手跳到身后马上转过来。出招时对手在近身范围内一律朝他打（乱按方向也不打空，对手在空中按他快落到哪算），远了才照你按的方向。背对着挨打挡不住。</li>
+        <li>跑着能从对手身边挤过去，换到另一边。</li>
+        <li><em>跳跃</em>：按着方向跳能跳很远，跑起来再跳更远；空中按方向只能小幅调整，松开就慢慢停下。</li>
+        <li>跳起出招 ×1.35，每跳一招，出手时人往前下方扑，整个跳跃过程都打得到地上的人；落地前来不及出完，就变成落地后马上出。蹲下能躲飞踢。</li>
+        <li>趁对方前摇打中 = 破招 ×1.2；打在全速跑过来、或冲刺收尾的人身上 = 迎击 ×1.2。</li>
+        <li><em>气</em>：挨打、格挡、打中都会涨，挨打涨得最多。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>连招</h3>
+      <dl class="combo">
+        <dt><i>拳</i><i>拳</i></dt><dd>后手直拳</dd>
+        <dt><i>拳</i><i>拳</i><i>拳</i></dt><dd>摆拳</dd>
+        <dt><i>拳</i>×4、5</dt><dd>连珠快拳</dd>
+        <dt><i>拳</i>×6</dt><dd>寸劲<small>收势，把人打远</small></dd>
+        <dt><i>拳</i><i>重</i></dt><dd>崩拳<small>冲击波</small></dd>
+        <dt><i>拳</i><i>拳</i><i>重</i></dt><dd>冲天炮<small>击倒</small></dd>
+        <dt><i>拳</i><i>踢</i></dt><dd>鞭腿</dd>
+        <dt><i>拳</i><i>拳</i><i>踢</i></dt><dd>转身蹬<small>把人蹬远</small></dd>
+        <dt><i>重</i><i>拳</i></dt><dd>顶肘<small>贴身</small></dd>
+        <dt><i>重</i><i>重</i></dt><dd>劈挂掌<small>上段，要站挡</small></dd>
+        <dt><i>重</i><i>踢</i></dt><dd>旋风腿<small>击倒</small></dd>
+        <dt><i>重</i><i>蹲踢</i></dt><dd>重拳接扫堂腿<small>下段，和劈挂掌二选一</small></dd>
+        <dt><i>踢</i><i>拳</i></dt><dd>落步冲拳</dd>
+        <dt><i>踢</i><i>重</i></dt><dd>盖步砸拳<small>击倒</small></dd>
+        <dt><i>踢</i><i>踢</i></dt><dd>二起脚<small>击倒</small></dd>
+        <dt><i>蹲拳</i><i>蹲踢</i></dt><dd>下盘拳接扫堂腿</dd>
+      </dl>
+      <p class="note">打中或被挡后立刻按下一招，可以取消后摇接上。没打中的话，0.4 秒内接着出也会换成连招动作。</p>
+    </div>
+    <div class="card wide">
+      <h3>组合克制总表</h3>
+      <div class="scrollx"><table class="rel" id="relTable"></table></div>
+      <p class="note">行是你的招，列是对手同时出的招。名字是「起手 + 主系」，例如「拳重」= 拳起手、重收尾（崩拳）。鼠标停在名字上能看到包含哪些招。<span class="chip w2">克</span>单方面打中 <span class="chip w1">压</span>两边都中、你占大便宜 <span class="chip eq">平</span>拼招 <span class="chip l1">被压</span> <span class="chip l2">被克</span></p>
+    </div>
+    <div class="card wide">
+      <h3>破解表</h3>
+      <dl class="counters" id="counterList"></dl>
+      <p class="note">每一种招、每一种技术都有破法。训练场的「破招练习」里一条一条都能对着木桩练（木桩照着出那一招，带说明和演示）；也能把木桩设成站挡、蹲挡、乱挡、一直跳，自己对着练。</p>
+    </div>
+    <div class="card wide">
+      <h3>帧数表</h3>
+      <div class="scrollx"><table><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody id="frameTable"></tbody></table></div>
+      <p class="note">1 帧 = 1/60 秒（1.8.0 整体慢约 7%，1.9.3 出招再慢约 5%；2.0 起手招（中立时出的第一招）前摇、后摇再一起慢一点，看得清对面出什么）。射程是两人中心距（像素，含前冲），空中招式伤害已含 ×1.35。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。血量 500，五局三胜。</p>
+    </div>
+  </section>
+</main>
+
+<script src="js/config.js"></script>
+<script src="js/pose.js"></script>
+<script src="js/moves.js"></script>
+<script src="js/input.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/fighter.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/drills.js"></script>
+<script src="js/render.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/game.js"></script>
+<script src="js/vendor/trystero.js"></script>
+<script src="js/net.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+// SteamPipe 上传脚本（模板）。用法见 desktop/STEAM.md 第 7 步。
+// 放到 Steamworks SDK 的 tools/ContentBuilder/scripts/ 里，和 depot_build_win.vdf 放一起。
+// 把 <APP_ID> 换成你的 App ID，<WIN_DEPOT_ID> 换成 Windows depot 的 ID（一般是 App ID + 1）。
+"AppBuild"
+{
+	"AppID" "<APP_ID>"
+	"Desc" "Modou 2.1.0"              // 这次上传的备注，只有你在后台看得到；每次改成新版本号
+	"ContentRoot" "..\content\"       // 相对这个文件
+	"BuildOutput" "..\output\"        // 日志和缓存
+	"SetLive" ""                      // 留空：传完去后台手动设成 default 分支，更安全
+	"Preview" "0"                     // 改成 1 = 只试算不上传
+	"Depots"
+	{
+		"<WIN_DEPOT_ID>" "depot_build_win.vdf"
+	}
+}
