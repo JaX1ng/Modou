@@ -5,7 +5,7 @@
       打中就接连招、挡住 / 卸力后够得着就惩罚、踩腿 / 截拳这类反制有就用；看招再挡的人反应 REACT 帧。
       收益 = 打掉的血 - 掉的血 + 击倒 ±KD。
       看两样：均衡里每个选项占多少（某一项长期占一大半 = 太强）；「对随便出的对手平均赚多少」（越高越容易被滥用）。
-   二、电脑（难）对电脑（难）打 40 回合，数每招用了几次、谁打出的击倒最多。
+   二、电脑（困难）对电脑（困难）打 40 回合，数每招用了几次、谁打出的击倒最多。
    2.0.2：闪身只躲得过重拳 —— 「挡住就闪身」（挡住拳再钻）没用了，换成「看招：重拳就闪身、别的挡」；闪过了自动回身肘、他踉跄，接短拳、短拳、重 */
 const KD = 6, HORIZON = 210;
 let REACT = 15;
@@ -369,7 +369,7 @@ if (document.getElementById('out')) {
     say(`  均衡：压的人平均赚 ${o.val.toFixed(1)}；压的人用 ${o.as.map((a, i) => pct(a, o.P[i])).filter(t => !/ 0%$/.test(t)).join(' · ')}；起来的人用 ${o.bs.map((b, j) => pct(b, o.Q[j])).filter(t => !/ 0%$/.test(t)).join(' · ')}`);
     setTimeout(() => {
       const a = aiStats('hard', 40);
-      say(`\n二、电脑（难）对打 ${a.rounds} 回合（${Math.round(a.frames / 60)} 秒）`);
+      say(`\n二、电脑（困难）对打 ${a.rounds} 回合（${Math.round(a.frames / 60)} 秒）`);
       say('  用得最多：' + a.use); say('  击倒来自：' + a.kd); say('  加成出现次数：' + a.bonus);
       startAttract();
       window.__done = true;

@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&display=swap">
 <style>
 :root{
-  /* Layout: a hanging-scroll mount — dark silk border, one paper stage, legend cards beneath on the silk */
+  /* Layout: a hanging-scroll mount — dark silk border, one paper stage, the guide (教程) beneath as a second paper panel */
   --silk:#283033; --silk-2:#313a3d; --silk-3:#1f2629; --silk-line:#46524f;
   --paper:#ebeae2; --paper-2:#dcdad0; --paper-dim:#aeb0a6;
   --ink:#17181a; --ink-soft:#4d4e49; --indigo:#22385a;
@@ -52,6 +52,11 @@ html,body{margin:0}
 .menu .row{gap:clamp(8px,1.6cqh,20px)}
 .menu .ibtn{font-size:clamp(22px,5.3cqh,58px);padding:1.5cqh 3.4cqh 1.3cqh;min-width:clamp(150px,27cqh,330px)}
 .menu .seg button{font-size:clamp(18px,4.2cqh,44px);padding:1.15cqh 2.2cqh 1cqh}
+.menu .lvl button{font-size:clamp(17px,3.7cqh,40px);padding:1.25cqh 2.1cqh 1.05cqh;gap:clamp(5px,.95cqh,10px)}
+.menu .lvl .pips{gap:clamp(3px,.55cqh,6px)}
+.menu .lvl .pips s{width:clamp(4px,.75cqh,8px);height:clamp(4px,.75cqh,8px)}
+.menu .pve{gap:clamp(5px,1.1cqh,12px)}
+.menu .lvdesc{font-size:clamp(12px,2cqh,20px)}
 .menu .tbtn.dark{font-size:clamp(13px,2.3cqh,24px);padding:1.1cqh 1.9cqh}
 .menu .hint{font-size:clamp(12px,1.9cqh,19px)}
 .overlay.dim{background:rgba(235,234,226,.84)}
@@ -67,9 +72,27 @@ html,body{margin:0}
 .seg{display:inline-flex;box-shadow:inset 0 0 0 1.5px var(--ink);border-radius:2px;overflow:hidden}
 .seg button{font-family:var(--brush);font-size:20px;line-height:1;padding:8px 14px 7px;border:0;background:transparent;color:var(--ink);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-/* 2.1 难度「极难」（以前叫「地狱」，朱色）：黑色 —— 浓墨字，选中是墨底；和前面三档之间隔一道竖线（断档式的难） */
-.seg button[data-d="hell"]{color:#000;font-weight:700;box-shadow:inset 1.5px 0 0 var(--ink)}
-.seg button[data-d="hell"][aria-pressed="true"]{background:#000;color:var(--paper)}
+/* 2.2 难度（入门 / 简单 / 中等 / 困难 / 终极）：五格一样宽，两个字 + 一排小点（第几档就亮几个），选中是墨底；
+   终极：点是朱色，选中是纯黑底、字下一道朱线。下面一行是这一档的说明（鼠标停在哪格先写哪格） */
+.lvl{display:inline-flex;box-shadow:inset 0 0 0 1.5px var(--ink);border-radius:2px;overflow:hidden;background:rgba(235,234,226,.6)}
+.lvl button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font:400 21px/1 var(--brush);color:var(--ink);background:transparent;border:0;padding:10px 15px 9px;cursor:pointer;transition:background .15s,color .15s}
+.lvl button + button{box-shadow:inset 1px 0 0 rgba(23,24,26,.22)}
+.lvl button:hover{background:rgba(23,24,26,.08)}
+.lvl button:focus-visible{outline:2px solid var(--cinnabar);outline-offset:-4px}
+.lvl b{font-weight:400;letter-spacing:.06em}
+.lvl .pips{display:flex;gap:4px}
+.lvl .pips s{display:block;width:5px;height:5px;border-radius:50%;background:rgba(23,24,26,.18)}
+.lvl .pips s.on{background:currentColor}
+.lvl button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.lvl button[aria-pressed="true"] .pips s{background:rgba(235,234,226,.22)}
+.lvl button[aria-pressed="true"] .pips s.on{background:currentColor}
+.lvl button[data-d="hell"] .pips s.on{background:var(--cinnabar)}
+.lvl button[data-d="hell"][aria-pressed="true"]{background:#000}
+.lvl button[data-d="hell"][aria-pressed="true"] b{box-shadow:0 2px 0 var(--cinnabar)}
+.pve{display:flex;flex-direction:column;align-items:center;gap:8px}
+.lvdesc{margin:0;min-height:1.4em;font-size:13px;color:var(--ink-soft);letter-spacing:.02em}
+.lvdesc b{font:400 1.2em/1 var(--brush);color:var(--ink);margin-right:.6em}
+@media (prefers-reduced-motion:reduce){.lvl button{transition:none}}
 .hint{font-size:12px;color:var(--ink-soft);margin:0}
 .big{font-family:var(--brush);font-size:clamp(46px,7vw,88px);line-height:1;margin:0;color:var(--ink)}
 .stats{display:flex;gap:22px;justify-content:center;flex-wrap:wrap;font-variant-numeric:tabular-nums;color:var(--ink-soft);font-size:13px}
@@ -83,35 +106,186 @@ html,body{margin:0}
 .tc.on{background:var(--cinnabar);border-color:var(--cinnabar)}
 .pad .u{grid-column:2;grid-row:1}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
 
-.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:6px}
-.card{background:var(--silk-2);border:1px solid var(--silk-line);border-radius:4px;padding:16px 18px;min-width:0}
-.card h3{display:flex;align-items:center;gap:8px;margin:0 0 10px;font-family:var(--brush);font-weight:400;font-size:22px;line-height:1.2;color:var(--paper)}
-.card h3 .h3sub{font-family:var(--ui);font-size:13px;color:var(--paper-dim)}
-.dot{width:10px;height:10px;border-radius:50%;flex:none}
-.keys{display:grid;grid-template-columns:auto 1fr;gap:7px 12px;align-items:center;margin:0}
-.keys dt{color:var(--paper-dim);font-size:13px}
-.keys dd{margin:0;display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+/* ============ 2.2 教程（js/guide.js） ============
+   网页版 .guide：游戏下面第二块纸（和画面一样的装裱），上面一行分页，下面每页自己的排法（卡片高度差不多、不留大片空白）
+   软件版 / 网页全屏 .manual：盖住整个游戏的教程面板，左边章节，右边文字 + 表格 */
 kbd{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 7px;border:1px solid var(--silk-line);border-bottom-width:3px;border-radius:4px;background:var(--silk-3);color:var(--paper);font:500 12px/1 var(--ui)}
-.note{margin:10px 0 0;color:var(--paper-dim);font-size:12.5px}
-.card ul{margin:0;padding-left:1.1em;display:grid;gap:6px}
-.card li{color:#d6d6cd}
-.card li em{font-style:normal;color:var(--paper);font-weight:500}
-.combo{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;margin:0}
-.combo dt{display:flex;gap:4px;flex-wrap:wrap}
-.combo dt i{font-style:normal;font-size:12px;padding:2px 6px;border-radius:3px;background:var(--silk-3);border:1px solid var(--silk-line)}
-.combo dd{margin:0;font-family:var(--brush);font-size:19px;color:var(--paper)}
-.combo dd small{font-family:var(--ui);font-size:12px;color:var(--paper-dim);margin-left:6px}
-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:13px}
-th,td{text-align:right;padding:5px 4px;border-bottom:1px solid var(--silk-line)}
-th:first-child,td:first-child{text-align:left}
-th{color:var(--paper-dim);font-weight:500;font-size:12px}
-td:first-child{font-family:var(--brush);font-size:17px}
-.card.wide{grid-column:span 2}
-@media (max-width:640px){.card.wide{grid-column:auto}}
-.combo.moves dd small{display:block;margin:0}
-.tri{display:flex;align-items:center;justify-content:center;gap:8px;margin:0 0 12px;font-family:var(--brush);font-size:26px}
-.tri b{font-weight:400;display:inline-grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--silk-3);border:1px solid var(--silk-line);color:var(--paper)}
-.tri span{font-size:15px;color:var(--cinnabar)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;flex:none;vertical-align:1px;margin-right:6px}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.guide{width:100%;margin:8px auto 0;background:var(--paper);color:var(--ink);border-radius:3px;box-shadow:0 0 0 1px #11161a,0 0 0 7px var(--silk-3),0 24px 60px rgba(0,0,0,.4);padding:26px clamp(16px,3vw,44px) 40px;font-size:15px;line-height:1.7}
+.g-head{display:flex;align-items:center;flex-wrap:wrap;gap:10px 22px;padding-bottom:16px;margin-bottom:24px;border-bottom:2px solid var(--ink)}
+.g-head h2{display:flex;align-items:center;gap:10px;margin:0;font:400 46px/1 var(--brush);letter-spacing:.06em}
+.g-head h2 .seal{width:28px;height:28px;font-size:19px}
+.g-head p{margin:0;color:var(--ink-soft);font-size:14px}
+.g-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
+.g-tabs button{font:400 23px/1 var(--brush);color:var(--ink-soft);background:transparent;border:0;border-radius:2px;padding:10px 17px 9px;cursor:pointer;transition:background .15s,color .15s}
+.g-tabs button:hover{color:var(--ink);background:rgba(23,24,26,.07)}
+.g-tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+.g-tabs button:focus-visible,.g-link:focus-visible,.mn-chs button:focus-visible{outline:2px solid var(--cinnabar);outline-offset:2px}
+.g-page h3{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin:0 0 12px;font:400 27px/1.2 var(--brush)}
+.g-page h3 small{font:400 13px/1.4 var(--ui);color:var(--ink-soft)}
+.g-page h4{margin:0;font:400 24px/1.15 var(--brush)}
+.g-card{background:rgba(255,255,255,.42);border:1px solid rgba(23,24,26,.13);border-radius:4px;padding:18px 20px;min-width:0}
+.g-note{margin:12px 0 0;color:var(--ink-soft);font-size:13.5px}
+.g-lead{margin:0 0 18px;color:var(--ink-soft);font-size:14.5px;line-height:2}
+.g-lead b{color:var(--ink)}
+.g-sec{margin:0 0 30px}
+.g-sec:last-child{margin-bottom:0}
+.g-grid{display:grid;gap:14px}
+.gicon{display:block;flex:none}
+.gicon canvas,.pico{display:block}
+/* 按键：动作字 + 你的键 */
+kbd.kc{display:inline-flex;align-items:center;gap:5px;height:auto;min-width:0;padding:3px 7px 3px 6px;margin:0 2px;vertical-align:1px;background:#fff;color:var(--ink);border:1px solid rgba(23,24,26,.28);border-bottom-width:3px;border-radius:5px;font:500 12px/1.2 var(--ui)}
+kbd.kc b{font:400 16px/1 var(--brush);color:var(--cinnabar)}
+kbd.kc span{font-weight:600;color:var(--ink)}
+kbd.kc.dir b{color:var(--indigo)}
+kbd.kc.dir span{font-weight:500;color:var(--ink-soft)}
+.guide kbd:not(.kc),.manual kbd:not(.kc){background:#fff;color:var(--ink);border-color:rgba(23,24,26,.3);font-weight:600;font-size:13px;min-width:28px;height:28px}
+.or{font-style:normal;color:var(--paper-dim);margin:0 5px}
+/* 上手 */
+.g-start{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:18px}
+.g-start .tips{grid-column:1/-1}
+.krows{display:grid;gap:7px}
+.kr{display:grid;grid-template-columns:3.2em auto 1fr;align-items:center;gap:10px}
+.kr .kn{font:400 19px/1 var(--brush)}
+.kr .kk{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
+.kr small{color:var(--ink-soft);font-size:12.5px}
+.g-card h3 small{margin-left:2px}
+details.g-pvp{margin-top:12px;border-top:1px dashed rgba(23,24,26,.2);padding-top:10px}
+details.g-pvp summary{cursor:pointer;font-size:14px;color:var(--indigo)}
+.g-keytab{border-collapse:collapse;margin-top:8px;font-size:13px}
+.g-keytab th,.g-keytab td{padding:4px 8px;border-bottom:1px solid rgba(23,24,26,.1);text-align:left}
+.g-keytab td:first-child{font:400 17px/1 var(--brush)}
+.g-keytab kbd{min-width:24px!important;height:24px!important;font-size:12px!important}
+.tri-wrap{position:relative;width:100%;max-width:320px;aspect-ratio:300/260;margin:4px auto 10px}
+.tri-arrows{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.tri-arrows path{fill:none;stroke:var(--cinnabar);stroke-width:2.4;stroke-linecap:round}
+.tri-node{position:absolute;display:flex;flex-direction:column;align-items:center;width:30%;transform:translate(-50%,-50%)}
+.tri-node .gicon{width:76px;height:76px;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px var(--ink),0 3px 10px rgba(0,0,0,.08);overflow:hidden;display:grid;place-items:center}
+.tri-node b{margin-top:4px;font:400 22px/1 var(--brush)}
+.tri-node.n0{left:50%;top:21%}.tri-node.n1{left:17%;top:77%}.tri-node.n2{left:83%;top:77%}
+.tri-k{position:absolute;font:400 18px/1 var(--brush);color:var(--cinnabar);transform:translate(-50%,-50%)}
+.tri-k.k0{left:20%;top:38%}.tri-k.k1{left:50%;top:99%}.tri-k.k2{left:80%;top:38%}
+.g-list{margin:0;padding-left:1.1em;display:grid;gap:4px;font-size:14.5px}
+.g-list b{font-weight:600}
+.g-steps{margin:0;padding-left:1.4em;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:6px 28px;font-size:14.5px}
+.g-more{margin:12px 0 0;display:flex;gap:18px}
+.g-link{font:500 14px var(--ui);color:var(--indigo);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.g-link:hover{color:var(--cinnabar)}
+/* 招式 */
+.g-grid.moves{grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.g-move{display:flex;gap:14px;align-items:center;background:rgba(255,255,255,.42);border:1px solid rgba(23,24,26,.12);border-radius:4px;padding:10px 16px 10px 8px}
+.gm-body{min-width:0;display:grid;gap:5px}
+.gm-how{display:flex;flex-wrap:wrap;align-items:center;gap:2px;font-size:13.5px;color:var(--ink-soft)}
+.gm-tags{display:flex;flex-wrap:wrap;gap:5px}
+.tag{font:500 11.5px/1 var(--ui);padding:4px 7px;border-radius:3px;background:rgba(23,24,26,.07);color:var(--ink-soft)}
+.tag.t-拳{background:#e7dfd0;color:#5c4320}.tag.t-重{background:#e8d6d2;color:#7d2617}.tag.t-腿{background:#d8dfe8;color:#22385a}
+.tag.ko{background:var(--cinnabar);color:var(--paper)}.tag.fr{background:transparent;box-shadow:inset 0 0 0 1px rgba(23,24,26,.18)}
+.g-move p,.g-tech p,.g-combo p{margin:0;font-size:14px;line-height:1.6;color:#33342f}
+/* 连招 */
+.g-keys{display:inline-flex;flex-wrap:wrap;gap:2px;margin-left:10px;vertical-align:middle}
+.g-grid.combos{grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.g-combo{display:flex;flex-direction:column;background:rgba(255,255,255,.42);border:1px solid rgba(23,24,26,.12);border-radius:4px;overflow:hidden}
+.g-combo.ko{border-color:rgba(184,50,29,.45)}
+.gc-strip{display:flex;align-items:center;justify-content:center;gap:2px;padding:8px 8px 0;background:linear-gradient(rgba(23,24,26,.035),transparent)}
+.gc-arrow{font-style:normal;font:400 26px/1 var(--brush);color:var(--cinnabar);margin:0 -2px}
+.gc-body{padding:6px 14px 12px;display:grid;gap:4px}
+.gc-keys{display:flex;flex-wrap:wrap;align-items:center;gap:3px}
+.tok{font-style:normal;font:400 17px/1 var(--brush);padding:5px 8px 4px;border-radius:3px;background:var(--ink);color:var(--paper)}
+.tok.low{background:var(--indigo)}
+.tok.times{background:transparent;color:var(--ink);padding-left:2px}
+.sep{font-style:normal;color:var(--paper-dim);font-size:13px}
+.g-combo.ko h4::after{content:'击倒';font:500 11px/1 var(--ui);padding:3px 6px;margin-left:8px;border-radius:3px;background:var(--cinnabar);color:var(--paper);vertical-align:5px}
+/* 攻防 */
+.g-grid.tech{grid-template-columns:repeat(auto-fill,minmax(360px,1fr));align-items:start}
+.g-tech{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.42);border:1px solid rgba(23,24,26,.12);border-radius:4px;padding:12px 16px 12px 8px}
+.gt-body{min-width:0;display:grid;gap:5px}
+.gt-how{display:flex;flex-wrap:wrap;align-items:center;gap:2px;font-size:13.5px;color:var(--ink-soft)}
+.g-tech ul{margin:2px 0 0;padding-left:1.1em;font-size:13px;color:var(--ink-soft);display:grid;gap:3px}
+/* 规则 */
+.g-rules{display:grid;grid-template-columns:1fr 1.2fr;gap:18px;align-items:start}
+.g-mul{width:100%;border-collapse:collapse;font-size:14px}
+.g-mul th,.g-mul td{padding:8px 8px;border-bottom:1px solid rgba(23,24,26,.1);text-align:left;vertical-align:top}
+.g-mul th{font:400 19px/1.25 var(--brush);white-space:nowrap}
+.g-mul td{color:var(--ink-soft)}
+.g-mul td.num,.mn-t .num{text-align:right;font-variant-numeric:tabular-nums;color:var(--cinnabar);font-weight:600;white-space:nowrap}
+.g-dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:10px 16px}
+.g-dl dt{font:400 19px/1.4 var(--brush);white-space:nowrap}
+.g-dl dd{margin:0;font-size:14.5px}
+/* 查表：组合克制总表、破解表、帧数表 */
+table.rel,table.frames{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+table.rel{min-width:620px;max-width:1180px}
+table.rel th,table.rel td{text-align:center;padding:7px 4px}
+table.rel thead th{font:400 18px/1 var(--brush);border-bottom:2px solid var(--ink)}
+table.rel tbody th{text-align:left;font:400 18px/1.2 var(--brush);white-space:nowrap;padding-right:10px;border-bottom:1px solid rgba(23,24,26,.1)}
+table.rel tbody th small{display:block;font:400 11px/1.3 var(--ui);color:var(--ink-soft);white-space:normal;max-width:11em}
+table.rel td{font:400 17px/1 var(--brush);border:2px solid var(--paper)}
+.w2{background:var(--cinnabar);color:var(--paper)}
+.w1{background:#e2a99e;color:#5a1a0f}
+.eq{background:#d6d4ca;color:#4d4e49}
+.l1{background:#eceae2;color:#8a8b85}
+.l2{background:#3b3f41;color:#c9cbc3}
+.chip{display:inline-block;padding:1px 7px;margin:0 3px 0 10px;border-radius:3px;font:400 15px/1.3 var(--brush)}
+.counters{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px 22px;margin:0}
+.counters div{border-left:3px solid var(--cinnabar);padding:2px 0 2px 12px}
+.counters dt{font:400 19px/1.3 var(--brush)}
+.counters dd{margin:3px 0 0;font-size:13.5px;color:#3e3f3a}
+table.frames{min-width:640px;max-width:1040px;font-size:14px}
+table.frames th,table.frames td{padding:7px 8px;text-align:right;border-bottom:1px solid rgba(23,24,26,.1)}
+table.frames th{font-size:12.5px;font-weight:500;color:var(--ink-soft);border-bottom:2px solid var(--ink)}
+table.frames th:first-child,table.frames td:first-child{text-align:left}
+table.frames td:first-child{font:400 18px/1 var(--brush)}
+table.frames tbody tr:hover td{background:rgba(23,24,26,.04)}
+@media (max-width:1180px){.g-start{grid-template-columns:1fr 1fr}.g-start .keys{grid-column:1/-1}.g-start .krows{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));column-gap:24px}.g-rules{grid-template-columns:1fr}}
+@media (max-width:720px){.g-start{grid-template-columns:1fr}.g-tabs{margin-left:0}.g-tabs button{font-size:19px;padding:8px 12px 7px}.g-head h2{font-size:38px}
+  .g-grid.moves,.g-grid.tech,.g-grid.combos{grid-template-columns:1fr}.guide{font-size:14px}}
+@media (prefers-reduced-motion:reduce){.g-tabs button{transition:none}}
+/* 软件版 / 网页全屏：教程面板 */
+.manual{position:absolute;inset:0;z-index:30;display:grid;grid-template-columns:clamp(210px,17vw,280px) 1fr;background:var(--paper);color:var(--ink);font-size:16px;line-height:1.75}
+.mn-side{display:flex;flex-direction:column;gap:6px;padding:28px 16px 20px;background:var(--silk);color:var(--paper);overflow:auto}
+.mn-brand{display:flex;align-items:center;gap:8px;margin:0 6px 18px;font:400 40px/1 var(--brush)}
+.mn-brand .seal{width:26px;height:26px;font-size:18px}
+.mn-brand small{font:400 22px/1 var(--brush);color:var(--paper-dim);margin-left:4px}
+.mn-chs{display:grid;gap:3px}
+.mn-chs button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:400 23px/1.2 var(--brush);color:var(--paper-dim);background:transparent;border:0;border-radius:3px;padding:10px 12px;cursor:pointer}
+.mn-chs button i{font-style:normal;width:1.2em;text-align:center;color:var(--cinnabar)}
+.mn-chs button:hover{color:var(--paper);background:var(--silk-2)}
+.mn-chs button[aria-selected="true"]{background:var(--paper);color:var(--ink)}
+.mn-help{margin:auto 6px 10px;font-size:12.5px;color:var(--paper-dim)}
+.mn-help kbd{min-width:22px;height:22px;font-size:11px;margin-right:2px}
+.ibtn.ghost.mn-close{width:100%;font-size:21px;color:var(--paper);box-shadow:inset 0 0 0 1.5px var(--silk-line)}
+.ibtn.ghost.mn-close:hover{background:var(--paper);color:var(--ink)}
+.mn-main{overflow:auto;padding:34px clamp(24px,5vw,80px) 64px;outline:none}
+.mn-main > *{max-width:1100px}
+.mn-h{margin-bottom:16px;border-bottom:2px solid var(--ink);padding-bottom:12px}
+.mn-h span{font-size:14px;letter-spacing:.3em;color:var(--cinnabar)}
+.mn-h h2{margin:2px 0 0;font:400 50px/1.1 var(--brush)}
+.mn-main h3{margin:26px 0 8px;font:400 29px/1.2 var(--brush)}
+.mn-p{margin:0 0 12px;max-width:52em}
+.mn-dim{color:var(--ink-soft);font-size:14px;margin:6px 0 0}
+.mn-ol{margin:6px 0 0;padding-left:1.5em;display:grid;gap:6px}
+.mn-t{width:100%;border-collapse:collapse;margin:6px 0 4px;font-size:15px}
+.mn-t th,.mn-t td{padding:9px 12px;text-align:left;vertical-align:middle;border-bottom:1px solid rgba(23,24,26,.12)}
+.mn-t thead th{font:500 13px/1.3 var(--ui);color:var(--ink-soft);border-bottom:2px solid var(--ink)}
+.mn-t tbody th{font:400 21px/1.25 var(--brush);white-space:nowrap}
+.mn-t tbody th small{display:block;font:500 11px/1.4 var(--ui);color:var(--cinnabar)}
+.mn-t td.ic{width:72px;padding:2px 4px}
+.mn-t td.how{white-space:nowrap}
+.mn-t.tech{table-layout:fixed}
+.mn-t.tech td.how{white-space:normal}
+.mn-t td ul{margin:4px 0 0;padding-left:1.1em;font-size:13.5px;color:var(--ink-soft)}
+.mn-t tr.grp th{padding-top:18px;font:400 24px/1.2 var(--brush);color:var(--cinnabar);border-bottom:1.5px solid rgba(184,50,29,.5)}
+.mn-t tr.grp th small{display:inline;margin-left:12px;font:400 13px var(--ui);color:var(--ink-soft)}
+.mn-t td.ck{white-space:nowrap}
+.mn-t td.strip{display:flex;gap:0;padding:2px 6px}
+.mn-t.keys td{white-space:nowrap}
+.mn-t.counters th{white-space:normal;min-width:9em;font-size:19px}
+.mn-tri{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:8px 0 6px}
+.mn-tri > div{display:flex;flex-direction:column;align-items:center;gap:2px;font:400 22px/1 var(--brush)}
+.mn-tri > div .gicon{border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px var(--ink);overflow:hidden}
+.mn-tri > span{font:400 20px/1 var(--brush);color:var(--cinnabar)}
+.mn-tri > div.mn-tri-end{opacity:.55}
+@media (max-width:760px){.manual{grid-template-columns:1fr;grid-template-rows:auto 1fr}.mn-side{flex-direction:row;flex-wrap:wrap;padding:10px}.mn-brand,.mn-help{display:none}.mn-chs{display:flex;flex-wrap:wrap}.mn-chs button{font-size:18px;padding:6px 8px;width:auto}.mn-close{width:auto}}
 @media (prefers-reduced-motion:reduce){.ibtn{transition:none}}
 
 /* 联机面板 */
@@ -130,33 +304,15 @@ td:first-child{font-family:var(--brush);font-size:17px}
 .status{margin:0;font-size:15px;color:var(--ink)}
 .err{margin:0;min-height:1.2em;font-size:13px;color:var(--cinnabar)}
 
-/* 组合克制总表 */
-.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
-table.rel{min-width:560px}
-table.rel th,table.rel td{text-align:center;padding:5px 3px}
-table.rel thead th{font-family:var(--brush);font-size:17px;color:var(--paper);font-weight:400}
-table.rel tbody th{text-align:left;font-family:var(--brush);font-size:17px;font-weight:400;color:var(--paper);white-space:nowrap}
-table.rel tbody th small{display:block;font-family:var(--ui);font-size:11px;color:var(--paper-dim);white-space:normal;max-width:9em}
-table.rel td{font-family:var(--brush);font-size:16px;border:1px solid var(--silk-3)}
-.w2{background:var(--cinnabar);color:var(--paper)}
-.w1{background:rgba(184,50,29,.38);color:var(--paper)}
-.eq{background:var(--silk-3);color:var(--paper-dim)}
-.l1{background:rgba(174,176,166,.18);color:var(--paper-dim)}
-.l2{background:#11161a;color:#7d827c}
-.chip{display:inline-block;padding:0 6px;margin:0 2px 0 8px;border-radius:3px;font-family:var(--brush);font-size:14px}
 
 /* 训练场工具条 */
 .trainbar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;justify-content:center;padding:8px 10px;background:var(--silk-2);border:1px solid var(--silk-line);border-radius:4px}
 .trainbar .tlabel{font-family:var(--brush);font-size:20px;color:var(--paper)}
 .seg.dark{box-shadow:inset 0 0 0 1px var(--silk-line)}
-.seg.dark button{color:var(--paper);font-size:17px;padding:7px 11px 6px}
+.seg.dark button{color:var(--paper);font-size:17px;padding:7px 11px 6px;white-space:nowrap}
+.seg.dark{flex-wrap:wrap}
 .seg.dark button[aria-pressed="true"]{background:var(--cinnabar);color:var(--paper)}
 .tbtn[aria-pressed="true"]{background:var(--cinnabar);border-color:var(--cinnabar)}
-/* 破解表 */
-.counters{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px 18px;margin:0}
-.counters div{border-left:2px solid var(--cinnabar);padding-left:10px}
-.counters dt{font-family:var(--brush);font-size:17px;color:var(--paper);line-height:1.3}
-.counters dd{margin:2px 0 0;color:#d6d6cd;font-size:13px}
 
 /* 中继设置 */
 details.relay{width:100%;text-align:left;border:1.5px solid var(--ink);border-radius:2px;padding:6px 10px;background:rgba(255,255,255,.35)}
@@ -258,44 +414,79 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 .stages.sm .stg img{width:120px;height:60px}
 @media (max-width:640px){.stg img{width:140px;height:70px}.stages.sm .stg img{width:96px;height:48px}}
 
-/* 2.1 训练场 · 破招练习：工具条分两组（自由练 / 练着课），选课面板（对手的招 → 破法），一课的说明 */
+/* 训练场 · 破招练习（2.1 做的，2.2 重排：Jack —— 入口太小、里面 UI 太小不好看、没有玩的欲望）
+   工具条：左边一个大的「破招练习」按钮（朱底、毛笔字），右边自由练的工具；练着课时换成这一课的名字 + 说明 / 演示 / 出招提示 / 换一课 / 退出
+   选课：上面分组，下面一张一张卡片（对手出招的小图 + 名字 + 一句话 + 几种破法的大按钮）；说明：左边对手的招，右边几步怎么破；过关：印章 + 结算 */
 .trainbar .tgroup{display:inline-flex;flex-wrap:wrap;gap:8px 10px;align-items:center;justify-content:center}
-.tbtn.hot{border-color:var(--cinnabar);color:#f3d9d3}
-.tbtn.hot:hover{background:var(--cinnabar);color:var(--paper)}
-.trainbar .drillname{font-size:18px;max-width:28em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.panel.drills{max-width:980px;width:100%;gap:10px}
-.dlist{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px 12px;width:100%;text-align:left}
-.dtopic{border-left:2px solid var(--cinnabar);padding:4px 0 6px 10px;background:rgba(255,255,255,.35);border-radius:0 3px 3px 0}
-.dtopic.alldone{border-left-color:var(--indigo)}
-.dtopic b{display:block;font:400 19px/1.2 var(--brush);color:var(--ink)}
-.dtopic small{display:block;font-size:12px;color:var(--ink-soft);margin:1px 0 5px}
-.dsols{display:flex;flex-wrap:wrap;gap:5px}
-.dsol{font:500 12.5px/1.2 var(--ui);color:var(--ink);background:rgba(255,255,255,.7);border:1.5px solid rgba(23,24,26,.35);border-radius:3px;padding:5px 8px;cursor:pointer}
-.dsol:hover{background:#fff;border-color:var(--ink)}
-.dsol.done{color:var(--indigo);border-color:rgba(40,81,143,.55)}
-.dsol:focus-visible,.dlink:focus-visible{outline:2px solid var(--cinnabar);outline-offset:2px}
-.panel.drill{max-width:640px;width:100%;gap:10px;text-align:left;align-items:stretch}
-.panel.drill .big.sm,.panel.drill .row{align-self:center;text-align:center}
-.panel.drill .step{margin:0;color:var(--cinnabar);font-weight:500}
-.dhow{margin:0;padding-left:1.4em;display:grid;gap:6px;font-size:15px;color:var(--ink);line-height:1.6}
-.dhow kbd,.dwhy kbd{margin:0 1px 0 3px;vertical-align:1px}
-.dhow b,.dwhy b{font-weight:600}
-.dwhy{margin:0;font-size:13.5px;color:var(--ink-soft);background:rgba(255,255,255,.45);border-left:2px solid var(--gamboge);padding:6px 10px}
-.dwhy > b:first-child{color:var(--ink)}
-.dlink{font:500 13px var(--ui);color:var(--indigo);background:none;border:0;padding:0 2px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.trainbar .tbtn{font-size:14px;padding:9px 13px}
+.tbtn.drillgo{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;padding:8px 18px 8px 16px;background:var(--cinnabar);border-color:var(--cinnabar);color:var(--paper);box-shadow:0 3px 0 #7d2617,0 6px 14px rgba(0,0,0,.25);transition:transform .12s,box-shadow .12s}
+.tbtn.drillgo b{font:400 25px/1 var(--brush);letter-spacing:.06em}
+.tbtn.drillgo small{font:500 11.5px/1 var(--ui);color:#f7d9d1}
+.tbtn.drillgo:hover{background:#c93a23;transform:translateY(-1px);box-shadow:0 4px 0 #7d2617,0 9px 18px rgba(0,0,0,.28)}
+.tbtn.drillgo:active{transform:translateY(2px);box-shadow:0 1px 0 #7d2617}
+.trainbar .tsep{width:1px;align-self:stretch;background:var(--silk-line);margin:0 4px}
+.trainbar .drillname{font-size:21px;max-width:24em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:4px}
+#drillPanel,#drillIntro,#drillPass{background:rgba(235,234,226,.97)}
+.panel.drills{max-width:1200px;width:100%;gap:14px;align-items:stretch;text-align:left}
+.dp-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 24px;flex-wrap:wrap}
+.dp-title{display:grid;gap:4px}
+.dp-title .hint{font-size:14px;max-width:44em}
+.dp-head .ibtn{font-size:20px;min-width:0;padding:9px 18px 8px}
+.dp-tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:2px solid var(--ink);padding-bottom:10px}
+.dp-tabs button{display:inline-flex;align-items:center;gap:7px;font:400 23px/1 var(--brush);color:var(--ink-soft);background:rgba(255,255,255,.45);border:1.5px solid rgba(23,24,26,.16);border-radius:3px;padding:9px 15px 8px;cursor:pointer}
+.dp-tabs button small{font:600 11px/1 var(--ui);padding:3px 6px;border-radius:9px;background:rgba(23,24,26,.1);color:var(--ink-soft)}
+.dp-tabs button:hover{color:var(--ink);border-color:var(--ink)}
+.dp-tabs button[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.dp-tabs button[aria-selected="true"] small{background:var(--cinnabar);color:var(--paper)}
+.dp-tabs button:focus-visible,.dsol:focus-visible,.dlink:focus-visible{outline:2px solid var(--cinnabar);outline-offset:2px}
+.dlist{columns:3 340px;column-gap:14px;width:100%}
+.dlist > .dtopic{break-inside:avoid;margin:0 0 14px}
+.dtopic{display:flex;gap:14px;align-items:flex-start;padding:14px 16px 16px 10px;background:rgba(255,255,255,.55);border:1px solid rgba(23,24,26,.14);border-radius:6px;box-shadow:0 2px 8px rgba(23,24,26,.05)}
+.dt-icon{display:grid;place-items:center;flex:none;border-radius:50%;background:#fff;box-shadow:0 0 0 1.5px rgba(184,50,29,.55)}
+.dt-body{min-width:0;flex:1;display:grid;gap:6px}
+.dt-body h4{margin:0;font:400 27px/1.1 var(--brush);color:var(--ink)}
+.dt-body > p{margin:0;font-size:13.5px;line-height:1.55;color:var(--ink-soft)}
+.dsols{display:grid;gap:6px;margin-top:4px}
+.dsol{display:flex;align-items:center;gap:10px;width:100%;text-align:left;font:500 15px/1.3 var(--ui);color:var(--ink);background:#fff;border:1.5px solid rgba(23,24,26,.18);border-radius:6px;padding:9px 12px;cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s}
+.dsol i{flex:none;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--cinnabar);color:var(--paper);font:600 12px/1 var(--ui);font-style:normal}
+.dsol:hover{border-color:var(--ink);transform:translateY(-1px);box-shadow:0 4px 10px rgba(23,24,26,.1)}
+.panel.drill{max-width:880px;width:100%;gap:14px;text-align:left;align-items:stretch}
+#drillIntro > .panel,#drillPass > .panel{margin-block:auto}
+.di-top{display:flex;gap:26px;align-items:flex-start}
+.di-op{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:170px}
+.di-op small{font:600 12px/1 var(--ui);letter-spacing:.2em;color:var(--cinnabar)}
+.di-op b{font:400 26px/1.15 var(--brush);color:var(--ink);text-align:center}
+.di-main{min-width:0;flex:1;display:grid;gap:8px}
+.panel.drill .step{margin:0;color:var(--cinnabar);font:600 13px/1 var(--ui);letter-spacing:.12em}
+.panel.drill .big.sm{text-align:left;font-size:clamp(36px,4.6vw,56px)}
+.panel.drill .row{align-self:center}
+.dhow{margin:4px 0 0;padding:0;list-style:none;counter-reset:st;display:grid;gap:10px;font-size:17px;color:var(--ink);line-height:1.6}
+.dhow li{counter-increment:st;position:relative;padding-left:38px}
+.dhow li::before{content:counter(st);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--paper);font:600 13px/1 var(--ui)}
+.dhow kbd.kc,.dwhy kbd.kc{font-size:12.5px}
+.dwhy{margin:0;font-size:14.5px;line-height:1.65;color:#3e3f3a;background:rgba(255,255,255,.55);border-left:3px solid var(--gamboge);padding:10px 14px;border-radius:0 4px 4px 0}
+.dwhy > b:first-child{display:inline-block;font:400 19px/1 var(--brush);color:var(--ink);margin-right:10px}
+.dneed{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:15px;color:var(--ink)}
+.dneed b{font:400 26px/1 var(--brush);color:var(--cinnabar);margin:0 2px}
+.dneed span{font-size:13px;color:var(--ink-soft);padding:4px 9px;border-radius:12px;background:rgba(23,24,26,.07)}
+.dother{font-size:13.5px}
+.dlink{font:500 14px var(--ui);color:var(--indigo);background:none;border:0;padding:0 2px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .dlink:hover{color:var(--cinnabar)}
-@media (max-width:640px){.dlist{grid-template-columns:1fr}.dhow{font-size:14px}}
+.panel.dpass{max-width:640px;gap:10px}
+.dp-seal{display:grid;place-items:center;width:112px;height:112px;font:400 46px/1 var(--brush);border-radius:6px;transform:rotate(-7deg);box-shadow:0 0 0 3px var(--paper),0 0 0 5px var(--cinnabar),0 10px 26px rgba(184,50,29,.3);margin-bottom:8px;animation:sealIn .45s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes sealIn{from{transform:rotate(-7deg) scale(1.8);opacity:0}to{transform:rotate(-7deg) scale(1);opacity:1}}
+.panel.dpass .step{margin:0;color:var(--cinnabar);font:600 13px/1 var(--ui);letter-spacing:.12em}
+.panel.dpass .hint{font-size:14px}
+#dpNext{color:var(--ink-soft);font-size:13px}
+@media (prefers-reduced-motion:reduce){.dp-seal{animation:none}.dsol,.tbtn.drillgo{transition:none}}
+@media (max-width:760px){.dlist{columns:1}.di-top{flex-direction:column;align-items:center}.dhow{font-size:15px}.panel.drill .big.sm{text-align:center}}
 /* 2.1 五张场景：选场景的面板放得下一行三张，双人选色里一行五张小图 */
 #stagePanel .panel.looks{max-width:700px}
 #pvpPanel .panel.looks{max-width:740px}
-#drillPanel,#drillIntro{background:rgba(235,234,226,.965)}
-/* 2.1 软件版（Steam，desktop/）：窗口里只有游戏（一直是 .fs 全屏的样子），页面下面的招式表收进「招式表」面板 */
+/* 2.1 软件版（Steam，desktop/）：窗口里只有游戏（一直是 .fs 全屏的样子）；2.2 页面下面的教程换成「教程」面板（.manual） */
 html.desktop,html.desktop body{overflow:hidden;height:100%}
 html.desktop .wrap{padding:0;max-width:none}
-html.desktop .legend{display:none}
-html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:0;overflow:auto;align-content:start;padding:58px max(24px,4vw) 32px;background:var(--silk)}
-.legend .lgclose{position:fixed;top:12px;right:16px;z-index:41}
-.legend .lgclose{background:var(--silk-2)}
+html.desktop .guide{display:none}
 </style>
 </head>
 <body>
@@ -318,14 +509,12 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
       <div class="panel">
         <h1 class="title">墨斗<i class="seal">拳</i></h1>
         <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
-        <div class="row">
-          <button class="ibtn" id="btnPve" type="button">人机对战</button>
-          <div class="seg" role="group" aria-label="电脑难度">
-            <button type="button" id="dEasy" data-d="easy" aria-pressed="false">易</button>
-            <button type="button" id="dNormal" data-d="normal" aria-pressed="true">中</button>
-            <button type="button" id="dHard" data-d="hard" aria-pressed="false">难</button>
-            <button type="button" id="dHell" data-d="hell" aria-pressed="false" title="极难：拆招像机器一样快、会记你的习惯，专业高手才打得过 —— 但不是每一下都拆得了">极难</button>
+        <div class="pve">
+          <div class="row">
+            <button class="ibtn" id="btnPve" type="button">人机对战</button>
+            <div class="lvl" id="lvlSeg" role="group" aria-label="电脑难度"></div>
           </div>
+          <p class="lvdesc" id="lvlDesc" aria-live="polite"></p>
         </div>
         <div class="row">
           <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
@@ -337,10 +526,10 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
           <button class="tbtn dark" id="btnLooks" type="button">人物颜色</button>
           <button class="tbtn dark" id="btnStage" type="button">场景：<span id="stageName">朱日远山</span></button>
           <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
-          <button class="tbtn dark" id="btnLegend" type="button" hidden>招式表</button>
+          <button class="tbtn dark" id="btnLegend" type="button">教程</button>
           <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
         </div>
-        <p class="hint" id="menuMsg">五局三胜 · 人机/联机每回合 300 秒，双人不限时 · 键位、克制和连招表在下方</p>
+        <p class="hint" id="menuMsg">五局三胜 · 人机/联机每回合 300 秒，双人不限时</p>
       </div>
     </div>
 
@@ -353,7 +542,7 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
           <button class="ibtn ghost" id="btnPauseKeys" type="button">键位</button>
           <button class="ibtn ghost" id="btnPauseDrill" type="button" hidden>说明</button>
           <button class="ibtn ghost" id="btnPauseSet" type="button">设置</button>
-          <button class="ibtn ghost" id="btnPauseLegend" type="button" hidden>招式表</button>
+          <button class="ibtn ghost" id="btnPauseLegend" type="button">教程</button>
           <button class="ibtn ghost" id="btnQuit" type="button">回菜单</button>
         </div>
         <button class="tbtn dark" id="btnPauseFull" type="button" hidden>退出全屏</button>
@@ -486,29 +675,52 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
       </div>
     </div>
 
+    <!-- 2.2 破招练习：选课（分组 → 对手的招 → 破法）、一课的说明、过关 -->
     <div class="overlay dim scroll" id="drillPanel" hidden>
       <div class="panel drills">
-        <p class="big sm">破招练习</p>
-        <p class="hint">木桩一遍一遍出同一招，你照说明破它。先选对手的招，再选一种破法 —— 一招常有好几种破法，分开练。每一课开始前有说明和演示，练的时候随时能再看；成功几次就过关打勾（记在这台电脑上）。</p>
-        <p class="step" id="drillSum"></p>
+        <div class="dp-head">
+          <div class="dp-title"><p class="big sm">破招练习</p><p class="hint" id="drillSum">选对手的一招，再选一种破法 —— 木桩一遍一遍出这一招，你照着破。每种破法单独练，成功 3 次就过关。</p></div>
+          <button class="ibtn ghost" id="btnDrillClose" type="button">回训练场</button>
+        </div>
+        <nav class="dp-tabs" id="drillTabs" role="tablist" aria-label="招的分组"></nav>
         <div class="dlist" id="drillList"></div>
-        <div class="row"><button class="ibtn ghost" id="btnDrillClose" type="button">回训练场</button></div>
       </div>
     </div>
 
     <div class="overlay dim scroll" id="drillIntro" hidden>
       <div class="panel drill">
-        <p class="step" id="diTopic"></p>
-        <p class="big sm" id="diName"></p>
-        <ol class="dhow" id="diHow"></ol>
+        <div class="di-top">
+          <div class="di-op" id="diOp"></div>
+          <div class="di-main">
+            <p class="step" id="diTopic"></p>
+            <p class="big sm" id="diName"></p>
+            <ol class="dhow" id="diHow"></ol>
+          </div>
+        </div>
         <p class="dwhy" id="diWhy"></p>
-        <p class="hint" id="diNeed"></p>
+        <p class="dneed" id="diNeed"></p>
         <p class="hint dother" id="diOther"></p>
         <div class="row">
           <button class="ibtn" id="btnDrillGo" type="button">开始练习</button>
           <button class="ibtn ghost" id="btnDrillDemo" type="button">看演示</button>
           <button class="ibtn ghost" id="btnDrillList" type="button">换一课</button>
         </div>
+      </div>
+    </div>
+
+    <div class="overlay dim" id="drillPass" hidden>
+      <div class="panel dpass">
+        <i class="seal dp-seal">过关</i>
+        <p class="step" id="dpTopic"></p>
+        <p class="big sm" id="dpName"></p>
+        <p class="hint" id="dpInfo"></p>
+        <div class="row">
+          <button class="ibtn" id="btnPassNext" type="button">下一课</button>
+          <button class="ibtn ghost" id="btnPassAgain" type="button">再练一次</button>
+          <button class="ibtn ghost" id="btnPassPick" type="button">换一课</button>
+          <button class="ibtn ghost" id="btnPassFree" type="button">自由练</button>
+        </div>
+        <p class="hint" id="dpNext"></p>
       </div>
     </div>
 
@@ -527,6 +739,8 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
 
   <div class="trainbar" id="trainbar" hidden>
     <span class="tgroup" id="freeTools">
+      <button class="tbtn drillgo" id="btnDrills" type="button"><b>破招练习</b><small id="drillCount">一招一招练怎么破</small></button>
+      <span class="tsep" aria-hidden="true"></span>
       <span class="tlabel">木桩</span>
       <span class="seg dark" role="group" aria-label="木桩动作">
         <button type="button" data-dm="stand" aria-pressed="true">站着</button>
@@ -538,16 +752,18 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
       </span>
       <button class="tbtn" id="btnQi" type="button" aria-pressed="false">无限气：关</button>
       <button class="tbtn" id="btnTrainReset" type="button">复位</button>
-      <button class="tbtn hot" id="btnDrills" type="button">破招练习</button>
     </span>
     <span class="tgroup" id="drillTools" hidden>
       <span class="tlabel drillname" id="drillLabel"></span>
       <button class="tbtn" id="btnDrillInfo" type="button">说明</button>
       <button class="tbtn" id="btnDrillReDemo" type="button">演示</button>
+      <button class="tbtn" id="btnDrillCue" type="button" aria-pressed="true" title="木桩出招前倒数 3 · 2 · 1，每一招一抬手头上闪「!」">出招提示：开</button>
       <button class="tbtn" id="btnDrillPick" type="button">换一课</button>
       <button class="tbtn" id="btnDrillQuit" type="button">退出练习</button>
     </span>
   </div>
+
+  <div class="manual" id="manual" role="dialog" aria-label="教程" hidden></div>
 
   <div class="touch" id="touch" hidden>
     <div class="pad">
@@ -567,115 +783,14 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
   </div>
   </div>
 
-  <section class="legend" id="legend" aria-label="键位与招式">
-    <button class="tbtn lgclose" id="btnLegendClose" type="button" hidden>关闭 Esc</button>
-    <div class="card">
-      <h3>单人键位<small class="h3sub">人机 · 联机 · 训练场</small></h3>
-      <dl class="keys" id="k0"></dl>
-      <p class="note">菜单「键位设置」→「单人」里改，和双人对战那两套互不影响。<kbd>Esc</kbd> 或 <kbd>P</kbd> 暂停。</p>
-    </div>
-    <div class="card">
-      <h3><span class="dot" id="p1dot" style="background:var(--cinnabar)"></span>双人 · 玩家一 · <span id="p1name">墨</span></h3>
-      <dl class="keys" id="k1"></dl>
-      <p class="note" id="p1note"></p>
-    </div>
-    <div class="card">
-      <h3><span class="dot" id="p2dot" style="background:var(--gamboge)"></span>双人 · 玩家二 · <span id="p2name">靛</span></h3>
-      <dl class="keys" id="k2"></dl>
-      <p class="note">双人对战两人一个键盘，「键位设置」里切到双人那两套能改。双人对战每回合不限时，五局三胜；开打前两边各选颜色。</p>
-    </div>
-    <div class="card">
-      <h3>克制关系</h3>
-      <p class="tri"><b>拳</b><span>克</span><b>腿</b><span>克</span><b>重</b><span>克</span><b>拳</b></p>
-      <ul>
-        <li>每一招都有<em>起手</em>和<em>主系</em>：单招两者一样；连招的起手是第一下，主系是最后一下。比如「拳→重」崩拳 = 起手拳、主系重。</li>
-        <li>两边同时打中，先比<em>主系</em>：克制的一方<em>克</em>，单方面打中 ×1.3。</li>
-        <li>主系一样再比<em>起手</em>：克制的一方<em>压</em>，两边都打中，被压的吃全额、被打退，压人的只吃三成还能接着打。</li>
-        <li>主系、起手都一样 = <em>平</em>（拼招），各掉五成血、互相震退。</li>
-        <li>拳克腿：起腿时被拳打中会失衡倒地。腿克重：重拳起手被化解。重克拳：重拳前摇霸体硬吃一记短拳。</li>
-        <li>打击克擒拿，擒拿克格挡；腿克对空，对空（托天掌、冲天炮）克空中招；空中互撞也按起手分压。完整对照看下面「组合克制总表」，每种技术的破法看「破解表」。</li>
-        <li><em>空中交手</em>：空中出招被克制它的招打中 = <em>倒栽葱</em>，摔下来倒地更久；空中的腿撞上地上的腿 = 空中那个<em>翻滚回去</em>，只吃一半伤害、往后翻开一大段。</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h3>进阶操作</h3>
-      <dl class="combo moves">
-        <dt><i>→</i><i>→</i></dt><dd>冲刺<small>同一方向双击，贴地滑出一大步，前几帧谁也碰不到你，能穿到对面身后</small></dd>
-        <dt><i>冲刺</i>中<i>招</i></dt><dd>冲势<small>冲刺途中或刚冲完出的第一招：伤害 ×1.2，被挡也压得住</small></dd>
-        <dt><i>蹲</i>+<i>拳</i></dt><dd>下盘拳<small>下段，要蹲挡</small></dd>
-        <dt><i>蹲</i>+<i>踢</i></dt><dd>扫堂腿<small>下段，击倒。被蹲挡住会挨踩腿</small></dd>
-        <dt><i>蹲</i>+<i>重</i></dt><dd>托天掌<small>对空，打下跳过来的人</small></dd>
-        <dt><i>跑</i>+<i>重</i></dt><dd>铁山靠<small>能硬吃两下拳，撞远</small></dd>
-        <dt><i>挡</i>+<i>←</i>/<i>→</i></dt><dd>边挡边走<small>按住格挡再按方向：举着手慢慢走，往前往后都行，一直面朝对手、照样挡得住</small></dd>
-        <dt><i>挡</i>+<i>→</i><i>→</i></dt><dd>闪身<small>按住格挡朝对手双击（挡住的硬直里也行）：压低身子从他身边钻到身后。只躲得过站着打的重拳系（重拳、崩拳、劈挂掌、铁山靠……），躲过了自动回身一肘，打中他背对着你踉跄；短拳、腿、下段、擒拿截得住它，挨了吃 ×1.3</small></dd>
-        <dt><i>挡住</i>后<i>拳</i></dt><dd>推挡<small>把对方推开并打断</small></dd>
-        <dt><i>挡住</i>后<i>重</i></dt><dd>截拳<small>花 25 气从格挡里打出一拳，出手前打不中你</small></dd>
-        <dt><i>蹲挡住扫堂腿</i>后<i>踢</i></dt><dd>踩腿<small>一脚踩倒，算挡后反击 ×1.5</small></dd>
-        <dt><i>刚按挡</i></dt><dd>卸力<small>被打前一瞬间按下：不掉血，对方失衡；接着打中 ×1.35，按拿 = 借力摔</small></dd>
-        <dt><i>拿</i></dt><dd>擒拿<small>抓住后：按拳 提膝撞、按踢 别腿摔、按重或后 过肩摔，不按 推开</small></dd>
-        <dt><i>后</i>+<i>拿</i></dt><dd>过肩摔<small>面前有人时按住后再拿，不转身，抓住直接摔到身后</small></dd>
-        <dt><i>蹲</i>+<i>拿</i></dt><dd>抄腿<small>抓蹲着、蹲挡的人（抱腿摔），接住出腿和扫堂腿（抄腿摔）；抓不到站着的</small></dd>
-        <dt><i>被抓住</i>马上<i>拿</i></dt><dd>挣脱<small>擒住刚开始那一下按拿就挣开（接腿、抄腿、借力摔挣不脱）</small></dd>
-        <dt><i>倒地</i>按住<i>方向</i></dt><dd>滚身起<small>起身时往那边滚开，躲开守在你起身处的人</small></dd>
-        <dt><i>起身</i></dt><dd>起身硬直<small>被打倒的人站起来那几帧挨得了打、还动不了：对面算好时机出短拳、擒拿必中；重拳、腿太慢，要提前出才压得住，压早了打空就该你反打</small></dd>
-        <dt><i>空</i><i>蹲</i>+<i>踢</i></dt><dd>千斤坠<small>先往上一腾（前摇长），再朝对手斜着踩下去（离得近就几乎直着往下跺），上段。专踩蹲着、蹲挡的 ×1.3，踩中托天掌 ×1.5 还踩倒；踩中后接 踢 / 重 / 拳 = 二起脚 / 盖步砸拳 / 落步冲拳。怕站着的拳：迎面挨一拳就摔个倒栽葱 ×1.4</small></dd>
-        <dt><i>重</i>+<i>踢</i></dt><dd>爆气 / 泼墨<small>挨打时花半格气爆开：对方倒地、掉 18 血（他面朝你格挡就只吃三成）；气满放必杀泼墨（40）</small></dd>
-      </dl>
-    </div>
-    <div class="card">
-      <h3>攻防规则</h3>
-      <ul>
-        <li><em>格挡</em>：伤害只吃三成；被挡的一方「势破」，下一记短拳前摇 +4 帧。按住格挡再按方向能边挡边走（往后退也一直面朝对手）。</li>
-        <li><em>高低</em>：下盘拳、扫堂腿是下段，要蹲着挡；空中招是上段，要站着挡。</li>
-        <li><em>连击衰减</em>：同一套里每多挨一下，硬直更短、被推得更远、伤害更低，连四五下就断。</li>
-        <li><em>倒地</em>：躺一会儿 → 起身（打不中）→ 起身硬直（站起来那几帧，打得中、动不了）→ 能动。倒了就是起身后被动：对面能压你起身，你能滚身起。</li>
-        <li><em>擒拿</em>挡不住，但站着抓不到蹲着的人（要用蹲+拿「抄腿」，抄腿又抓不到站着的）；对方出腿时擒拿 = 接腿摔，跳起来踢的倒地更久。被抓住马上按拿能挣脱。</li>
-        <li><em>防守反击</em>：挡住以后打中对方还没收完的那一招 = 挡后反击 ×1.3，那一招是击倒招 ×1.5。重系、腿系的招被挡住收招更慢、也弹不远（击倒招更慢），挡住了上前一步就打得到；短拳被挡住还是推得开。卸力后打中 ×1.35；击倒招打空了被打收招 = 破绽 ×1.25。被打中的硬直也更长，好接连招。</li>
-        <li><em>朝向</em>：按着方向不出招就是跑，马上朝那边跑（没有后退，也不会被吸回去）。不按左右（站着、蹲着）、格挡、挡住的硬直里，自动面向对手，对手跳到身后马上转过来。出招时对手在近身范围内一律朝他打（乱按方向也不打空，对手在空中按他快落到哪算），远了才照你按的方向。背对着挨打挡不住。</li>
-        <li>跑着能从对手身边挤过去，换到另一边。</li>
-        <li><em>跳跃</em>：按着方向跳能跳很远，跑起来再跳更远；空中按方向只能小幅调整，松开就慢慢停下。</li>
-        <li>跳起出招 ×1.35，每跳一招，出手时人往前下方扑，整个跳跃过程都打得到地上的人；落地前来不及出完，就变成落地后马上出。蹲下能躲飞踢。</li>
-        <li>趁对方前摇打中 = 破招 ×1.2；打在全速跑过来、或冲刺收尾的人身上 = 迎击 ×1.2。</li>
-        <li><em>气</em>：挨打、格挡、打中都会涨，挨打涨得最多。</li>
-      </ul>
-    </div>
-    <div class="card">
-      <h3>连招</h3>
-      <dl class="combo">
-        <dt><i>拳</i><i>拳</i></dt><dd>后手直拳</dd>
-        <dt><i>拳</i><i>拳</i><i>拳</i></dt><dd>摆拳</dd>
-        <dt><i>拳</i>×4、5</dt><dd>连珠快拳</dd>
-        <dt><i>拳</i>×6</dt><dd>寸劲<small>收势，把人打远</small></dd>
-        <dt><i>拳</i><i>重</i></dt><dd>崩拳<small>冲击波</small></dd>
-        <dt><i>拳</i><i>拳</i><i>重</i></dt><dd>冲天炮<small>击倒</small></dd>
-        <dt><i>拳</i><i>踢</i></dt><dd>鞭腿</dd>
-        <dt><i>拳</i><i>拳</i><i>踢</i></dt><dd>转身蹬<small>把人蹬远</small></dd>
-        <dt><i>重</i><i>拳</i></dt><dd>顶肘<small>贴身</small></dd>
-        <dt><i>重</i><i>重</i></dt><dd>劈挂掌<small>上段，要站挡</small></dd>
-        <dt><i>重</i><i>踢</i></dt><dd>旋风腿<small>击倒</small></dd>
-        <dt><i>重</i><i>蹲踢</i></dt><dd>重拳接扫堂腿<small>下段，和劈挂掌二选一</small></dd>
-        <dt><i>踢</i><i>拳</i></dt><dd>落步冲拳</dd>
-        <dt><i>踢</i><i>重</i></dt><dd>盖步砸拳<small>击倒</small></dd>
-        <dt><i>踢</i><i>踢</i></dt><dd>二起脚<small>击倒</small></dd>
-        <dt><i>蹲拳</i><i>蹲踢</i></dt><dd>下盘拳接扫堂腿</dd>
-      </dl>
-      <p class="note">打中或被挡后立刻按下一招，可以取消后摇接上。没打中的话，0.4 秒内接着出也会换成连招动作。</p>
-    </div>
-    <div class="card wide">
-      <h3>组合克制总表</h3>
-      <div class="scrollx"><table class="rel" id="relTable"></table></div>
-      <p class="note">行是你的招，列是对手同时出的招。名字是「起手 + 主系」，例如「拳重」= 拳起手、重收尾（崩拳）。鼠标停在名字上能看到包含哪些招。<span class="chip w2">克</span>单方面打中 <span class="chip w1">压</span>两边都中、你占大便宜 <span class="chip eq">平</span>拼招 <span class="chip l1">被压</span> <span class="chip l2">被克</span></p>
-    </div>
-    <div class="card wide">
-      <h3>破解表</h3>
-      <dl class="counters" id="counterList"></dl>
-      <p class="note">每一种招、每一种技术都有破法。训练场的「破招练习」里一条一条都能对着木桩练（木桩照着出那一招，带说明和演示）；也能把木桩设成站挡、蹲挡、乱挡、一直跳，自己对着练。</p>
-    </div>
-    <div class="card wide">
-      <h3>帧数表</h3>
-      <div class="scrollx"><table><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody id="frameTable"></tbody></table></div>
-      <p class="note">1 帧 = 1/60 秒（1.8.0 整体慢约 7%，1.9.3 出招再慢约 5%；2.0 起手招（中立时出的第一招）前摇、后摇再一起慢一点，看得清对面出什么）。射程是两人中心距（像素，含前冲），空中招式伤害已含 ×1.35。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。血量 500，五局三胜。</p>
-    </div>
+  <!-- 2.2 教程（js/guide.js 填内容）：网页版在游戏下面分页看；软件版、网页全屏时用 #manual 面板 -->
+  <section class="guide" id="guide" aria-label="教程">
+    <header class="g-head">
+      <h2>教程<i class="seal">谱</i></h2>
+      <p>先看「上手」就能打，别的页随时翻</p>
+      <nav class="g-tabs" role="tablist" aria-label="教程分页"></nav>
+    </header>
+    <div class="g-page"></div>
   </section>
 </main>
 
@@ -683,7 +798,7 @@ html.desktop .legend.open{display:grid;position:fixed;inset:0;z-index:40;margin:
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -3772,10 +3887,21 @@ function separate(a, b) {
        （卡准帧卸力、重拳霸体硬吃短拳、腿踢化解重拳、接腿、托天掌打跳、拳迎千斤坠……）。看穿的概率基础 0.6，你在这个距离老出的招最多 0.88；
        主动进攻也更聪明（罚打空、挡完的习惯、上下段擒拿换着来、隔远了也冲过去罚）。高手要赢它：别养习惯、别出不安全的招、挡住它的进攻再罚
    2.1 起出招、格挡、站着都不按方向（不按方向游戏自己让人面朝对手，出招也自己朝对手打）；按方向只用来走、跑、冲刺、边挡边走。
+   2.2（Jack：单机改成 入门 / 简单 / 中等 / 困难 / 终极，每个两个字；加一个比简单还简单一点的入门；困难降 5~10%；
+     终极（2.1 的极难）全是读指令 + 破招，完全玩不了，降一点；做完每一档要拉得开）：
+     · 入门（novice，新）：反应 12 帧、挡得少、连招短（NOVICE_PLANS 多是一两下）、常发呆、很少罚
+     · 简单 = 2.1 的易、中等 = 2.1 的中，没动
+     · 困难 = 2.1 的难松一点：反应 7 → 8 帧、看穿 0.5 → 0.45、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
+       （实测：一个乱换招的「木头玩家」每次交手平均亏 7.1 → 6.1，打掉的血占比 25% → 28%；对 2.1 的中每次交手的赚头少 5% 上下）
+     · 终极 = 2.1 的极难把「瞬间看穿」降下来：基础 0.6 → 0.3，你的习惯招最多 0.88 → 0.55（跳起来也跟着降）；别的本事不变
+       （实测：木头玩家打掉的血占比 11% → 20%，输掉的交手 64% → 52%；还是一档里最强，电脑对电脑赢困难九成以上）
    AI 可以用随机数（联机不走 AI） */
 
 // 计划里 'd:xx' = 按住蹲再按 xx（地面：下盘拳 / 扫堂腿 / 托天掌；空中 d:kick = 千斤坠）
 const PLANS = {
+  // 2.2 入门：多是一两下（单拳、两拳、拳重、单出重拳 / 腿），很少三下以上
+  novice: [[['jab'], 3], [['jab', 'jab'], 3], [['jab', 'heavy'], 2], [['heavy'], 2], [['kick'], 2], [['jab', 'kick'], 1.5], [['heavy', 'kick'], 1],
+    [['kick', 'kick'], 0.6], [['grab'], 1], [['d:jab'], 1], [['d:kick'], 0.4], [['jab', 'jab', 'heavy'], 1]],
   easy: [[['jab'], 2], [['jab', 'jab'], 2], [['jab', 'heavy'], 3], [['jab', 'jab', 'heavy'], 3], [['jab', 'kick'], 2], [['jab', 'jab', 'kick'], 2],
     [['jab', 'jab', 'jab', 'jab'], 1], [['heavy', 'kick'], 2], [['heavy', 'jab'], 1], [['heavy', 'heavy'], 1], [['kick', 'jab'], 1], [['kick', 'kick'], 1],
     [['grab'], 1], [['d:jab', 'd:kick'], 0.6], [['d:kick'], 0.4], [['jab', 'd:kick'], 0.4], [['d:jab'], 1], [['d:jab', 'jab', 'heavy'], 1]],
@@ -3797,24 +3923,39 @@ const PLANS = {
 // 2.1：airBlock 看见空中招站着挡（挡对高低）的概率；aaPlan 看见起跳就想好怎么接的概率；habit 记习惯有多准；guard 近身先举手；
 //      punishBlock 挡住以后罚；inst / instMax 极难「瞬间看穿」的概率（基础 / 你的习惯招）
 const LEVELS = {
-  // 易 = 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
+  // 2.2 入门（新）：比简单再简单一点 —— 反应 12 帧、挡四成、很少读招和卸力、连招短、常发呆；防跳、挡住就罚、记习惯都只有一点
+  novice: { react: 12, block: .4, lowRead: .48, parry: .07, push: .18, burst: .32, read: .22, catch: .25, duck: .55, aa: .3, step: .2, low: .17, sup: .6,
+    punish: .42, combo: .7, aggr: .75, jump: .65, grabBlock: .33, idle: .33, tech: .12, gc: .12, stomp: .4, scoop: .12, roll: .27,
+    slip: .06, gwalk: .22, oki: .32, catchSlip: .25, airBlock: .8, aaPlan: .5, habit: .38, guard: .28, punishBlock: .45 },
+  // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
   easy: { react: 11, block: .46, lowRead: .55, parry: .12, push: .25, burst: .45, read: .3, catch: .35, duck: .5, aa: .4, step: .25, low: .2, sup: .7,
     punish: .55, combo: .78, aggr: .85, jump: .8, grabBlock: .45, idle: .25, tech: .2, gc: .2, stomp: .55, scoop: .2, roll: .35,
     slip: .1, gwalk: .3, oki: .45, catchSlip: .35, airBlock: .8, aaPlan: .55, habit: .45, guard: .36, punishBlock: .55 },
-  // 中 = 2.0.2 的「难」
+  // 中等（2.1 叫「中」）= 2.0.2 的「难」
   normal: { react: 8, block: .66, lowRead: .8, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .85, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .1, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, airBlock: .9, aaPlan: .72, habit: .65, guard: .46, punishBlock: .8 },
-  // 难 = 2.0.2 的「地狱」：反应 7 帧，看穿 0.5~0.8、记习惯、预判、算准时机、主动罚
-  hard: { react: 7, block: .7, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
+  // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
+  // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
+  hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .95, combo: 1, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
-    slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .5, smart: true, airBlock: .95, aaPlan: .82, habit: .85, guard: .54, punishBlock: .92 },
-  // 极难（新）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
-  // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明
+    slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86 },
+  // 终极（2.1 叫「极难」，id 还是 hell）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
+  // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明。
+  // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
   hell: { react: 10, block: .8, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
     punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .55, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
-    inst: .6, instMax: .88, instReact: 1 },
+    inst: .3, instMax: .55, instReact: 1 },
+};
+// 2.2 难度的名字（两个字）和一句话说明：菜单、电脑血条底下、教程里用
+const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极' };
+const LEVEL_DESC = {
+  novice: '出手慢、挡得少、连招短 —— 先熟悉按键和招式',
+  easy: '会挡、会还手，反应比人慢一截',
+  normal: '会看招克制、会罚你的空招，像个练过的人',
+  hard: '一半的招会被它看穿，还会记你的习惯',
+  hell: '偶尔一眼看穿你的招，破绽必罚 —— 高手的挑战',
 };
 const LEVEL_IDS = Object.keys(LEVELS);
 function weighted(list) {
@@ -4616,7 +4757,11 @@ class Dummy {
 /* ============================================================
    2.1 训练场 · 破招练习（Jack：训练场要能把每种招都打出来，练破解对面的所有招 —— 一个招可能有好几种破法，分开练，
    放在同一招底下当子解法；单招、连招都要有。教学要清楚：开始前有文字说明和场景演示，练的途中也能再看说明）
-   · 一课 = 对手的一招（单招 / 连招 / 一种技术）× 一种破法。木桩照剧本一遍一遍出这一招，你照说明破；成功 need 次算过关（打勾，记在这台电脑）
+   · 一课 = 对手的一招（单招 / 连招 / 一种技术）× 一种破法。木桩照剧本一遍一遍出这一招，你照说明破；成功 need 次（都是 3 次）算过关
+   · 2.2（Jack：不要「已完成」—— 每一课就是单独练一次，成功 3 次就过，不算「已完成」；还有：弄不清对面什么时候出招，
+     练习可以有准备，出招前给提示）：不再记哪课过了（没有打勾、没有「已过关 x / 75」）；过关只弹一个结算（再练一次 / 下一课 / 换一课），
+     只数一共过了几次关（成就「拆招大师」用，界面上不显示）。出招提示 cue（默认开，工具条能关）：木桩站好位置后倒数 3 · 2 · 1 再出招，
+     他每一招一抬手头上闪一个「!」；被动课写「等你出招」，起身课倒数后再放倒、起身时画一圈进度
    · 「主动课」木桩出招，你破；「被动课」木桩摆一种架势（挡、卸力、推挡、接腿……），你出招破它；「起身课」每一遍先把人放倒
    · 演示：你这边也交给电脑，按到帧地破给你看，配字
    · 成没成功看战斗里实际发生了什么（combat.js 报告的 CEV 事件：打中和加成、挡住、卸力、接腿、拆……），不看你按了什么
@@ -5258,6 +5403,27 @@ const DRILL_POSE = {
   },
 };
 const R_has = (st, type) => !!(Drill.cur && Drill.cur.rep && Drill.cur.rep.ev.some(e => e.type === type));   // 演示用：这一遍里有没有发生过
+// 2.2 出招提示：木桩站好位置以后倒数多久再出手（3 · 2 · 1，每个数 DRILL_CUE / 3 帧）；关了提示就照以前随机等 24 ~ 54 帧
+const DRILL_CUE = 66;
+// 2.2 选课面板的分组（对手的招 → 哪一组）
+const DRILL_GROUPS = [
+  ['single', '单招', ['jab', 'lowJab', 'heavy', 'kick', 'sweep', 'palm', 'grab', 'lowGrab']],
+  ['combo', '连招', ['rush', 'upper', 'beng', 'whip', 'backKick', 'chop', 'whirl', 'hammer', 'twin', 'lowSweep']],
+  ['air', '空中', ['airJab', 'airHeavy', 'airKick', 'dive']],
+  ['rush', '冲撞', ['shoulder', 'dash', 'run']],
+  ['guard', '破防守', ['guard', 'crouch', 'gwalk', 'parry', 'shove', 'jieQuan', 'catch', 'slip', 'burst']],
+  ['other', '必杀 · 起身', ['super', 'wake']],
+];
+// 2.2 每一种对手的招配一张动作小图（guide.js PoseIcon 的写法）
+const DRILL_ICON = {
+  jab: { move: 'jab' }, lowJab: { move: 'lowJab' }, rush: { move: 'rushR' }, upper: { move: 'upper' }, heavy: { move: 'heavy' }, chop: { move: 'chop' },
+  whirl: { move: 'whirl' }, beng: { move: 'beng' }, whip: { move: 'whip' }, backKick: { move: 'backKick' }, hammer: { move: 'hammer' }, lowSweep: { move: 'sweep' },
+  kick: { move: 'kick' }, twin: { move: 'twinKick' }, sweep: { move: 'sweep' }, palm: { move: 'palm' }, airHeavy: { move: 'airHeavy', alt: 54, ph: 1.6 },
+  airKick: { move: 'airKick', alt: 60, ph: 1.6 }, airJab: { move: 'airJab', alt: 64, ph: 1.6 }, dive: { move: 'dive', alt: 66, ph: 1.4 }, grab: { move: 'grab', ph: 1.6 },
+  lowGrab: { move: 'lowGrab', ph: 1.6 }, shoulder: { move: 'shoulder' }, dash: { move: 'dash', ph: 0.3 }, run: { run: true }, guard: { pose: 'block' },
+  crouch: { pose: 'cblock' }, gwalk: { pose: 'block' }, parry: { pose: 'parry' }, shove: { move: 'shove' }, jieQuan: { move: 'jieQuan' },
+  catch: { move: 'grab', ph: 1.6 }, slip: { move: 'slip', ph: 0.3 }, burst: { move: 'burst', ph: 0.25 }, super: { move: 'super' }, wake: { pose: 'rise' },
+};
 
 /* ---------- 木桩、演示里的你 ---------- */
 class DrillBot {
@@ -5283,19 +5449,29 @@ class DrillDemo {
 /* ---------- 一课怎么跑 ---------- */
 const Drill = {
   cur: null,
-  done: new Set(),
+  passes: 0,                // 2.2 一共过了几次关（只给成就「拆招大师」用；不记哪一课过没过）
+  cue: true,                // 2.2 出招提示（倒数、「!」）
   onDemoEnd: null,          // ui.js：演示放完了
   onPass: null,             // ui.js：过关了
-  load() { try { this.done = new Set(JSON.parse(localStorage.getItem('modou.drills') || '[]')); } catch (e) { this.done = new Set(); } },
-  save() { try { localStorage.setItem('modou.drills', JSON.stringify([...this.done])); } catch (e) {} },
+  load() {
+    try {
+      this.passes = Math.max(0, parseInt(localStorage.getItem('modou.drillPasses'), 10) || 0);
+      this.cue = localStorage.getItem('modou.drillCue') !== '0';
+      localStorage.removeItem('modou.drills');            // 2.1 记的「哪些课过了」不要了（2.2 起不算「已完成」）
+    } catch (e) {}
+  },
+  save() { try { localStorage.setItem('modou.drillPasses', String(this.passes)); localStorage.setItem('modou.drillCue', this.cue ? '1' : '0'); } catch (e) {} },
+  setCue(on) { this.cue = !!on; this.save(); },
   byId: id => DRILLS.find(d => d.id === id),
+  // 下一课：同一招的下一种破法，没有了就下一种招的第一课（最后一课的下一课是第一课）
+  next(id) { const i = DRILLS.findIndex(d => d.id === id); return DRILLS[(i + 1) % DRILLS.length]; },
   // 开始一课（demo = 演示）：只在训练场
   start(id, demo) {
     const def = this.byId(id); if (!def) return;
     if (game.mode !== 'train') startMatch('train');
     resetFighters(); game.phase = 'fight'; game.paused = false;
     F2.maxHp = DUMMY_HP; F2.hp = F2.lagHp = DUMMY_HP;
-    this.cur = { def, demo: !!demo, ok: 0, tries: 0, rep: null, last: null, lastT: -999, passed: this.done.has(id), demoReps: 0, frame: 0, ds: {} };
+    this.cur = { def, demo: !!demo, ok: 0, tries: 0, rep: null, last: null, lastT: -999, passed: false, demoReps: 0, frame: 0, ds: {}, count: null, goAt: -999, passAt: -1 };
     game.brains = [demo ? new DrillDemo(F1, def) : null, new DrillBot(F2, def)];
     const p0 = STAGE_W / 2 - (def.at || 120) / 2;
     F1.x = p0; F2.x = p0 + clamp(def.at || 120, 60, 300); F1.facing = 1; F2.facing = -1;
@@ -5331,7 +5507,7 @@ const Drill = {
       rep.won = true; c.ok++; c.last = { ok: true, text: '成功！' + (c.demo ? '' : c.ok >= c.def.need ? '' : `（还要 ${c.def.need - c.ok} 次）`) }; c.lastT = c.frame;
       if (!c.demo) Sound.stamp && Sound.stamp();
       if (!c.demo && c.ok >= c.def.need && !c.passed) {
-        c.passed = true; this.done.add(c.def.id); this.save();
+        c.passed = true; c.passAt = c.frame; this.passes++; this.save();
         stamp(F1.x, FLOOR - 230, '过关', 40, F1);
         if (this.onPass) this.onPass(c.def);
       }
@@ -5402,6 +5578,7 @@ const Drill = {
     }
     const d = gap(me, op);
     if (st.phase === 'set') {
+      c.count = null;
       if (c.rep) return 0;                          // 上一遍还没算完
       if (!me.actionable() || !(op.actionable() || op.state === 'block' || op.state === 'crouch')) { st.t = 0; return 0; }
       if (++st.t > 150) { this.place(def.at); st.t = 0; return 0; }
@@ -5411,7 +5588,8 @@ const Drill = {
         if (this.nearWall(me, op)) { this.place(def.at); return 0; }
         return BLK | AW(me, op);
       }
-      st.phase = 'wait'; st.t = 0; st.w = (def.wait || [24, 54])[0] + (Math.random() * ((def.wait || [24, 54])[1] - (def.wait || [24, 54])[0]) | 0);
+      st.phase = 'wait'; st.t = 0;
+      st.w = this.cue && !c.demo ? DRILL_CUE : (def.wait || [24, 54])[0] + (Math.random() * ((def.wait || [24, 54])[1] - (def.wait || [24, 54])[0]) | 0);
       return 0;
     }
     if (st.phase === 'back') {
@@ -5420,9 +5598,10 @@ const Drill = {
       return 0;
     }
     if (st.phase === 'wait') {
-      if (Math.abs(d - def.at) > 22) { st.phase = 'set'; st.t = 0; return 0; }
+      if (Math.abs(d - def.at) > 22) { st.phase = 'set'; st.t = 0; c.count = null; return 0; }
+      c.count = this.cue && !c.demo ? { left: st.w - st.t, total: st.w } : null;      // 2.2 倒数（画面上画在木桩头上）
       if (++st.t < st.w) return 0;
-      st.phase = 'go'; st.i = 0; st.fired = 0; st.k = 0; st.pick = null;
+      st.phase = 'go'; st.i = 0; st.fired = 0; st.k = 0; st.pick = null; c.count = null; c.goAt = c.frame;
       this.startRep(); c.botDone = false;
     }
     if (st.phase === 'go') {
@@ -5436,9 +5615,11 @@ const Drill = {
   sceneStep(st, me, op) {
     const c = this.cur, def = c.def;
     if (!c.rep) {
-      if (!me.actionable() || !op.actionable()) return 0;
-      if (++st.t < 30) return 0;
-      st.t = 0; this.place(def.at || 70);
+      if (!me.actionable() || !op.actionable()) { c.count = null; return 0; }
+      const w = this.cue && !c.demo ? DRILL_CUE : 30;                              // 2.2 出招提示开着：倒数 3 · 2 · 1 再放倒
+      c.count = this.cue && !c.demo ? { left: w - st.t, total: w } : null;
+      if (++st.t < w) return 0;
+      st.t = 0; c.count = null; c.goAt = c.frame; this.place(def.at || 70);
       if (def.scene === 'opDown' || def.scene === 'opDownRoll') { me.knockDown(3, 0, TFH(24), false); st.roll = def.scene === 'opDownRoll'; }
       else { op.knockDown(3, 0, TFH(24), false); st.meaty = 1; }
       this.startRep(); return 0;
@@ -5489,7 +5670,9 @@ function drillText(s, html) {
    画面
    ============================================================ */
 const cv = document.getElementById('cv');
-const ctx = cv.getContext('2d');
+let ctx = cv.getContext('2d');                       // 2.2：let —— 画招式小图（教程、破招练习）时临时换成小画布，见 withCtx
+// 在另一块画布上用同一套画法画（骨骼、腰带、头带都照游戏里的画），画完换回游戏画面
+function withCtx(c2d, fn) { const keep = ctx; ctx = c2d; try { return fn(); } finally { ctx = keep; } }
 /* 画面大小（2.0，Jack：全屏要占满电脑屏幕，注意屏幕实际尺寸和浏览器的适配）：
    逻辑画面不再固定 1200×600 —— 宽高比跟着画布走：比 2:1 窄（16:9、16:10、4:3）就宽 1200、往上下多露一些；比 2:1 宽（带鱼屏）就高 600、左右多露。
    VW×VH = 逻辑画面大小；FY = 地线在画面上的高度（多出来的高度大部分给天上）；scale = 逻辑像素 → CSS 像素；pxr = CSS 像素 → 屏幕物理像素
@@ -5687,6 +5870,33 @@ function drawFighter(F, V) {
     ctx.fillText('势', hx, hy - 29);
   }
   if (shake) ctx.restore();
+}
+/* 2.2 不动的小人（教程、破招练习的招式小图）：和 drawFighter 一样的身子、腰带、头带、眼睛，发带画两条静止的；
+   trail = 出招那只手 / 脚这一下走过的路（几个点），画成一道淡淡的弧，看得出往哪打 */
+function drawFigure(J, col, band, trail) {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (trail && trail.length > 1) {
+    for (let i = 1; i < trail.length; i++) {
+      const u = i / trail.length;
+      ctx.strokeStyle = band; ctx.globalAlpha = 0.25 + 0.5 * u; ctx.lineWidth = 2 + u * 9;
+      ctx.beginPath(); ctx.moveTo(trail[i - 1][0], trail[i - 1][1]); ctx.lineTo(trail[i][0], trail[i][1]); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  const f = J.facing * (J.turned ? -1 : 1), k = J.knot;
+  ctx.strokeStyle = band;
+  for (const [dy, len] of [[0, 30], [5, 24]]) {
+    ctx.lineWidth = 3.6; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
+    ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
+  }
+  ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;
+  drawSkeleton(J, col, 1, 0.62, 0, () => drawBelt(J, band));
+  ctx.shadowBlur = 0;
+  const ht = J.headTilt, hx = J.head[0], hy = J.head[1], fdir = J.facing;
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
+  ctx.fillStyle = band; ctx.fillRect(-13.5, -6.8, 27, 5);
+  if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(6.8, 1.6, 2.8, 1.4, -0.15, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
 }
 function drawFx() {
   ctx.lineCap = 'round';
@@ -5915,8 +6125,8 @@ function hpBar(F, side) {
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f';
   ctx.fillText(F.label, x0 + dir * (nmW + 10), 74);
   ctx.textAlign = 'center';
-  // 回合胜点（五局三胜：三个点）
-  for (let i = 0; i < WIN_ROUNDS; i++) {
+  // 回合胜点（五局三胜：三个点；训练场没有回合，不画）
+  for (let i = 0; i < (game.mode === 'train' ? 0 : WIN_ROUNDS); i++) {
     const cx = x0 + dir * (len - 14 - i * 20), cy = 64;
     ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, Math.PI * 2);
     if (game.wins[F.idx] > i) { ctx.fillStyle = F.color; ctx.fill(); }
@@ -5960,35 +6170,140 @@ function wrapText(text, maxW) {
   if (line) out.push(line);
   return out;
 }
-// 2.1 破招练习的面板：这一课是什么、怎么破（按你自己的键位）、成功几次了、上一遍怎么样；演示时写「演示」
+// 圆角矩形（面板用）
+function rrect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+// 破招练习的面板（2.1；2.2 Jack：太小、不好看 —— 放大重排）：左上「破招」/「演示」朱印 + 这一课的名字，右上三个大圈（成功一次涂满一个），
+// 中间一步一步怎么破（按你自己的键位），下面上一遍怎么样（成功 / 没成、为什么），大一号、带颜色，几秒后淡掉
 function drawDrillPanel() {
   const c = Drill.cur, d = c.def;
-  const x = VW / 2 - 280, y = 80, w = 560, pad = 14;
-  ctx.font = `500 13px ${UIF}`;
-  const how = wrapText('怎么破：' + d.how.map(t => drillText(t, false)).join('；'), w - pad * 2).slice(0, 3);
-  const showLast = c.last && c.frame - c.lastT < 240;
-  const h = 46 + how.length * 19 + (showLast ? 26 : 0) + 22;
-  ctx.fillStyle = 'rgba(235,234,226,.88)'; ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = c.demo ? C.cin : 'rgba(23,24,26,.35)'; ctx.lineWidth = c.demo ? 2 : 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  ctx.font = `19px ${BRUSH}`; ctx.fillStyle = C.cin; ctx.fillText(c.demo ? '演示' : '破招', x + pad, y + 18);
-  const tw = ctx.measureText(c.demo ? '演示' : '破招').width;
-  ctx.font = `19px ${BRUSH}`; ctx.fillStyle = C.ink; ctx.fillText(`${d.topicName}：${d.name}`, x + pad + tw + 10, y + 18);
-  ctx.textAlign = 'right'; ctx.font = `600 13px ${UIF}`;
-  if (c.demo) { ctx.fillStyle = C.cin; ctx.fillText('电脑替你按 · 看准时机 · Esc 跳过', x + w - pad, y + 18); }
-  else {
-    ctx.fillStyle = c.passed ? C.cin : '#55564f';
-    ctx.fillText(`成功 ${Math.min(c.ok, d.need)} / ${d.need}` + (c.passed ? '  ✓ 过关' : ''), x + w - pad, y + 18);
+  const w = Math.min(680, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18;
+  ctx.font = `500 15px ${UIF}`;
+  const lines = [];
+  d.how.forEach((t, i) => wrapText(drillText(t, false), w - pad * 2 - 30).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
+  const how = lines.slice(0, 4);
+  const age = c.frame - c.lastT, showLast = c.last && age < 300, la = showLast ? Math.min(1, (300 - age) / 40) : 0;
+  const h = 58 + how.length * 23 + (showLast ? 40 : 0) + 26;
+  ctx.save();
+  ctx.shadowColor = 'rgba(23,24,26,.18)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+  rrect(x, y, w, h, 8); ctx.fillStyle = 'rgba(240,239,232,.93)'; ctx.fill();
+  ctx.restore();
+  rrect(x + 0.5, y + 0.5, w - 1, h - 1, 8); ctx.strokeStyle = c.demo ? C.cin : 'rgba(23,24,26,.22)'; ctx.lineWidth = c.demo ? 2 : 1; ctx.stroke();
+  // 左上：朱印「破招」/「演示」+ 招名 · 破法
+  const tag = c.demo ? '演示' : '破招';
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  rrect(x + pad, y + 13, 56, 32, 4); ctx.fillStyle = C.cin; ctx.fill();
+  ctx.font = `22px ${BRUSH}`; ctx.fillStyle = C.paper; ctx.fillText(tag, x + pad + 28, y + 30);
+  ctx.textAlign = 'left'; ctx.font = `26px ${BRUSH}`; ctx.fillStyle = C.ink;
+  const title = `${d.topicName} · ${d.name}`;
+  let tw = w - pad * 2 - 66 - (c.demo ? 190 : 130), tt = title;
+  while (ctx.measureText(tt).width > tw && tt.length > 4) tt = tt.slice(0, -2) + '…';
+  ctx.fillText(tt, x + pad + 68, y + 30);
+  // 右上：成功几次（三个圈，涂满 = 成功一次）；演示时写「电脑替你按」
+  if (c.demo) {
+    ctx.textAlign = 'right'; ctx.font = `600 13px ${UIF}`; ctx.fillStyle = C.cin;
+    ctx.fillText('电脑替你按 · Esc 跳过', x + w - pad, y + 30);
+  } else {
+    for (let i = 0; i < d.need; i++) {
+      const cx = x + w - pad - 13 - (d.need - 1 - i) * 34, on = i < c.ok;
+      ctx.beginPath(); ctx.arc(cx, y + 29, 12, 0, Math.PI * 2);
+      if (on) { ctx.fillStyle = C.cin; ctx.fill(); ctx.fillStyle = C.paper; ctx.font = `600 13px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText('✓', cx, y + 30); }
+      else { ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 2; ctx.stroke(); }
+    }
   }
-  ctx.textAlign = 'left'; ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#3e3f3a';
-  how.forEach((l, i) => ctx.fillText(l, x + pad, y + 44 + i * 19));
-  let yy = y + 44 + how.length * 19;
+  // 中间：一步一步怎么破
+  let yy = y + 68;
+  for (const L of how) {
+    if (L.n) {
+      ctx.beginPath(); ctx.arc(x + pad + 10, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
+      ctx.fillStyle = C.paper; ctx.font = `600 12px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText(String(L.n), x + pad + 10, yy + 1);
+    }
+    ctx.textAlign = 'left'; ctx.font = `500 15px ${UIF}`; ctx.fillStyle = '#2b2c28';
+    ctx.fillText(L.l, x + pad + 30, yy + 1);
+    yy += 23;
+  }
+  // 上一遍：成功 / 没成、为什么
   if (showLast) {
-    ctx.font = `600 14px ${UIF}`; ctx.fillStyle = c.last.ok ? C.indigo : C.cin;
-    ctx.fillText((c.last.ok ? '✓ ' : '✗ ') + drillText(c.last.text, false), x + pad, yy + 6); yy += 26;
+    yy += 6;
+    ctx.globalAlpha = la;
+    const ok = c.last.ok, txt = (ok ? '✓ ' : '✗ ') + drillText(c.last.text, false);
+    ctx.font = `700 17px ${UIF}`;
+    const lw = Math.min(w - pad * 2, ctx.measureText(txt).width + 24);
+    rrect(x + pad, yy - 2, lw, 30, 15); ctx.fillStyle = ok ? 'rgba(34,56,90,.12)' : 'rgba(184,50,29,.12)'; ctx.fill();
+    ctx.fillStyle = ok ? C.indigo : C.cin; ctx.textAlign = 'left';
+    let t2 = txt; while (ctx.measureText(t2).width > lw - 24 && t2.length > 6) t2 = t2.slice(0, -2) + '…';
+    ctx.fillText(t2, x + pad + 12, yy + 13);
+    ctx.globalAlpha = 1;
+    yy += 40;
   }
-  ctx.font = `500 11.5px ${UIF}`; ctx.fillStyle = '#7a7b74';
-  ctx.fillText(c.demo ? '演示放两遍就回到说明' : '下面「说明」随时再看完整说明 · Esc 暂停', x + pad, yy + 4);
+  ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#7a7b74'; ctx.textAlign = 'left';
+  ctx.fillText(c.demo ? '演示放两三遍就回到说明' : '下面工具条：说明 · 演示 · 出招提示 · 换一课　|　Esc 暂停', x + pad, yy + 6);
+}
+/* 2.2 出招提示（Jack：弄不清对面啥时候要出招 —— 练习可以有准备）：画在木桩头上（跟着人走，在场景里）
+   · 主动课：木桩站好位置后倒数 3 · 2 · 1（一圈朱线转满），出手那一下「出」；他每一招一抬手（前摇里）头上一个「!」
+   · 被动课：他摆好架势没在动时写「等你出招」（要你跳过来的课写「等你跳过来」）
+   · 起身课：倒数后放倒；他躺着到起身一圈进度（转满就站起来），站起来那一下「!」
+   出招提示关了就都不画（演示里只画「!」） */
+function drawDrillCue() {
+  const c = Drill.cur; if (!c) return;
+  const op = F2, J = op.J; if (!J) return;
+  // 画在他脑袋旁边、背对你的那一侧（头顶上会被上面的练习面板挡住）；那一侧出了画面就换到另一侧
+  const def = c.def, away = op.x >= F1.x ? 1 : -1, off = 82;
+  let side = away;
+  const sxOf = sd => VW / 2 + (J.head[0] + sd * off - camX) * camZ;
+  if (sxOf(side) > VW - 46 || sxOf(side) < 46) side = -side;
+  const hx = J.head[0] + side * off, hy = J.head[1] + 2;
+  const ring = (frac, label, col, size) => {
+    ctx.save(); ctx.translate(hx, hy);
+    ctx.beginPath(); ctx.arc(0, 0, 27, 0, Math.PI * 2); ctx.fillStyle = 'rgba(246,245,238,.88)'; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(23,24,26,.18)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 27, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); ctx.strokeStyle = col; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${size || 34}px ${BRUSH}`; ctx.fillText(label, 0, 2);
+    ctx.restore();
+  };
+  const pop = (text, age, col) => {
+    const k = age < 5 ? 1.6 - 0.6 * EASE.out(age / 5) : 1, a = Math.min(1, (20 - age) / 8);
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k); ctx.globalAlpha = Math.max(0, a);
+    ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    ctx.fillStyle = C.paper; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `34px ${BRUSH}`; ctx.fillText(text, 0, 2);
+    ctx.restore();
+  };
+  const cue = Drill.cue;
+  if (cue && c.count && c.count.total > 0) {
+    const el = c.count.total - c.count.left, beat = c.count.total / 3, n = Math.max(1, 3 - Math.floor(el / beat));
+    ring(Math.min(1, el / c.count.total), String(n), C.cin);
+    return;
+  }
+  const goAge = c.frame - c.goAt;
+  if (cue && !c.demo && goAge >= 0 && goAge < 20 && !def.react) { pop('出', goAge, C.cin); return; }
+  // 起身课：他躺着起身 —— 一圈进度；站起来那一下（起身硬直）「!」
+  if (cue && def.scene && op.state === 'down' && (op.downPhase === 'lie' || op.downPhase === 'getup')) {   // 躺着 + 起身：一圈蓝线转满他就站起来了
+    const tot = op.lieT + GETUP, el = op.downPhase === 'lie' ? op.t : op.lieT + op.t;
+    ring(clamp(el / tot, 0, 1), '起', C.indigo, 26); return;
+  }
+  if (cue && def.scene && op.state === 'rise') { pop('!', Math.min(op.t, 8), C.cin); return; }
+  // 他一抬手（前摇里）：「!」
+  const m = op.move;
+  if (cue && op.state === 'attack' && m && !m.def.script && m.t <= m.S + 1) {
+    const age = m.t, k = age < 4 ? 1.5 - 0.5 * age / 4 : 1;
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k);
+    ctx.fillStyle = C.cin; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `700 46px ${UIF}`;
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(246,245,238,.9)'; ctx.strokeText('!', 0, 0); ctx.fillText('!', 0, 0);
+    ctx.restore();
+    return;
+  }
+  // 被动课：他等着你
+  if (cue && !c.demo && def.react && !def.scene && !c.rep && (op.actionable() || op.state === 'block')) {
+    const t = def.trigger === 'jump' ? '等你跳过来' : '等你出招';
+    ctx.save(); ctx.globalAlpha = 0.6 + 0.25 * Math.sin(c.frame * 0.08);
+    ctx.font = `22px ${BRUSH}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw2 = ctx.measureText(t).width + 22;
+    rrect(hx - tw2 / 2, hy - 16, tw2, 32, 16); ctx.fillStyle = 'rgba(246,245,238,.85)'; ctx.fill();
+    ctx.fillStyle = C.ink; ctx.fillText(t, hx, hy + 1);
+    ctx.restore();
+  }
 }
 // 训练场（2.0.2 以前叫「打桩练习」）的数值面板
 function drawTrainPanel() {
@@ -6004,7 +6319,7 @@ function drawTrainPanel() {
     ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(k, x + 14, yy);
     ctx.font = `500 15px ${UIF}`; ctx.fillStyle = col || C.ink; ctx.fillText(v, x + 62, yy);
   };
-  if (!I) row('提示', '随便打。下面的按钮能换木桩的动作、开无限气', y + 42);
+  if (!I) { row('提示', '随便打，下面能换木桩的动作、开无限气', y + 42); row('', '想一招一招练怎么破对面：点下面红色的「破招练习」', y + 64, C.cin); }
   else {
     const fd = I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : '';
     const sys = I.tier ? `（${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}）` : '';
@@ -6078,6 +6393,7 @@ function render() {
   drawFighter(...order[0]); drawFighter(...order[1]);
   drawFx();
   drawStamps();
+  if (game.mode === 'train' && Drill.cur) drawDrillCue();   // 2.2 破招练习的出招提示（倒数、「!」），画在木桩头上
   ctx.restore();
   if (game.flash > 0.01) { ctx.fillStyle = `rgba(245,244,238,${game.flash})`; ctx.fillRect(0, 0, VW, VH); }
   if (game.mode === 'pve' || game.mode === 'online' || game.mode === 'train') { const li = localIdx(); drawOffscreen(game.p[li], game.p[1 - li]); }
@@ -7423,7 +7739,8 @@ const game = {
   endless: false,           // 双人对战不限时，打到一方倒下为止
   dummyMode: 'stand', trainQi: false,   // 打桩：木桩动作、无限气
 };
-const LABEL = { easy: '电脑 · 易', normal: '电脑 · 中', hard: '电脑 · 难', hell: '电脑 · 极难' };   // 2.1：「地狱」改叫「极难」（id 还是 hell）
+// 2.1：「地狱」改叫「极难」（id 还是 hell）；2.2：五档都是两个字 —— 入门 / 简单 / 中等 / 困难 / 终极（ai.js LEVEL_NAME）
+const LABEL = Object.fromEntries(Object.entries(LEVEL_NAME).map(([id, n]) => [id, '电脑 · ' + n]));
 const Hooks = { matchStart() {}, matchOver() {} };   // ui.js 会覆盖
 
 function resetFighters() {
@@ -7455,6 +7772,7 @@ function startMatch(mode) {
   game.wins = [0, 0]; game.round = 1; game.paused = false; game.frame = 0; FXREC.log.clear();
   for (const p of pads) p.clear();
   startRound();
+  if (train) game.phase = 'fight';             // 2.2（Jack：训练场不是「第一回合」，进去直接开始，不要「第一回合」「战」这些开场字）
   Hooks.matchStart();
 }
 function startRound() {
@@ -8369,17 +8687,463 @@ async function unpackDesc(code) {
 </script>
 <script>
 'use strict';
+/* ============================================================
+   2.2 教程（Jack：操作表排版太怪 —— 进阶操作那一张太长，前面几张底下留一大片空白；整个教程重做：
+   网页版做好一点，让玩家想看、看得清、看得懂；软件版单独一套更好的文字 + 表格教程）
+   · 一份内容（下面 G_ 开头的表），两种排法：
+     网页版 Guide：游戏下面一块「教程」，分页 —— 上手 / 招式 / 连招 / 攻防 / 规则 / 查表；招式、连招、技巧都配游戏里的动作小图
+     软件版 Manual：菜单、暂停里的「教程」面板，左边章节、右边文字 + 表格（网页版全屏时也用它：全屏时看不到页面下面）
+   · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] 换成按键（按你自己设的单人键位显示）
+   · 前摇、伤害、倍率都直接读 MOVES 和 config.js 的常数：改了数值，教程跟着变
+   · 动作小图 PoseIcon：用游戏自己的姿势（moves.js 的关键帧）和画法（render.js drawFigure）画，招式改了动作，小图跟着变
+   ============================================================ */
+
+/* ---------- 动作小图 ---------- */
+const PoseIcon = {
+  F: null,
+  fig() { return this.F || (this.F = new Fighter(0, { look: 'ink', x: 0, facing: 1 })); },
+  // 一招在第 ph 阶段的样子（0 起手 → 1 出手 → 2 判定完 → 3 收完；script 动作的 ph 是整段进度 0~1）
+  poseAt(name, ph) {
+    const d = MOVES[name];
+    const t = d.script ? ph * d.R : ph <= 1 ? ph * d.S : ph <= 2 ? d.S + (ph - 1) * d.A : d.S + d.A + (ph - 2) * d.R;
+    return copyPose(mk(), evalKeys(d.keys, t));
+  },
+  joints(pose, alt) {
+    const F = this.fig();
+    copyPose(F.disp, pose); F.alt = alt || 0; F.vz = 0; F.x = 0; F.facing = 1; F.state = 'idle'; F.J = null; F.ikS = null;
+    F.fk(); return cloneJ(F.J);
+  },
+  // spec：{ move: 招名, ph: 阶段（默认出手那一下）, alt: 离地高 } 或 { pose: POSE 里的名字 } 或 { run: true }
+  build(s) {
+    let pose, trail = null;
+    if (s.move) {
+      const d = MOVES[s.move], ph = s.ph != null ? s.ph : d.script ? 0.5 : 1.35;
+      pose = this.poseAt(s.move, ph);
+      if (d.limb && !d.script && s.trail) {                 // 拳脚走过的那一道（默认不画：小图里看着像拿了根棍子）
+        trail = [];
+        for (const p of [0.62, 0.74, 0.84, 0.92, 1, 1.1, 1.2]) if (p < ph) trail.push(this.joints(this.poseAt(s.move, p), s.alt)[d.limb]);   // 只画最后那一截（看得出往哪打，不像拿着根棍子）
+      }
+    } else if (s.run) { const F = this.fig(); F.walkPhase = 0.32; F.runT = 20; pose = F.runPose(mk()); }
+    else pose = copyPose(mk(), POSE[s.pose] || POSE.stance);
+    if (s.rot) pose.rot = s.rot;
+    const J = this.joints(pose, s.alt);
+    if (trail) trail.push(J[MOVES[s.move].limb]);
+    return { J, trail };
+  },
+  // 画到一块新画布上（w × h 是 CSS 像素）。flip：面朝左；col：身体色
+  canvas(spec, w, h, o) {
+    o = o || {};
+    const c = document.createElement('canvas'), k = Math.min(3, Math.max(2, window.devicePixelRatio || 1));
+    c.width = Math.round(w * k); c.height = Math.round(h * k); c.style.width = w + 'px'; c.style.height = h + 'px';
+    c.className = 'pico'; c.setAttribute('aria-hidden', 'true');
+    const g = c.getContext('2d'); if (!g) return c;
+    const col = o.col || C.ink, band = palOf(col).band;
+    const { J, trail } = this.build(spec);
+    // 框住整个人（加上头、拳头、地面），按统一的大小画，太宽 / 太高才缩
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9;
+    const pts = Object.values(J).filter(Array.isArray).concat(trail || []);
+    for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); }
+    x0 -= 16; x1 += 16; y0 -= BONE.head + 10;
+    const y1 = FLOOR + 6, m = 4;
+    const s = Math.min(h * 0.86 / 182, (w - 2 * m) / (x1 - x0), (h - 2 * m) / (y1 - y0));
+    g.scale(k, k);
+    if (o.flip) { g.translate(w, 0); g.scale(-1, 1); }
+    g.translate(w / 2 - (x0 + x1) / 2 * s, h - m - y1 * s + 2); g.scale(s, s);
+    // 地面一道淡墨、脚下一点影子
+    g.fillStyle = 'rgba(23,24,26,.13)'; g.beginPath(); g.ellipse(J.hip[0], FLOOR + 2, 34, 5, 0, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(23,24,26,.2)'; g.lineWidth = 2.2 / s * 1.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x0 - 4, FLOOR + 3); g.lineTo(x1 + 4, FLOOR + 3); g.stroke();
+    withCtx(g, () => drawFigure(J, col, band, trail));
+    return c;
+  },
+  // 把页面里 data-icon 的空位填上小图（每个只画一次）
+  fill(root) {
+    for (const el of root.querySelectorAll('[data-icon]:not([data-drawn])')) {
+      el.setAttribute('data-drawn', '1');
+      let spec; try { spec = JSON.parse(el.dataset.icon); } catch (e) { continue; }
+      const w = +el.dataset.w || 96, h = +el.dataset.h || 96;
+      try { el.appendChild(this.canvas(spec, w, h, { flip: el.dataset.flip === '1', col: el.dataset.col || undefined })); } catch (e) {}
+    }
+  },
+};
+const iconSlot = (spec, w, h, cls, o) => `<span class="${cls || 'gicon'}" data-icon='${JSON.stringify(spec)}' data-w="${w}" data-h="${h}"${o && o.flip ? ' data-flip="1"' : ''}${o && o.col ? ` data-col="${o.col}"` : ''}></span>`;
+
+/* ---------- 按键 ---------- */
+const G_ACT = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up' };
+const gEsc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const gKey = (a, set) => keyName(((set || Keys.solo)[a] || []).find(Boolean) || null);
+function gKbd(ch, set) {
+  if (ch === '前' || ch === '后') {
+    const dirs = `${gKey('left', set)} / ${gKey('right', set)}`;
+    return `<kbd class="kc dir" title="${gEsc(dirs)} 里${ch === '前' ? '朝着' : '背着'}对手的那个"><b>${ch}</b><span>${ch === '前' ? '朝对手' : '背对手'}</span></kbd>`;
+  }
+  return `<kbd class="kc"><b>${ch}</b><span>${gEsc(gKey(G_ACT[ch], set))}</span></kbd>`;
+}
+const gText = (s, set) => gEsc(s).replace(/\[([拳重踢拿挡蹲跳前后])\]/g, (m, k) => gKbd(k, set));
+// 连招的按法：'jab' 'heavy' 'kick' 'd:kick'（蹲踢）…… → 一串字（不带键位，键位在页面上方写一次）
+const COMBO_TOK = { jab: '拳', heavy: '重', kick: '踢', 'd:kick': '蹲踢', 'd:jab': '蹲拳' };
+const comboKeys = (keys, times) => keys.map(k => `<i class="tok${k.startsWith('d:') ? ' low' : ''}">${COMBO_TOK[k]}</i>`).join('<i class="sep">›</i>') + (times ? `<i class="tok times">${times}</i>` : '');
+
+/* ---------- 内容 ---------- */
+const HN = { mid: '中', low: '下', high: '上' };
+const G_MOVES = [
+  { id: 'jab', how: '[拳]', icon: { move: 'jab' }, desc: '最快的一下，贴身抢先手；能打断对面出腿。' },
+  { id: 'heavy', how: '[重]', icon: { move: 'heavy' }, desc: '前摇长、有霸体：硬吃一记短拳照样打出去。怕腿、怕擒拿。' },
+  { id: 'kick', how: '[踢]', icon: { move: 'kick' }, desc: '射程最远，化解重拳。起腿时挨拳会失衡倒地，还怕接腿。' },
+  { id: 'grab', how: '[拿]', icon: { move: 'grab', ph: 1.6 }, tier: '擒拿', height: '—', desc: '挡不住。抓住后按 拳 / 踢 / 重 三种摔法。抓不到蹲着的人。' },
+  { id: 'lowJab', how: '[蹲] + [拳]', icon: { move: 'lowJab' }, desc: '下段：站着挡不住，要蹲着挡。' },
+  { id: 'sweep', how: '[蹲] + [踢]', icon: { move: 'sweep' }, ko: true, desc: '下段，扫倒人。被蹲挡住会挨踩腿，收招很长。' },
+  { id: 'palm', how: '[蹲] + [重]', icon: { move: 'palm' }, ko: true, desc: '对空：专打跳过来的人，打下来摔个倒栽葱。' },
+  { id: 'lowGrab', how: '[蹲] + [拿]', icon: { move: 'lowGrab', ph: 1.6 }, tier: '擒拿', desc: '抓蹲着、蹲挡的人；接得住出腿和扫堂腿。抓不到站着的。' },
+  { id: 'shoulder', how: '跑起来按 [重]', icon: { move: 'shoulder' }, desc: '能硬吃两下拳，把人撞得老远。' },
+  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '最快的空中招。空中招都是上段，伤害 ×' + AIR_BONUS + '。' },
+  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '跳起来双拳往下砸，伤害高。' },
+  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '跳起来一脚蹬过去，射程远。蹲下躲得开。' },
+  { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '先往上一腾，再朝人踩下去。专踩蹲着的、踩断托天掌；怕站着的拳。' },
+  { id: 'burst', how: '挨打时 [重] + [踢]', icon: { move: 'burst', ph: 0.25 }, tier: '—', height: '—', desc: `花半格气从身上炸开：对面倒地、掉 ${BURST_DMG} 血。只在挨打时能用。` },
+  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: `必杀，${MOVES.super.dmg} 血；挡住了只掉三成。` },
+];
+const moveTier = g => g.tier || TIER_NAME[MOVES[g.id].tier] || '—';
+const moveHeight = g => g.height || HN[MOVES[g.id].height] || '中';
+const G_COMBOS = [
+  { group: '拳起手', note: '短拳快，打中了接什么都来得及', list: [
+    { keys: ['jab', 'jab'], name: '后手直拳', moves: ['jab', 'jab2'] },
+    { keys: ['jab', 'jab', 'jab'], name: '摆拳', moves: ['jab2', 'jab3'] },
+    { keys: ['jab'], times: '×4~5', name: '连珠快拳', moves: ['rushL', 'rushR'], tag: '一串快拳' },
+    { keys: ['jab'], times: '×6', name: '寸劲', moves: ['rushEnd'], tag: '收势，把人打远' },
+    { keys: ['jab', 'heavy'], name: '崩拳', moves: ['jab', 'beng'], tag: '冲击波' },
+    { keys: ['jab', 'jab', 'heavy'], name: '冲天炮', moves: ['jab2', 'upper'], tag: '把人打上天', ko: true },
+    { keys: ['jab', 'kick'], name: '鞭腿', moves: ['jab', 'whip'] },
+    { keys: ['jab', 'jab', 'kick'], name: '转身蹬', moves: ['jab2', 'backKick'], tag: '把人蹬远' },
+  ] },
+  { group: '重起手', note: '重拳打中了接，被挡住接也照样出', list: [
+    { keys: ['heavy', 'jab'], name: '顶肘', moves: ['heavy', 'elbow'], tag: '贴身' },
+    { keys: ['heavy', 'heavy'], name: '劈挂掌', moves: ['heavy', 'chop'], tag: '上段，要站着挡' },
+    { keys: ['heavy', 'kick'], name: '旋风腿', moves: ['heavy', 'whirl'], tag: '转身一腿扫倒', ko: true },
+    { keys: ['heavy', 'd:kick'], name: '重拳接扫堂腿', moves: ['heavy', 'sweep'], tag: '下段 —— 和劈挂掌二选一，让他猜' },
+  ] },
+  { group: '腿起手', list: [
+    { keys: ['kick', 'jab'], name: '落步冲拳', moves: ['kick', 'stepPunch'] },
+    { keys: ['kick', 'heavy'], name: '盖步砸拳', moves: ['kick', 'hammer'], tag: '往下砸倒', ko: true },
+    { keys: ['kick', 'kick'], name: '二起脚', moves: ['kick', 'twinKick'], tag: '腾空两脚', ko: true },
+  ] },
+  { group: '下段', list: [
+    { keys: ['d:jab', 'd:kick'], name: '下盘拳接扫堂腿', moves: ['lowJab', 'sweep'], tag: '两下都是下段' },
+  ] },
+];
+const G_TECH = [
+  { group: '防守', list: [
+    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害；被挡的那个「势破」，下一记短拳慢 ${SLOW_JAB_ADD} 帧。`,
+      more: ['下段（下盘拳、扫堂腿）要按住 [蹲] 挡', '上段（劈挂掌、空中招）要站着挡', '背对着挡不住'] },
+    { name: '卸力', how: '快挨打的一瞬间刚按下 [挡]', icon: { pose: 'parry' }, desc: `按下挡的 ${PARRY_WIN} 帧内被打中：不掉血，对面失衡；接着打中 ×${PARRY_MUL}。`,
+      more: [`两次按挡要隔 ${PARRY_LOCK} 帧以上才有卸力，乱按没用`, '卸力后按 [拿] = 借力摔'] },
+    { name: '推挡', how: '挡住以后按 [拳]', icon: { move: 'shove' }, desc: '把对面推开，打断他接下来的招（不掉他的血）。' },
+    { name: '截拳', how: '挡住以后按 [重]', icon: { move: 'jieQuan' }, desc: `花 ${GC_COST} 气从格挡里打出一拳，出手前打不中你。` },
+    { name: '踩腿', how: '蹲挡住扫堂腿，马上 [蹲] + [踢]', icon: { move: 'stomp' }, desc: `一脚踩倒，算挡后反击 ×${PUNISH_KD_MUL}。` },
+    { name: '挣脱', how: '被抓住马上按 [拿]', icon: { pose: 'pulled' }, desc: '擒住刚开始那一下按就挣开。接腿摔、抄腿摔、借力摔挣不脱。' },
+  ] },
+  { group: '身法', list: [
+    { name: '冲刺', how: '双击 [前]（或 [后]）', icon: { move: 'dash', ph: 0.3 }, desc: '贴地滑出一大步；前几帧谁也打不中你，能穿到对面身后。' },
+    { name: '冲势', how: '冲刺里出招', icon: { move: 'dash', ph: 0.6 }, desc: `冲刺途中、刚冲完出的第一招 ×${DASH_IN_MUL}，被挡也压得住。` },
+    { name: '边挡边走', how: '按住 [挡] 再按方向', icon: { pose: 'block' }, desc: '举着手慢慢走，前后都行，一直面朝对手，照样挡得住。' },
+    { name: '闪身', how: '按住 [挡]，朝对手双击 [前]', icon: { move: 'slip', ph: 0.3 }, desc: '压低身子从他身边钻过去。只躲得过重拳一类；躲过了自动回身一肘，他背对着你踉跄。',
+      more: [`短拳、腿、下段、擒拿截得住闪身，挨了 ×${SLIP_CAUGHT_MUL}`] },
+    { name: '跳', how: '[跳]，按着方向跳得远', icon: { pose: 'leap', alt: 46 }, desc: '跑起来再跳更远。每跳只能出一招空中招；空中按方向只能小调。' },
+  ] },
+  { group: '擒拿', list: [
+    { name: '擒住以后', how: '按 [拳] / [踢] / [重]', icon: { move: 'hold', ph: 0.6 }, desc: '拳 = 提膝撞，踢 = 别腿摔，重（或按住后）= 过肩摔，不按 = 推开。' },
+    { name: '过肩摔', how: '面前有人时按住 [后] 再 [拿]', icon: { move: 'throwBack', ph: 0.45 }, desc: '不转身，抓住直接摔到身后 —— 把人换到墙角。' },
+    { name: '接腿摔', how: '对面出腿时按 [拿]', icon: { move: 'legCatch', ph: 0.25 }, desc: '抓住腿直接摔倒，挣不脱。手要在腿踢到之前伸出来。' },
+    { name: '借力摔', how: '卸力以后按 [拿]', icon: { pose: 'parry' }, desc: '趁对面失衡把他摔出去，挣不脱。' },
+  ] },
+  { group: '倒地', list: [
+    { name: '起身', how: '倒地后自己起来', icon: { pose: 'rise' }, desc: '躺一会儿 → 起身（打不中）→ 起身硬直（站起来那几帧打得中、动不了）→ 能动。' },
+    { name: '滚身起', how: '倒地时按住方向', icon: { pose: 'tuck' }, desc: '起身时往那边滚开，躲开守在你起身处的人。' },
+    { name: '压起身', how: '他站起来那一下按 [拳]', icon: { move: 'jab' }, desc: '短拳算好时机打在起身硬直里必中；重拳、腿太慢，要提前出。' },
+  ] },
+  { group: '空中交手', list: [
+    { name: '倒栽葱', how: '空中出招被克它的招打中', icon: { pose: 'fall', alt: 30 }, desc: `摔下来倒地更久。托天掌打空中招、站着的拳迎千斤坠（×${DIVE_PUNCH_MUL}）都是。` },
+    { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，往后翻开一大段。' },
+  ] },
+];
+const G_MULS = [
+  ['克', '主系克制（拳克腿、腿克重、重克拳），单方面打中', '×' + BEAT_MUL],
+  ['破招', '打在对方前摇里', '×' + COUNTER_MUL],
+  ['迎击', '打在全速跑过来、冲刺收尾的人身上', '×' + COUNTER_MUL],
+  ['冲势', '冲刺途中、刚冲完出的第一招', '×' + DASH_IN_MUL],
+  ['空中招', '跳起来出的招', '×' + AIR_BONUS],
+  ['挡后反击', '打在你刚挡住的那一招的收招里', `×${PUNISH_MUL}（击倒招 ×${PUNISH_KD_MUL}）`],
+  ['卸力后打中', '卸掉以后趁他失衡打', '×' + PARRY_MUL],
+  ['破绽', '击倒招打空了，打它的收招', '×' + WHIFF_KD_MUL],
+  ['截住闪身', '他钻过来时被短拳、腿、下段、擒拿打中', '×' + SLIP_CAUGHT_MUL],
+  ['拳迎千斤坠', '站着的拳迎面打中千斤坠（倒栽葱）', '×' + DIVE_PUNCH_MUL],
+  ['踩蹲 / 踩断对空', '千斤坠踩中蹲着的 / 正在出托天掌的', `×${DIVE_CROUCH_MUL} / ×${DIVE_AA_MUL}`],
+  ['格挡', '挡住了只吃', Math.round(BLOCK_KEEP * 10) + ' 成'],
+];
+const G_RULES = [
+  ['胜负', `血量 ${MAX_HP}，五局三胜。人机、联机每回合 ${ROUND_FRAMES / 3600} 分钟；双人对战、训练场不限时。`],
+  ['交手', '两边同时打中：先比主系 —— 克制的一方「克」，单方面打中；主系一样再比起手 —— 克制的一方「压」，被压的吃全额、被打退，压人的只吃三成还能接着打；都一样 = 拼招，各掉五成、互相震退。'],
+  ['起手和主系', '单招两者一样；连招的起手是第一下、主系是最后一下。比如 拳→重 的崩拳 = 起手拳、主系重。'],
+  ['高低', '中段站着、蹲着都能挡；下段（下盘拳、扫堂腿）要蹲着挡；上段（劈挂掌、空中招）要站着挡。'],
+  ['连击衰减', '同一套里每多挨一下，硬直更短、被推得更远、伤害更低 —— 连四五下就断。'],
+  ['势破', `被挡住的那个人，下一记短拳前摇 +${SLOW_JAB_ADD} 帧（头上一个「势」字）。`],
+  ['朝向', '按着方向不出招就是跑，马上朝那边跑（没有后退）。不按左右、格挡时自动面向对手；出招时对手在近身范围内一律朝他打，乱按方向也不打空。'],
+  ['气', `挨打、格挡、打中都会涨，挨打涨得最多。半格（${QI_BURST}）能爆气，满格（${QI_MAX}）能泼墨，截拳花 ${GC_COST}。`],
+  ['擒拿', '挡不住，但站着的擒拿抓不到蹲着的（要用抄腿，抄腿又抓不到站着的）；对面出腿时擒拿 = 接腿摔。'],
+  ['跳', `跳起出招 ×${AIR_BONUS}，每跳一招；落地前来不及出完，就变成落地后马上出。蹲下能躲飞踢。`],
+];
+const G_TIPS = [
+  '难度从「入门」开始，打得过再往上调。',
+  '先用短拳试探：短拳最快，被挡了也不亏多少。',
+  '看见他抬腿，出短拳；看见他往后蓄重拳，起腿；他贴着你连拳，出重拳（霸体吃得下）。',
+  '他老举着手挡？贴上去擒拿，或者蹲下打下段。',
+  '挡住他一下以后，他还在收招 —— 马上 拳拳重 打回去（挡后反击）。',
+  '被打倒了，起身时按住方向滚开，别在原地站起来挨打。',
+  '训练场里的「破招练习」能一招一招练怎么破对面。',
+];
+
+/* ---------- 克制总表、破解表、帧数表（都读 MOVES，改了数值自己变） ---------- */
+function relTableHtml() {
+  const T = ['light', 'heavy', 'kick'], cls = [];
+  for (const lead of T) for (const tier of T) {
+    const names = Object.values(MOVES).filter(d => d.lead === lead && d.tier === tier && !d.script).map(d => d.label);
+    cls.push({ lead, tier, name: TIER_NAME[lead] + TIER_NAME[tier], eg: [...new Set(names)].join('、') || '—' });
+  }
+  const SYM = { 1: ['克', 'w2'], 0.5: ['压', 'w1'], 0: ['平', 'eq'], '-0.5': ['被压', 'l1'], '-1': ['被克', 'l2'] };
+  let h = '<thead><tr><th>我＼对手</th>' + cls.map(c => `<th title="${c.eg}">${c.name}</th>`).join('') + '</tr></thead><tbody>';
+  for (const a of cls) {
+    h += `<tr><th title="${a.eg}">${a.name}<small>${a.eg}</small></th>`;
+    for (const b of cls) { const [t, k] = SYM[String(relation(a, b))]; h += `<td class="${k}">${t}</td>`; }
+    h += '</tr>';
+  }
+  return `<table class="rel">${h}</tbody></table>`;
+}
+const relLegend = '<span class="chip w2">克</span>单方面打中 <span class="chip w1">压</span>两边都中、你占大便宜 <span class="chip eq">平</span>拼招 <span class="chip l1">被压</span> <span class="chip l2">被克</span>';
+const FRAME_ROWS = ['jab', 'heavy', 'kick', 'grab', 'lowGrab', 'beng', 'whip', 'elbow', 'chop', 'whirl', 'stepPunch', 'hammer', 'twinKick', 'upper', 'backKick', 'rushEnd',
+  'lowJab', 'sweep', 'palm', 'shoulder', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'jieQuan', 'stomp', 'slipElbow', 'super'];
+function frameTableHtml() {
+  const rows = FRAME_ROWS.map(k => {
+    const d = MOVES[k], dmg = d.kind === 'grab' ? (k === 'grab' ? `${d.dmg}~${THROW_DMG}` : `${TACKLE_DMG}~${SCOOP_DMG}`) : Math.round(d.dmg * (d.air ? AIR_BONUS : 1));
+    return `<tr><td>${d.label}</td><td>${TIER_NAME[d.lead] || '—'}</td><td>${TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${d.S}</td><td>${d.dive ? '到地' : d.A}</td><td>${d.R}</td><td>${dmg}</td><td>${d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
+  }).join('');
+  return `<table class="frames"><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+const FRAME_NOTE = '1 帧 = 1/60 秒。射程是两人中心距（像素，含往前冲的那一段）；空中招伤害已含 ×' + AIR_BONUS + '。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。';
+
+// 键位表的一行一行：[说明, 动作…]
+const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']]];
+const keyCaps = (set, acts) => acts.map(a => ((set[a] || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')).join('<i class="or">/</i>');
+
+/* ============================================================
+   网页版：游戏下面的「教程」，分页
+   ============================================================ */
+const GUIDE_TABS = [['start', '上手'], ['moves', '招式'], ['combos', '连招'], ['tech', '攻防'], ['rules', '规则'], ['charts', '查表']];
+const Guide = {
+  el: null, tab: 'start',
+  init() {
+    this.el = document.getElementById('guide'); if (!this.el) return;
+    try { const t = localStorage.getItem('modou.guideTab'); if (GUIDE_TABS.some(x => x[0] === t)) this.tab = t; } catch (e) {}
+    this.el.querySelector('.g-tabs').innerHTML = GUIDE_TABS.map(([id, n]) => `<button type="button" role="tab" data-gt="${id}" aria-selected="${id === this.tab}">${n}</button>`).join('');
+    this.el.querySelector('.g-tabs').addEventListener('click', e => { const b = e.target.closest('[data-gt]'); if (b) this.show(b.dataset.gt); });
+    this.el.querySelector('.g-tabs').addEventListener('keydown', e => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const i = GUIDE_TABS.findIndex(x => x[0] === this.tab), n = GUIDE_TABS[(i + (e.key === 'ArrowRight' ? 1 : GUIDE_TABS.length - 1)) % GUIDE_TABS.length][0];
+      this.show(n); const b = this.el.querySelector(`[data-gt="${n}"]`); if (b) b.focus(); e.preventDefault();
+    });
+    this.el.addEventListener('click', e => { const b = e.target.closest('[data-goto]'); if (b) { this.show(b.dataset.goto); this.el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
+    this.render();
+  },
+  show(id) {
+    this.tab = id;
+    try { localStorage.setItem('modou.guideTab', id); } catch (e) {}
+    for (const b of this.el.querySelectorAll('[data-gt]')) b.setAttribute('aria-selected', String(b.dataset.gt === id));
+    this.render();
+  },
+  render() {
+    if (!this.el) return;
+    const page = this.el.querySelector('.g-page');
+    page.innerHTML = this['p_' + this.tab]();
+    page.dataset.page = this.tab;
+    PoseIcon.fill(page);
+  },
+  refresh() { if (this.el) this.render(); if (Manual.el && Manual.isOpen()) Manual.render(); },
+  /* 上手：键位、两个克制圈、第一局怎么打 */
+  p_start() {
+    const S = Keys.solo;
+    const keys = KEY_ROWS.map(([n, acts, note]) => `<div class="kr"><span class="kn">${n}</span><span class="kk">${keyCaps(S, acts)}</span>${note ? `<small>${note}</small>` : ''}</div>`).join('');
+    const tri = (a, b) => `<div class="tri-wrap">
+      <svg class="tri-arrows" viewBox="0 0 300 260" aria-hidden="true"><defs><marker id="ga${a}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--cinnabar)"/></marker></defs>
+        <path d="M118 52 Q60 92 66 156" marker-end="url(#ga${a})"/><path d="M96 214 Q150 246 204 214" marker-end="url(#ga${a})"/><path d="M234 156 Q240 92 182 52" marker-end="url(#ga${a})"/></svg>
+      ${b.map((n, i) => `<div class="tri-node n${i}">${n.icon}<b>${n.name}</b></div>`).join('')}
+      ${b.map((n, i) => `<span class="tri-k k${i}">克</span>`).join('')}</div>`;
+    const tri1 = tri(1, [{ name: '拳', icon: iconSlot({ move: 'jab' }, 76, 76) }, { name: '腿', icon: iconSlot({ move: 'kick' }, 76, 76) }, { name: '重', icon: iconSlot({ move: 'heavy' }, 76, 76) }]);
+    const tri2 = tri(2, [{ name: '打击', icon: iconSlot({ move: 'jab' }, 76, 76) }, { name: '擒拿', icon: iconSlot({ move: 'grab', ph: 1.6 }, 76, 76) }, { name: '格挡', icon: iconSlot({ pose: 'block' }, 76, 76) }]);
+    return `<div class="g-start">
+      <article class="g-card keys"><h3>键位<small>人机 · 联机 · 训练场</small></h3><div class="krows">${keys}<div class="kr"><span class="kn">暂停</span><span class="kk"><kbd>Esc</kbd><i class="or">/</i><kbd>P</kbd></span></div></div>
+        <p class="g-note">菜单「键位设置」里能改；双人对战用另外两套键位，见下面。</p>
+        <details class="g-pvp"><summary>双人对战的键位（两个人一个键盘）</summary>${this.pvpKeys()}</details></article>
+      <article class="g-card tri"><h3>拳克腿 · 腿克重 · 重克拳</h3>${tri1}
+        <ul class="g-list"><li><b>拳克腿</b>：起腿时挨了拳，失衡倒地。</li><li><b>腿克重</b>：重拳起手被腿化解，腿照样踢中。</li><li><b>重克拳</b>：重拳前摇有霸体，硬吃一记短拳打出去。</li></ul></article>
+      <article class="g-card tri"><h3>打击 · 擒拿 · 格挡</h3>${tri2}
+        <ul class="g-list"><li><b>打击克擒拿</b>：他伸手要抓，打他一下就断了。</li><li><b>擒拿克格挡</b>：擒拿挡不住，专抓举着手的。</li><li><b>格挡克打击</b>：挡住了只吃三成，还能打他收招。</li></ul></article>
+      <article class="g-card tips"><h3>第一局怎么打</h3><ol class="g-steps">${G_TIPS.map(t => `<li>${t}</li>`).join('')}</ol>
+        <p class="g-more"><button type="button" class="g-link" data-goto="moves">看全部招式 →</button><button type="button" class="g-link" data-goto="combos">连招 →</button></p></article>
+    </div>`;
+  },
+  pvpKeys() {
+    const P = [Keys.p1, Keys.p2], L = [lookOf(Looks.pvp[0]), lookOf(Looks.pvp[1])];
+    const head = `<tr><th></th>${L.map((p, i) => `<th><span class="dot" style="background:${p.color}"></span>玩家${i ? '二' : '一'} · ${p.name}</th>`).join('')}</tr>`;
+    return `<table class="g-keytab">${head}${KEY_ROWS.map(([n, acts]) => `<tr><td>${n}</td>${P.map(k => `<td>${keyCaps(k, acts)}</td>`).join('')}</tr>`).join('')}</table>`;
+  },
+  /* 招式：一张一张卡片（小图 + 名字 + 按法 + 系 / 段 + 一句话） */
+  p_moves() {
+    return `<p class="g-lead">「系」决定谁克谁，「段」决定站着还是蹲着挡。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲', '跳'].map(c => gKbd(c)).join(' ')}</span></p>
+      <div class="g-grid moves">${G_MOVES.map(g => {
+        const d = MOVES[g.id];
+        return `<article class="g-move">${iconSlot(g.icon, 108, 108)}<div class="gm-body"><h4>${d.label}</h4><div class="gm-how">${gText(g.how)}</div>
+          <div class="gm-tags">${moveTier(g) !== '—' ? `<span class="tag t-${moveTier(g)}">${moveTier(g)}系</span>` : ''}${moveHeight(g) !== '—' ? `<span class="tag">${moveHeight(g)}段</span>` : ''}${g.ko ? '<span class="tag ko">击倒</span>' : ''}${d.S && g.id !== 'burst' ? `<span class="tag fr">前摇 ${d.S}</span>` : ''}</div>
+          <p>${g.desc}</p></div></article>`;
+      }).join('')}</div>`;
+  },
+  /* 连招：按起手分组，每一套是一串小图 */
+  p_combos() {
+    return `<p class="g-lead">打中或者被挡住以后，马上按下一招就接上了（没打中的话，0.4 秒内接着出也算）。连招的<b>起手</b>是第一下、<b>主系</b>是最后一下 —— 交手时按这两个比克制。
+      <span class="g-keys">${['拳', '重', '踢', '蹲'].map(c => gKbd(c)).join(' ')}</span></p>
+      ${G_COMBOS.map(G => `<section class="g-sec"><h3>${G.group}${G.note ? `<small>${G.note}</small>` : ''}</h3><div class="g-grid combos">${G.list.map(c =>
+        `<article class="g-combo${c.ko ? ' ko' : ''}"><div class="gc-strip">${c.moves.map(m => iconSlot({ move: m }, 86, 92)).join('<i class="gc-arrow">›</i>')}</div>
+          <div class="gc-body"><div class="gc-keys">${comboKeys(c.keys, c.times)}</div><h4>${c.name}</h4>${c.tag ? `<p>${c.tag}</p>` : ''}</div></article>`).join('')}</div></section>`).join('')}
+      <p class="g-note">连击衰减：同一套里挨得越多，硬直越短、推得越远 —— 一套最多五下左右。</p>`;
+  },
+  /* 攻防：防守、身法、擒拿、倒地、空中交手 */
+  p_tech() {
+    return G_TECH.map(G => `<section class="g-sec"><h3>${G.group}</h3><div class="g-grid tech">${G.list.map(t =>
+      `<article class="g-tech">${iconSlot(t.icon, 84, 90)}<div class="gt-body"><h4>${t.name}</h4><div class="gt-how">${gText(t.how)}</div><p>${t.desc}</p>${t.more ? `<ul>${t.more.map(m => `<li>${gText(m)}</li>`).join('')}</ul>` : ''}</div></article>`).join('')}</div></section>`).join('');
+  },
+  /* 规则：加成表 + 规矩 */
+  p_rules() {
+    return `<div class="g-rules"><article class="g-card"><h3>伤害加成</h3><table class="g-mul"><tbody>${G_MULS.map(([a, b, c]) => `<tr><th>${a}</th><td>${b}</td><td class="num">${c}</td></tr>`).join('')}</tbody></table>
+        <p class="g-note">几种加成可以叠在一起（比如冲势 + 破招）。</p></article>
+      <article class="g-card"><h3>规矩</h3><dl class="g-dl">${G_RULES.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></article></div>`;
+  },
+  /* 查表：组合克制总表、破解表、帧数表 */
+  p_charts() {
+    return `<section class="g-sec"><h3>组合克制总表<small>行是你的招，列是对手同时出的招；名字是「起手 + 主系」</small></h3><div class="scrollx">${relTableHtml()}</div><p class="g-note">${relLegend}</p></section>
+      <section class="g-sec"><h3>破解表<small>每一种招、每一种技术都有破法 —— 训练场的「破招练习」能一条一条对着木桩练</small></h3>
+        <dl class="counters">${COUNTERS.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl></section>
+      <section class="g-sec"><h3>帧数表</h3><div class="scrollx">${frameTableHtml()}</div><p class="g-note">${FRAME_NOTE}</p></section>`;
+  },
+};
+
+/* ============================================================
+   软件版（以及网页全屏时）：「教程」面板 —— 左边章节，右边文字 + 表格
+   ============================================================ */
+const MANUAL_CH = [
+  ['start', '一', '上手'], ['moves', '二', '招式'], ['combos', '三', '连招'], ['tech', '四', '攻防技巧'],
+  ['rules', '五', '规则与加成'], ['rel', '六', '克制总表'], ['counters', '七', '破解表'], ['frames', '八', '帧数表'],
+];
+const Manual = {
+  el: null, ch: 'start', back: null,
+  build() {
+    if (this.el) return;
+    this.el = document.getElementById('manual'); if (!this.el) return;
+    this.el.innerHTML = `<nav class="mn-side" aria-label="章节"><p class="mn-brand">墨斗<i class="seal">谱</i><small>教程</small></p><div class="mn-chs" role="tablist"></div>
+      <p class="mn-help"><kbd>↑</kbd><kbd>↓</kbd> 换章 · <kbd>Esc</kbd> 关</p><button type="button" class="ibtn ghost mn-close">关闭</button></nav><div class="mn-main" tabindex="-1"></div>`;
+    this.el.querySelector('.mn-chs').innerHTML = MANUAL_CH.map(([id, no, n]) => `<button type="button" role="tab" data-mc="${id}"><i>${no}</i>${n}</button>`).join('');
+    this.el.querySelector('.mn-chs').addEventListener('click', e => { const b = e.target.closest('[data-mc]'); if (b) this.go(b.dataset.mc); });
+    this.el.querySelector('.mn-close').addEventListener('click', () => this.close());
+    try { const t = localStorage.getItem('modou.manualCh'); if (MANUAL_CH.some(x => x[0] === t)) this.ch = t; } catch (e) {}
+  },
+  isOpen() { return !!this.el && !this.el.hidden; },
+  open(back) {
+    this.build(); if (!this.el) return;
+    this.back = back || null; this.el.hidden = false; this.go(this.ch);
+    const b = this.el.querySelector(`[data-mc="${this.ch}"]`); if (b) b.focus({ preventScroll: true });
+  },
+  close() {
+    if (!this.el) return;
+    this.el.hidden = true;
+    if (this.back && this.back.focus) this.back.focus({ preventScroll: true });
+  },
+  go(id) {
+    this.ch = id;
+    try { localStorage.setItem('modou.manualCh', id); } catch (e) {}
+    for (const b of this.el.querySelectorAll('[data-mc]')) b.setAttribute('aria-selected', String(b.dataset.mc === id));
+    this.render();
+  },
+  step(d) { const i = MANUAL_CH.findIndex(x => x[0] === this.ch); this.go(MANUAL_CH[(i + d + MANUAL_CH.length) % MANUAL_CH.length][0]); const b = this.el.querySelector(`[data-mc="${this.ch}"]`); if (b) b.focus({ preventScroll: true }); },
+  key(e) {
+    if (e.code === 'Escape') { e.preventDefault(); if (!e.repeat) this.close(); return true; }
+    if (e.code === 'ArrowDown' || e.code === 'PageDown' || e.code === 'ArrowUp' || e.code === 'PageUp') {
+      const main = this.el.querySelector('.mn-main');
+      if ((e.code === 'PageDown' || e.code === 'PageUp') && main.scrollHeight > main.clientHeight + 4) return false;   // 长的章节：翻页键照常滚动
+      e.preventDefault(); this.step(e.code === 'ArrowDown' || e.code === 'PageDown' ? 1 : -1); return true;
+    }
+    return false;
+  },
+  render() {
+    const main = this.el.querySelector('.mn-main'), [id, no, name] = MANUAL_CH.find(x => x[0] === this.ch);
+    main.innerHTML = `<header class="mn-h"><span>第${no}章</span><h2>${name}</h2></header>` + this['c_' + id]();
+    main.scrollTop = 0;
+    PoseIcon.fill(main);
+  },
+  c_start() {
+    const rows = KEY_ROWS.concat([['暂停', null]]).map(([n, acts, note]) => `<tr><th>${n}</th>${acts ? [Keys.solo, Keys.p1, Keys.p2].map(k => `<td>${keyCaps(k, acts)}</td>`).join('') : '<td colspan="3"><kbd>Esc</kbd><i class="or">/</i><kbd>P</kbd></td>'}<td class="mn-dim">${note || ''}</td></tr>`).join('');
+    const L = [lookOf(Looks.pvp[0]), lookOf(Looks.pvp[1])];
+    return `<p class="mn-p">墨斗是一对一的格斗：把对面的血打光，五局三胜。出招只有四个键 —— 短拳、重拳、腿踢、擒拿；再加格挡。下面三节看完就能打。</p>
+      <h3>键位</h3><table class="mn-t keys"><thead><tr><th>动作</th><th>单人（人机 · 联机 · 训练场）</th><th>双人 · 玩家一（${L[0].name}）</th><th>双人 · 玩家二（${L[1].name}）</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      <p class="mn-dim">菜单「键位设置」里改，三套互不影响。</p>
+      <h3>谁克谁</h3>
+      <div class="mn-tri">${['jab', 'kick', 'heavy'].map((m, i) => `<div>${iconSlot({ move: m }, 84, 84)}<b>${'拳腿重'[i]}</b></div>`).join('<span>克</span>')}<span>克</span><div class="mn-tri-end">${iconSlot({ move: 'jab' }, 84, 84)}<b>拳</b></div></div>
+      <table class="mn-t"><tbody>
+        <tr><th>拳克腿</th><td>对面起腿的时候挨了你一拳，失衡倒地。</td></tr>
+        <tr><th>腿克重</th><td>重拳起手被腿化解，腿照样踢中他。</td></tr>
+        <tr><th>重克拳</th><td>重拳前摇有霸体，硬吃一记短拳照样打出去。</td></tr>
+        <tr><th>打击克擒拿</th><td>他伸手要抓，打他一下就断了。</td></tr>
+        <tr><th>擒拿克格挡</th><td>擒拿挡不住，专抓一直举着手的。</td></tr>
+        <tr><th>格挡克打击</th><td>挡住只吃三成；挡住以后他还在收招，马上打回去 = 挡后反击。</td></tr>
+      </tbody></table>
+      <h3>第一局怎么打</h3><ol class="mn-ol">${G_TIPS.map(t => `<li>${t}</li>`).join('')}</ol>`;
+  },
+  c_moves() {
+    return `<p class="mn-p">「系」决定谁克谁（拳克腿、腿克重、重克拳）；「段」决定怎么挡：中段站蹲都能挡，下段要蹲着挡，上段要站着挡。前摇是按下去到打出来要几帧（1 帧 = 1/60 秒），越小越快。</p>
+      <table class="mn-t moves"><thead><tr><th></th><th>招式</th><th>怎么按</th><th>系</th><th>段</th><th class="num">前摇</th><th class="num">伤害</th><th>说明</th></tr></thead><tbody>${G_MOVES.map(g => {
+        const d = MOVES[g.id], dmg = g.id === 'grab' ? `${d.dmg}~${THROW_DMG}` : g.id === 'lowGrab' ? `${TACKLE_DMG}~${SCOOP_DMG}` : g.id === 'burst' ? BURST_DMG : Math.round(d.dmg * (d.air ? AIR_BONUS : 1));
+        return `<tr><td class="ic">${iconSlot(g.icon, 64, 64)}</td><th>${d.label}${g.ko ? '<small>击倒</small>' : ''}</th><td class="how">${gText(g.how)}</td><td>${moveTier(g)}</td><td>${moveHeight(g)}</td><td class="num">${g.id === 'burst' ? '—' : d.S}</td><td class="num">${dmg}</td><td>${g.desc}</td></tr>`;
+      }).join('')}</tbody></table>`;
+  },
+  c_combos() {
+    return `<p class="mn-p">打中或者被挡住以后马上按下一招就接上了；没打中的话，0.4 秒内接着出也会换成连招动作。下表「拳」=${gKbd('拳')}「重」=${gKbd('重')}「踢」=${gKbd('踢')}「蹲」=${gKbd('蹲')}。</p>
+      <table class="mn-t combos"><thead><tr><th>按法</th><th>连招</th><th>特点</th><th>样子</th></tr></thead><tbody>${G_COMBOS.map(G =>
+        `<tr class="grp"><th colspan="4">${G.group}${G.note ? `<small>${G.note}</small>` : ''}</th></tr>` + G.list.map(c =>
+          `<tr><td class="ck">${comboKeys(c.keys, c.times)}</td><th>${c.name}</th><td>${c.tag || ''}</td><td class="strip">${c.moves.map(m => iconSlot({ move: m }, 58, 62)).join('')}</td></tr>`).join('')).join('')}</tbody></table>
+      <p class="mn-dim">连击衰减：同一套里挨得越多，硬直越短、推得越远 —— 一套最多五下左右。</p>`;
+  },
+  c_tech() {
+    return G_TECH.map(G => `<h3>${G.group}</h3><table class="mn-t tech"><colgroup><col style="width:76px"><col style="width:150px"><col style="width:330px"><col></colgroup><tbody>${G.list.map(t =>
+      `<tr><td class="ic">${iconSlot(t.icon, 56, 60)}</td><th>${t.name}</th><td class="how">${gText(t.how)}</td><td>${t.desc}${t.more ? `<ul>${t.more.map(m => `<li>${gText(m)}</li>`).join('')}</ul>` : ''}</td></tr>`).join('')}</tbody></table>`).join('');
+  },
+  c_rules() {
+    return `<h3>伤害加成</h3><table class="mn-t"><thead><tr><th>名字</th><th>什么时候</th><th class="num">倍率</th></tr></thead><tbody>${G_MULS.map(([a, b, c]) => `<tr><th>${a}</th><td>${b}</td><td class="num">${c}</td></tr>`).join('')}</tbody></table>
+      <p class="mn-dim">几种加成可以叠在一起。</p><h3>规矩</h3><table class="mn-t"><tbody>${G_RULES.map(([a, b]) => `<tr><th>${a}</th><td>${b}</td></tr>`).join('')}</tbody></table>`;
+  },
+  c_rel() { return `<p class="mn-p">两边同时出招时谁占便宜。行是你的招，列是对手的招；名字是「起手 + 主系」，比如「拳重」= 拳起手、重收尾（崩拳）。鼠标停在名字上能看到包含哪些招。</p><div class="scrollx">${relTableHtml()}</div><p class="mn-dim">${relLegend}</p>`; },
+  c_counters() { return `<p class="mn-p">每一种招、每一种技术都有破法。训练场的「破招练习」里能一条一条对着木桩练（木桩照着出那一招，有说明和演示）。</p><table class="mn-t counters"><thead><tr><th>对手的招</th><th>怎么破</th></tr></thead><tbody>${COUNTERS.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</tbody></table>`; },
+  c_frames() { return `<div class="scrollx">${frameTableHtml()}</div><p class="mn-dim">${FRAME_NOTE}</p>`; },
+};
+</script>
+<script>
+'use strict';
 /* 界面：菜单/暂停/结算/联机面板、人物颜色、全屏、键盘·鼠标·触屏 → Pad、帧数表、主循环与启动 */
 
 const $ = id => document.getElementById(id);
 const menu = $('menu'), pauseEl = $('pause'), resultEl = $('result'), onlineEl = $('online'), keysEl = $('keysPanel');
 const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel'), stageEl = $('stagePanel');
-const drillEl = $('drillPanel'), introEl = $('drillIntro');          // 2.1 破招练习：选课、说明
+const drillEl = $('drillPanel'), introEl = $('drillIntro'), passEl = $('drillPass');   // 2.1 破招练习：选课、说明；2.2 过关
 const btnPause = $('btnPause'), btnSound = $('btnSound');
 const Desk = window.modouDesktop || null;          // 2.1 软件版（Steam）才有这个对象（desktop/preload.js 给的）；网页版是 null。见下面「软件版」
 
 function showOverlay(el) {
-  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl]) o.hidden = o !== el;
+  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl, passEl]) o.hidden = o !== el;
   $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl].includes(el));
   const t = el && el.querySelector('.ibtn:not([hidden])');
   if (t) setTimeout(() => t.focus({ preventScroll: true }), 0);
@@ -8392,8 +9156,9 @@ function setPaused(p) {
   showOverlay(p ? pauseEl : null);
   for (const pd of pads) pd.clear();
   MouseLock.sync();
+  if (!p && game.mode === 'train' && Drill.cur && Drill.cur.passed && !Drill.cur.passShown) setTimeout(showPass, 400);   // 2.2 过关那一下正好暂停了：回来再弹结算
 }
-const MENU_HINT = `五局三胜 · 人机/联机每回合 ${ROUND_FRAMES / 60} 秒，双人不限时 · 键位、克制和连招表${Desk ? '在「招式表」里' : '在下方'}`;
+const MENU_HINT = `五局三胜 · 人机/联机每回合 ${ROUND_FRAMES / 60} 秒，双人不限时 · 键位、招式、连招在「教程」里`;
 function toMenu(msg) {
   game.paused = false; btnPause.disabled = true;
   $('menuMsg').textContent = msg || MENU_HINT;
@@ -8435,10 +9200,23 @@ Hooks.matchOver = () => {
   Ach.matchOver(wi);
   setTimeout(() => { if (game.phase === 'over') showOverlay(resultEl); }, 900);
 };
+/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字；主界面重新排）：
+   人机对战按钮旁边一排五格，每格两个字 + 底下一排小点（几个点 = 第几档，终极的点是朱色）；下面一行写这一档是什么样的电脑，
+   鼠标停在哪一格就先写那一格的 */
+$('lvlSeg').innerHTML = LEVEL_IDS.map((id, i) => `<button type="button" data-d="${id}" aria-pressed="false" title="${LEVEL_NAME[id]}：${LEVEL_DESC[id]}">` +
+  `<b>${LEVEL_NAME[id]}</b><i class="pips" aria-hidden="true">${LEVEL_IDS.map((_, j) => `<s${j <= i ? ' class="on"' : ''}></s>`).join('')}</i></button>`).join('');
+function showLevelDesc(d) { $('lvlDesc').innerHTML = `<b>${LEVEL_NAME[d]}</b>${LEVEL_DESC[d]}`; }
 function setDiff(d) {
   game.diff = d;
   for (const b of document.querySelectorAll('[data-d]')) b.setAttribute('aria-pressed', String(b.dataset.d === d));
+  showLevelDesc(d);
   try { localStorage.setItem('modou.diff', d); } catch (e) {}
+}
+for (const b of document.querySelectorAll('[data-d]')) {
+  b.addEventListener('mouseenter', () => showLevelDesc(b.dataset.d));
+  b.addEventListener('focus', () => showLevelDesc(b.dataset.d));
+  b.addEventListener('mouseleave', () => showLevelDesc(game.diff));
+  b.addEventListener('blur', () => showLevelDesc(game.diff));
 }
 function setSound(on) {
   Sound.on = on; btnSound.textContent = on ? '声音：开' : '声音：关';
@@ -8466,60 +9244,103 @@ $('btnQi').addEventListener('click', e => {
   e.currentTarget.setAttribute('aria-pressed', String(game.trainQi)); e.currentTarget.blur();
 });
 $('btnTrainReset').addEventListener('click', e => { if (game.mode === 'train') { resetFighters(); game.phase = 'fight'; } e.currentTarget.blur(); });
-/* ---------- 2.1 破招练习（训练场）：选课 → 说明（可以先看演示）→ 练；练的时候「说明」随时再看 ---------- */
-let introId = null;
+/* ---------- 破招练习（训练场）：选课 → 说明（可以先看演示）→ 练；练的时候「说明」随时再看 ----------
+   2.2（Jack：破招练习在下面太小了；里面的 UI 都太小、不好看、没有玩的欲望；不要「已完成」，每一课单独练，成功 3 次就过；
+   弄不清对面什么时候出招 —— 练习可以有准备，出招前给提示）：
+   · 工具条上「破招练习」做成一个大按钮；选课分组（单招 / 连招 / 空中 / 冲撞 / 破防守 / 必杀 · 起身），每种招一张卡片：
+     他出招的样子（动作小图）+ 名字 + 一句话 + 几种破法（大按钮，编号）
+   · 说明：左边是对手出的那一招（小图），右边几步怎么破（按键照你的键位），下面为什么；
+   · 不打勾、不记哪课过了。成功 3 次：「过关」印章 + 一个结算（下一课 / 再练一次 / 换一课 / 自由练）
+   · 出招提示（工具条开关，默认开）：木桩倒数 3 · 2 · 1 再出招，一抬手头上闪「!」（render.js drawDrillCue） */
+let introId = null, drillTab = null;
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const groupOf = tid => (DRILL_GROUPS.find(g => g[2].includes(tid)) || DRILL_GROUPS[0])[0];
+$('drillCount').textContent = `${DRILL_TOPICS.length} 种招 · ${DRILLS.length} 种破法`;
 function renderDrillList() {
-  const done = DRILLS.filter(d => Drill.done.has(d.id)).length;
-  $('drillSum').textContent = `已过关 ${done} / ${DRILLS.length} 课（${DRILL_TOPICS.length} 种对手的招）`;
-  $('drillList').innerHTML = DRILL_TOPICS.map(([tid, name, desc]) => {
-    const list = DRILLS.filter(d => d.topic === tid);
-    if (!list.length) return '';
-    const all = list.every(d => Drill.done.has(d.id));
-    return `<div class="dtopic${all ? ' alldone' : ''}"><b>${esc(name)}</b><small>${esc(desc)}</small><span class="dsols">` +
-      list.map(d => `<button type="button" class="dsol${Drill.done.has(d.id) ? ' done' : ''}" data-drill="${d.id}">${Drill.done.has(d.id) ? '✓ ' : ''}${esc(d.name)}</button>`).join('') + '</span></div>';
+  if (!drillTab) { try { drillTab = localStorage.getItem('modou.drillTab'); } catch (e) {} }
+  if (Drill.cur) drillTab = groupOf(Drill.cur.def.topic);
+  if (!DRILL_GROUPS.some(g => g[0] === drillTab)) drillTab = DRILL_GROUPS[0][0];
+  $('drillTabs').innerHTML = DRILL_GROUPS.map(([gid, name, tids]) => `<button type="button" role="tab" data-dg="${gid}" aria-selected="${gid === drillTab}">${name}<small>${tids.length}</small></button>`).join('');
+  const tids = DRILL_GROUPS.find(g => g[0] === drillTab)[2];
+  $('drillList').innerHTML = tids.map(tid => {
+    const t = DRILL_TOPICS.find(x => x[0] === tid), list = DRILLS.filter(d => d.topic === tid);
+    if (!t || !list.length) return '';
+    return `<article class="dtopic">${iconSlot(DRILL_ICON[tid] || { pose: 'stance' }, 104, 104, 'dt-icon', { flip: true, col: C.cin })}<div class="dt-body"><h4>${esc(t[1])}</h4><p>${esc(t[2])}</p>` +
+      `<div class="dsols">${list.map((d, i) => `<button type="button" class="dsol" data-drill="${d.id}"><i>${i + 1}</i>${esc(d.name)}</button>`).join('')}</div></div></article>`;
   }).join('');
+  PoseIcon.fill($('drillList'));
 }
+$('drillTabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-dg]'); if (!b) return;
+  drillTab = b.dataset.dg; try { localStorage.setItem('modou.drillTab', drillTab); } catch (err) {}
+  const keep = Drill.cur; Drill.cur = null; renderDrillList(); Drill.cur = keep;      // 点了别的组就看那一组（不跳回正在练的那一组）
+  const t = $('drillTabs').querySelector(`[data-dg="${drillTab}"]`); if (t) t.focus({ preventScroll: true });
+});
 $('drillList').addEventListener('click', e => { const b = e.target.closest('[data-drill]'); if (b) openIntro(b.dataset.drill); });
 function openDrills() {
   if (game.mode !== 'train') startMatch('train');
   game.paused = true; renderDrillList(); showOverlay(drillEl); MouseLock.sync();
+  const sel = $('drillTabs').querySelector('[aria-selected="true"]'); if (sel) setTimeout(() => sel.focus({ preventScroll: true }), 0);
 }
 function openIntro(id) {
   const d = Drill.byId(id); if (!d) return;
   introId = id; game.paused = true;
   const live = Drill.cur && !Drill.cur.demo && Drill.cur.def.id === id;
-  $('diTopic').textContent = `对手的招 · ${d.topicName}`;
+  const sibs = DRILLS.filter(x => x.topic === d.topic), k = sibs.indexOf(d) + 1;
+  $('diOp').innerHTML = `<small>对手出</small>${iconSlot(DRILL_ICON[d.topic] || { pose: 'stance' }, 150, 150, 'dt-icon', { flip: true, col: C.cin })}<b>${esc(d.topicName)}</b>`;
+  PoseIcon.fill($('diOp'));
+  $('diTopic').textContent = sibs.length > 1 ? `破法 ${k} / ${sibs.length}` : '破法';
   $('diName').textContent = d.name;
-  $('diHow').innerHTML = d.how.map(t => `<li>${drillText(esc(t), true)}</li>`).join('');
-  $('diWhy').innerHTML = `<b>为什么：</b>${drillText(esc(d.why), true)}`;
-  $('diNeed').textContent = `成功 ${d.need} 次过关` + (Drill.done.has(id) ? ' · 已经过关 ✓（可以接着练）' : '') + (live ? ` · 这一课已经成功 ${Drill.cur.ok} 次` : '');
-  const others = DRILLS.filter(x => x.topic === d.topic && x.id !== id);
-  $('diOther').innerHTML = others.length ? '这一招的其他破法：' + others.map(x => `<button type="button" class="dlink" data-drill="${x.id}">${Drill.done.has(x.id) ? '✓ ' : ''}${esc(x.name)}</button>`).join(' · ') : '';
+  $('diHow').innerHTML = d.how.map(t => `<li>${gText(t)}</li>`).join('');
+  $('diWhy').innerHTML = `<b>为什么</b>${gText(d.why)}`;
+  $('diNeed').innerHTML = `成功 <b>${d.need}</b> 次过关` + (live ? `<span>这一遍已经成功 ${Drill.cur.ok} 次</span>` : '') +
+    (Drill.cue ? '<span>木桩出招前会倒数 3 · 2 · 1（工具条能关）</span>' : '');
+  const others = sibs.filter(x => x.id !== id);
+  $('diOther').innerHTML = others.length ? '这一招的其他破法：' + others.map(x => `<button type="button" class="dlink" data-drill="${x.id}">${esc(x.name)}</button>`).join(' · ') : '';
   $('btnDrillGo').textContent = live ? '接着练' : '开始练习';
   showOverlay(introEl); MouseLock.sync();
 }
 $('diOther').addEventListener('click', e => { const b = e.target.closest('[data-drill]'); if (b) openIntro(b.dataset.drill); });
 function runDrill(demo) {
-  const live = Drill.cur && !Drill.cur.demo && Drill.cur.def.id === introId;
+  const live = Drill.cur && !Drill.cur.demo && Drill.cur.def.id === introId && !Drill.cur.passed;
   if (!(live && !demo)) Drill.start(introId, demo);
   showOverlay(null); game.paused = false; drillBar();
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   for (const pd of pads) pd.clear();
   MouseLock.sync();
 }
-// 训练场工具条：练着课的时候换成「说明 / 演示 / 换一课 / 退出练习」
+// 训练场工具条：练着课的时候换成「说明 / 演示 / 出招提示 / 换一课 / 退出练习」
 function drillBar() {
   const on = game.mode === 'train' && !!Drill.cur;
   $('freeTools').hidden = on; $('drillTools').hidden = !on;
   if (on) {
     const c = Drill.cur, d = c.def;
-    $('drillLabel').textContent = (c.demo ? '演示 · ' : '破招 · ') + `${d.topicName}：${d.name}` + (Drill.done.has(d.id) ? ' ✓' : '');
-    $('btnDrillReDemo').hidden = c.demo;
+    $('drillLabel').textContent = (c.demo ? '演示 · ' : '破招 · ') + `${d.topicName}：${d.name}`;
+    $('btnDrillReDemo').hidden = c.demo; $('btnDrillCue').hidden = c.demo;
   }
+  $('btnDrillCue').textContent = Drill.cue ? '出招提示：开' : '出招提示：关';
+  $('btnDrillCue').setAttribute('aria-pressed', String(Drill.cue));
+}
+// 过关：「过关」印章先看一秒，再停下来弹结算（下一课 / 再练一次 / 换一课 / 自由练）
+let passTimer = 0;
+function showPass() {
+  const c = Drill.cur; if (game.mode !== 'train' || !c || c.demo || !c.passed || c.passShown) return;
+  if (game.paused || [drillEl, introEl, pauseEl, keysEl, setEl].some(o => !o.hidden)) return;   // 正开着别的面板：等回到练习再弹（setPaused）
+  c.passShown = true;
+  const d = c.def, nx = Drill.next(d.id);
+  $('dpTopic').textContent = d.topicName;
+  $('dpName').textContent = d.name;
+  $('dpInfo').textContent = `成功 ${c.ok} 次 · 一共练了 ${c.tries + (c.rep ? 1 : 0)} 遍`;
+  $('dpNext').textContent = `下一课：${nx.topicName} · ${nx.name}`;
+  game.paused = true; for (const pd of pads) pd.clear();
+  showOverlay(passEl); MouseLock.sync();
 }
 Drill.onDemoEnd = () => { drillBar(); openIntro(introId); };
-Drill.onPass = d => { toast(`过关 ✓ ${d.topicName}：${d.name}　（可以接着练，或者点「换一课」）`, 4200); drillBar(); Ach.drills(); };
+Drill.onPass = () => { drillBar(); Ach.drills(); clearTimeout(passTimer); passTimer = setTimeout(showPass, 1100); };
+$('btnPassNext').addEventListener('click', () => { const c = Drill.cur; if (c) openIntro(Drill.next(c.def.id).id); });
+$('btnPassAgain').addEventListener('click', () => { const c = Drill.cur; if (c) { introId = c.def.id; Drill.start(c.def.id, false); runDrill(false); } });
+$('btnPassPick').addEventListener('click', () => openDrills());
+$('btnPassFree').addEventListener('click', () => { Drill.stop(); resetFighters(); game.phase = 'fight'; showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); });
 $('btnDrills').addEventListener('click', e => { e.currentTarget.blur(); openDrills(); });
 $('btnDrillClose').addEventListener('click', () => { showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); });
 $('btnDrillGo').addEventListener('click', () => runDrill(false));
@@ -8527,11 +9348,13 @@ $('btnDrillDemo').addEventListener('click', () => runDrill(true));
 $('btnDrillList').addEventListener('click', () => { renderDrillList(); showOverlay(drillEl); });
 $('btnDrillInfo').addEventListener('click', e => { e.currentTarget.blur(); if (Drill.cur) openIntro(Drill.cur.def.id); });
 $('btnDrillReDemo').addEventListener('click', e => { e.currentTarget.blur(); if (Drill.cur) { introId = Drill.cur.def.id; runDrill(true); } });
+$('btnDrillCue').addEventListener('click', e => { e.currentTarget.blur(); Drill.setCue(!Drill.cue); drillBar(); toast(Drill.cue ? '出招提示：开 —— 木桩倒数 3 · 2 · 1 再出招，一抬手头上闪「!」' : '出招提示：关 —— 木桩随时出招，看他抬手再反应', 2600); });
 $('btnDrillPick').addEventListener('click', e => { e.currentTarget.blur(); openDrills(); });
 $('btnDrillQuit').addEventListener('click', e => { e.currentTarget.blur(); Drill.stop(); resetFighters(); game.phase = 'fight'; drillBar(); });
-// 说明 / 选课开着的时候按 Esc：说明 → 回去接着练（没在练就回选课）；选课 → 回训练场
+// 说明 / 选课 / 过关开着的时候按 Esc：说明 → 回去接着练（没在练就回选课）；选课 → 回训练场；过关 → 选课
 function drillEsc() {
-  if (!introEl.hidden) { if (Drill.cur && !Drill.cur.demo && Drill.cur.def.id === introId) runDrill(false); else { renderDrillList(); showOverlay(drillEl); } return true; }
+  if (!passEl.hidden) { openDrills(); return true; }
+  if (!introEl.hidden) { if (Drill.cur && !Drill.cur.demo && !Drill.cur.passed && Drill.cur.def.id === introId) runDrill(false); else { renderDrillList(); showOverlay(drillEl); } return true; }
   if (!drillEl.hidden) { showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); return true; }
   return false;
 }
@@ -8817,18 +9640,8 @@ $('btnKeysReset').addEventListener('click', () => { keyDraft[keyWho] = cloneKeys
 $('btnKeysCancel').addEventListener('click', closeKeys);
 $('btnKeys').addEventListener('click', () => openKeys('menu'));
 $('btnPauseKeys').addEventListener('click', () => openKeys('pause'));
-// 图例里三张键位卡（单人、双人玩家一、双人玩家二）：显示现在真正在用的键
-function showKeyCards() {
-  const shared = sharedKeys(Keys.p1, Keys.p2);
-  [[Keys.solo, 'k0'], [Keys.p1, 'k1'], [Keys.p2, 'k2']].forEach(([k, id]) => {
-    const K = a => k[a].filter(Boolean).map(c => `<kbd${shared.has(c) && id === 'k1' ? ' title="双人对战时归玩家二"' : ''}>${keyName(c)}</kbd>`).join('') || '—';
-    $(id).innerHTML = `<dt>移动</dt><dd>${K('left')}${K('right')} 按哪边朝哪边跑 · 跳 ${K('up')} 蹲 ${K('down')}</dd>` +
-      `<dt>出招</dt><dd>短拳 ${K('jab')} 重拳 ${K('heavy')} 腿踢 ${K('kick')}</dd>` +
-      `<dt>防守</dt><dd>格挡 ${K('block')} 按住 · 擒拿 ${K('grab')}</dd>`;
-  });
-  $('p1note').textContent = shared.size ? `${[...shared].map(keyName).join('、')} 玩家二也绑了：归玩家二。` : '';
-}
-showKeyCards();
+// 教程里的键位（2.2 起在 guide.js）：改了键位就重画，显示现在真正在用的键
+function showKeyCards() { Guide.refresh(); }
 
 /* ---------- 人物颜色（1.7.0）：单人设置、双人开打前选、联机大厅选 ---------- */
 // 色块：一个小火柴人，身体是颜色；头带、发带、腰带是身体色提亮的那一版（2.0.2 腰带是箍在腰上的一道）
@@ -8846,12 +9659,8 @@ function swatch(p, o) {
 const randSwatch = on => `<button type="button" class="sw rand" data-id="random" aria-pressed="${on}" title="每局随机"><svg viewBox="0 0 34 40" aria-hidden="true">` +
   `<path d="M19 15 L16 27 M16 27 L10 38 M16 27 L23 37 M18 18 L27 15 M18 18 L10 23" fill="none" stroke="#9a9b94" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="3 3"/>` +
   `<circle cx="20" cy="9" r="5.6" fill="none" stroke="#9a9b94" stroke-width="2"/><text x="20" y="12.5" font-size="9" text-anchor="middle" fill="#6b6c66">?</text></svg><span>随机</span></button>`;
-// 图例里的「玩家一 · 墨」「玩家二 · 靛」跟着双人对战上次选的颜色走
-function showLooks() {
-  const a = lookOf(Looks.pvp[0]), b = lookOf(Looks.pvp[1]);
-  $('p1name').textContent = a.name; $('p1dot').style.background = a.color;
-  $('p2name').textContent = b.name; $('p2dot').style.background = b.color;
-}
+// 教程里双人键位的「玩家一 · 墨」「玩家二 · 靛」跟着双人对战上次选的颜色走
+function showLooks() { if (Guide.tab === 'start') Guide.refresh(); }
 function setMyLook(id) {
   Looks.solo.me = id;
   if (Looks.solo.cpu === id) Looks.solo.cpu = 'random';
@@ -8956,6 +9765,7 @@ function onFsChange() {
   $('btnPauseFull').hidden = !on;
   if (!on) {
     fsExitAt = performance.now(); fsLocked = false;
+    if (Manual.isOpen()) Manual.close();                 // 2.2 全屏时开的教程面板：退出全屏就关（不全屏时教程在页面下面）
     try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch (e) {}
     if (keyWait) { keyWait = null; renderKeys(); }
     if (game.phase === 'fight' && !game.paused && game.mode !== 'online') setPaused(true);
@@ -8968,33 +9778,29 @@ if (!Desk && !(playEl.requestFullscreen || playEl.webkitRequestFullscreen)) btnF
 btnFull.addEventListener('click', () => { if (Desk) Desk.setFullscreen(!Desk.isFullscreen()); else if (fsEl()) exitFull(); else enterFull(); btnFull.blur(); });
 $('btnPauseFull').addEventListener('click', () => { if (Desk) Desk.setFullscreen(false); else exitFull(); });
 
+/* ---------- 2.2 教程：菜单、暂停里的「教程」 ----------
+   软件版、网页全屏时：打开「教程」面板（左边章节、右边文字 + 表格，guide.js Manual）；网页版不全屏时：滚到页面下面的教程（分页，guide.js Guide） */
+const legendOpen = () => Manual.isOpen();
+function openGuide(e) {
+  const btn = e && e.currentTarget;
+  if (Desk || fsEl()) { Manual.open(btn); return; }
+  const g = $('guide'); if (g) g.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+}
+$('btnLegend').addEventListener('click', openGuide);
+$('btnPauseLegend').addEventListener('click', openGuide);
 /* ---------- 2.1 软件版（Steam，desktop/ 打出来的程序）：有 window.modouDesktop 才做，网页版下面这些都不起作用 ----------
    · 窗口里一直是全屏的样子（.fs：只有游戏画面，顶栏缩到右下角）；⛶ 切的是窗口全屏（F11、Alt+Enter 也行，主进程那边管）。
      窗口全屏不是网页全屏：Esc 不会退出全屏，照常暂停；
-   · 页面下面那些卡片（键位、克制关系、连招、破解表、帧数表）收进「招式表」面板，菜单、暂停里都能开；
+   · 页面下面的教程收进「教程」面板（2.2：单独一套文字 + 表格，guide.js Manual），菜单、暂停里都能开；
    · 菜单多一个「退出游戏」；
    · 邀请链接用网页版的网址（net.js WEB_URL）：对方点开在浏览器里进同一个房间 —— 网页版、软件版能一起玩（版本号一样就行）；
    · 没有浏览器：鼠标不用锁（MouseLock）、也不用防「后退」（Guard）；
    · Steam 连上了才有成就（Ach）；没连上（直接双击 exe、没开 Steam）照常玩 */
-const legendEl = $('legend');
-const legendOpen = () => legendEl.classList.contains('open');
-function openLegend() {
-  legendEl.classList.add('open'); legendEl.scrollTop = 0;
-  const b = $('btnLegendClose'); b.hidden = false; b.focus({ preventScroll: true });
-}
-function closeLegend() {
-  legendEl.classList.remove('open'); $('btnLegendClose').hidden = true;
-  const t = !pauseEl.hidden ? $('btnResume') : !menu.hidden ? $('btnPve') : null;
-  if (t) t.focus({ preventScroll: true });
-}
-$('btnLegend').addEventListener('click', openLegend);
-$('btnPauseLegend').addEventListener('click', openLegend);
-$('btnLegendClose').addEventListener('click', closeLegend);
 $('btnExit').addEventListener('click', () => { if (Desk) Desk.quit(); });
 if (Desk) {
   document.documentElement.classList.add('desktop');
   playEl.classList.add('fs');
-  for (const id of ['btnLegend', 'btnPauseLegend', 'btnExit']) $(id).hidden = false;
+  for (const id of ['btnExit']) $(id).hidden = false;
   $('menuMsg').textContent = MENU_HINT;
   const showFs = on => { btnFull.textContent = on ? '退出全屏' : '⛶ 全屏'; $('btnPauseFull').hidden = !on; setTimeout(resize, 60); };
   showFs(Desk.isFullscreen());
@@ -9002,9 +9808,10 @@ if (Desk) {
 }
 /* 成就（API Name 要和 Steamworks 后台建的一模一样，见 desktop/STEAM.md「建成就」）。
    人机：对局里每半秒看一眼连击、泼墨；联机只在结算时看（回滚前猜错的那几帧不算进去）。解锁过的 Steam 自己记着，这里只是同一次别重复发 */
+const DRILL_ACH_PASSES = 20;
 const Ach = {
   sent: new Set(), tick: 0,
-  BEAT: { easy: 'ACH_BEAT_EASY', normal: 'ACH_BEAT_NORMAL', hard: 'ACH_BEAT_HARD', hell: 'ACH_BEAT_EXTREME' },
+  BEAT: { easy: 'ACH_BEAT_EASY', normal: 'ACH_BEAT_NORMAL', hard: 'ACH_BEAT_HARD', hell: 'ACH_BEAT_EXTREME' },   // 2.2 入门没有单独的成就（赢了算「初战告捷」）
   unlock(id) {
     if (!id || !Desk || !Desk.steam || !Desk.steam.ok() || this.sent.has(id)) return;
     this.sent.add(id);
@@ -9026,7 +9833,8 @@ const Ach = {
       if (wi === me) this.unlock('ACH_ONLINE_WIN');
     }
   },
-  drills() { if (Desk && DRILLS.every(d => Drill.done.has(d.id))) this.unlock('ACH_ALL_COUNTERS'); },
+  // 2.2 不再记哪一课过了（Jack：不算「已完成」）：拆招大师 = 破招练习一共过关 DRILL_ACH_PASSES 次（哪几课都行，同一课过几次也算）
+  drills() { if (Desk && Drill.passes >= DRILL_ACH_PASSES) this.unlock('ACH_DRILL_MASTER'); },
 };
 
 /* ---------- 鼠标（1.7.0）：键位里绑了鼠标按键就能用（单人那套在人机 / 训练场 / 联机里，双人那两套在双人对战里） ---------- */
@@ -9034,7 +9842,7 @@ const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
   if (game.mode === 'attract' || game.paused || keyWait || e.button > 4) return null;
-  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !drillEl.hidden || !introEl.hidden) return null;
+  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
   const r = Keys.route('Mouse' + e.button, game.mode);           // 1.8.0：双人对战里鼠标也能用（谁绑了归谁）
   if (!r) return null;
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
@@ -9067,7 +9875,7 @@ const MouseLock = {
   on() { return document.pointerLockElement === cv; },
   want() {
     if (!this.ok() || game.mode === 'attract' || game.paused || game.phase === 'over') return false;
-    if ([menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl].some(o => !o.hidden)) return false;
+    if ([menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl, passEl].some(o => !o.hidden) || Manual.isOpen()) return false;
     return ['Mouse1', 'Mouse2'].some(c => !!Keys.route(c, game.mode));
   },
   // 该锁就锁、该放就放（锁要在点击 / 按键的那一下里叫，浏览器才答应）
@@ -9139,13 +9947,13 @@ function route(code) {
 const pBound = () => !!Keys.route('KeyP', game.mode);
 window.addEventListener('keydown', e => {
   if (keyWait) { captureKey(e); return; }
-  if (legendOpen()) { if (e.code === 'Escape' && !e.repeat) { e.preventDefault(); closeLegend(); } return; }
+  if (legendOpen()) { Manual.key(e); return; }                    // 2.2 教程面板开着：Esc 关、↑↓ 换章，别的键不进游戏
   if (!keysEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeKeys(); return; }
   if (!pvpEl.hidden) { pvpKey(e); return; }
   if (!lookEl.hidden) { if (e.code === 'Escape') closeLooks(); return; }
   if (!setEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeSettings(); return; }
   if (!stageEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
-  if (!drillEl.hidden || !introEl.hidden) { if (e.code === 'Escape' && !e.repeat) drillEsc(); return; }
+  if (!drillEl.hidden || !introEl.hidden || !passEl.hidden) { if (e.code === 'Escape' && !e.repeat) drillEsc(); return; }
   if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
   // 破招练习的演示里按 Esc：不看了，回到说明
   if (e.code === 'Escape' && !e.repeat && game.mode === 'train' && Drill.cur && Drill.cur.demo && !game.paused) { e.preventDefault(); const id = Drill.cur.def.id; Drill.stop(); drillBar(); openIntro(id); return; }
@@ -9182,36 +9990,7 @@ for (const btn of touchEl.querySelectorAll('.tc')) {
   btn.addEventListener('contextmenu', e => e.preventDefault());
 }
 
-/* ---------- 帧数表、克制总表（直接读 MOVES，改数值后自动更新） ---------- */
-(function frameTable() {
-  const rows = ['jab', 'heavy', 'kick', 'grab', 'lowGrab', 'beng', 'whip', 'elbow', 'chop', 'whirl', 'stepPunch', 'hammer', 'twinKick', 'upper', 'backKick', 'rushEnd',
-    'lowJab', 'sweep', 'palm', 'shoulder', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'jieQuan', 'stomp', 'slipElbow', 'super'];
-  const HN = { mid: '中', low: '下', high: '上' };
-  $('frameTable').innerHTML = rows.map(k => {
-    const d = MOVES[k], dmg = d.kind === 'grab' ? (k === 'grab' ? `${d.dmg}~${THROW_DMG}` : `${TACKLE_DMG}~${SCOOP_DMG}`) : Math.round(d.dmg * (d.air ? AIR_BONUS : 1));
-    const A = d.dive ? '到地' : d.A;
-    return `<tr><td>${d.label}</td><td>${TIER_NAME[d.lead] || '—'}</td><td>${TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${d.S}</td><td>${A}</td><td>${d.R}</td><td>${dmg}</td><td>${d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
-  }).join('');
-})();
-// 破解表
-$('counterList').innerHTML = COUNTERS.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
-// 九种组合（起手 × 主系）互相交手的结果
-(function relTable() {
-  const T = ['light', 'heavy', 'kick'];
-  const cls = [];
-  for (const lead of T) for (const tier of T) {
-    const names = Object.values(MOVES).filter(d => d.lead === lead && d.tier === tier && !d.script).map(d => d.label);
-    cls.push({ lead, tier, name: TIER_NAME[lead] + TIER_NAME[tier], eg: [...new Set(names)].join('、') || '—' });
-  }
-  const SYM = { 1: ['克', 'w2'], 0.5: ['压', 'w1'], 0: ['平', 'eq'], '-0.5': ['被压', 'l1'], '-1': ['被克', 'l2'] };
-  let h = '<thead><tr><th>我＼对手</th>' + cls.map(c => `<th title="${c.eg}">${c.name}</th>`).join('') + '</tr></thead><tbody>';
-  for (const a of cls) {
-    h += `<tr><th title="${a.eg}">${a.name}<small>${a.eg}</small></th>`;
-    for (const b of cls) { const [t, k] = SYM[String(relation(a, b))]; h += `<td class="${k}">${t}</td>`; }
-    h += '</tr>';
-  }
-  $('relTable').innerHTML = h + '</tbody>';
-})();
+/* 帧数表、克制总表、破解表：2.2 起在 guide.js（教程「查表」那一页 / 软件版教程）里，直接读 MOVES */
 
 /* ---------- 主循环 ---------- */
 let last = performance.now(), acc = 0, rafAvg = STEP_MS, smooth = false;
@@ -9279,6 +10058,7 @@ function boot(data) {
   if (data && data.diff) d = data.diff;
   if (data && typeof data.sound === 'boolean') snd = data.sound;
   setDiff(LEVELS[d] ? d : 'normal'); setSound(snd);
+  if (!Desk) Guide.init();                            // 2.2 页面下面的教程（软件版没有这一块，用「教程」面板）
   resize(); startAttract();
   openInvite();
   Ach.drills();

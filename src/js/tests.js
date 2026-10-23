@@ -1649,36 +1649,40 @@ function seededRandom(seed, fn) {
   try { return fn(); } finally { Math.random = r; }
 }
 /* ---------- 2.1：电脑难度往上挪一档（易 = 2.0.2 的中、中 = 2.0.2 的难、难 = 2.0.2 的地狱），修好「老吃一招」，新做断档的极难 ---------- */
-T('2.1 难度：易 / 中 / 难 / 极难 —— 易 = 2.0.2 的中、中 = 2.0.2 的难、难 = 2.0.2 的地狱（都修过），极难是新做的', () => {
-  eq(LEVEL_IDS, ['easy', 'normal', 'hard', 'hell']);
-  eq([LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react], [11, 8, 7], '前三档的反应还是原来的中 / 难 / 地狱');
-  ok(LEVELS.hard.smart && LEVELS.hard.see === 0.5 && !LEVELS.hard.inst, '难：2.0.2 地狱那一套（看穿一半、记习惯、预判、主动罚）');
-  ok(LEVELS.hell.smart && LEVELS.hell.inst >= 0.5 && LEVELS.hell.instMax > LEVELS.hell.inst && LEVELS.hell.instReact === 1, '极难：有一定概率瞬间看穿');
-  ok(LEVELS.hell.react >= LEVELS.hard.react, '极难平时的反应不比人快（看穿靠概率）');
+T('2.2 难度：入门 / 简单 / 中等 / 困难 / 终极（每个两个字）—— 入门是新的、比简单再简单一点；简单、中等没动；困难松了一点；终极的瞬间看穿降下来', () => {
+  eq(LEVEL_IDS, ['novice', 'easy', 'normal', 'hard', 'hell']);
+  eq(LEVEL_IDS.map(id => LEVEL_NAME[id]), ['入门', '简单', '中等', '困难', '终极']);
+  for (const id of LEVEL_IDS) { ok(LEVEL_NAME[id].length === 2, id + ' 名字要两个字'); ok(LEVEL_DESC[id], id + ' 没有说明'); eq(LABEL[id], '电脑 · ' + LEVEL_NAME[id]); }
+  eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [12, 11, 8, 8, 10], '反应帧');
+  ok(LEVELS.novice.block < LEVELS.easy.block && LEVELS.novice.read < LEVELS.easy.read && LEVELS.novice.punishBlock < LEVELS.easy.punishBlock, '入门比简单挡得少、读招少、罚得少');
+  ok(PLANS.novice.every(([p]) => p.length <= 3) && PLANS.novice.filter(([p]) => p.length <= 2).length >= PLANS.novice.length - 1, '入门的连招短（多是一两下）');
+  ok(LEVELS.hard.smart && LEVELS.hard.see === 0.45 && !LEVELS.hard.inst, '困难：2.1 的难松一点（看穿 0.5 → 0.45）');
+  ok(LEVELS.hell.smart && LEVELS.hell.inst === 0.3 && LEVELS.hell.instMax === 0.55 && LEVELS.hell.instReact === 1, '终极：瞬间看穿 0.6 / 0.88 → 0.3 / 0.55');
+  ok(LEVELS.hell.react >= LEVELS.hard.react, '终极平时的反应不比人快（看穿靠概率）');
   for (const id of LEVEL_IDS) {
     const L = LEVELS[id];
-    ok(L.airBlock > 0.7 && L.aaPlan >= 0.5 && L.habit > 0 && L.guard > 0 && L.punishBlock >= 0.5, id + '：防跳、空中招站着挡、记习惯、近身护手、挡住就罚，每档都要有');
+    ok(L.airBlock >= 0.7 && L.aaPlan >= 0.45 && L.habit > 0 && L.guard > 0 && L.punishBlock >= 0.45, id + '：防跳、空中招站着挡、记习惯、近身护手、挡住就罚，每档都要有');
   }
   for (let i = 1; i < LEVEL_IDS.length; i++) {
     const a = LEVELS[LEVEL_IDS[i - 1]], b = LEVELS[LEVEL_IDS[i]];
     ok(b.habit >= a.habit && b.aaPlan >= a.aaPlan && b.punishBlock >= a.punishBlock, LEVEL_IDS[i] + ' 不能比 ' + LEVEL_IDS[i - 1] + ' 笨');
   }
 });
-T('2.1 难（2.0.2 的地狱）：看穿不是每次都看得穿 —— 基础一半，你在这个距离老出的那一招最多八成，别的招还是一半', () => {
-  arena(140); const b = makeBrain(F2, 'hard');
-  eq(b.seeChance({ name: 'kick' }, 140), 0.5, '还不认识你：一半');
+T('困难（2.1 叫难、2.0.2 叫地狱）：看穿不是每次都看得穿 —— 基础 ' + LEVELS.hard.see + '，你在这个距离老出的那一招最多八成，别的招还是基础', () => {
+  arena(140); const b = makeBrain(F2, 'hard'), base = LEVELS.hard.see;
+  eq(b.seeChance({ name: 'kick' }, 140), base, '还不认识你：基础');
   b.memo.open[bandOf(140)] = { kick: 20, jab: 2 };
   const pk = b.seeChance({ name: 'kick' }, 140), pj = b.seeChance({ name: 'jab' }, 140);
   ok(pk > 0.7 && pk <= 0.8, '老出腿踢：看穿腿踢的概率涨到八成上下：' + pk);
-  eq(pj, 0.5, '不常出的招还是一半');
-  eq(b.seeChance({ name: 'kick' }, 60), 0.5, '换个距离不算');
+  eq(pj, base, '不常出的招还是基础');
+  eq(b.seeChance({ name: 'kick' }, 60), base, '换个距离不算');
 });
-T('2.1 极难：每一招有一定概率被它 1 帧看穿 —— 基础 ' + LEVELS.hell.inst + '，你在这个距离老出的那一招更高，最多 ' + LEVELS.hell.instMax, () => {
+T('终极（2.1 叫极难）：每一招有一定概率被它 1 帧看穿 —— 基础 ' + LEVELS.hell.inst + '，你在这个距离老出的那一招更高，最多 ' + LEVELS.hell.instMax, () => {
   arena(140); const b = makeBrain(F2, 'hell');
   eq(b.instChance({ name: 'kick' }, 140), LEVELS.hell.inst, '还不认识你：基础');
   b.memo.open[bandOf(140)] = { kick: 20, jab: 2 };
   const pk = b.instChance({ name: 'kick' }, 140), pj = b.instChance({ name: 'jab' }, 140);
-  ok(pk > LEVELS.hell.inst + 0.15 && pk <= LEVELS.hell.instMax, '老出腿踢：看穿的概率要涨：' + pk);
+  ok(pk > LEVELS.hell.inst + 0.15 && pk <= LEVELS.hell.instMax + 1e-9, '老出腿踢：看穿的概率要涨：' + pk);
   eq(pj, LEVELS.hell.inst, '不常出的招还是基础');
 });
 function heavySpam(level, n) {
@@ -1704,20 +1708,21 @@ function heavySpam(level, n) {
   game.brains = [null, null];
   return { thrown, dodged, landed, elbows, parried: F2.stats.parries, kicked, fast };
 }
-T('2.1 难（2.0.2 的地狱）：一直打重拳，它常常闪身钻过去回身肘、卡准时机卸力、起腿化解，但不是每下都破得了（有的照样打中）', () => seededRandom(7, () => {
+T('困难：一直打重拳，它常常闪身钻过去回身肘、卡准时机卸力、起腿化解，但不是每下都破得了（有的照样打中）', () => seededRandom(7, () => {
   const r = heavySpam('hard', 4000), broke = r.dodged + r.parried;
   ok(r.thrown >= 15, '重拳出得太少：' + r.thrown);
   ok(r.elbows >= 1 && r.dodged >= 1, `闪身回身肘一次都没有（闪过 ${r.dodged}、回身肘 ${r.elbows}）`);
   ok(broke >= r.thrown * 0.15, `破得太少：${r.thrown} 下重拳，闪过 ${r.dodged}、卸力 ${r.parried}`);
   ok(broke <= r.thrown * 0.9, `不能每下都破：${r.thrown} 下重拳，打中 ${r.landed}，闪过 ${r.dodged}、卸力 ${r.parried}`);
 }));
-T('2.1 极难：一直打重拳，大多数被它看穿 —— 重拳一出手它马上就动（闪身 / 起腿化解 / 卡准帧卸力），打中的比难少得多，但不是一下都打不中', () => seededRandom(7, () => {
-  const h = heavySpam('hell', 4000), d = heavySpam('hard', 4000);
-  ok(h.thrown >= 15, '重拳出得太少：' + h.thrown);
-  ok(h.fast >= 2, '没有瞬间反应的：' + JSON.stringify(h));
-  ok(h.landed / h.thrown < d.landed / d.thrown, `极难要比难破得多：极难打中 ${h.landed}/${h.thrown}，难打中 ${d.landed}/${d.thrown}`);
-  ok(h.landed <= h.thrown * 0.35, '极难被重拳打中太多：' + h.landed + '/' + h.thrown);
-}));
+T('终极：一直打重拳，大多数被它看穿 —— 有的重拳一出手它马上就动（闪身 / 起腿化解 / 卡准帧卸力），破得不比困难少，但不是一下都打不中', () => {
+  const sum = lv => { const t = { thrown: 0, landed: 0, fast: 0 }; for (const sd of [3, 5, 7, 9, 11, 13]) seededRandom(sd, () => { const r = heavySpam(lv, 4000); t.thrown += r.thrown; t.landed += r.landed; t.fast += r.fast; }); return t; };
+  const h = sum('hell'), d = sum('hard');
+  ok(h.thrown >= 90, '重拳出得太少：' + h.thrown);
+  ok(h.fast >= 4, '没有瞬间反应的：' + JSON.stringify(h));
+  ok(h.landed / h.thrown <= d.landed / d.thrown + 0.02, `终极不能比困难破得少：终极打中 ${h.landed}/${h.thrown}，困难打中 ${d.landed}/${d.thrown}`);   // 2.2 看穿降了以后两档破重拳都在九成五上下
+  ok(h.landed <= h.thrown * 0.35, '终极被重拳打中太多：' + h.landed + '/' + h.thrown);
+});
 // 「木头玩家」：反复出同一种招（从差不多的距离起手），数这一招赚了几次（这一次交手里电脑掉的血比他多），每次净赚多少
 const AI_PATS = (() => {
   const P = {}, Bk = HOLD('block'), Dn = HOLD('down');
@@ -1786,15 +1791,15 @@ function aiPattern(level, name, frames) {
   return { att, rate: won / Math.max(1, att), net: net / Math.max(1, att) };
 }
 T('2.1 所有难度：泰山压顶、飞踢跳进来不会白吃（以前要么蹲着挡、要么等看见空中招才动，泰山压顶常常打中）', () => seededRandom(11, () => {
-  const cap = { easy: 0.32, normal: 0.25, hard: 0.2, hell: 0.15 };
+  const cap = { novice: 0.6, easy: 0.32, normal: 0.25, hard: 0.2, hell: 0.15 };   // 2.2 入门最松（看反应慢、常蹲不对）
   for (const lv of LEVEL_IDS) for (const pn of ['jumpHeavy', 'jumpKick']) {
     const r = aiPattern(lv, pn, 4800);
     ok(r.att >= 8, `${lv} ${pn} 次数太少：${r.att}`);
     ok(r.rate <= cap[lv], `${lv}：${pn} 赚了 ${(r.rate * 100).toFixed(0)}%（不能超过 ${cap[lv] * 100}%）`);
   }
 }));
-T('2.1 所有难度：没有「永远吃」的招 —— 一种招反复出，电脑会看反应、记住你的习惯调整防法；难、极难反复出同一招还要亏', () => seededRandom(12, () => {
-  const cap = { easy: 0.62, normal: 0.52, hard: 0.42, hell: 0.3 }, bad = [];
+T('2.1 所有难度：没有「永远吃」的招 —— 一种招反复出，电脑会看反应、记住你的习惯调整防法；困难、终极反复出同一招还要亏', () => seededRandom(12, () => {
+  const cap = { novice: 0.7, easy: 0.62, normal: 0.52, hard: 0.42, hell: 0.36 }, bad = [];   // 2.2 终极的看穿降了：0.3 → 0.36（多种子平均只有一成上下，单跑一次起伏大）
   for (const lv of LEVEL_IDS) for (const pn of ['kick', 'sweep', 'lowJabSweep', 'heavy', 'grabStand', 'dashJab', 'crossup', 'jumpDive']) {
     const r = aiPattern(lv, pn, 3600);
     if (r.rate > cap[lv]) bad.push(`${lv} ${pn} 赚 ${(r.rate * 100).toFixed(0)}%`);
@@ -1823,8 +1828,8 @@ T('2.1 接腿：腿快踢到了就不去接（以前晚 5 帧也伸手，常常�
   }
   eq(late, 0, `伸手接腿 ${tries} 次，其中来不及的`);
 }));
-T('2.1 电脑对电脑：一档比一档强 —— 极难赢难、难赢中、中赢易', () => seededRandom(3, () => {
-  for (const [a, b] of [['hell', 'hard'], ['hard', 'normal'], ['normal', 'easy']]) {
+T('电脑对电脑：一档比一档强 —— 终极赢困难、困难赢中等、中等赢简单、简单赢入门', () => seededRandom(3, () => {
+  for (const [a, b] of [['hell', 'hard'], ['hard', 'normal'], ['normal', 'easy'], ['easy', 'novice']]) {
     startMatch('pvp'); game.paused = false; game.endless = true;
     game.brains = [makeBrain(F1, a), makeBrain(F2, b)];
     const won = [0, 0]; let r = 0, n = 0;
@@ -1837,6 +1842,82 @@ T('2.1 电脑对电脑：一档比一档强 —— 极难赢难、难赢中、�
     ok(r >= 4 && won[0] >= 3, `${a} 打 ${b}：${won[0]} : ${won[1]}（${r} 回合）`);
   }
 }));
+
+// 2.2 「木头玩家」乱换招：每次交手随便挑一种起手（短拳、重拳、腿、扫堂腿、下盘拳、擒拿、跳进来、冲刺进来、光挡着），打中了照常接；
+// 数他打掉的血占两人一共掉的血的多少 —— 难度越高他占得越少（Jack：做完保证每一档都有比较明显的区别）
+function mixedPlayer(level, frames) {
+  const P = AI_PATS, Dn = HOLD('down'), tw = (me, op) => HOLD(op.x >= me.x ? 'right' : 'left');
+  const ground = (keys, dist, follow) => ({ start: dist, go(st, me) {
+    if (st.i === 0) return keys;
+    if (follow && me.state === 'attack' && me.move && me.move.hit && st.k < follow.length) { const k = follow[st.k], kind = k.replace('d:', ''); if (me.canCancel(kind)) { st.k++; return (k.startsWith('d:') ? Dn : 0) | TAP(kind); } }
+    return st.i > 3 && me.actionable() ? 'done' : 0;
+  } });
+  const pats = [ground(TAP('jab'), [78, 90], ['jab', 'heavy']), ground(TAP('jab'), [78, 90], ['kick']), ground(TAP('heavy'), [96, 110], ['kick']), ground(TAP('kick'), [118, 132], ['heavy']),
+    ground(Dn | TAP('kick'), [100, 116]), ground(Dn | TAP('jab'), [78, 90], ['d:kick']), ground(TAP('grab'), [70, 80]), P.jumpHeavy, P.jumpKick, P.jumpDive, P.dashJab,
+    { start: [90, 140], go(st) { return st.i < 50 ? HOLD('block') : 'done'; } }];
+  startMatch('pvp'); game.phase = 'fight'; game.paused = true; game.endless = true;
+  game.brains = [null, makeBrain(F2, level)]; F1.x = 700; F2.x = 900;
+  let st = null, mode = 'walk', target = 0, waitT = 0, pat = null, dealt = 0, taken = 0;
+  for (let f = 0; f < frames; f++) {
+    const h1 = F1.hp, h2 = F2.hp, d = Math.abs(F2.x - F1.x);
+    let v = 0;
+    if (mode === 'walk') {
+      if (!pat) { pat = pats[(Math.random() * pats.length) | 0]; target = pat.start[0] + Math.random() * (pat.start[1] - pat.start[0]); }
+      if (F1.actionable()) {
+        if (d > target + 8) v = HOLD(F2.x >= F1.x ? 'right' : 'left');
+        else if (d < target - 8) v = HOLD(F2.x >= F1.x ? 'left' : 'right');
+        else if (++waitT > 4) { mode = 'go'; st = { i: 0, k: 0 }; waitT = 0; }
+      }
+      if (F1.x < WALL_L + 40 || F1.x > WALL_R - 40) { F1.x = 800; F2.x = 800 + target * (Math.random() < 0.5 ? 1 : -1); }
+    }
+    if (mode === 'go') { const r = pat.go(st, F1, F2); st.i++; if (r === 'done' || st.i > 160) { mode = 'walk'; pat = null; } else v = r; }
+    step([v, 0]);
+    dealt += Math.max(0, h2 - F2.hp); taken += Math.max(0, h1 - F1.hp);
+    if (F1.hp < MAX_HP - 200 || F2.hp < MAX_HP - 200) F1.hp = F2.hp = MAX_HP;
+    if (F1.state === 'ko' || F2.state === 'ko' || game.phase !== 'fight') { startRound(); game.phase = 'fight'; F1.hp = F2.hp = MAX_HP; }
+  }
+  game.brains = [null, null];
+  return dealt / Math.max(1, dealt + taken);
+}
+T('2.2 五档拉得开：乱换招的木头玩家打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，每一档至少差 5%；终极不再是「完全打不着」', () => {
+  const sh = {};
+  for (const lv of LEVEL_IDS) { let t = 0; for (const sd of [5, 6]) t += seededRandom(sd, () => mixedPlayer(lv, 30000)); sh[lv] = t / 2; }
+  const txt = LEVEL_IDS.map(l => `${LEVEL_NAME[l]} ${(sh[l] * 100).toFixed(0)}%`).join(' · ');
+  for (let i = 1; i < LEVEL_IDS.length; i++) ok(sh[LEVEL_IDS[i - 1]] - sh[LEVEL_IDS[i]] >= 0.05, '有两档挨得太近：' + txt);
+  ok(sh.novice > 0.55, '入门要让木头玩家占上风：' + txt);
+  ok(sh.hell >= 0.15, '终极还是太难（木头玩家几乎打不着）：' + txt);
+});
+T('2.2 训练场：进去直接开始 —— 没有「第一回合」「战」这些开场字，也不用等', () => {
+  FX.length = 0; startMatch('train'); game.brains[1] = new Dummy(F2, 'stand');
+  eq(game.phase, 'fight', '一进来就能打');
+  step([0, 0]); step([0, 0]);
+  ok(!FX.some(e => e.type === 'announce'), '不要开场字：' + FX.filter(e => e.type === 'announce').map(e => e.text).join(','));
+  step([TAP('jab'), 0]);
+  ok(F1.state === 'attack', '第一帧就能出招');
+  startMatch('pvp'); game.brains = [null, null];
+  eq(game.phase, 'intro', '别的模式照旧有开场');
+});
+
+T('2.2 教程：网页版每一页、软件版每一章都排得出来；招式、连招、小图都对得上游戏里的招（连招表写的按法真打得出那一招）', () => {
+  for (const g of G_MOVES) ok(MOVES[g.id], '教程里没有这一招：' + g.id);
+  for (const G of G_COMBOS) for (const c of G.list) {
+    for (const m of c.moves) ok(MOVES[m], c.name + ' 的小图用了不存在的招：' + m);
+    const n = c.times ? parseInt(c.times.split('~').pop().replace(/[^0-9]/g, ''), 10) : 0;
+    const keys = c.times ? Array(n).fill(c.keys[0]) : c.keys, chain = [];
+    let last = null;
+    for (const k of keys) { const kind = k.replace('d:', ''); last = pickVariant(kind, chain, false, k.startsWith('d:') ? 'down' : ''); chain.push(kind); }
+    ok(last && c.moves.includes(last) && c.name.endsWith(MOVES[last].label), `${c.name}：按 ${keys.join(' ')} 打出来的是 ${last}`);
+  }
+  for (const [id] of GUIDE_TABS) ok(Guide['p_' + id]().length > 300, '网页版这一页是空的：' + id);
+  for (const [id] of MANUAL_CH) ok(Manual['c_' + id]().length > 300, '软件版这一章是空的：' + id);
+  ok(/<kbd class="kc"><b>拳<\/b><span>F<\/span><\/kbd>/.test(gText('按 [拳]', DEFAULT_KEYS)), '按键显示成你的键');
+  const specs = G_MOVES.map(g => g.icon).concat(G_TECH.flatMap(G => G.list.map(t => t.icon)), Object.values(DRILL_ICON), G_COMBOS.flatMap(G => G.list.flatMap(c => c.moves.map(m => ({ move: m })))));
+  for (const sp of specs) { const r = PoseIcon.build(sp); ok(r.J && r.J.head && isFinite(r.J.head[0]) && isFinite(r.J.ff[1]), '小图画不出来：' + JSON.stringify(sp)); }
+  const cv2 = PoseIcon.canvas({ move: 'kick' }, 96, 96);
+  ok(cv2.width >= 192 && cv2.getContext('2d').getImageData(0, 0, cv2.width, cv2.height).data.some((v, i) => i % 4 === 3 && v > 200), '小图是空白的');
+  for (const [tid] of DRILL_TOPICS) { ok(DRILL_ICON[tid], tid + ' 没有小图'); ok(DRILL_GROUPS.filter(g => g[2].includes(tid)).length === 1, tid + ' 要在而且只在一组里'); }
+  eq(DRILL_GROUPS.reduce((n, g) => n + g[2].length, 0), DRILL_TOPICS.length, '分组里的招数');
+});
 
 /* ---------- 2.1 训练场 · 破招练习 ---------- */
 T('2.1 破招练习：每一种对手的招都有课，一招好几种破法分开（子解法）；单招、连招、技术都有；每一课都有说明、为什么、演示、判定', () => {
@@ -1866,19 +1947,44 @@ T('2.1 破招练习：每一课的演示（电脑替你按）都破得成 ——
   startMatch('pvp'); game.brains = [null, null];
   ok(!bad.length, '演示破不成：' + bad.join('；'));
 }));
-T('2.1 破招练习：没破成要说为什么；不动就不算成功；成功够了过关、记下来', () => seededRandom(22, () => {
-  const saved = new Set(Drill.done); Drill.done.clear();
+T('破招练习：没破成要说为什么；不动就不算成功；成功 3 次过关 —— 2.2 起每一课都是成功 3 次、不记「已完成」（只数一共过了几次关）', () => seededRandom(22, () => {
+  const keepPasses = Drill.passes, keepCue = Drill.cue, keepCb = Drill.onPass;
+  ok(DRILLS.every(d => d.need === 3), '每一课都是成功 3 次过关');
+  ok(!('done' in Drill), '不能再有「已完成」的记录');
   Drill.start('jab.armor', false);                        // 你什么都不按：挨打、不算成功
-  for (let i = 0; i < 700; i++) step([0, 0]);
+  for (let i = 0; i < 900; i++) step([0, 0]);
   ok(Drill.cur.ok === 0 && Drill.cur.tries >= 2, `不按也算成功了：${Drill.cur.ok}/${Drill.cur.tries}`);
   ok(Drill.cur.last && !Drill.cur.last.ok && /重/.test(Drill.cur.last.text), '没说为什么：' + (Drill.cur.last && Drill.cur.last.text));
-  game.brains[0] = new DrillDemo(F1, Drill.cur.def);       // 照着破：成功 3 次过关、记下来
+  game.brains[0] = new DrillDemo(F1, Drill.cur.def);       // 照着破：成功 3 次过关
   let passed = null; Drill.onPass = d => { passed = d.id; };
-  for (let i = 0; i < 2000 && !passed; i++) step([0, 0]);
+  for (let i = 0; i < 3000 && !passed; i++) step([0, 0]);
   eq(passed, 'jab.armor', '过关');
-  ok(Drill.done.has('jab.armor') && JSON.parse(localStorage.getItem('modou.drills') || '[]').includes('jab.armor'), '没记下来');
-  Drill.stop(); Drill.onPass = null;
-  Drill.done = saved; Drill.save();
+  ok(Drill.cur.passed && Drill.cur.ok === 3, '成功 3 次就过');
+  eq(Drill.passes, keepPasses + 1, '过关次数 +1');
+  eq(localStorage.getItem('modou.drills'), null, '不再记哪一课过了');
+  Drill.start('jab.armor', false);
+  ok(!Drill.cur.passed && Drill.cur.ok === 0, '再练一次：从 0 开始（不是「已完成」）');
+  Drill.stop(); Drill.onPass = keepCb; Drill.passes = keepPasses; Drill.cue = keepCue; Drill.save();
+  startMatch('pvp'); game.brains = [null, null];
+}));
+T('2.2 破招练习的出招提示：开着时木桩站好位置先倒数 3 · 2 · 1（' + DRILL_CUE + ' 帧）再出手；关了照以前随机等；演示里不倒数', () => seededRandom(23, () => {
+  const keep = Drill.cue;
+  const firstGo = (cue, demo) => {
+    Drill.cue = cue; Drill.start('kick.jab', demo);
+    let counted = 0, maxTotal = 0, goFrame = -1;
+    for (let i = 0; i < 600 && goFrame < 0; i++) {
+      step([0, 0]);
+      const c = Drill.cur;
+      if (c.count) { counted++; maxTotal = Math.max(maxTotal, c.count.total); }
+      if (c.rep) goFrame = c.frame;
+    }
+    const r = { counted, maxTotal, goFrame }; Drill.stop(); return r;
+  };
+  const on = firstGo(true, false), off = firstGo(false, false), demo = firstGo(true, true);
+  ok(on.goFrame > 0 && on.maxTotal === DRILL_CUE && on.counted >= DRILL_CUE - 1, '开着：倒数完才出手 ' + JSON.stringify(on));
+  ok(off.goFrame > 0 && off.counted === 0, '关了：不倒数 ' + JSON.stringify(off));
+  ok(demo.goFrame > 0 && demo.counted === 0, '演示：不倒数 ' + JSON.stringify(demo));
+  Drill.cue = keep; Drill.save();
   startMatch('pvp'); game.brains = [null, null];
 }));
 T('2.1 破招练习只在训练场：换模式就结束、战斗事件不再记（联机、人机不受影响）', () => {

@@ -2,7 +2,11 @@
 /* ============================================================
    2.1 训练场 · 破招练习（Jack：训练场要能把每种招都打出来，练破解对面的所有招 —— 一个招可能有好几种破法，分开练，
    放在同一招底下当子解法；单招、连招都要有。教学要清楚：开始前有文字说明和场景演示，练的途中也能再看说明）
-   · 一课 = 对手的一招（单招 / 连招 / 一种技术）× 一种破法。木桩照剧本一遍一遍出这一招，你照说明破；成功 need 次算过关（打勾，记在这台电脑）
+   · 一课 = 对手的一招（单招 / 连招 / 一种技术）× 一种破法。木桩照剧本一遍一遍出这一招，你照说明破；成功 need 次（都是 3 次）算过关
+   · 2.2（Jack：不要「已完成」—— 每一课就是单独练一次，成功 3 次就过，不算「已完成」；还有：弄不清对面什么时候出招，
+     练习可以有准备，出招前给提示）：不再记哪课过了（没有打勾、没有「已过关 x / 75」）；过关只弹一个结算（再练一次 / 下一课 / 换一课），
+     只数一共过了几次关（成就「拆招大师」用，界面上不显示）。出招提示 cue（默认开，工具条能关）：木桩站好位置后倒数 3 · 2 · 1 再出招，
+     他每一招一抬手头上闪一个「!」；被动课写「等你出招」，起身课倒数后再放倒、起身时画一圈进度
    · 「主动课」木桩出招，你破；「被动课」木桩摆一种架势（挡、卸力、推挡、接腿……），你出招破它；「起身课」每一遍先把人放倒
    · 演示：你这边也交给电脑，按到帧地破给你看，配字
    · 成没成功看战斗里实际发生了什么（combat.js 报告的 CEV 事件：打中和加成、挡住、卸力、接腿、拆……），不看你按了什么
@@ -644,6 +648,27 @@ const DRILL_POSE = {
   },
 };
 const R_has = (st, type) => !!(Drill.cur && Drill.cur.rep && Drill.cur.rep.ev.some(e => e.type === type));   // 演示用：这一遍里有没有发生过
+// 2.2 出招提示：木桩站好位置以后倒数多久再出手（3 · 2 · 1，每个数 DRILL_CUE / 3 帧）；关了提示就照以前随机等 24 ~ 54 帧
+const DRILL_CUE = 66;
+// 2.2 选课面板的分组（对手的招 → 哪一组）
+const DRILL_GROUPS = [
+  ['single', '单招', ['jab', 'lowJab', 'heavy', 'kick', 'sweep', 'palm', 'grab', 'lowGrab']],
+  ['combo', '连招', ['rush', 'upper', 'beng', 'whip', 'backKick', 'chop', 'whirl', 'hammer', 'twin', 'lowSweep']],
+  ['air', '空中', ['airJab', 'airHeavy', 'airKick', 'dive']],
+  ['rush', '冲撞', ['shoulder', 'dash', 'run']],
+  ['guard', '破防守', ['guard', 'crouch', 'gwalk', 'parry', 'shove', 'jieQuan', 'catch', 'slip', 'burst']],
+  ['other', '必杀 · 起身', ['super', 'wake']],
+];
+// 2.2 每一种对手的招配一张动作小图（guide.js PoseIcon 的写法）
+const DRILL_ICON = {
+  jab: { move: 'jab' }, lowJab: { move: 'lowJab' }, rush: { move: 'rushR' }, upper: { move: 'upper' }, heavy: { move: 'heavy' }, chop: { move: 'chop' },
+  whirl: { move: 'whirl' }, beng: { move: 'beng' }, whip: { move: 'whip' }, backKick: { move: 'backKick' }, hammer: { move: 'hammer' }, lowSweep: { move: 'sweep' },
+  kick: { move: 'kick' }, twin: { move: 'twinKick' }, sweep: { move: 'sweep' }, palm: { move: 'palm' }, airHeavy: { move: 'airHeavy', alt: 54, ph: 1.6 },
+  airKick: { move: 'airKick', alt: 60, ph: 1.6 }, airJab: { move: 'airJab', alt: 64, ph: 1.6 }, dive: { move: 'dive', alt: 66, ph: 1.4 }, grab: { move: 'grab', ph: 1.6 },
+  lowGrab: { move: 'lowGrab', ph: 1.6 }, shoulder: { move: 'shoulder' }, dash: { move: 'dash', ph: 0.3 }, run: { run: true }, guard: { pose: 'block' },
+  crouch: { pose: 'cblock' }, gwalk: { pose: 'block' }, parry: { pose: 'parry' }, shove: { move: 'shove' }, jieQuan: { move: 'jieQuan' },
+  catch: { move: 'grab', ph: 1.6 }, slip: { move: 'slip', ph: 0.3 }, burst: { move: 'burst', ph: 0.25 }, super: { move: 'super' }, wake: { pose: 'rise' },
+};
 
 /* ---------- 木桩、演示里的你 ---------- */
 class DrillBot {
@@ -669,19 +694,29 @@ class DrillDemo {
 /* ---------- 一课怎么跑 ---------- */
 const Drill = {
   cur: null,
-  done: new Set(),
+  passes: 0,                // 2.2 一共过了几次关（只给成就「拆招大师」用；不记哪一课过没过）
+  cue: true,                // 2.2 出招提示（倒数、「!」）
   onDemoEnd: null,          // ui.js：演示放完了
   onPass: null,             // ui.js：过关了
-  load() { try { this.done = new Set(JSON.parse(localStorage.getItem('modou.drills') || '[]')); } catch (e) { this.done = new Set(); } },
-  save() { try { localStorage.setItem('modou.drills', JSON.stringify([...this.done])); } catch (e) {} },
+  load() {
+    try {
+      this.passes = Math.max(0, parseInt(localStorage.getItem('modou.drillPasses'), 10) || 0);
+      this.cue = localStorage.getItem('modou.drillCue') !== '0';
+      localStorage.removeItem('modou.drills');            // 2.1 记的「哪些课过了」不要了（2.2 起不算「已完成」）
+    } catch (e) {}
+  },
+  save() { try { localStorage.setItem('modou.drillPasses', String(this.passes)); localStorage.setItem('modou.drillCue', this.cue ? '1' : '0'); } catch (e) {} },
+  setCue(on) { this.cue = !!on; this.save(); },
   byId: id => DRILLS.find(d => d.id === id),
+  // 下一课：同一招的下一种破法，没有了就下一种招的第一课（最后一课的下一课是第一课）
+  next(id) { const i = DRILLS.findIndex(d => d.id === id); return DRILLS[(i + 1) % DRILLS.length]; },
   // 开始一课（demo = 演示）：只在训练场
   start(id, demo) {
     const def = this.byId(id); if (!def) return;
     if (game.mode !== 'train') startMatch('train');
     resetFighters(); game.phase = 'fight'; game.paused = false;
     F2.maxHp = DUMMY_HP; F2.hp = F2.lagHp = DUMMY_HP;
-    this.cur = { def, demo: !!demo, ok: 0, tries: 0, rep: null, last: null, lastT: -999, passed: this.done.has(id), demoReps: 0, frame: 0, ds: {} };
+    this.cur = { def, demo: !!demo, ok: 0, tries: 0, rep: null, last: null, lastT: -999, passed: false, demoReps: 0, frame: 0, ds: {}, count: null, goAt: -999, passAt: -1 };
     game.brains = [demo ? new DrillDemo(F1, def) : null, new DrillBot(F2, def)];
     const p0 = STAGE_W / 2 - (def.at || 120) / 2;
     F1.x = p0; F2.x = p0 + clamp(def.at || 120, 60, 300); F1.facing = 1; F2.facing = -1;
@@ -717,7 +752,7 @@ const Drill = {
       rep.won = true; c.ok++; c.last = { ok: true, text: '成功！' + (c.demo ? '' : c.ok >= c.def.need ? '' : `（还要 ${c.def.need - c.ok} 次）`) }; c.lastT = c.frame;
       if (!c.demo) Sound.stamp && Sound.stamp();
       if (!c.demo && c.ok >= c.def.need && !c.passed) {
-        c.passed = true; this.done.add(c.def.id); this.save();
+        c.passed = true; c.passAt = c.frame; this.passes++; this.save();
         stamp(F1.x, FLOOR - 230, '过关', 40, F1);
         if (this.onPass) this.onPass(c.def);
       }
@@ -788,6 +823,7 @@ const Drill = {
     }
     const d = gap(me, op);
     if (st.phase === 'set') {
+      c.count = null;
       if (c.rep) return 0;                          // 上一遍还没算完
       if (!me.actionable() || !(op.actionable() || op.state === 'block' || op.state === 'crouch')) { st.t = 0; return 0; }
       if (++st.t > 150) { this.place(def.at); st.t = 0; return 0; }
@@ -797,7 +833,8 @@ const Drill = {
         if (this.nearWall(me, op)) { this.place(def.at); return 0; }
         return BLK | AW(me, op);
       }
-      st.phase = 'wait'; st.t = 0; st.w = (def.wait || [24, 54])[0] + (Math.random() * ((def.wait || [24, 54])[1] - (def.wait || [24, 54])[0]) | 0);
+      st.phase = 'wait'; st.t = 0;
+      st.w = this.cue && !c.demo ? DRILL_CUE : (def.wait || [24, 54])[0] + (Math.random() * ((def.wait || [24, 54])[1] - (def.wait || [24, 54])[0]) | 0);
       return 0;
     }
     if (st.phase === 'back') {
@@ -806,9 +843,10 @@ const Drill = {
       return 0;
     }
     if (st.phase === 'wait') {
-      if (Math.abs(d - def.at) > 22) { st.phase = 'set'; st.t = 0; return 0; }
+      if (Math.abs(d - def.at) > 22) { st.phase = 'set'; st.t = 0; c.count = null; return 0; }
+      c.count = this.cue && !c.demo ? { left: st.w - st.t, total: st.w } : null;      // 2.2 倒数（画面上画在木桩头上）
       if (++st.t < st.w) return 0;
-      st.phase = 'go'; st.i = 0; st.fired = 0; st.k = 0; st.pick = null;
+      st.phase = 'go'; st.i = 0; st.fired = 0; st.k = 0; st.pick = null; c.count = null; c.goAt = c.frame;
       this.startRep(); c.botDone = false;
     }
     if (st.phase === 'go') {
@@ -822,9 +860,11 @@ const Drill = {
   sceneStep(st, me, op) {
     const c = this.cur, def = c.def;
     if (!c.rep) {
-      if (!me.actionable() || !op.actionable()) return 0;
-      if (++st.t < 30) return 0;
-      st.t = 0; this.place(def.at || 70);
+      if (!me.actionable() || !op.actionable()) { c.count = null; return 0; }
+      const w = this.cue && !c.demo ? DRILL_CUE : 30;                              // 2.2 出招提示开着：倒数 3 · 2 · 1 再放倒
+      c.count = this.cue && !c.demo ? { left: w - st.t, total: w } : null;
+      if (++st.t < w) return 0;
+      st.t = 0; c.count = null; c.goAt = c.frame; this.place(def.at || 70);
       if (def.scene === 'opDown' || def.scene === 'opDownRoll') { me.knockDown(3, 0, TFH(24), false); st.roll = def.scene === 'opDownRoll'; }
       else { op.knockDown(3, 0, TFH(24), false); st.meaty = 1; }
       this.startRep(); return 0;

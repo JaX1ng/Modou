@@ -5,7 +5,9 @@
    画面
    ============================================================ */
 const cv = document.getElementById('cv');
-const ctx = cv.getContext('2d');
+let ctx = cv.getContext('2d');                       // 2.2：let —— 画招式小图（教程、破招练习）时临时换成小画布，见 withCtx
+// 在另一块画布上用同一套画法画（骨骼、腰带、头带都照游戏里的画），画完换回游戏画面
+function withCtx(c2d, fn) { const keep = ctx; ctx = c2d; try { return fn(); } finally { ctx = keep; } }
 /* 画面大小（2.0，Jack：全屏要占满电脑屏幕，注意屏幕实际尺寸和浏览器的适配）：
    逻辑画面不再固定 1200×600 —— 宽高比跟着画布走：比 2:1 窄（16:9、16:10、4:3）就宽 1200、往上下多露一些；比 2:1 宽（带鱼屏）就高 600、左右多露。
    VW×VH = 逻辑画面大小；FY = 地线在画面上的高度（多出来的高度大部分给天上）；scale = 逻辑像素 → CSS 像素；pxr = CSS 像素 → 屏幕物理像素
@@ -203,6 +205,33 @@ function drawFighter(F, V) {
     ctx.fillText('势', hx, hy - 29);
   }
   if (shake) ctx.restore();
+}
+/* 2.2 不动的小人（教程、破招练习的招式小图）：和 drawFighter 一样的身子、腰带、头带、眼睛，发带画两条静止的；
+   trail = 出招那只手 / 脚这一下走过的路（几个点），画成一道淡淡的弧，看得出往哪打 */
+function drawFigure(J, col, band, trail) {
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (trail && trail.length > 1) {
+    for (let i = 1; i < trail.length; i++) {
+      const u = i / trail.length;
+      ctx.strokeStyle = band; ctx.globalAlpha = 0.25 + 0.5 * u; ctx.lineWidth = 2 + u * 9;
+      ctx.beginPath(); ctx.moveTo(trail[i - 1][0], trail[i - 1][1]); ctx.lineTo(trail[i][0], trail[i][1]); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  const f = J.facing * (J.turned ? -1 : 1), k = J.knot;
+  ctx.strokeStyle = band;
+  for (const [dy, len] of [[0, 30], [5, 24]]) {
+    ctx.lineWidth = 3.6; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
+    ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
+  }
+  ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;
+  drawSkeleton(J, col, 1, 0.62, 0, () => drawBelt(J, band));
+  ctx.shadowBlur = 0;
+  const ht = J.headTilt, hx = J.head[0], hy = J.head[1], fdir = J.facing;
+  ctx.save(); ctx.translate(hx, hy); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
+  ctx.fillStyle = band; ctx.fillRect(-13.5, -6.8, 27, 5);
+  if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(6.8, 1.6, 2.8, 1.4, -0.15, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
 }
 function drawFx() {
   ctx.lineCap = 'round';
@@ -431,8 +460,8 @@ function hpBar(F, side) {
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f';
   ctx.fillText(F.label, x0 + dir * (nmW + 10), 74);
   ctx.textAlign = 'center';
-  // 回合胜点（五局三胜：三个点）
-  for (let i = 0; i < WIN_ROUNDS; i++) {
+  // 回合胜点（五局三胜：三个点；训练场没有回合，不画）
+  for (let i = 0; i < (game.mode === 'train' ? 0 : WIN_ROUNDS); i++) {
     const cx = x0 + dir * (len - 14 - i * 20), cy = 64;
     ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, Math.PI * 2);
     if (game.wins[F.idx] > i) { ctx.fillStyle = F.color; ctx.fill(); }
@@ -476,35 +505,140 @@ function wrapText(text, maxW) {
   if (line) out.push(line);
   return out;
 }
-// 2.1 破招练习的面板：这一课是什么、怎么破（按你自己的键位）、成功几次了、上一遍怎么样；演示时写「演示」
+// 圆角矩形（面板用）
+function rrect(x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+// 破招练习的面板（2.1；2.2 Jack：太小、不好看 —— 放大重排）：左上「破招」/「演示」朱印 + 这一课的名字，右上三个大圈（成功一次涂满一个），
+// 中间一步一步怎么破（按你自己的键位），下面上一遍怎么样（成功 / 没成、为什么），大一号、带颜色，几秒后淡掉
 function drawDrillPanel() {
   const c = Drill.cur, d = c.def;
-  const x = VW / 2 - 280, y = 80, w = 560, pad = 14;
-  ctx.font = `500 13px ${UIF}`;
-  const how = wrapText('怎么破：' + d.how.map(t => drillText(t, false)).join('；'), w - pad * 2).slice(0, 3);
-  const showLast = c.last && c.frame - c.lastT < 240;
-  const h = 46 + how.length * 19 + (showLast ? 26 : 0) + 22;
-  ctx.fillStyle = 'rgba(235,234,226,.88)'; ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = c.demo ? C.cin : 'rgba(23,24,26,.35)'; ctx.lineWidth = c.demo ? 2 : 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  ctx.font = `19px ${BRUSH}`; ctx.fillStyle = C.cin; ctx.fillText(c.demo ? '演示' : '破招', x + pad, y + 18);
-  const tw = ctx.measureText(c.demo ? '演示' : '破招').width;
-  ctx.font = `19px ${BRUSH}`; ctx.fillStyle = C.ink; ctx.fillText(`${d.topicName}：${d.name}`, x + pad + tw + 10, y + 18);
-  ctx.textAlign = 'right'; ctx.font = `600 13px ${UIF}`;
-  if (c.demo) { ctx.fillStyle = C.cin; ctx.fillText('电脑替你按 · 看准时机 · Esc 跳过', x + w - pad, y + 18); }
-  else {
-    ctx.fillStyle = c.passed ? C.cin : '#55564f';
-    ctx.fillText(`成功 ${Math.min(c.ok, d.need)} / ${d.need}` + (c.passed ? '  ✓ 过关' : ''), x + w - pad, y + 18);
+  const w = Math.min(680, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18;
+  ctx.font = `500 15px ${UIF}`;
+  const lines = [];
+  d.how.forEach((t, i) => wrapText(drillText(t, false), w - pad * 2 - 30).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
+  const how = lines.slice(0, 4);
+  const age = c.frame - c.lastT, showLast = c.last && age < 300, la = showLast ? Math.min(1, (300 - age) / 40) : 0;
+  const h = 58 + how.length * 23 + (showLast ? 40 : 0) + 26;
+  ctx.save();
+  ctx.shadowColor = 'rgba(23,24,26,.18)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+  rrect(x, y, w, h, 8); ctx.fillStyle = 'rgba(240,239,232,.93)'; ctx.fill();
+  ctx.restore();
+  rrect(x + 0.5, y + 0.5, w - 1, h - 1, 8); ctx.strokeStyle = c.demo ? C.cin : 'rgba(23,24,26,.22)'; ctx.lineWidth = c.demo ? 2 : 1; ctx.stroke();
+  // 左上：朱印「破招」/「演示」+ 招名 · 破法
+  const tag = c.demo ? '演示' : '破招';
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  rrect(x + pad, y + 13, 56, 32, 4); ctx.fillStyle = C.cin; ctx.fill();
+  ctx.font = `22px ${BRUSH}`; ctx.fillStyle = C.paper; ctx.fillText(tag, x + pad + 28, y + 30);
+  ctx.textAlign = 'left'; ctx.font = `26px ${BRUSH}`; ctx.fillStyle = C.ink;
+  const title = `${d.topicName} · ${d.name}`;
+  let tw = w - pad * 2 - 66 - (c.demo ? 190 : 130), tt = title;
+  while (ctx.measureText(tt).width > tw && tt.length > 4) tt = tt.slice(0, -2) + '…';
+  ctx.fillText(tt, x + pad + 68, y + 30);
+  // 右上：成功几次（三个圈，涂满 = 成功一次）；演示时写「电脑替你按」
+  if (c.demo) {
+    ctx.textAlign = 'right'; ctx.font = `600 13px ${UIF}`; ctx.fillStyle = C.cin;
+    ctx.fillText('电脑替你按 · Esc 跳过', x + w - pad, y + 30);
+  } else {
+    for (let i = 0; i < d.need; i++) {
+      const cx = x + w - pad - 13 - (d.need - 1 - i) * 34, on = i < c.ok;
+      ctx.beginPath(); ctx.arc(cx, y + 29, 12, 0, Math.PI * 2);
+      if (on) { ctx.fillStyle = C.cin; ctx.fill(); ctx.fillStyle = C.paper; ctx.font = `600 13px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText('✓', cx, y + 30); }
+      else { ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 2; ctx.stroke(); }
+    }
   }
-  ctx.textAlign = 'left'; ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#3e3f3a';
-  how.forEach((l, i) => ctx.fillText(l, x + pad, y + 44 + i * 19));
-  let yy = y + 44 + how.length * 19;
+  // 中间：一步一步怎么破
+  let yy = y + 68;
+  for (const L of how) {
+    if (L.n) {
+      ctx.beginPath(); ctx.arc(x + pad + 10, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
+      ctx.fillStyle = C.paper; ctx.font = `600 12px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText(String(L.n), x + pad + 10, yy + 1);
+    }
+    ctx.textAlign = 'left'; ctx.font = `500 15px ${UIF}`; ctx.fillStyle = '#2b2c28';
+    ctx.fillText(L.l, x + pad + 30, yy + 1);
+    yy += 23;
+  }
+  // 上一遍：成功 / 没成、为什么
   if (showLast) {
-    ctx.font = `600 14px ${UIF}`; ctx.fillStyle = c.last.ok ? C.indigo : C.cin;
-    ctx.fillText((c.last.ok ? '✓ ' : '✗ ') + drillText(c.last.text, false), x + pad, yy + 6); yy += 26;
+    yy += 6;
+    ctx.globalAlpha = la;
+    const ok = c.last.ok, txt = (ok ? '✓ ' : '✗ ') + drillText(c.last.text, false);
+    ctx.font = `700 17px ${UIF}`;
+    const lw = Math.min(w - pad * 2, ctx.measureText(txt).width + 24);
+    rrect(x + pad, yy - 2, lw, 30, 15); ctx.fillStyle = ok ? 'rgba(34,56,90,.12)' : 'rgba(184,50,29,.12)'; ctx.fill();
+    ctx.fillStyle = ok ? C.indigo : C.cin; ctx.textAlign = 'left';
+    let t2 = txt; while (ctx.measureText(t2).width > lw - 24 && t2.length > 6) t2 = t2.slice(0, -2) + '…';
+    ctx.fillText(t2, x + pad + 12, yy + 13);
+    ctx.globalAlpha = 1;
+    yy += 40;
   }
-  ctx.font = `500 11.5px ${UIF}`; ctx.fillStyle = '#7a7b74';
-  ctx.fillText(c.demo ? '演示放两遍就回到说明' : '下面「说明」随时再看完整说明 · Esc 暂停', x + pad, yy + 4);
+  ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#7a7b74'; ctx.textAlign = 'left';
+  ctx.fillText(c.demo ? '演示放两三遍就回到说明' : '下面工具条：说明 · 演示 · 出招提示 · 换一课　|　Esc 暂停', x + pad, yy + 6);
+}
+/* 2.2 出招提示（Jack：弄不清对面啥时候要出招 —— 练习可以有准备）：画在木桩头上（跟着人走，在场景里）
+   · 主动课：木桩站好位置后倒数 3 · 2 · 1（一圈朱线转满），出手那一下「出」；他每一招一抬手（前摇里）头上一个「!」
+   · 被动课：他摆好架势没在动时写「等你出招」（要你跳过来的课写「等你跳过来」）
+   · 起身课：倒数后放倒；他躺着到起身一圈进度（转满就站起来），站起来那一下「!」
+   出招提示关了就都不画（演示里只画「!」） */
+function drawDrillCue() {
+  const c = Drill.cur; if (!c) return;
+  const op = F2, J = op.J; if (!J) return;
+  // 画在他脑袋旁边、背对你的那一侧（头顶上会被上面的练习面板挡住）；那一侧出了画面就换到另一侧
+  const def = c.def, away = op.x >= F1.x ? 1 : -1, off = 82;
+  let side = away;
+  const sxOf = sd => VW / 2 + (J.head[0] + sd * off - camX) * camZ;
+  if (sxOf(side) > VW - 46 || sxOf(side) < 46) side = -side;
+  const hx = J.head[0] + side * off, hy = J.head[1] + 2;
+  const ring = (frac, label, col, size) => {
+    ctx.save(); ctx.translate(hx, hy);
+    ctx.beginPath(); ctx.arc(0, 0, 27, 0, Math.PI * 2); ctx.fillStyle = 'rgba(246,245,238,.88)'; ctx.fill();
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(23,24,26,.18)'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 27, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); ctx.strokeStyle = col; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${size || 34}px ${BRUSH}`; ctx.fillText(label, 0, 2);
+    ctx.restore();
+  };
+  const pop = (text, age, col) => {
+    const k = age < 5 ? 1.6 - 0.6 * EASE.out(age / 5) : 1, a = Math.min(1, (20 - age) / 8);
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k); ctx.globalAlpha = Math.max(0, a);
+    ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    ctx.fillStyle = C.paper; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `34px ${BRUSH}`; ctx.fillText(text, 0, 2);
+    ctx.restore();
+  };
+  const cue = Drill.cue;
+  if (cue && c.count && c.count.total > 0) {
+    const el = c.count.total - c.count.left, beat = c.count.total / 3, n = Math.max(1, 3 - Math.floor(el / beat));
+    ring(Math.min(1, el / c.count.total), String(n), C.cin);
+    return;
+  }
+  const goAge = c.frame - c.goAt;
+  if (cue && !c.demo && goAge >= 0 && goAge < 20 && !def.react) { pop('出', goAge, C.cin); return; }
+  // 起身课：他躺着起身 —— 一圈进度；站起来那一下（起身硬直）「!」
+  if (cue && def.scene && op.state === 'down' && (op.downPhase === 'lie' || op.downPhase === 'getup')) {   // 躺着 + 起身：一圈蓝线转满他就站起来了
+    const tot = op.lieT + GETUP, el = op.downPhase === 'lie' ? op.t : op.lieT + op.t;
+    ring(clamp(el / tot, 0, 1), '起', C.indigo, 26); return;
+  }
+  if (cue && def.scene && op.state === 'rise') { pop('!', Math.min(op.t, 8), C.cin); return; }
+  // 他一抬手（前摇里）：「!」
+  const m = op.move;
+  if (cue && op.state === 'attack' && m && !m.def.script && m.t <= m.S + 1) {
+    const age = m.t, k = age < 4 ? 1.5 - 0.5 * age / 4 : 1;
+    ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k);
+    ctx.fillStyle = C.cin; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `700 46px ${UIF}`;
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(246,245,238,.9)'; ctx.strokeText('!', 0, 0); ctx.fillText('!', 0, 0);
+    ctx.restore();
+    return;
+  }
+  // 被动课：他等着你
+  if (cue && !c.demo && def.react && !def.scene && !c.rep && (op.actionable() || op.state === 'block')) {
+    const t = def.trigger === 'jump' ? '等你跳过来' : '等你出招';
+    ctx.save(); ctx.globalAlpha = 0.6 + 0.25 * Math.sin(c.frame * 0.08);
+    ctx.font = `22px ${BRUSH}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw2 = ctx.measureText(t).width + 22;
+    rrect(hx - tw2 / 2, hy - 16, tw2, 32, 16); ctx.fillStyle = 'rgba(246,245,238,.85)'; ctx.fill();
+    ctx.fillStyle = C.ink; ctx.fillText(t, hx, hy + 1);
+    ctx.restore();
+  }
 }
 // 训练场（2.0.2 以前叫「打桩练习」）的数值面板
 function drawTrainPanel() {
@@ -520,7 +654,7 @@ function drawTrainPanel() {
     ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(k, x + 14, yy);
     ctx.font = `500 15px ${UIF}`; ctx.fillStyle = col || C.ink; ctx.fillText(v, x + 62, yy);
   };
-  if (!I) row('提示', '随便打。下面的按钮能换木桩的动作、开无限气', y + 42);
+  if (!I) { row('提示', '随便打，下面能换木桩的动作、开无限气', y + 42); row('', '想一招一招练怎么破对面：点下面红色的「破招练习」', y + 64, C.cin); }
   else {
     const fd = I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : '';
     const sys = I.tier ? `（${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}）` : '';
@@ -594,6 +728,7 @@ function render() {
   drawFighter(...order[0]); drawFighter(...order[1]);
   drawFx();
   drawStamps();
+  if (game.mode === 'train' && Drill.cur) drawDrillCue();   // 2.2 破招练习的出招提示（倒数、「!」），画在木桩头上
   ctx.restore();
   if (game.flash > 0.01) { ctx.fillStyle = `rgba(245,244,238,${game.flash})`; ctx.fillRect(0, 0, VW, VH); }
   if (game.mode === 'pve' || game.mode === 'online' || game.mode === 'train') { const li = localIdx(); drawOffscreen(game.p[li], game.p[1 - li]); }

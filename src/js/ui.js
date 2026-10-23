@@ -4,12 +4,12 @@
 const $ = id => document.getElementById(id);
 const menu = $('menu'), pauseEl = $('pause'), resultEl = $('result'), onlineEl = $('online'), keysEl = $('keysPanel');
 const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel'), stageEl = $('stagePanel');
-const drillEl = $('drillPanel'), introEl = $('drillIntro');          // 2.1 破招练习：选课、说明
+const drillEl = $('drillPanel'), introEl = $('drillIntro'), passEl = $('drillPass');   // 2.1 破招练习：选课、说明；2.2 过关
 const btnPause = $('btnPause'), btnSound = $('btnSound');
 const Desk = window.modouDesktop || null;          // 2.1 软件版（Steam）才有这个对象（desktop/preload.js 给的）；网页版是 null。见下面「软件版」
 
 function showOverlay(el) {
-  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl]) o.hidden = o !== el;
+  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl, passEl]) o.hidden = o !== el;
   $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl].includes(el));
   const t = el && el.querySelector('.ibtn:not([hidden])');
   if (t) setTimeout(() => t.focus({ preventScroll: true }), 0);
@@ -22,8 +22,9 @@ function setPaused(p) {
   showOverlay(p ? pauseEl : null);
   for (const pd of pads) pd.clear();
   MouseLock.sync();
+  if (!p && game.mode === 'train' && Drill.cur && Drill.cur.passed && !Drill.cur.passShown) setTimeout(showPass, 400);   // 2.2 过关那一下正好暂停了：回来再弹结算
 }
-const MENU_HINT = `五局三胜 · 人机/联机每回合 ${ROUND_FRAMES / 60} 秒，双人不限时 · 键位、克制和连招表${Desk ? '在「招式表」里' : '在下方'}`;
+const MENU_HINT = `五局三胜 · 人机/联机每回合 ${ROUND_FRAMES / 60} 秒，双人不限时 · 键位、招式、连招在「教程」里`;
 function toMenu(msg) {
   game.paused = false; btnPause.disabled = true;
   $('menuMsg').textContent = msg || MENU_HINT;
@@ -65,10 +66,23 @@ Hooks.matchOver = () => {
   Ach.matchOver(wi);
   setTimeout(() => { if (game.phase === 'over') showOverlay(resultEl); }, 900);
 };
+/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字；主界面重新排）：
+   人机对战按钮旁边一排五格，每格两个字 + 底下一排小点（几个点 = 第几档，终极的点是朱色）；下面一行写这一档是什么样的电脑，
+   鼠标停在哪一格就先写那一格的 */
+$('lvlSeg').innerHTML = LEVEL_IDS.map((id, i) => `<button type="button" data-d="${id}" aria-pressed="false" title="${LEVEL_NAME[id]}：${LEVEL_DESC[id]}">` +
+  `<b>${LEVEL_NAME[id]}</b><i class="pips" aria-hidden="true">${LEVEL_IDS.map((_, j) => `<s${j <= i ? ' class="on"' : ''}></s>`).join('')}</i></button>`).join('');
+function showLevelDesc(d) { $('lvlDesc').innerHTML = `<b>${LEVEL_NAME[d]}</b>${LEVEL_DESC[d]}`; }
 function setDiff(d) {
   game.diff = d;
   for (const b of document.querySelectorAll('[data-d]')) b.setAttribute('aria-pressed', String(b.dataset.d === d));
+  showLevelDesc(d);
   try { localStorage.setItem('modou.diff', d); } catch (e) {}
+}
+for (const b of document.querySelectorAll('[data-d]')) {
+  b.addEventListener('mouseenter', () => showLevelDesc(b.dataset.d));
+  b.addEventListener('focus', () => showLevelDesc(b.dataset.d));
+  b.addEventListener('mouseleave', () => showLevelDesc(game.diff));
+  b.addEventListener('blur', () => showLevelDesc(game.diff));
 }
 function setSound(on) {
   Sound.on = on; btnSound.textContent = on ? '声音：开' : '声音：关';
@@ -96,60 +110,103 @@ $('btnQi').addEventListener('click', e => {
   e.currentTarget.setAttribute('aria-pressed', String(game.trainQi)); e.currentTarget.blur();
 });
 $('btnTrainReset').addEventListener('click', e => { if (game.mode === 'train') { resetFighters(); game.phase = 'fight'; } e.currentTarget.blur(); });
-/* ---------- 2.1 破招练习（训练场）：选课 → 说明（可以先看演示）→ 练；练的时候「说明」随时再看 ---------- */
-let introId = null;
+/* ---------- 破招练习（训练场）：选课 → 说明（可以先看演示）→ 练；练的时候「说明」随时再看 ----------
+   2.2（Jack：破招练习在下面太小了；里面的 UI 都太小、不好看、没有玩的欲望；不要「已完成」，每一课单独练，成功 3 次就过；
+   弄不清对面什么时候出招 —— 练习可以有准备，出招前给提示）：
+   · 工具条上「破招练习」做成一个大按钮；选课分组（单招 / 连招 / 空中 / 冲撞 / 破防守 / 必杀 · 起身），每种招一张卡片：
+     他出招的样子（动作小图）+ 名字 + 一句话 + 几种破法（大按钮，编号）
+   · 说明：左边是对手出的那一招（小图），右边几步怎么破（按键照你的键位），下面为什么；
+   · 不打勾、不记哪课过了。成功 3 次：「过关」印章 + 一个结算（下一课 / 再练一次 / 换一课 / 自由练）
+   · 出招提示（工具条开关，默认开）：木桩倒数 3 · 2 · 1 再出招，一抬手头上闪「!」（render.js drawDrillCue） */
+let introId = null, drillTab = null;
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const groupOf = tid => (DRILL_GROUPS.find(g => g[2].includes(tid)) || DRILL_GROUPS[0])[0];
+$('drillCount').textContent = `${DRILL_TOPICS.length} 种招 · ${DRILLS.length} 种破法`;
 function renderDrillList() {
-  const done = DRILLS.filter(d => Drill.done.has(d.id)).length;
-  $('drillSum').textContent = `已过关 ${done} / ${DRILLS.length} 课（${DRILL_TOPICS.length} 种对手的招）`;
-  $('drillList').innerHTML = DRILL_TOPICS.map(([tid, name, desc]) => {
-    const list = DRILLS.filter(d => d.topic === tid);
-    if (!list.length) return '';
-    const all = list.every(d => Drill.done.has(d.id));
-    return `<div class="dtopic${all ? ' alldone' : ''}"><b>${esc(name)}</b><small>${esc(desc)}</small><span class="dsols">` +
-      list.map(d => `<button type="button" class="dsol${Drill.done.has(d.id) ? ' done' : ''}" data-drill="${d.id}">${Drill.done.has(d.id) ? '✓ ' : ''}${esc(d.name)}</button>`).join('') + '</span></div>';
+  if (!drillTab) { try { drillTab = localStorage.getItem('modou.drillTab'); } catch (e) {} }
+  if (Drill.cur) drillTab = groupOf(Drill.cur.def.topic);
+  if (!DRILL_GROUPS.some(g => g[0] === drillTab)) drillTab = DRILL_GROUPS[0][0];
+  $('drillTabs').innerHTML = DRILL_GROUPS.map(([gid, name, tids]) => `<button type="button" role="tab" data-dg="${gid}" aria-selected="${gid === drillTab}">${name}<small>${tids.length}</small></button>`).join('');
+  const tids = DRILL_GROUPS.find(g => g[0] === drillTab)[2];
+  $('drillList').innerHTML = tids.map(tid => {
+    const t = DRILL_TOPICS.find(x => x[0] === tid), list = DRILLS.filter(d => d.topic === tid);
+    if (!t || !list.length) return '';
+    return `<article class="dtopic">${iconSlot(DRILL_ICON[tid] || { pose: 'stance' }, 104, 104, 'dt-icon', { flip: true, col: C.cin })}<div class="dt-body"><h4>${esc(t[1])}</h4><p>${esc(t[2])}</p>` +
+      `<div class="dsols">${list.map((d, i) => `<button type="button" class="dsol" data-drill="${d.id}"><i>${i + 1}</i>${esc(d.name)}</button>`).join('')}</div></div></article>`;
   }).join('');
+  PoseIcon.fill($('drillList'));
 }
+$('drillTabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-dg]'); if (!b) return;
+  drillTab = b.dataset.dg; try { localStorage.setItem('modou.drillTab', drillTab); } catch (err) {}
+  const keep = Drill.cur; Drill.cur = null; renderDrillList(); Drill.cur = keep;      // 点了别的组就看那一组（不跳回正在练的那一组）
+  const t = $('drillTabs').querySelector(`[data-dg="${drillTab}"]`); if (t) t.focus({ preventScroll: true });
+});
 $('drillList').addEventListener('click', e => { const b = e.target.closest('[data-drill]'); if (b) openIntro(b.dataset.drill); });
 function openDrills() {
   if (game.mode !== 'train') startMatch('train');
   game.paused = true; renderDrillList(); showOverlay(drillEl); MouseLock.sync();
+  const sel = $('drillTabs').querySelector('[aria-selected="true"]'); if (sel) setTimeout(() => sel.focus({ preventScroll: true }), 0);
 }
 function openIntro(id) {
   const d = Drill.byId(id); if (!d) return;
   introId = id; game.paused = true;
   const live = Drill.cur && !Drill.cur.demo && Drill.cur.def.id === id;
-  $('diTopic').textContent = `对手的招 · ${d.topicName}`;
+  const sibs = DRILLS.filter(x => x.topic === d.topic), k = sibs.indexOf(d) + 1;
+  $('diOp').innerHTML = `<small>对手出</small>${iconSlot(DRILL_ICON[d.topic] || { pose: 'stance' }, 150, 150, 'dt-icon', { flip: true, col: C.cin })}<b>${esc(d.topicName)}</b>`;
+  PoseIcon.fill($('diOp'));
+  $('diTopic').textContent = sibs.length > 1 ? `破法 ${k} / ${sibs.length}` : '破法';
   $('diName').textContent = d.name;
-  $('diHow').innerHTML = d.how.map(t => `<li>${drillText(esc(t), true)}</li>`).join('');
-  $('diWhy').innerHTML = `<b>为什么：</b>${drillText(esc(d.why), true)}`;
-  $('diNeed').textContent = `成功 ${d.need} 次过关` + (Drill.done.has(id) ? ' · 已经过关 ✓（可以接着练）' : '') + (live ? ` · 这一课已经成功 ${Drill.cur.ok} 次` : '');
-  const others = DRILLS.filter(x => x.topic === d.topic && x.id !== id);
-  $('diOther').innerHTML = others.length ? '这一招的其他破法：' + others.map(x => `<button type="button" class="dlink" data-drill="${x.id}">${Drill.done.has(x.id) ? '✓ ' : ''}${esc(x.name)}</button>`).join(' · ') : '';
+  $('diHow').innerHTML = d.how.map(t => `<li>${gText(t)}</li>`).join('');
+  $('diWhy').innerHTML = `<b>为什么</b>${gText(d.why)}`;
+  $('diNeed').innerHTML = `成功 <b>${d.need}</b> 次过关` + (live ? `<span>这一遍已经成功 ${Drill.cur.ok} 次</span>` : '') +
+    (Drill.cue ? '<span>木桩出招前会倒数 3 · 2 · 1（工具条能关）</span>' : '');
+  const others = sibs.filter(x => x.id !== id);
+  $('diOther').innerHTML = others.length ? '这一招的其他破法：' + others.map(x => `<button type="button" class="dlink" data-drill="${x.id}">${esc(x.name)}</button>`).join(' · ') : '';
   $('btnDrillGo').textContent = live ? '接着练' : '开始练习';
   showOverlay(introEl); MouseLock.sync();
 }
 $('diOther').addEventListener('click', e => { const b = e.target.closest('[data-drill]'); if (b) openIntro(b.dataset.drill); });
 function runDrill(demo) {
-  const live = Drill.cur && !Drill.cur.demo && Drill.cur.def.id === introId;
+  const live = Drill.cur && !Drill.cur.demo && Drill.cur.def.id === introId && !Drill.cur.passed;
   if (!(live && !demo)) Drill.start(introId, demo);
   showOverlay(null); game.paused = false; drillBar();
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   for (const pd of pads) pd.clear();
   MouseLock.sync();
 }
-// 训练场工具条：练着课的时候换成「说明 / 演示 / 换一课 / 退出练习」
+// 训练场工具条：练着课的时候换成「说明 / 演示 / 出招提示 / 换一课 / 退出练习」
 function drillBar() {
   const on = game.mode === 'train' && !!Drill.cur;
   $('freeTools').hidden = on; $('drillTools').hidden = !on;
   if (on) {
     const c = Drill.cur, d = c.def;
-    $('drillLabel').textContent = (c.demo ? '演示 · ' : '破招 · ') + `${d.topicName}：${d.name}` + (Drill.done.has(d.id) ? ' ✓' : '');
-    $('btnDrillReDemo').hidden = c.demo;
+    $('drillLabel').textContent = (c.demo ? '演示 · ' : '破招 · ') + `${d.topicName}：${d.name}`;
+    $('btnDrillReDemo').hidden = c.demo; $('btnDrillCue').hidden = c.demo;
   }
+  $('btnDrillCue').textContent = Drill.cue ? '出招提示：开' : '出招提示：关';
+  $('btnDrillCue').setAttribute('aria-pressed', String(Drill.cue));
+}
+// 过关：「过关」印章先看一秒，再停下来弹结算（下一课 / 再练一次 / 换一课 / 自由练）
+let passTimer = 0;
+function showPass() {
+  const c = Drill.cur; if (game.mode !== 'train' || !c || c.demo || !c.passed || c.passShown) return;
+  if (game.paused || [drillEl, introEl, pauseEl, keysEl, setEl].some(o => !o.hidden)) return;   // 正开着别的面板：等回到练习再弹（setPaused）
+  c.passShown = true;
+  const d = c.def, nx = Drill.next(d.id);
+  $('dpTopic').textContent = d.topicName;
+  $('dpName').textContent = d.name;
+  $('dpInfo').textContent = `成功 ${c.ok} 次 · 一共练了 ${c.tries + (c.rep ? 1 : 0)} 遍`;
+  $('dpNext').textContent = `下一课：${nx.topicName} · ${nx.name}`;
+  game.paused = true; for (const pd of pads) pd.clear();
+  showOverlay(passEl); MouseLock.sync();
 }
 Drill.onDemoEnd = () => { drillBar(); openIntro(introId); };
-Drill.onPass = d => { toast(`过关 ✓ ${d.topicName}：${d.name}　（可以接着练，或者点「换一课」）`, 4200); drillBar(); Ach.drills(); };
+Drill.onPass = () => { drillBar(); Ach.drills(); clearTimeout(passTimer); passTimer = setTimeout(showPass, 1100); };
+$('btnPassNext').addEventListener('click', () => { const c = Drill.cur; if (c) openIntro(Drill.next(c.def.id).id); });
+$('btnPassAgain').addEventListener('click', () => { const c = Drill.cur; if (c) { introId = c.def.id; Drill.start(c.def.id, false); runDrill(false); } });
+$('btnPassPick').addEventListener('click', () => openDrills());
+$('btnPassFree').addEventListener('click', () => { Drill.stop(); resetFighters(); game.phase = 'fight'; showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); });
 $('btnDrills').addEventListener('click', e => { e.currentTarget.blur(); openDrills(); });
 $('btnDrillClose').addEventListener('click', () => { showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); });
 $('btnDrillGo').addEventListener('click', () => runDrill(false));
@@ -157,11 +214,13 @@ $('btnDrillDemo').addEventListener('click', () => runDrill(true));
 $('btnDrillList').addEventListener('click', () => { renderDrillList(); showOverlay(drillEl); });
 $('btnDrillInfo').addEventListener('click', e => { e.currentTarget.blur(); if (Drill.cur) openIntro(Drill.cur.def.id); });
 $('btnDrillReDemo').addEventListener('click', e => { e.currentTarget.blur(); if (Drill.cur) { introId = Drill.cur.def.id; runDrill(true); } });
+$('btnDrillCue').addEventListener('click', e => { e.currentTarget.blur(); Drill.setCue(!Drill.cue); drillBar(); toast(Drill.cue ? '出招提示：开 —— 木桩倒数 3 · 2 · 1 再出招，一抬手头上闪「!」' : '出招提示：关 —— 木桩随时出招，看他抬手再反应', 2600); });
 $('btnDrillPick').addEventListener('click', e => { e.currentTarget.blur(); openDrills(); });
 $('btnDrillQuit').addEventListener('click', e => { e.currentTarget.blur(); Drill.stop(); resetFighters(); game.phase = 'fight'; drillBar(); });
-// 说明 / 选课开着的时候按 Esc：说明 → 回去接着练（没在练就回选课）；选课 → 回训练场
+// 说明 / 选课 / 过关开着的时候按 Esc：说明 → 回去接着练（没在练就回选课）；选课 → 回训练场；过关 → 选课
 function drillEsc() {
-  if (!introEl.hidden) { if (Drill.cur && !Drill.cur.demo && Drill.cur.def.id === introId) runDrill(false); else { renderDrillList(); showOverlay(drillEl); } return true; }
+  if (!passEl.hidden) { openDrills(); return true; }
+  if (!introEl.hidden) { if (Drill.cur && !Drill.cur.demo && !Drill.cur.passed && Drill.cur.def.id === introId) runDrill(false); else { renderDrillList(); showOverlay(drillEl); } return true; }
   if (!drillEl.hidden) { showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); return true; }
   return false;
 }
@@ -447,18 +506,8 @@ $('btnKeysReset').addEventListener('click', () => { keyDraft[keyWho] = cloneKeys
 $('btnKeysCancel').addEventListener('click', closeKeys);
 $('btnKeys').addEventListener('click', () => openKeys('menu'));
 $('btnPauseKeys').addEventListener('click', () => openKeys('pause'));
-// 图例里三张键位卡（单人、双人玩家一、双人玩家二）：显示现在真正在用的键
-function showKeyCards() {
-  const shared = sharedKeys(Keys.p1, Keys.p2);
-  [[Keys.solo, 'k0'], [Keys.p1, 'k1'], [Keys.p2, 'k2']].forEach(([k, id]) => {
-    const K = a => k[a].filter(Boolean).map(c => `<kbd${shared.has(c) && id === 'k1' ? ' title="双人对战时归玩家二"' : ''}>${keyName(c)}</kbd>`).join('') || '—';
-    $(id).innerHTML = `<dt>移动</dt><dd>${K('left')}${K('right')} 按哪边朝哪边跑 · 跳 ${K('up')} 蹲 ${K('down')}</dd>` +
-      `<dt>出招</dt><dd>短拳 ${K('jab')} 重拳 ${K('heavy')} 腿踢 ${K('kick')}</dd>` +
-      `<dt>防守</dt><dd>格挡 ${K('block')} 按住 · 擒拿 ${K('grab')}</dd>`;
-  });
-  $('p1note').textContent = shared.size ? `${[...shared].map(keyName).join('、')} 玩家二也绑了：归玩家二。` : '';
-}
-showKeyCards();
+// 教程里的键位（2.2 起在 guide.js）：改了键位就重画，显示现在真正在用的键
+function showKeyCards() { Guide.refresh(); }
 
 /* ---------- 人物颜色（1.7.0）：单人设置、双人开打前选、联机大厅选 ---------- */
 // 色块：一个小火柴人，身体是颜色；头带、发带、腰带是身体色提亮的那一版（2.0.2 腰带是箍在腰上的一道）
@@ -476,12 +525,8 @@ function swatch(p, o) {
 const randSwatch = on => `<button type="button" class="sw rand" data-id="random" aria-pressed="${on}" title="每局随机"><svg viewBox="0 0 34 40" aria-hidden="true">` +
   `<path d="M19 15 L16 27 M16 27 L10 38 M16 27 L23 37 M18 18 L27 15 M18 18 L10 23" fill="none" stroke="#9a9b94" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="3 3"/>` +
   `<circle cx="20" cy="9" r="5.6" fill="none" stroke="#9a9b94" stroke-width="2"/><text x="20" y="12.5" font-size="9" text-anchor="middle" fill="#6b6c66">?</text></svg><span>随机</span></button>`;
-// 图例里的「玩家一 · 墨」「玩家二 · 靛」跟着双人对战上次选的颜色走
-function showLooks() {
-  const a = lookOf(Looks.pvp[0]), b = lookOf(Looks.pvp[1]);
-  $('p1name').textContent = a.name; $('p1dot').style.background = a.color;
-  $('p2name').textContent = b.name; $('p2dot').style.background = b.color;
-}
+// 教程里双人键位的「玩家一 · 墨」「玩家二 · 靛」跟着双人对战上次选的颜色走
+function showLooks() { if (Guide.tab === 'start') Guide.refresh(); }
 function setMyLook(id) {
   Looks.solo.me = id;
   if (Looks.solo.cpu === id) Looks.solo.cpu = 'random';
@@ -586,6 +631,7 @@ function onFsChange() {
   $('btnPauseFull').hidden = !on;
   if (!on) {
     fsExitAt = performance.now(); fsLocked = false;
+    if (Manual.isOpen()) Manual.close();                 // 2.2 全屏时开的教程面板：退出全屏就关（不全屏时教程在页面下面）
     try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch (e) {}
     if (keyWait) { keyWait = null; renderKeys(); }
     if (game.phase === 'fight' && !game.paused && game.mode !== 'online') setPaused(true);
@@ -598,33 +644,29 @@ if (!Desk && !(playEl.requestFullscreen || playEl.webkitRequestFullscreen)) btnF
 btnFull.addEventListener('click', () => { if (Desk) Desk.setFullscreen(!Desk.isFullscreen()); else if (fsEl()) exitFull(); else enterFull(); btnFull.blur(); });
 $('btnPauseFull').addEventListener('click', () => { if (Desk) Desk.setFullscreen(false); else exitFull(); });
 
+/* ---------- 2.2 教程：菜单、暂停里的「教程」 ----------
+   软件版、网页全屏时：打开「教程」面板（左边章节、右边文字 + 表格，guide.js Manual）；网页版不全屏时：滚到页面下面的教程（分页，guide.js Guide） */
+const legendOpen = () => Manual.isOpen();
+function openGuide(e) {
+  const btn = e && e.currentTarget;
+  if (Desk || fsEl()) { Manual.open(btn); return; }
+  const g = $('guide'); if (g) g.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+}
+$('btnLegend').addEventListener('click', openGuide);
+$('btnPauseLegend').addEventListener('click', openGuide);
 /* ---------- 2.1 软件版（Steam，desktop/ 打出来的程序）：有 window.modouDesktop 才做，网页版下面这些都不起作用 ----------
    · 窗口里一直是全屏的样子（.fs：只有游戏画面，顶栏缩到右下角）；⛶ 切的是窗口全屏（F11、Alt+Enter 也行，主进程那边管）。
      窗口全屏不是网页全屏：Esc 不会退出全屏，照常暂停；
-   · 页面下面那些卡片（键位、克制关系、连招、破解表、帧数表）收进「招式表」面板，菜单、暂停里都能开；
+   · 页面下面的教程收进「教程」面板（2.2：单独一套文字 + 表格，guide.js Manual），菜单、暂停里都能开；
    · 菜单多一个「退出游戏」；
    · 邀请链接用网页版的网址（net.js WEB_URL）：对方点开在浏览器里进同一个房间 —— 网页版、软件版能一起玩（版本号一样就行）；
    · 没有浏览器：鼠标不用锁（MouseLock）、也不用防「后退」（Guard）；
    · Steam 连上了才有成就（Ach）；没连上（直接双击 exe、没开 Steam）照常玩 */
-const legendEl = $('legend');
-const legendOpen = () => legendEl.classList.contains('open');
-function openLegend() {
-  legendEl.classList.add('open'); legendEl.scrollTop = 0;
-  const b = $('btnLegendClose'); b.hidden = false; b.focus({ preventScroll: true });
-}
-function closeLegend() {
-  legendEl.classList.remove('open'); $('btnLegendClose').hidden = true;
-  const t = !pauseEl.hidden ? $('btnResume') : !menu.hidden ? $('btnPve') : null;
-  if (t) t.focus({ preventScroll: true });
-}
-$('btnLegend').addEventListener('click', openLegend);
-$('btnPauseLegend').addEventListener('click', openLegend);
-$('btnLegendClose').addEventListener('click', closeLegend);
 $('btnExit').addEventListener('click', () => { if (Desk) Desk.quit(); });
 if (Desk) {
   document.documentElement.classList.add('desktop');
   playEl.classList.add('fs');
-  for (const id of ['btnLegend', 'btnPauseLegend', 'btnExit']) $(id).hidden = false;
+  for (const id of ['btnExit']) $(id).hidden = false;
   $('menuMsg').textContent = MENU_HINT;
   const showFs = on => { btnFull.textContent = on ? '退出全屏' : '⛶ 全屏'; $('btnPauseFull').hidden = !on; setTimeout(resize, 60); };
   showFs(Desk.isFullscreen());
@@ -632,9 +674,10 @@ if (Desk) {
 }
 /* 成就（API Name 要和 Steamworks 后台建的一模一样，见 desktop/STEAM.md「建成就」）。
    人机：对局里每半秒看一眼连击、泼墨；联机只在结算时看（回滚前猜错的那几帧不算进去）。解锁过的 Steam 自己记着，这里只是同一次别重复发 */
+const DRILL_ACH_PASSES = 20;
 const Ach = {
   sent: new Set(), tick: 0,
-  BEAT: { easy: 'ACH_BEAT_EASY', normal: 'ACH_BEAT_NORMAL', hard: 'ACH_BEAT_HARD', hell: 'ACH_BEAT_EXTREME' },
+  BEAT: { easy: 'ACH_BEAT_EASY', normal: 'ACH_BEAT_NORMAL', hard: 'ACH_BEAT_HARD', hell: 'ACH_BEAT_EXTREME' },   // 2.2 入门没有单独的成就（赢了算「初战告捷」）
   unlock(id) {
     if (!id || !Desk || !Desk.steam || !Desk.steam.ok() || this.sent.has(id)) return;
     this.sent.add(id);
@@ -656,7 +699,8 @@ const Ach = {
       if (wi === me) this.unlock('ACH_ONLINE_WIN');
     }
   },
-  drills() { if (Desk && DRILLS.every(d => Drill.done.has(d.id))) this.unlock('ACH_ALL_COUNTERS'); },
+  // 2.2 不再记哪一课过了（Jack：不算「已完成」）：拆招大师 = 破招练习一共过关 DRILL_ACH_PASSES 次（哪几课都行，同一课过几次也算）
+  drills() { if (Desk && Drill.passes >= DRILL_ACH_PASSES) this.unlock('ACH_DRILL_MASTER'); },
 };
 
 /* ---------- 鼠标（1.7.0）：键位里绑了鼠标按键就能用（单人那套在人机 / 训练场 / 联机里，双人那两套在双人对战里） ---------- */
@@ -664,7 +708,7 @@ const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
   if (game.mode === 'attract' || game.paused || keyWait || e.button > 4) return null;
-  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !drillEl.hidden || !introEl.hidden) return null;
+  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
   const r = Keys.route('Mouse' + e.button, game.mode);           // 1.8.0：双人对战里鼠标也能用（谁绑了归谁）
   if (!r) return null;
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
@@ -697,7 +741,7 @@ const MouseLock = {
   on() { return document.pointerLockElement === cv; },
   want() {
     if (!this.ok() || game.mode === 'attract' || game.paused || game.phase === 'over') return false;
-    if ([menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl].some(o => !o.hidden)) return false;
+    if ([menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl, passEl].some(o => !o.hidden) || Manual.isOpen()) return false;
     return ['Mouse1', 'Mouse2'].some(c => !!Keys.route(c, game.mode));
   },
   // 该锁就锁、该放就放（锁要在点击 / 按键的那一下里叫，浏览器才答应）
@@ -769,13 +813,13 @@ function route(code) {
 const pBound = () => !!Keys.route('KeyP', game.mode);
 window.addEventListener('keydown', e => {
   if (keyWait) { captureKey(e); return; }
-  if (legendOpen()) { if (e.code === 'Escape' && !e.repeat) { e.preventDefault(); closeLegend(); } return; }
+  if (legendOpen()) { Manual.key(e); return; }                    // 2.2 教程面板开着：Esc 关、↑↓ 换章，别的键不进游戏
   if (!keysEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeKeys(); return; }
   if (!pvpEl.hidden) { pvpKey(e); return; }
   if (!lookEl.hidden) { if (e.code === 'Escape') closeLooks(); return; }
   if (!setEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeSettings(); return; }
   if (!stageEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
-  if (!drillEl.hidden || !introEl.hidden) { if (e.code === 'Escape' && !e.repeat) drillEsc(); return; }
+  if (!drillEl.hidden || !introEl.hidden || !passEl.hidden) { if (e.code === 'Escape' && !e.repeat) drillEsc(); return; }
   if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
   // 破招练习的演示里按 Esc：不看了，回到说明
   if (e.code === 'Escape' && !e.repeat && game.mode === 'train' && Drill.cur && Drill.cur.demo && !game.paused) { e.preventDefault(); const id = Drill.cur.def.id; Drill.stop(); drillBar(); openIntro(id); return; }
@@ -812,36 +856,7 @@ for (const btn of touchEl.querySelectorAll('.tc')) {
   btn.addEventListener('contextmenu', e => e.preventDefault());
 }
 
-/* ---------- 帧数表、克制总表（直接读 MOVES，改数值后自动更新） ---------- */
-(function frameTable() {
-  const rows = ['jab', 'heavy', 'kick', 'grab', 'lowGrab', 'beng', 'whip', 'elbow', 'chop', 'whirl', 'stepPunch', 'hammer', 'twinKick', 'upper', 'backKick', 'rushEnd',
-    'lowJab', 'sweep', 'palm', 'shoulder', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'jieQuan', 'stomp', 'slipElbow', 'super'];
-  const HN = { mid: '中', low: '下', high: '上' };
-  $('frameTable').innerHTML = rows.map(k => {
-    const d = MOVES[k], dmg = d.kind === 'grab' ? (k === 'grab' ? `${d.dmg}~${THROW_DMG}` : `${TACKLE_DMG}~${SCOOP_DMG}`) : Math.round(d.dmg * (d.air ? AIR_BONUS : 1));
-    const A = d.dive ? '到地' : d.A;
-    return `<tr><td>${d.label}</td><td>${TIER_NAME[d.lead] || '—'}</td><td>${TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${d.S}</td><td>${A}</td><td>${d.R}</td><td>${dmg}</td><td>${d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
-  }).join('');
-})();
-// 破解表
-$('counterList').innerHTML = COUNTERS.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('');
-// 九种组合（起手 × 主系）互相交手的结果
-(function relTable() {
-  const T = ['light', 'heavy', 'kick'];
-  const cls = [];
-  for (const lead of T) for (const tier of T) {
-    const names = Object.values(MOVES).filter(d => d.lead === lead && d.tier === tier && !d.script).map(d => d.label);
-    cls.push({ lead, tier, name: TIER_NAME[lead] + TIER_NAME[tier], eg: [...new Set(names)].join('、') || '—' });
-  }
-  const SYM = { 1: ['克', 'w2'], 0.5: ['压', 'w1'], 0: ['平', 'eq'], '-0.5': ['被压', 'l1'], '-1': ['被克', 'l2'] };
-  let h = '<thead><tr><th>我＼对手</th>' + cls.map(c => `<th title="${c.eg}">${c.name}</th>`).join('') + '</tr></thead><tbody>';
-  for (const a of cls) {
-    h += `<tr><th title="${a.eg}">${a.name}<small>${a.eg}</small></th>`;
-    for (const b of cls) { const [t, k] = SYM[String(relation(a, b))]; h += `<td class="${k}">${t}</td>`; }
-    h += '</tr>';
-  }
-  $('relTable').innerHTML = h + '</tbody>';
-})();
+/* 帧数表、克制总表、破解表：2.2 起在 guide.js（教程「查表」那一页 / 软件版教程）里，直接读 MOVES */
 
 /* ---------- 主循环 ---------- */
 let last = performance.now(), acc = 0, rafAvg = STEP_MS, smooth = false;
@@ -909,6 +924,7 @@ function boot(data) {
   if (data && data.diff) d = data.diff;
   if (data && typeof data.sound === 'boolean') snd = data.sound;
   setDiff(LEVELS[d] ? d : 'normal'); setSound(snd);
+  if (!Desk) Guide.init();                            // 2.2 页面下面的教程（软件版没有这一块，用「教程」面板）
   resize(); startAttract();
   openInvite();
   Ach.drills();

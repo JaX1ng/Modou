@@ -16,10 +16,21 @@
        （卡准帧卸力、重拳霸体硬吃短拳、腿踢化解重拳、接腿、托天掌打跳、拳迎千斤坠……）。看穿的概率基础 0.6，你在这个距离老出的招最多 0.88；
        主动进攻也更聪明（罚打空、挡完的习惯、上下段擒拿换着来、隔远了也冲过去罚）。高手要赢它：别养习惯、别出不安全的招、挡住它的进攻再罚
    2.1 起出招、格挡、站着都不按方向（不按方向游戏自己让人面朝对手，出招也自己朝对手打）；按方向只用来走、跑、冲刺、边挡边走。
+   2.2（Jack：单机改成 入门 / 简单 / 中等 / 困难 / 终极，每个两个字；加一个比简单还简单一点的入门；困难降 5~10%；
+     终极（2.1 的极难）全是读指令 + 破招，完全玩不了，降一点；做完每一档要拉得开）：
+     · 入门（novice，新）：反应 12 帧、挡得少、连招短（NOVICE_PLANS 多是一两下）、常发呆、很少罚
+     · 简单 = 2.1 的易、中等 = 2.1 的中，没动
+     · 困难 = 2.1 的难松一点：反应 7 → 8 帧、看穿 0.5 → 0.45、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
+       （实测：一个乱换招的「木头玩家」每次交手平均亏 7.1 → 6.1，打掉的血占比 25% → 28%；对 2.1 的中每次交手的赚头少 5% 上下）
+     · 终极 = 2.1 的极难把「瞬间看穿」降下来：基础 0.6 → 0.3，你的习惯招最多 0.88 → 0.55（跳起来也跟着降）；别的本事不变
+       （实测：木头玩家打掉的血占比 11% → 20%，输掉的交手 64% → 52%；还是一档里最强，电脑对电脑赢困难九成以上）
    AI 可以用随机数（联机不走 AI） */
 
 // 计划里 'd:xx' = 按住蹲再按 xx（地面：下盘拳 / 扫堂腿 / 托天掌；空中 d:kick = 千斤坠）
 const PLANS = {
+  // 2.2 入门：多是一两下（单拳、两拳、拳重、单出重拳 / 腿），很少三下以上
+  novice: [[['jab'], 3], [['jab', 'jab'], 3], [['jab', 'heavy'], 2], [['heavy'], 2], [['kick'], 2], [['jab', 'kick'], 1.5], [['heavy', 'kick'], 1],
+    [['kick', 'kick'], 0.6], [['grab'], 1], [['d:jab'], 1], [['d:kick'], 0.4], [['jab', 'jab', 'heavy'], 1]],
   easy: [[['jab'], 2], [['jab', 'jab'], 2], [['jab', 'heavy'], 3], [['jab', 'jab', 'heavy'], 3], [['jab', 'kick'], 2], [['jab', 'jab', 'kick'], 2],
     [['jab', 'jab', 'jab', 'jab'], 1], [['heavy', 'kick'], 2], [['heavy', 'jab'], 1], [['heavy', 'heavy'], 1], [['kick', 'jab'], 1], [['kick', 'kick'], 1],
     [['grab'], 1], [['d:jab', 'd:kick'], 0.6], [['d:kick'], 0.4], [['jab', 'd:kick'], 0.4], [['d:jab'], 1], [['d:jab', 'jab', 'heavy'], 1]],
@@ -41,24 +52,39 @@ const PLANS = {
 // 2.1：airBlock 看见空中招站着挡（挡对高低）的概率；aaPlan 看见起跳就想好怎么接的概率；habit 记习惯有多准；guard 近身先举手；
 //      punishBlock 挡住以后罚；inst / instMax 极难「瞬间看穿」的概率（基础 / 你的习惯招）
 const LEVELS = {
-  // 易 = 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
+  // 2.2 入门（新）：比简单再简单一点 —— 反应 12 帧、挡四成、很少读招和卸力、连招短、常发呆；防跳、挡住就罚、记习惯都只有一点
+  novice: { react: 12, block: .4, lowRead: .48, parry: .07, push: .18, burst: .32, read: .22, catch: .25, duck: .55, aa: .3, step: .2, low: .17, sup: .6,
+    punish: .42, combo: .7, aggr: .75, jump: .65, grabBlock: .33, idle: .33, tech: .12, gc: .12, stomp: .4, scoop: .12, roll: .27,
+    slip: .06, gwalk: .22, oki: .32, catchSlip: .25, airBlock: .8, aaPlan: .5, habit: .38, guard: .28, punishBlock: .45 },
+  // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
   easy: { react: 11, block: .46, lowRead: .55, parry: .12, push: .25, burst: .45, read: .3, catch: .35, duck: .5, aa: .4, step: .25, low: .2, sup: .7,
     punish: .55, combo: .78, aggr: .85, jump: .8, grabBlock: .45, idle: .25, tech: .2, gc: .2, stomp: .55, scoop: .2, roll: .35,
     slip: .1, gwalk: .3, oki: .45, catchSlip: .35, airBlock: .8, aaPlan: .55, habit: .45, guard: .36, punishBlock: .55 },
-  // 中 = 2.0.2 的「难」
+  // 中等（2.1 叫「中」）= 2.0.2 的「难」
   normal: { react: 8, block: .66, lowRead: .8, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .85, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .1, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, airBlock: .9, aaPlan: .72, habit: .65, guard: .46, punishBlock: .8 },
-  // 难 = 2.0.2 的「地狱」：反应 7 帧，看穿 0.5~0.8、记习惯、预判、算准时机、主动罚
-  hard: { react: 7, block: .7, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
+  // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
+  // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
+  hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .95, combo: 1, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
-    slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .5, smart: true, airBlock: .95, aaPlan: .82, habit: .85, guard: .54, punishBlock: .92 },
-  // 极难（新）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
-  // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明
+    slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86 },
+  // 终极（2.1 叫「极难」，id 还是 hell）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
+  // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明。
+  // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
   hell: { react: 10, block: .8, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
     punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .55, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
-    inst: .6, instMax: .88, instReact: 1 },
+    inst: .3, instMax: .55, instReact: 1 },
+};
+// 2.2 难度的名字（两个字）和一句话说明：菜单、电脑血条底下、教程里用
+const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极' };
+const LEVEL_DESC = {
+  novice: '出手慢、挡得少、连招短 —— 先熟悉按键和招式',
+  easy: '会挡、会还手，反应比人慢一截',
+  normal: '会看招克制、会罚你的空招，像个练过的人',
+  hard: '一半的招会被它看穿，还会记你的习惯',
+  hell: '偶尔一眼看穿你的招，破绽必罚 —— 高手的挑战',
 };
 const LEVEL_IDS = Object.keys(LEVELS);
 function weighted(list) {

@@ -46,7 +46,8 @@ const game = {
   endless: false,           // 双人对战不限时，打到一方倒下为止
   dummyMode: 'stand', trainQi: false,   // 打桩：木桩动作、无限气
 };
-const LABEL = { easy: '电脑 · 易', normal: '电脑 · 中', hard: '电脑 · 难', hell: '电脑 · 极难' };   // 2.1：「地狱」改叫「极难」（id 还是 hell）
+// 2.1：「地狱」改叫「极难」（id 还是 hell）；2.2：五档都是两个字 —— 入门 / 简单 / 中等 / 困难 / 终极（ai.js LEVEL_NAME）
+const LABEL = Object.fromEntries(Object.entries(LEVEL_NAME).map(([id, n]) => [id, '电脑 · ' + n]));
 const Hooks = { matchStart() {}, matchOver() {} };   // ui.js 会覆盖
 
 function resetFighters() {
@@ -78,6 +79,7 @@ function startMatch(mode) {
   game.wins = [0, 0]; game.round = 1; game.paused = false; game.frame = 0; FXREC.log.clear();
   for (const p of pads) p.clear();
   startRound();
+  if (train) game.phase = 'fight';             // 2.2（Jack：训练场不是「第一回合」，进去直接开始，不要「第一回合」「战」这些开场字）
   Hooks.matchStart();
 }
 function startRound() {
