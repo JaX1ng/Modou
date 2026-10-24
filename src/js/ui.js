@@ -433,11 +433,12 @@ function closeKeys() {
 function renderKeys() {
   const k = keyDraft[keyWho], pr = keyProblems(k);
   const shared = keyWho ? sharedKeys(keyDraft[1], keyDraft[2]) : new Set();      // 两人都绑了的键只有双人那两套要管
-  const tap = k.dashMode !== 'key';                                               // 2.4 冲刺：双击方向（冲刺键那一行不用）/ 冲刺键
-  for (const b of document.querySelectorAll('[data-dm]')) b.setAttribute('aria-pressed', String(b.dataset.dm === (tap ? 'tap' : 'key')));
+  const dm = k.dashMode, tap = dm === 'tap';                                      // 冲刺：2.4 双击方向（冲刺键那一行不用）/ 冲刺键；2.5.1 两种都用
+  for (const b of document.querySelectorAll('[data-dashm]')) b.setAttribute('aria-pressed', String(b.dataset.dashm === dm));
   const L = keyName(k.left[0] || k.left[1]), R = keyName(k.right[0] || k.right[1]);
   $('dashHint').textContent = tap ? `双击左 / 右（${L}${L} / ${R}${R}）往那边冲；按着挡朝对手双击 = 闪身。冲刺键那一行不用。`
-    : '按冲刺键往按着的方向冲（不按方向就往前；按着挡按 = 闪身）。双击方向不再冲刺。';
+    : dm === 'key' ? '按冲刺键往按着的方向冲（不按方向就往前；按着挡按 = 闪身）。双击方向不再冲刺。'
+    : `两种都能冲：双击左 / 右（${L}${L} / ${R}${R}），或者按冲刺键（往按着的方向冲，不按方向就往前）；按着挡时这么按 = 闪身。`;
   $('keyRows').innerHTML = ACTIONS.map(([a, n]) => {
     const off = a === 'dash' && tap;
     return `<tr${off ? ' class="off"' : ''}><td>${n}</td>` + [0, 1].map(i => {
@@ -465,7 +466,9 @@ function renderKeys() {
   $('keyInfo').textContent = info.join(' ');
 }
 for (const b of document.querySelectorAll('[data-who]')) b.addEventListener('click', () => setKeyWho(+b.dataset.who));
-for (const b of document.querySelectorAll('[data-dm]')) b.addEventListener('click', () => { keyDraft[keyWho].dashMode = b.dataset.dm; keyWait = null; renderKeys(); });
+// 2.5.1 冲刺怎么按的三个按钮用 data-dashm（以前和训练场木桩那排按钮一样用 data-dm：点木桩的按钮会把键位草稿的冲刺方式改掉、键位面板没开过时还报错；
+// 点冲刺方式又会把木桩设成一个不存在的动作）
+for (const b of document.querySelectorAll('[data-dashm]')) b.addEventListener('click', () => { keyDraft[keyWho].dashMode = b.dataset.dashm; keyWait = null; renderKeys(); });
 $('keyRows').addEventListener('click', e => {
   if (performance.now() - swallowClick < 600) { swallowClick = 0; return; }   // 这一下是刚才「绑鼠标左键」那一下的 click
   const b = e.target.closest('.kbtn'); if (!b) return;
@@ -807,23 +810,10 @@ window.addEventListener('keyup', e => {
   if (e.code === 'Space' && game.mode !== 'attract' && !game.paused && e.target && e.target.tagName === 'BUTTON') e.preventDefault();
 }, { capture: true });
 
-/* ---------- 2.3 菜单的声音（Jack：鼠标移到按钮上要有声音反馈，按下去是另一个声音） ----------
-   菜单、暂停、结算、各种面板（都在 .overlay 里）和教程面板里的按钮：鼠标移上去「笃」一声（fx.js Sound.uiHover），按下去「嗒」一声（uiPress）。
-   键盘换焦点（Tab、方向键）也「笃」一声。浏览器要先点过一下页面才让出声（软件版一开就有） */
+/* ---------- 菜单的声音（2.3 起；2.5.1 Jack：光标放上去全都不出声，点下去是木鱼声） ----------
+   菜单、暂停、结算、各种面板（都在 .overlay 里）和教程面板里的按钮：移上去、Tab 换焦点都不出声；按下去一声木鱼（fx.js Sound.uiPress）。
+   浏览器要先点过一下页面才让出声（软件版一开就有） */
 const UI_SND = '.overlay button, .overlay summary, #manual button';
-let uiHoverEl = null, uiKeyAt = -1e9;
-document.addEventListener('pointerover', e => {
-  if (e.pointerType && e.pointerType !== 'mouse') return;
-  const b = e.target.closest ? e.target.closest(UI_SND) : null;
-  if (b === uiHoverEl) return;
-  uiHoverEl = b;
-  if (b && !b.disabled) Sound.uiHover();
-});
-document.addEventListener('keydown', () => { uiKeyAt = performance.now(); }, true);
-document.addEventListener('focusin', e => {
-  const b = e.target.closest ? e.target.closest(UI_SND) : null;
-  if (b && !b.disabled && performance.now() - uiKeyAt < 300) Sound.uiHover();
-});
 document.addEventListener('click', e => {
   const b = e.target.closest ? e.target.closest(UI_SND) : null;
   if (b && !b.disabled && !b.hasAttribute('data-nosnd')) Sound.uiPress();      // 音量 −/＋ 自己会响一声试听，不再叠一声

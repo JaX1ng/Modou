@@ -53,9 +53,13 @@ const MAP_P2X = { Numpad1: 'jab', Numpad2: 'heavy', Numpad3: 'kick', Numpad4: 'b
    单人那套和双人那两套互不影响：单人随便用方向键、小键盘，不用管会不会和玩家二抢键。
    双人对战时，两人都绑了的键归玩家二（玩家一那个键在双人对战里不起作用，键位设置里会标出来）。
    1.9.1 以前单人和双人的玩家一是同一套（存在 modou.keys）：第一次打开新版本时，双人的玩家一照抄这一套 */
-/* 2.4 冲刺怎么按（Jack：可以设成双击 A / D，也可以单按一个键冲刺）：每套键位各选各的 —— dash: 'tap' 双击方向（默认，和以前一样）/ 'key' 冲刺键。
+/* 2.4 冲刺怎么按（Jack：可以设成双击 A / D，也可以单按一个键冲刺）：每套键位各选各的 —— dashMode: 'tap' 双击方向（默认，和以前一样）/ 'key' 冲刺键；
+   2.5.1 多一种 'both' 两种都用（Jack：冲刺可以选双击和单键都启用）。
    选「冲刺键」：按一下冲刺键 = 往按着的方向冲（没按方向就往前冲；按着挡往前冲 = 闪身），双击方向就只是走路；
-   选「双击」：冲刺键那一行不用（不算缺键，也不和别的键算冲突）。触屏的「冲」按钮两种都能用 */
+   选「双击」：冲刺键那一行不用（不算缺键，也不和别的键算冲突）；
+   选「两种都用」：双击方向照样冲，冲刺键也能冲（输入里不带「用冲刺键」那一位 —— 那一位的意思就是「双击方向不冲」，联机两边照样对得上）。
+   触屏的「冲」按钮哪种都能用 */
+const DASH_MODES = ['tap', 'key', 'both'];
 const ACTIONS = [['left', '左'], ['right', '右'], ['up', '跳'], ['down', '蹲'], ['jab', '短拳'], ['heavy', '重拳'], ['kick', '腿踢'], ['block', '格挡'], ['grab', '擒拿'], ['dash', '冲刺']];
 const ACT_NAME = Object.fromEntries(ACTIONS);
 const codeOf = (map, a) => Object.keys(map).find(k => map[k] === a) || null;
@@ -63,14 +67,14 @@ const DEFAULT_KEYS = {}, DEFAULT_KEYS2 = {};          // 单人、双人玩家�
 for (const [a] of ACTIONS) { DEFAULT_KEYS[a] = [codeOf(MAP_P1, a), null]; DEFAULT_KEYS2[a] = [codeOf(MAP_P2, a), codeOf(MAP_P2X, a)]; }
 DEFAULT_KEYS.dashMode = DEFAULT_KEYS2.dashMode = 'tap';
 const NO_BIND = new Set(['Escape', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'OSLeft', 'OSRight', 'ContextMenu']);
-// 一套键位：每个动作两格 + dashMode（'tap' 双击方向冲刺 / 'key' 冲刺键）。1.x ~ 2.3 存的没有冲刺这一行：补上默认的冲刺键
+// 一套键位：每个动作两格 + dashMode（'tap' 双击方向冲刺 / 'key' 冲刺键 / 'both' 两种都用）。1.x ~ 2.3 存的没有冲刺这一行：补上默认的冲刺键
 const cloneKeys = (k, def) => {
   const o = Object.fromEntries(ACTIONS.map(([a]) => [a, (k[a] || (a === 'dash' && def ? def.dash : null) || [null, null]).slice(0, 2).concat([null, null]).slice(0, 2)]));
-  o.dashMode = k.dashMode === 'key' ? 'key' : 'tap';
+  o.dashMode = DASH_MODES.includes(k.dashMode) ? k.dashMode : 'tap';
   return o;
 };
 // 这套键位里真正在用的动作（选了「双击」，冲刺键那一行不用）
-const liveActs = k => ACTIONS.filter(([a]) => a !== 'dash' || k.dashMode === 'key');
+const liveActs = k => ACTIONS.filter(([a]) => a !== 'dash' || k.dashMode !== 'tap');
 // 冲突检查：同一个键给了两个动作 → 冲突；某个动作一个键都没有 → 缺键
 function keyProblems(k) {
   const used = {}, out = { dup: [], missing: [], dupCodes: new Set() };
@@ -107,7 +111,8 @@ const Keys = {
     try { [this.solo, this.p1, this.p2].forEach((k, i) => localStorage.setItem(KEY_STORE[i], JSON.stringify(k))); } catch (e) {}
   },
   route(code, mode) { return keyRoute(code, mode, this.map, this.map1, this.map2); },
-  // 2.4 这一局第 i 个玩家（本机）用的那套键位选没选「冲刺键」：双人对战看双人那两套，别的模式看单人那套
+  // 2.4 这一局第 i 个玩家（本机）用的那套键位是不是「只用冲刺键」（双击方向不冲）：双人对战看双人那两套，别的模式看单人那套。
+  // 2.5.1「两种都用」不算（双击照样冲；冲刺键在键位表里，按了照样冲）
   keyDash(i, mode) { return (mode === 'pvp' ? (i ? this.p2 : this.p1) : this.solo).dashMode === 'key'; },
   bound(code) { return !!(this.map[code] || this.map1[code] || this.map2[code]); },   // 哪一套里绑了这个键
 };
@@ -118,9 +123,13 @@ function keyRoute(code, mode, ms, m1, m2) {
   return ms[code] ? [0, ms[code]] : null;
 }
 Keys.load();
-// 2.4 教程、破招练习里讲冲刺的话：这套键位选了「冲刺键」，「双击 [前]」都换成「按 [冲]」（[冲] 换成冲刺键）
+// 2.4 教程、破招练习里讲冲刺的话：这套键位选了「冲刺键」，「双击 [前]」都换成「按 [冲]」（[冲] 换成冲刺键）；
+// 2.5.1 选了「两种都用」：写成「双击 [前] 或按 [冲]」
 function dashWords(s, set) {
-  if ((set || Keys.solo).dashMode !== 'key') return s;
+  const m = (set || Keys.solo).dashMode;
+  if (m === 'both') return s.replace(/双击 \[前\]（或 \[后\]）/g, '双击 [前]（或 [后]），或按 [冲]').replace(/朝对手双击 \[前\]/g, '朝对手双击 [前]（或按 [冲]）')
+    .replace(/双击 \[前\](?!（)/g, '双击 [前] 或按 [冲]').replace(/双击方向/g, '双击方向或按冲刺键');
+  if (m !== 'key') return s;
   return s.replace(/双击 \[前\]（或 \[后\]）/g, '按 [冲]（按着 [后] 再按 = 往后冲）')
     .replace(/朝对手双击 \[前\]/g, '按 [冲]').replace(/双击 \[前\]/g, '按 [冲]')
     .replace(/双击方向/g, '按冲刺键').replace(/双击冲进来/g, '冲刺冲进来').replace(/朝你双击/g, '朝你冲刺');

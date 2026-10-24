@@ -2003,8 +2003,9 @@ T('2.4 声音真的出得来：用离线声卡把开场的鼓、胜负已分、�
     } finally { Object.assign(Sound, { ctx: keep.ctx, master: keep.master, out: keep.out, noise: keep.noise, zbuf: keep.zbuf, on: keep.on }); game.mode = keep.mode; game.quiet = keep.quiet; }
   };
   const stats = d => { let pk = 0, e = 0; for (const v of d) { pk = Math.max(pk, Math.abs(v)); e += v * v; } return { pk, rms: Math.sqrt(e / d.length) }; };
-  for (const [nm, fn] of [['战鼓', () => Sound.taiko(1, 0)], ['锵', () => Sound.qiang(1.2, 0)], ['古筝往上', () => Sound.zhengUp(1, 0)], ['和弦', () => Sound.zhengChord(1, 0)], ['胜负已分', () => { Sound.taiko(1, 0); Sound.qiang(1.15, 0.16); Sound.zhengChord(1, 0.16); }]]) {
-    const s = stats(await render(fn, 2));
+  for (const [nm, fn, secs] of [['战鼓', () => Sound.taiko(1, 0)], ['锵', () => Sound.qiang(1.2, 0)], ['古筝往上', () => Sound.zhengUp(1, 0)], ['和弦', () => Sound.zhengChord(1, 0)], ['胜负已分', () => { Sound.taiko(1, 0); Sound.qiang(1.15, 0.16); Sound.zhengChord(1, 0.16); }],
+    ['按钮的木鱼（2.5.1）', () => Sound.muyu(1, 0), 0.25]]) {                    // 木鱼是很短的一声「笃」：量它响的那一小段
+    const s = stats(await render(fn, secs || 2));
     ok(s.rms > 0.004, nm + ' 没声音：' + s.rms.toFixed(4));
     ok(s.pk < 1, nm + ' 破音了：' + s.pk.toFixed(2));
   }
@@ -2229,7 +2230,9 @@ T('2.4 人物比例像真人：头比以前小（半径 13 → 12），站着 6 
   const B = BODY.bone, leg = B.th + B.sh + B.ankle;
   ok(leg / (B.torso + B.neck + B.head * 2 + leg) > 0.47, '腿长占身高的一半左右');
   ok(Math.max(...BODY.torso.map(r => r[3])) > BODY.torso[0][3] + 4, '正面看：肩背比胯宽');
-  ok(B.th > B.sh && B.ua > B.fa, '大腿比小腿长、大臂比小臂长');
+  // 2.5.1（Jack：大腿短一点、小腿长一点）：以前这里要求大腿比小腿长；现在照 Jack 说的，大腿比 2.5（39）短、小腿比 2.5（37）长
+  ok(B.th < 39 && B.sh > 37, `大腿 ${B.th}、小腿 ${B.sh}：大腿要短一点、小腿长一点`);
+  ok(B.ua > B.fa, '大臂比小臂长');
 });
 T('2.4 打中那一刻拳脚真的落在身上：每一招在最远射程打站着的人，判定第一帧拳、脚、肘、肩离对方身子 -12 ~ +1 像素（不隔空打中、也不整只没进去）', () => {
   const rows = contactAll(), bad = rows.filter(r => !r.ok);
@@ -2382,6 +2385,162 @@ T('2.4 膝盖往前弯（像真人）：所有姿势、所有招的关键帧，�
   for (const k in POSE) check('姿势 ' + k, POSE[k]);
   for (const n in MOVES) MOVES[n].keys.forEach(([t, pose], i) => check(`${MOVES[n].label}（${n}）第 ${i} 帧`, pose));
   ok(!bad.length, bad.slice(0, 12).join('；') + (bad.length > 12 ? ` …共 ${bad.length}` : ''));
+});
+
+/* ---------- 2.5.1（Jack 提的 8 条） ---------- */
+// 量人身上的东西用的几个姿势：站、跑（腿往前、往后甩）、跳、蹲、下盘拳、腿踢、重拳
+const seatPoses = () => {
+  const out = [['站姿', POSE.stance], ['蹲', POSE.crouch], ['跳', P_JTOP], ['腿踢', mk(P_KICK)], ['重拳', mk(P_HEAVY)]].map(([n, p]) => [n, mk(p)]);
+  for (const [n, d, t] of [['下盘拳', MOVES.lowJab, 1.1], ['扫堂腿', MOVES.sweep, 1.2], ['二起脚', MOVES.twinKick, 1.2]]) out.push([n, evalKeys(d.keys, d.S * Math.min(1, t) + (t > 1 ? (t - 1) * d.A : 0))]);
+  return out;
+};
+const poseJ = pose => { arena(400); copyPose(F1.disp, pose); F1.J = null; F1.ikS = null; F1.fk(); return F1.J; };
+T('2.5.1 腰带底下是一整块（Jack：屁股像没穿裤子、有两瓣；腰带那儿穿模）：大腿根不从腰带后面露出来；裆上不打亮边、不出线；躯干不再自己圆出一个屁股', () => {
+  const bad = [];
+  const inPoly = (x, y, pts) => pointInPoly(x, y, pts) || distToPoly(x, y, pts) < 0.6;
+  for (const [nm, pose] of seatPoses()) {
+    const J = poseJ(pose), parts = bodyParts(J, 0).parts, tor = parts.find(p => p.k === 'torso'), seat = parts.find(p => p.k === 'seat');
+    if (!seat) { bad.push(nm + ' 没有裆'); continue; }
+    // 大腿上、腰带下沿以上那一截（以前平头伸进胯里，腿一抬就从腰带后面露出来）：都在躯干或裆里面
+    const sx = J.neck[0] - J.hip[0], sy = J.neck[1] - J.hip[1], sl = Math.hypot(sx, sy), tb = (BODY.belt.at - BODY.belt.h / 2 / BODY.bone.torso) * BODY.bone.torso;
+    const r0 = (BODY.th[0][1] + BODY.th[0][2]) / 2;
+    for (const k of ['FU', 'BU']) for (const [x, y] of parts.find(p => p.k === k).pts) {
+      const R = k === 'FU' ? J.hipF : J.hipB;
+      if (Math.hypot(x - R[0], y - R[1]) > r0 + 3) continue;              // 只看大腿根那一圈（往膝盖去的那截本来就在外面）
+      const up = ((x - J.hip[0]) * sx + (y - J.hip[1]) * sy) / sl;          // 顺着脊柱往上多远
+      if (up > tb - 0.5 && !inPoly(x, y, tor.pts) && !inPoly(x, y, seat.pts)) { bad.push(`${nm}：${k} 从腰带后面露出来（${up.toFixed(1)}）`); break; }
+    }
+    // 躯干只到髋下面一点（不再圆出屁股）
+    let low = 1e9; for (const [x, y] of tor.pts) low = Math.min(low, ((x - J.hip[0]) * sx + (y - J.hip[1]) * sy) / sl);
+    if (low < -0.12 * BODY.bone.torso) bad.push(`${nm}：躯干往髋下面伸了 ${(-low).toFixed(1)}`);
+  }
+  // 画出来量：裆里面（往里收 2）没有亮色的点 —— 屁股那道弧、两腿中间从腰带底下弯下来那道弧都没了
+  const K = 3, W2 = 240 * K / 2, H2 = 240 * K / 2, cv = document.createElement('canvas'); cv.width = W2; cv.height = H2; const g = cv.getContext('2d');
+  for (const [nm, pose] of seatPoses()) for (const col of ['ink', 'indigo']) {
+    F1.setLook(col); const J = poseJ(pose), ox = J.hip[0] - 40, oy = J.hip[1] - 40, T2 = bodyTones(F1.color);
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = C.paper; g.fillRect(0, 0, W2, H2);
+    withCtx(g, () => { ctx.setTransform(K, 0, 0, K, -ox * K, -oy * K); ctx.fillStyle = F1.color; ctx.fill(bodySilhouette(J, 0)); drawBody(J, F1.color, F1.sash); ctx.setTransform(1, 0, 0, 1, 0, 0); });
+    const seat = bodyParts(J, -2).parts.find(p => p.k === 'seat'), sp = new Path2D(); sp.moveTo(seat.pts[0][0], seat.pts[0][1]); for (const q of seat.pts) sp.lineTo(q[0], q[1]); sp.closePath();
+    // 腰带盖住的（颜色不是身子的）、近侧那只手挡在上面的（手自己的亮边、描线）不算
+    const arm = new Path2D(); for (const q of bodyParts(J, 1.5).parts.filter(q => q.layer === 'nearArm')) addPoly(arm, q.pts);
+    const px = g.getImageData(0, 0, W2, H2).data, base = rgbOf(F1.color), hl = rgbOf(T2.hl);
+    let lit = 0;
+    g.setTransform(K, 0, 0, K, -ox * K, -oy * K);
+    for (let y = 0; y < H2; y += 1) for (let x = 0; x < W2; x += 1) {
+      if (!g.isPointInPath(sp, x, y) || g.isPointInPath(arm, x, y)) continue;
+      const i = (y * W2 + x) * 4, c = [px[i], px[i + 1], px[i + 2]];
+      const dB = Math.hypot(c[0] - base[0], c[1] - base[1], c[2] - base[2]), dH = Math.hypot(c[0] - hl[0], c[1] - hl[1], c[2] - hl[2]);
+      if (dH < dB && dH < 6) lit++;
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    if (lit > 5 * K) bad.push(`${nm}（${col}）：裆上有 ${lit} 个亮色的点`);   // 几块拼起来的地方抗锯齿会留一两个像素（看不见）；以前那两道弧是几百个
+  }
+  F1.setLook(Looks.pvp[0]);
+  ok(!bad.length, bad.slice(0, 10).join('；'));
+});
+T('2.5.1 脚小一点、薄一点，人一样高（Jack：高在别的地方一点点）；大腿短一点、小腿长一点；腿上有一点点肌肉（小腿肚鼓、收到跟腱，大腿前面微微鼓）', () => {
+  const Fo = BODY.foot;
+  ok(Fo.heel + Fo.toe <= 24.8 * 0.9 && Fo.h <= 11.6 * 0.85, `鞋 ${Fo.heel + Fo.toe} × ${Fo.h}（2.5 是 24.8 × 11.6）`);
+  ok(BODY.bone.ankle < 4.8, '鞋底薄了');
+  // 站着一样高（2.5 量的 146.45）：鞋底薄下来的那点给了腿
+  const J = poseJ(POSE.stance); let top = 1e9; for (const q of bodyParts(J, 0).parts) for (const [, y] of q.pts) top = Math.min(top, y);
+  ok(Math.abs(FLOOR - top - 146.45) < 0.6, '站着的身高变了：' + (FLOOR - top).toFixed(2));
+  for (const k of ['ff', 'bf']) ok(Math.abs(FLOOR - BODY.bone.ankle - J[k][1]) < 0.6, k + ' 还踩在地上');
+  ok(BODY.bone.th + BODY.bone.sh >= 76, '腿不比以前短');
+  const w = (P, t, k) => profAt(P, t, k), calf = Math.max(...[0.2, 0.25, 0.3, 0.35].map(t => w(BODY.sh, t, 2)));
+  ok(calf - w(BODY.sh, 0.88, 2) > 2.2, '小腿肚鼓出来、往下收到跟腱');
+  ok(w(BODY.th, 0.5, 1) > (w(BODY.th, 0, 1) + w(BODY.th, 1, 1)) / 2 + 0.6, '大腿前面中段微微鼓（股四头肌）');
+  ok(calf - w(BODY.sh, 0, 2) < 2.5 && w(BODY.th, 0.5, 1) - w(BODY.th, 1, 1) < 2.5, '肌肉别太多');
+});
+T('2.5.1 腿踢平移少一点、支撑腿不扭（Jack：踢的时候人往前平移太多，平移完腿扭得厉害）：髋往前送少了、支撑脚滑得少了（一来一回），出腿时支撑腿差不多直着斜撑在身后', () => {
+  const fr = simulateMove('kick', { def: 'none' }), f0 = fr[0], fw = f0.J1.facing, act = fr.find(f => f.mv && f.mv.name === 'kick' && f.mv.act);
+  const bfx = fr.map(f => f.J1.bf[0] * fw), hip = (act.J1.hip[0] - f0.J1.hip[0]) * fw;
+  ok(hip < 40, '出腿那一刻髋往前送了 ' + hip.toFixed(1) + '（2.5 是 42）');
+  ok(Math.max(...bfx) - bfx[0] < 45, '支撑脚往前滑了 ' + (Math.max(...bfx) - bfx[0]).toFixed(1) + '（2.5 是 60）');
+  ok(Math.max(...bfx) - bfx[bfx.length - 1] < 33, '收腿时支撑脚往回滑了 ' + (Math.max(...bfx) - bfx[bfx.length - 1]).toFixed(1) + '（2.5 是 48）');
+  for (const f of fr.filter(f => f.mv && f.mv.name === 'kick' && f.mv.t >= f.mv.S && f.mv.t <= f.mv.S + f.mv.A)) {
+    const J = f.J1, ax = (J.bf[0] - J.hipB[0]) * fw, ay = J.bf[1] - J.hipB[1], kx = (J.bk[0] - J.hipB[0]) * fw, ky = J.bk[1] - J.hipB[1];
+    const off = -(ax * ky - ay * kx) / Math.hypot(ax, ay);
+    ok(off < 10, '出腿时支撑腿的膝盖往前拱了 ' + off.toFixed(1) + '（2.5 是 15）');
+    ok(ax < -10, '支撑脚在身后斜撑着');
+  }
+  // 射程（规则）一点没动
+  eq([MOVES.kick.reach, MOVES.kick.lunge[2]], [126, 12]);
+});
+T('2.5.1 按钮的声音（Jack：光标放上去全都不出声，点下去是木鱼声）：移上去那一声去掉了；按下去是木鱼（醒着就响，睡着先叫醒）', () => {
+  ok(Sound.uiHover === undefined, '不该再有「移上去」的声音');
+  const calls = [], keep = { muyu: Sound.muyu, zheng: Sound.zheng, init: Sound.init, ctx: Sound.ctx, on: Sound.on, vol: Sound.vol, uiT: Sound.uiT };
+  try {
+    Sound.muyu = function () { calls.push('muyu'); }; Sound.zheng = function () { calls.push('zheng'); };
+    Sound.init = () => {}; Sound.ctx = { state: 'running' }; Sound.on = true; Sound.vol = 50; Sound.uiT = 0;
+    Sound.uiPress();
+    eq(calls, ['muyu'], '按钮声：木鱼（不是古筝）');
+    Sound.uiPress(); eq(calls.length, 1, '一下点出两声（40 毫秒内）只响一声');
+    Sound.vol = 0; Sound.uiT = 0; Sound.uiPress(); eq(calls.length, 1, '静音不响');
+  } finally { Object.assign(Sound, keep); }
+});
+T('2.5.1 冲刺可以「两种都用」（Jack：冲刺可以选双击和单键都启用）：双击方向照样冲、冲刺键也能冲；输入里不多占位（联机两边照样对得上）', () => {
+  ok(DASH_MODES.includes('both'));
+  const k = cloneKeys(DEFAULT_KEYS); k.dashMode = 'both';
+  eq(cloneKeys(k).dashMode, 'both', '存下来读回去还是两种都用');
+  eq(cloneKeys({ dashMode: 'xx' }).dashMode, 'tap', '不认得的当双击');
+  ok(liveActs(k).some(([a]) => a === 'dash') && keyMapOf(k).ShiftLeft === 'dash', '冲刺键在用');
+  const k3 = cloneKeys(k); k3.dash = [null, null]; eq(keyProblems(k3).missing, ['dash'], '两种都用：冲刺键要有键');
+  const keep = { solo: Keys.solo, p1: Keys.p1, p2: Keys.p2 };
+  try { Keys.solo = k; ok(!Keys.keyDash(0, 'pve'), '两种都用：输入里不带「双击不冲」那一位'); } finally { Object.assign(Keys, keep); Keys.rebuild(); }
+  // 真按：不带 DASH_KEY 那一位 —— 双击冲、冲刺键也冲
+  arena(300); tick(RIGHT); tick(0); tick(RIGHT); tick(RIGHT, 0, 3);
+  ok(F1.move && F1.move.name === 'dash', '双击方向冲');
+  arena(300); tick(LEFT | TAP('dash')); tick(LEFT, 0, 2);
+  ok(F1.move && F1.move.name === 'dash' && F1.facing === -1, '冲刺键往按着的方向冲');
+  arena(120); tick(BLOCK, 0, 3); tick(BLOCK | TAP('dash')); tick(BLOCK, 0, 2);
+  ok(F1.move && F1.move.name === 'slip', '按着挡按冲刺键 = 闪身');
+  // 教程、破招练习的说法
+  ok(/双击.*或按 \[冲\]/.test(dashWords('双击 [前]（或 [后]）', k)), dashWords('双击 [前]（或 [后]）', k));
+  ok(/或按 \[冲\]/.test(dashWords('按住 [挡]，朝对手双击 [前]', k)), '闪身也写上冲刺键');
+  ok(/双击/.test(gText('双击 [前]（或 [后]）', k)) && /左 Shift/.test(gText('双击 [前]（或 [后]）', k)), '教程里两样都显示');
+});
+T('2.5.1 动起来的背景（Jack）：每张图都有会动的东西、各不一样；都从左往右飘（不来回）；只用自己的随机数（不碰 Math.random、vrnd）；只在人身后，不进战斗逻辑', () => {
+  const want = { sun: ['far'], falls: ['mid'], bamboo: ['mid'], peach: ['far', 'mid'], desert: ['far', 'mid'], yard: ['mid'] };
+  const cv = document.createElement('canvas'); cv.width = 2400; cv.height = 900; const g = cv.getContext('2d');
+  const mr = Math.random, seed0 = vrSeed; let rcalls = 0;
+  Math.random = function () { rcalls++; return mr(); };
+  try {
+    for (const id in want) {
+      const S = STAGES[id];
+      ok(S.live && want[id].every(k => typeof S.live[k] === 'function'), id + ' 要有动起来的东西：' + want[id]);
+      const st = { id, t: 0 }, L = { w: 1400, h: 700, fy: 560, vis: [100, 1300] };
+      // 跑 40 秒（每帧 1/60），每 5 秒画一张：前后两张不一样（真的在动）；记下所有往一边飘的东西的横向速度
+      const shot = () => { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cv.width, cv.height); for (const k of want[id]) S.live[k](g, L, st, 0); return g.getImageData(0, 0, 1400, 700).data; };
+      let prev = shot(), diff = 0;
+      for (let i = 1; i <= 2400; i++) {
+        st.t += 1 / 60; g.setTransform(1, 0, 0, 1, 0, 0); for (const k of want[id]) S.live[k](g, L, st, 1 / 60);
+        if (i % 300) continue;
+        const cur = shot(); for (let j = 3; j < cur.length; j += 4 * 3) if (Math.abs(cur[j] - prev[j]) > 8) diff++; prev = cur;
+      }
+      ok(diff > 60, id + ' 跑了 40 秒画面没怎么变：' + diff);
+      const vx = [];
+      for (const k of ['birds', 'clouds', 'petals', 'flies', 'wisps', 'spray']) for (const o of st[k] || []) vx.push(o.sp !== undefined ? o.sp : o.vx);
+      ok(vx.every(v => v > 0), id + ' 有往左飘的：' + vx.filter(v => v <= 0));
+      // 只在人身后：会动的东西都在地线以上、人头顶上面或者远处（鸟、云、花瓣在天上；萤火、沙在中景）
+      for (const o of st.birds || []) ok(o.y < L.fy - 240, '鸟飞得太低');
+      for (const o of st.petals || []) ok(o.y < L.fy - 120, '花瓣落到人跟前了');
+    }
+  } finally { Math.random = mr; }
+  eq(rcalls, 0, '动态背景用了 Math.random');
+  eq(vrSeed, seed0, '动态背景用了 vrnd（特效的随机数）');
+  // 鸟真会出来（桃花园，Jack 点名要的）：40 秒里至少飞来一群；翅膀在扇（同一只鸟不同时候 w 不一样）
+  const st = { id: 'peach', t: 0 }, L = { w: 1400, h: 700, fy: 560, vis: [100, 1300] }, ws = new Set();
+  let seen = 0;
+  for (let i = 0; i < 2400; i++) { st.t += 1 / 60; STAGES.peach.live.far(g, L, st, 1 / 60); if (st.birds.length) { seen++; ws.add(st.birds[0].m[0].w.toFixed(1)); } }
+  ok(seen > 600 && ws.size > 6, `鸟：${seen} 帧看得见、翅膀 ${ws.size} 种样子`);
+  // 「减少动态效果」：dt = 0 —— 不出新的、不动
+  const s2 = { id: 'peach', t: 0 }; for (let i = 0; i < 300; i++) STAGES.peach.live.far(g, L, s2, 0);
+  eq(s2.birds.length, 0, 'dt = 0 不该飞出鸟来');
+  // 只是画面：画了背景，战斗状态一模一样
+  const runIt = draw => { arena(200); const log = []; for (let i = 0; i < 90; i++) { step([i === 5 ? TAP('kick') : 0, 0]); if (draw) render(); log.push(stateHash()); } return log; };
+  const keepId = Stage.pref; Stage.setPref('peach');
+  try { eq(runIt(true), runIt(false)); } finally { Stage.setPref(keepId); }
 });
 
 (async function runAll() {

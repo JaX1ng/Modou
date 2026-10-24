@@ -18,27 +18,35 @@
    ============================================================ */
 const BODY = {
   // 骨头长度（逻辑像素）。头是半径。肩 = 肩关节在脊柱上离髋多远（比脖子根低一点）。骨头长短一改，所有姿势都跟着变，轻易别动
-  bone: { torso: 46.5, shoulder: 41, neck: 5.5, head: 12, ua: 25, fa: 23, th: 39, sh: 37, ankle: 4.8 },
+  // 2.5.1（Jack：大腿短一点、小腿长一点；鞋小了、薄了，人照样高 —— 高在别处一点点）：大腿 39 → 38、小腿 37 → 39、脚踝离鞋底 4.8 → 4。
+  //     髋高是姿势定的（hy），鞋底薄下来的那 0.8 落到了腿上：人一样高，腿长了一点、鞋矮了一截
+  bone: { torso: 46.5, shoulder: 41, neck: 5.5, head: 12, ua: 25, fa: 23, th: 38, sh: 39, ankle: 4 },
   shoulderW: 11.5,   // 肩宽的一半：拧腰（tw）时两个肩膀前后错开 ±shoulderW·sin(tw)；转身（spin）时左右分开
   hipW: 5.5,         // 两个大腿根离中线多远（转身、膝盖往侧面摆时用）
   hipSplit: 2.2,     // 侧面看两个大腿根前后错开一点（前腿根靠前），两条腿分得开
   wrist: 3.4,        // 小臂画到拳心往回这么多（这一截藏在拳头里）
   // 2.5 拳头改小（Jack）：13.2 × 11.6 → 10.4 × 9.4，圆一点
   fist: { len: 10.4, h: 9.4, r: 4.3 },               // 拳头：顺着小臂方向的长、横着的高、圆角
-  foot: { heel: 7.4, toe: 17.4, h: 11.6, w: 9.5 },   // 鞋（参考图那种圆头厚鞋）：脚跟在脚踝后面多远、脚尖在前面多远、鞋多高（盖住脚踝）、多宽（脚尖朝镜头时看到的）
+  // 鞋（参考图那种圆头鞋）：脚跟在脚踝后面多远、脚尖在前面多远、鞋口多高（盖住脚踝）、多宽（脚尖朝镜头时看到的）、鞋头多高。
+  // 2.5.1（Jack：脚有点大和厚）：24.8 × 11.6 → 21.4 × 9.4，鞋头也矮一点（8.8 → 7.2）
+  foot: { heel: 6.2, toe: 15.2, h: 9.4, w: 8.4, toeH: 7.2 },
   // 轮廓表：[沿着这一节骨头的位置 0（根）~1（梢）, 前侧半宽, 后侧半宽]。「前侧」：
   //   大臂 = 胳膊弯起来小臂折过去的那一侧；小臂 = 掌心那一侧；大腿 = 膝盖顶出去那一侧；小腿 = 小腿骨那一侧（后侧是小腿肚）
   // 2.5 照参考图：胳膊细、上下差不多粗（没有鼓出来的三角肌）；腿是顺滑的一条，膝盖收一点、小腿肚鼓一点，脚踝也不细
   ua: [[0, 5.3, 5.5], [0.3, 4.9, 4.9], [0.7, 4.4, 4.3], [1, 4.1, 4.0]],
   fa: [[0, 4.1, 4.0], [0.3, 4.3, 4.1], [0.75, 3.8, 3.5], [1, 3.5, 3.3]],
-  th: [[0, 7.6, 7.8], [0.3, 7.4, 7.3], [0.72, 6.3, 6.1], [1, 5.7, 5.7]],
-  thRoot: 9,         // 大腿根往胯里直直地伸进去多长（不画圆头：腿是从胯里长出来的）
-  sh: [[0, 5.7, 5.8], [0.22, 5.5, 7.0], [0.5, 5.2, 6.4], [0.82, 4.9, 5.2], [1, 4.8, 4.8]],
+  // 2.5.1 腿上有一点点肌肉（Jack：有一点肌肉感就行，别太多）：大腿前面（股四头肌）中段微微鼓着、到膝盖上面才收进去，后面（腘绳肌）往下顺着收；
+  //     小腿肚鼓在上面三分之一、往下收到跟腱，脚踝比 2.5 细一点；小腿骨那一侧直一点。膝盖上下一样粗（接得上）
+  th: [[0, 7.5, 7.9], [0.25, 7.6, 7.8], [0.52, 7.5, 7.1], [0.78, 6.5, 6.0], [0.93, 5.8, 5.5], [1, 5.9, 5.5]],
+  sh: [[0, 5.8, 5.6], [0.12, 5.6, 6.5], [0.28, 5.4, 7.1], [0.5, 5.1, 6.2], [0.72, 4.6, 4.9], [0.88, 4.4, 4.4], [1, 4.5, 4.6]],
   neck: [[0, 5.6, 6.0], [0.6, 4.9, 5.1], [1, 4.9, 5.1]],
   // 躯干：[沿脊柱的位置（0 = 髋关节，1 = 脖子根；负的在髋下面）, 胸腹那侧半宽, 后背那侧半宽, 正面对着镜头时的半宽]
-  // 2.5 照参考图瘦下来：侧着看是一根稍微有点弧度的柱子 —— 胸口微微挺、腰收一点、臀部圆一点，不再是大胸肌、大屁股；正面看肩比胯宽
-  torso: [[-0.17, 8.2, 9.2, 11.6], [-0.06, 9.0, 10.2, 12.8], [0.06, 8.8, 9.6, 12.4], [0.2, 8.2, 8.4, 11.4], [0.34, 8.4, 8.4, 11.6],
+  // 2.5 照参考图瘦下来：侧着看是一根稍微有点弧度的柱子 —— 胸口微微挺、腰收一点，不再是大胸肌、大屁股；正面看肩比胯宽。
+  // 2.5.1 躯干只到髋（以前往下圆出一个屁股，和两条大腿根合起来像两瓣屁股）：腰带底下那一截是「裆」（seat，见 seatShape）
+  torso: [[-0.04, 8.8, 9.4, 12.6], [0.06, 8.8, 9.6, 12.4], [0.2, 8.2, 8.4, 11.4], [0.34, 8.4, 8.4, 11.6],
     [0.52, 9.6, 9.0, 13.4], [0.68, 10.8, 10.0, 15.6], [0.82, 10.8, 11.0, 17.0], [0.91, 9.8, 10.6, 15.4], [0.97, 7.6, 8.6, 10.8], [1, 5.6, 6.0, 7.0]],
+  // 2.5.1 裆（腰带底下、两条大腿根那一块，像穿着裤子）：躯干下半截 + 两个大腿根（圆的）+ 两条大腿往下 reach 这么长，合起来取外包（一整块，没有缝、没有凹进去的一道）
+  seat: { reach: 9 },
   belt: { at: 0.11, h: 6 },                    // 腰带：在脊柱上的位置（参考图那样系得低，在胯上）、宽
   // 阴影：亮边的颜色（往纸色混多少 —— 参考图里亮边只比本色亮一点点）、躯干 / 腿 / 鞋的亮边多宽、胳膊和拳的亮边多宽、
   // 近侧手脚叠在身上那道亮线多宽、亮边往上偏多少（侧面的亮边顺带一点上沿）
@@ -112,11 +120,11 @@ function fistShape(H, ux, uy, g) {
   }
   return pts;
 }
-// 鞋：脚踝 K 是原点，x 往脚尖、y 往鞋底。参考图那种圆头厚鞋：脚跟圆、鞋口盖住脚踝、鞋面往脚尖斜下去、鞋头圆
+// 鞋：脚踝 K 是原点，x 往脚尖、y 往鞋底。参考图那种圆头鞋：脚跟圆、鞋口盖住脚踝、鞋面往脚尖斜下去、鞋头圆（2.5.1 小了、薄了，鞋头矮一点）
 const FOOT_PTS = (() => {
-  const Fo = BODY.foot, a = BODY.bone.ankle, top = a - Fo.h, H = Fo.heel, T = Fo.toe;
-  return [[-H + 2.6, top], [-H + 0.5, top + 2.6], [-H, a - 4.6], [-H + 0.3, a - 1.6], [-H + 2, a + 0.1], [0, a + 0.4], [T - 6, a + 0.4],
-    [T - 2, a - 0.1], [T - 0.2, a - 2], [T, a - 4.4], [T - 1.3, a - 6.6], [T - 4.6, a - 8], [T - 9.5, a - 8.8], [4.6, top + 0.8], [0.4, top - 0.4]];
+  const Fo = BODY.foot, a = BODY.bone.ankle, top = a - Fo.h, H = Fo.heel, T = Fo.toe, th = Fo.toeH;
+  return [[-H + 2.4, top], [-H + 0.5, top + 2.3], [-H, a - 4], [-H + 0.3, a - 1.4], [-H + 1.8, a + 0.1], [0, a + 0.35], [T - 5.4, a + 0.35],
+    [T - 1.8, a - 0.1], [T - 0.2, a - 1.7], [T, a - th * 0.5], [T - 1.1, a - th * 0.75], [T - 4, a - th * 0.92], [T - 8.4, a - th], [4, top + 0.8], [0.4, top - 0.35]];
 })();
 // 每个点往外的方向（两边的边法线平均），胖瘦（g）按这个挪 —— 整圈一样厚地胖 / 收
 const FOOT_NRM = (() => {
@@ -148,10 +156,45 @@ function torsoShape(H, N, fx, fy, spin, g) {
   // 顶上（斜方肌 → 脖子根），往上拱一点
   pts.push(at(1.035 + eg, half(1, 1) * 0.35)); pts.push(at(1.045 + eg, -half(1, 2) * 0.3));
   for (let i = ts.length - 1; i >= 0; i--) pts.push(at(ts[i], -half(ts[i], 2)));
-  // 底下（臀部 → 裆）：往下圆过去
-  const b = half(t0, 2), f = half(t0, 1);
-  pts.push(at(t0 - 0.06 - eg, -b * 0.72)); pts.push(at(t0 - 0.085 - eg, -b * 0.25)); pts.push(at(t0 - 0.08 - eg, f * 0.3)); pts.push(at(t0 - 0.05 - eg, f * 0.78));
-  return { pts, at, half };
+  // 底下：浅浅地圆过去（2.5.1 只到髋下面一点，整个藏在「裆」里面 —— 不再自己圆出一个屁股）
+  const b = half(t0, 2), f = half(t0, 1), bottom = [at(t0 - 0.03 - eg, -b * 0.7), at(t0 - 0.05 - eg, -b * 0.2), at(t0 - 0.05 - eg, f * 0.3), at(t0 - 0.03 - eg, f * 0.75)];
+  pts.push(...bottom);
+  return { pts, at, half, bottom };
+}
+// 外包（凸包）：一圈点里最外面的那些，按顺序连起来
+function convexHull(P) {
+  const pts = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) return pts;
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of pts) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = pts.length - 1; i >= 0; i--) { const p = pts[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  lo.pop(); up.pop();
+  return lo.concat(up);
+}
+/* 2.5.1 裆（Jack：屁股还是像没穿裤子，有两瓣；腰带那儿还有点穿模）：
+   以前躯干往下圆出一个屁股，两条大腿根再从下面伸进胯里 —— 腿一抬（跑、跳、蹲），屁股自己一个圆、腿根那截平头从腰带后面露出来。
+   现在腰带底下这一块是一整块：躯干腰带以下那截 + 两个大腿根（圆的，半径 = 大腿根粗）+ 两条大腿往下 seat.reach 那一段，取外包。
+   外包是凸的：后面从腰顺下来到大腿后沿是一条线（站着），腿抬起来是一个圆的裤裆（跑、蹲），中间不会凹进去一道「股沟」。
+   tor = torsoShape 的结果；legs = [[大腿根, 膝盖, 脚踝], …]；g = 整圈往外胖多少 */
+function seatShape(tor, legs, g) {
+  const P = [], tb = BODY.belt.at - BODY.belt.h / 2 / BODY.bone.torso, rch = BODY.seat.reach;
+  for (const t of [tb, tb * 0.5, 0]) P.push(tor.at(t, tor.half(t, 1)), tor.at(t, -tor.half(t, 2)));
+  P.push(...tor.bottom);
+  const r0 = Math.max(0.6, (BODY.th[0][1] + BODY.th[0][2]) / 2 + g);
+  for (const [R, M, E] of legs) {
+    let ux = M[0] - R[0], uy = M[1] - R[1], ul = Math.hypot(ux, uy);
+    if (ul < 6) { ux = E[0] - R[0]; uy = E[1] - R[1]; ul = Math.hypot(ux, uy); }   // 膝盖冲着侧面（扫堂腿蹲着那条腿）：按整条腿的方向
+    if (ul < 1e-3) { ux = 0; uy = 1; ul = 1; }
+    ux /= ul; uy /= ul;
+    const nx = -uy, ny = ux, L = BODY.bone.th, d1 = Math.min(rch, ul);
+    for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; P.push([R[0] + Math.cos(a) * r0, R[1] + Math.sin(a) * r0]); }
+    for (const d of [d1 * 0.5, d1]) {
+      const w = Math.max(0.6, (profAt(BODY.th, d / L, 1) + profAt(BODY.th, d / L, 2)) / 2 + g);
+      P.push([R[0] + ux * d + nx * w, R[1] + uy * d + ny * w], [R[0] + ux * d - nx * w, R[1] + uy * d - ny * w]);
+    }
+  }
+  return convexHull(P);
 }
 
 /* ---------- 骨骼 → 一块一块 ----------
@@ -203,12 +246,13 @@ function bodyParts(J, g, only) {
       //     脚尖的方向：身体坐标里往前转 yaw、往这条腿自己那一侧（前腿 z+、后腿 z-）摆，再跟着身子转 spin，投到画面上剩多长
       const yaw = ((key === 'F' ? J.fyaw : J.byaw) || 0) * D2R, sp = J.spin || 0, zs = key === 'F' ? 1 : -1;
       const kk = Math.max(BODY.foot.w / (BODY.foot.heel + BODY.foot.toe), Math.abs(Math.cos(yaw) * Math.cos(sp) - zs * Math.sin(yaw) * Math.sin(sp)));
-      if (nU) parts.push({ k: key + 'U', pts: limbShape(R, M, BODY.th, aUp, g, BODY.thRoot).pts, far, layer });
+      // 2.5.1 大腿根是圆的（以前平头往胯里伸 9，腿一抬那截平头就从腰带后面露出来）—— 圆头整个藏在「裆」里面，看不出接头
+      if (nU) parts.push({ k: key + 'U', pts: limbShape(R, M, BODY.th, aUp, g).pts, far, layer });
       if (nL) parts.push({ k: key + 'L', pts: limbShape(M, E, BODY.sh, aLo, g).pts, far, layer });
       if (nE) parts.push({ k: key + 'F', pts: footShape(E, dx, dy, -sg * dy, sg * dx, g, Math.min(1, kk)), far, layer, foot: true });
     }
   };
-  const tor = need('torso') || need('neck') ? torsoShape(J.hip, J.neck, fx, fy, J.spin || 0, g) : null;
+  const tor = need('torso') || need('neck') || need('seat') ? torsoShape(J.hip, J.neck, fx, fy, J.spin || 0, g) : null;
   const nk = need('neck') ? limbShape(J.neck, J.neckTop, BODY.neck, 1, g) : null;
   // 头：圆
   const hr = B.head + g, head = [];
@@ -223,6 +267,8 @@ function bodyParts(J, g, only) {
   limb(farLeg[0], farLeg[1], farLeg[2], farLeg[3], farLeg[4], false, true, 'farLeg');
   if (need('torso')) parts.push({ k: 'torso', pts: tor.pts, layer: 'torso' });
   if (nk) parts.push({ k: 'neck', pts: nk.pts, layer: 'torso' });
+  // 2.5.1 裆：和躯干一层（盖住远侧那条腿的根），近侧那条腿的根画在它上面也看不出来（一样的颜色、圆头在里面）
+  if (need('seat') && tor) parts.push({ k: 'seat', pts: seatShape(tor, [[J.hipF, J.fk, J.ff], [J.hipB, J.bk, J.bf]], g), layer: 'torso', seat: true });
   limb(nearLeg[0], nearLeg[1], nearLeg[2], nearLeg[3], nearLeg[4], false, false, 'nearLeg');
   if (head.length) parts.push({ k: 'head', pts: head, layer: 'head', head: true });
   limb('a' + nearArm[0], nearArm[1], nearArm[2], nearArm[3], nearArm[4], true, false, 'nearArm');
@@ -323,6 +369,8 @@ function drawSilhouette(J, col, alpha, grow) {
   ctx.globalAlpha = 1;
 }
 const BODY_LAYERS = ['farArm', 'farLeg', 'torso', 'nearLeg', 'head', 'nearArm'];
+// 2.5.1 腿根上多大一圈不打亮边（腿从裆里出来以前）、近侧那条腿叠在远侧腿上的线离大腿根多远才开始描
+const LEG_ROOT_CUT = 11.5, LEG_LINE_CUT = 16;
 /* 整个人：J 骨骼，col 身体色，band 头带 / 腰带色。调用前整个人已经填过一遍本色（render.js 先填剪影、带一圈淡影）。
    一层一层从后往前画（每一层只在自己的外形里画）：先把这一层涂成本色（盖住后面几层的亮边），再画这一层侧面那道淡亮边；
    近侧的胳膊、腿叠在身子上的那一段，外沿描一道同样淡的亮线（整条合起来的外沿 —— 关节里面不会出线）。
@@ -342,19 +390,21 @@ function drawBody(J, col, band) {
     return p;
   };
   /* 根上那一截不描、不打亮边：腿是从胯里长出来的、胳膊是从肩膀里长出来的，不是一块拼上去的 ——
-     · 腿：腰带底下往上整片不画（大腿根伸进胯里那截藏在这里面），顺着大腿往回超过 4.5 的也不画；
+     · 腿：腰带底下往上整片不画；2.5.1 大腿根一圈（LEG_ROOT_CUT，腿从「裆」里出来以前）和裆里面也不画 —— 裆上不打亮边、不出线，
+       不然屁股那儿一道弧、两腿中间一道弧，合起来就是「两瓣屁股」（Jack）；
      · 胳膊：肩关节往身子那边（顺着大臂往回）不描 */
   const tr = bp.tor, tb = BODY.belt.at - BODY.belt.h / 2 / BODY.bone.torso;
   const beltCut = tr ? (() => { const a = tr.at(tb, 0), b = tr.at(tb + 1, 0), l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return halfPlane(a, (a[0] - b[0]) / l, (a[1] - b[1]) / l); })() : null;
+  const seatPart = bp.parts.find(p => p.seat), seatCut = seatPart ? polysPath([seatPart]) : null;
   const rootCut = (key, arm) => {
     const R0 = arm ? (key === 'F' ? J.shF : J.shB) : (key === 'F' ? J.hipF : J.hipB);
-    const M0 = arm ? (key === 'F' ? J.fe : J.be) : (key === 'F' ? J.fk : J.bk), E0 = arm ? (key === 'F' ? J.fh : J.bh) : (key === 'F' ? J.ff : J.bf);
+    if (!arm) { const p = new Path2D(); p.arc(R0[0], R0[1], LEG_ROOT_CUT, 0, Math.PI * 2); return p; }
+    const M0 = key === 'F' ? J.fe : J.be, E0 = key === 'F' ? J.fh : J.bh;
     let ux = M0[0] - R0[0], uy = M0[1] - R0[1], ul = Math.hypot(ux, uy);
-    if (ul < 6) { ux = E0[0] - R0[0]; uy = E0[1] - R0[1]; ul = Math.hypot(ux, uy); }   // 膝盖冲着侧面（大腿看着很短）：按整条腿的方向
+    if (ul < 6) { ux = E0[0] - R0[0]; uy = E0[1] - R0[1]; ul = Math.hypot(ux, uy); }
     if (ul < 1e-3) return null;
     ux /= ul; uy /= ul;
-    const back = arm ? 0.5 : -4.5;
-    return halfPlane([R0[0] + ux * back, R0[1] + uy * back], ux, uy);
+    return halfPlane([R0[0] + ux * 0.5, R0[1] + uy * 0.5], ux, uy);
   };
   const paint = (c, ...ps) => { ctx.fillStyle = c; for (const p of ps) if (p) ctx.fill(p); };
   let any = false;
@@ -373,26 +423,29 @@ function drawBody(J, col, band) {
       ctx.translate(-n[0] * w, -n[1] * w); paint(T.base, p); ctx.restore();
     };
     if (L === 'torso') {
-      // 躯干前沿的亮边只到腰带：腰带底下是胯，和两条大腿长在一起（不然抬腿时胯前面那道弧会从大腿底下露出来）
+      // 躯干前后两侧的亮边都只到腰带：腰带底下是裆（裤子），和两条大腿长在一起。
+      // 2.5.1：后沿以前一直描到屁股底下，屁股那一圈一道弧（Jack：像没穿裤子）—— 现在腰带以下前后都不打亮边
       rim(parts, nrm(f, -S.up), S.rim * 0.85);
-      if (tr) { const a = tr.at(tb, 0), b = tr.at(tb + 1, 0), l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; paint(T.base, halfPlane(a, (b[0] - a[0]) / l, (b[1] - a[1]) / l)); }
       rim(parts, nrm(-f, -S.up), S.rim);
+      if (tr) { const a = tr.at(tb, 0), b = tr.at(tb + 1, 0), l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; paint(T.base, halfPlane(a, (b[0] - a[0]) / l, (b[1] - a[1]) / l)); }
     }
     else if (arm) rim(parts, [0, -1], S.rimArm);
     else if (leg) {
       const s = key === 'F' ? sF : -sF;
       rim(parts.filter(p => !p.foot), nrm(s * f, -S.up), S.rim);
       rim(parts.filter(p => p.foot), nrm(s * f * 0.3, -1), S.rim);
-      paint(T.base, cut, beltCut);
+      paint(T.base, cut, beltCut, seatCut);
     }
     // 近侧的胳膊、腿叠在身子上：外沿描一道淡亮线（整条胳膊 / 整条腿合起来的外沿 —— 关节里面没有线）
     if ((L === 'nearArm' || L === 'nearLeg') && any) {
       paint(T.hl, under);
       if (leg) {
-        // 腿：叠在远侧那条腿上 —— 从腰带底下就描（两腿之间那道线，参考图那样）；叠在身子上 —— 离大腿根远一点才描（胯那儿不出一圈线）
+        // 腿：叠在远侧那条腿上描一道（两腿之间那道线，参考图那样）。2.5.1：离大腿根 LEG_LINE_CUT 以内、裆里面都不描 ——
+        // 以前从腰带底下就描，沿着近侧大腿后沿弯下来一道弧，和屁股那道弧合起来像两瓣屁股（Jack）
+        paint(T.hl, underLimb);
         const hp = key === 'F' ? J.hipF : J.hipB, ring = new Path2D();
-        ring.arc(hp[0], hp[1], BODY.th[0][2] + 2.5, 0, Math.PI * 2);
-        paint(T.base, ring); paint(T.hl, underLimb);
+        ring.arc(hp[0], hp[1], LEG_LINE_CUT, 0, Math.PI * 2);
+        paint(T.base, ring, seatCut);
       }
       paint(T.base, polysPath(inner.filter(p => p.layer === L)), cut, leg ? beltCut : null);
     }

@@ -367,16 +367,16 @@ const Sound = {
   },
   zhengUp(p, d) { ZHENG_UP.forEach((f, i) => this.zheng(f, 0.12 * p * (0.8 + i * 0.05), (d || 0) + i * 0.034, 1.1)); },
   zhengChord(p, d) { ZHENG_CHORD.forEach((f, i) => this.zheng(f, 0.15 * p * [1, 0.8, 0.7, 0.5][i], (d || 0) + i * 0.016, 1.7)); },
-  /* ---------- 菜单的声音（2.3；2.4 Jack：按下去那一声太诡异 —— 以前是往下滑的「嘟」）----------
-     移上去：轻轻一声木鱼「笃」；按下去：古筝拨一下「叮」（E，不滑音）+ 一点点「嗒」。菜单背景里也响（不走 ok() 的「菜单里不出声」）；
-     不走 fxDo（不是对局里的事）。2.4：一打开游戏就把声音引擎建好（软件版一进来就有声；网页版浏览器要先点一下页面），
-     按下去那一下要是声音引擎还睡着，先叫醒再响（以前第一下按了没声） */
+  /* ---------- 菜单的声音（2.3；2.4 按下去换成古筝；2.5.1 Jack：光标放上去全都不出声，点下去是木鱼声）----------
+     移上去、Tab 换焦点：不出声。按下去：一声木鱼「笃」—— 2.4 移上去那一声（空心的木头「笃」，音几十毫秒里落定）再厚一点：
+     多一个低一点的空腔音、一下木槌的「嗒」。菜单背景里也响（不走 ok() 的「菜单里不出声」）；不走 fxDo（不是对局里的事）。
+     一打开游戏就把声音引擎建好（软件版一进来就有声；网页版浏览器要先点一下页面），按下去那一下要是声音引擎还睡着，先叫醒再响 */
   uiReady() { return this.on && this.vol > 0 && !!this.ctx && this.ctx.state === 'running'; },
-  uiHover() {
-    if (!this.uiReady()) { if (this.on && this.ctx) this.wake(); return; }
-    const now = performance.now(); if (now - (this.uiT || 0) < 45) return; this.uiT = now;
-    this.glide(1520, 1380, 0.04, 0.07, 0.055);
-    this.nz(0.016, 2400, 3, 0.035, 'bandpass');
+  muyu(p, d) {
+    p = p || 1;
+    this.glide(1520, 1380, 0.035, 0.09, 0.075 * p, d);            // 木鱼的空腔：「笃」
+    this.glide(760, 700, 0.03, 0.07, 0.03 * p, d, 'triangle');      // 低一点的空腔音（厚一点）
+    this.nz(0.014, 2400, 3, 0.045 * p, 'bandpass', null, false, d);  // 木槌敲上去那一下
   },
   uiPress() {
     if (!this.on || this.vol <= 0) return;
@@ -384,9 +384,8 @@ const Sound = {
     if (!this.ctx) return;
     const play = () => {
       if (!this.uiReady()) return;
-      this.uiT = performance.now();
-      this.zheng(659.26, 0.16, 0, 0.5);
-      this.nz(0.012, 1900, 2, 0.05, 'bandpass');
+      const now = performance.now(); if (now - (this.uiT || 0) < 40) return; this.uiT = now;
+      this.muyu(1, 0);
     };
     if (this.ctx.state === 'running') play(); else this.ctx.resume().then(play).catch(() => {});
   },

@@ -246,9 +246,10 @@ const FRAME_NOTE = '1 帧 = 1/60 秒。射程是两人中心距（像素，含�
 // 键位表的一行一行：[说明, 动作…]
 const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']],
   ['冲刺', ['dash'], '按着挡朝对手冲 = 闪身']];
-// 2.4 冲刺：选了「双击」显示「左左 / 右右」；选了「冲刺键」显示冲刺键
-const dashCaps = set => set.dashMode === 'key' ? ((set.dash || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')
-  : ['left', 'right'].map(a => { const c = gEsc(keyName((set[a] || []).find(Boolean) || null)); return `<kbd>${c}</kbd><kbd>${c}</kbd>`; }).join('<i class="or">/</i>') + '<i class="or">双击</i>';
+// 2.4 冲刺：选了「双击」显示「左左 / 右右」；选了「冲刺键」显示冲刺键；2.5.1 选了「两种都用」两样都显示
+const dashKeyCaps = set => (set.dash || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—';
+const dashTapCaps = set => ['left', 'right'].map(a => { const c = gEsc(keyName((set[a] || []).find(Boolean) || null)); return `<kbd>${c}</kbd><kbd>${c}</kbd>`; }).join('<i class="or">/</i>') + '<i class="or">双击</i>';
+const dashCaps = set => set.dashMode === 'key' ? dashKeyCaps(set) : set.dashMode === 'both' ? dashTapCaps(set) + '<i class="or">或</i>' + dashKeyCaps(set) : dashTapCaps(set);
 const keyCaps = (set, acts) => acts[0] === 'dash' ? dashCaps(set) : acts.map(a => ((set[a] || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')).join('<i class="or">/</i>');
 
 /* ============================================================
@@ -314,7 +315,7 @@ const Guide = {
   },
   /* 招式：一张一张卡片（小图 + 名字 + 按法 + 系 / 段 + 一句话） */
   p_moves() {
-    return `<p class="g-lead">「系」决定谁克谁，「段」决定站着还是蹲着挡。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲', '跳'].concat(Keys.solo.dashMode === 'key' ? ['冲'] : []).map(c => gKbd(c)).join(' ')}</span></p>
+    return `<p class="g-lead">「系」决定谁克谁，「段」决定站着还是蹲着挡。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲', '跳'].concat(Keys.solo.dashMode !== 'tap' ? ['冲'] : []).map(c => gKbd(c)).join(' ')}</span></p>
       <div class="g-grid moves">${G_MOVES.map(g => {
         const d = MOVES[g.id];
         return `<article class="g-move">${iconSlot(g.icon, 108, 108)}<div class="gm-body"><h4>${d.label}</h4><div class="gm-how">${gText(g.how)}</div>
