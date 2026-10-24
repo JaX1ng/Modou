@@ -5,9 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>墨斗</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* 2.4 字体打包进游戏（Jack：别让上不了谷歌的人用不了）：不再向 Google Fonts 要字体 —— 马善政（毛笔字）、思源黑体（界面字）
+   裁成只含游戏里用到的字（fonts/*.woff2，python build.py --fonts 重新生成），和游戏放在一起。
+   打包时（build.py）：单文件 dist/modou.html 把字体直接嵌进去（双击、离线都能用）；网页版 dist/index.html 指向仓库里的 src/fonts/；
+   软件版换成自己那一套（多带 GB2312 一级常用字）。字体是 OFL 许可证（fonts/OFL-*.txt） */
+@font-face{font-family:"Ma Shan Zheng";font-style:normal;font-weight:400;font-display:swap;src:url(src/fonts/MaShanZheng-Regular.woff2) format("woff2")}
+@font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:400;font-display:swap;src:url(src/fonts/NotoSansSC-Regular.woff2) format("woff2")}
+@font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:500;font-display:swap;src:url(src/fonts/NotoSansSC-Medium.woff2) format("woff2")}
+@font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:700;font-display:swap;src:url(src/fonts/NotoSansSC-Bold.woff2) format("woff2")}
+</style>
 <style>
 :root{
   /* Layout: a hanging-scroll mount — dark silk border, one paper stage, the guide (教程) beneath as a second paper panel */
@@ -242,6 +249,9 @@ table.frames tbody tr:hover td{background:rgba(23,24,26,.04)}
 .ibtn.ghost.mn-close{width:100%;font-size:21px;color:var(--paper);box-shadow:inset 0 0 0 1.5px var(--silk-line)}
 .ibtn.ghost.mn-close:hover{background:var(--paper);color:var(--ink)}
 .mn-main{overflow:auto;padding:34px clamp(24px,5vw,80px) 64px;outline:none}
+/* 2.4（Jack：网页全屏、软件版的教程不要右边的滚动条）：教程、各个面板照样能滚（滚轮、触屏、↑↓ / PgUp / PgDn），只是不显示滚动条 */
+.mn-main,.mn-side,.overlay.scroll{scrollbar-width:none;-ms-overflow-style:none}
+.mn-main::-webkit-scrollbar,.mn-side::-webkit-scrollbar,.overlay.scroll::-webkit-scrollbar{display:none;width:0;height:0}
 .mn-main > *{max-width:1100px}
 .mn-h{margin-bottom:16px;border-bottom:2px solid var(--ink);padding-bottom:12px}
 .mn-h span{font-size:14px;letter-spacing:.3em;color:var(--cinnabar)}
@@ -341,6 +351,11 @@ details#manualBox .netbox{margin-top:6px}
 .kbtn.empty{color:#8a8b85;border-style:dashed}
 .kbtn.bad{background:var(--cinnabar);border-color:var(--cinnabar);color:var(--paper)}
 .kbtn.shared{background:#ecd48a;border-color:#a77c12}
+.kbtn.off,.kbtn:disabled{opacity:.38;cursor:default;border-style:dashed;background:transparent}
+.keytable tr.off td:first-child{color:#8a8b85}
+.dashmode{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;font-family:var(--brush);font-size:20px;color:var(--ink)}
+.dashmode .seg button{font-size:17px;padding:7px 12px 6px}
+#dashHint{max-width:440px;margin-top:-4px}
 #keysPanel .seg{margin-top:-2px}
 .kbtn.wait{background:var(--ink);color:var(--paper);animation:kblink 1s steps(2) infinite}
 @keyframes kblink{50%{opacity:.55}}
@@ -595,6 +610,8 @@ html.desktop .guide{display:none}
         <div class="seg" role="group" aria-label="改哪一套键位"><button type="button" data-who="0" aria-pressed="true">单人</button><button type="button" data-who="1" aria-pressed="false">双人·玩家一</button><button type="button" data-who="2" aria-pressed="false">双人·玩家二</button></div>
         <p class="hint" id="keyWhoHint">单人：人机、联机、训练场用这一套。</p>
         <p class="hint">点一个格子，再按想用的键，或者按鼠标按键（右键、中键、侧键在哪按都行；左键要再点一下这一格）。按 Esc 取消，按退格清空这一格。设置存在这台电脑的浏览器里，换新版本文件也还在。</p>
+        <div class="dashmode"><span>冲刺怎么按</span><div class="seg" role="group" aria-label="冲刺怎么按"><button type="button" data-dm="tap" aria-pressed="true">双击左 / 右</button><button type="button" data-dm="key" aria-pressed="false">按冲刺键</button></div></div>
+        <p class="hint" id="dashHint"></p>
         <table class="keytable"><thead><tr><th>动作</th><th>键位一</th><th>键位二</th></tr></thead><tbody id="keyRows"></tbody></table>
         <p class="err" id="keyMsg" role="alert"></p>
         <p class="hint" id="keyInfo"></p>
@@ -617,6 +634,11 @@ html.desktop .guide{display:none}
           <b id="volVal">50</b>
         </div>
         <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>
+        <div id="dispBox" hidden>
+          <p class="step">画面</p>
+          <div class="seg" role="group" aria-label="画面"><button type="button" data-disp="fullscreen" aria-pressed="false">全屏</button><button type="button" data-disp="borderless" aria-pressed="false">全屏窗口</button><button type="button" data-disp="window" aria-pressed="false">窗口</button></div>
+          <p class="hint" id="dispHint"></p>
+        </div>
         <div class="row"><button class="ibtn" id="btnSetDone" type="button">确认</button></div>
       </div>
     </div>
@@ -759,7 +781,7 @@ html.desktop .guide{display:none}
     <div class="acts">
       <button class="tc" data-a="block" type="button">挡</button>
       <button class="tc" data-a="grab" type="button">拿</button>
-      <span></span>
+      <button class="tc" data-a="dash" type="button" aria-label="冲刺">冲</button>
       <button class="tc" data-a="jab" type="button">拳</button>
       <button class="tc" data-a="heavy" type="button">重</button>
       <button class="tc" data-a="kick" type="button">踢</button>
@@ -782,7 +804,7 @@ html.desktop .guide{display:none}
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '2.3.0';
+const VERSION = '2.4.0';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -941,11 +963,7 @@ const NET = {
   GUEST_WAIT: 300000,     // 加入方生成应答码后最多等房主 5 分钟（中途浏览器报「失败」也不放弃，房主一连就通）
 };
 
-// 骨骼长度与配色
-// 1.9.4 手臂比例（Jack：小臂短一点、大臂长一点）：大臂 24 → 26.5、小臂 25 → 22.5，整条胳膊一样长（够得着的地方不变）
-const BONE = { torso: 44, neck: 6, head: 13, ua: 26.5, fa: 22.5, th: 34, sh: 35 };
-const THICK = 1.6;                        // 线条粗细倍率（1.8.0 从 1.3 加粗；1.7.0 去掉了身体外面那圈纸色白边）
-const FIST_R = 3.5;                       // 拳头半径（× THICK）。1.9.0 从 4.8 改小，只比手腕粗一点
+// 配色。2.4 骨骼长短、人物外形（比例、肌肉、阴影）都搬到 body.js 的 BODY 表（BONE 也在那里）
 const C = { ink: '#17181a', indigo: '#28518f', cin: '#b8321d', gam: '#d39c1f', paper: '#ebeae2', paper2: '#dcdad0', dust: '#8d8a7e' };
 // 人物颜色（1.7.0）：color 身体、text 写在纸上的字（颜色太浅就用深一点的）。名字就是颜色名。
 // 2.0.2（Jack：头带、腰带的颜色怪）：头带、发带、腰带不再另配一个颜色，用身体色提亮的那一版（fx.js palOf 的 band，和身子分得开、一看是一家的）
@@ -964,28 +982,447 @@ const BRUSH = '"Ma Shan Zheng","Kaiti SC","STKaiti","KaiTi",serif';
 const UIF = '"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif';
 // 2.1 肘、膝换弯向时每帧最多挪多少（-1 → +1 要 5 帧；只是画面，见 fighter.js fk()）
 const IK_FLIP = 0.4;
+// 2.4 出招时拳脚最多扎进对方身子多深（画面，fighter.js fitContact）：离得近了，胳膊、腿自己弯回来一点，拳脚停在对方身上，不穿过去
+const CONTACT_SINK = 7;
 
 // 小工具。注意：rnd/pick 只能用在特效和 AI 里，战斗逻辑不能用随机数（联机靠逻辑可重放）
+// 2.4：rnd（特效、画面用）换成自己的随机数 vrnd，不再吃 Math.random —— 电脑 AI 用 Math.random（pick 和 ai.js 里的 R），
+// 画面多一颗火星、少一粒尘，不会让电脑下一步变了（测试里给 AI 固定了种子，以前改个动作电脑就打得不一样）
 const D2R = Math.PI / 180;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-const rnd = (a, b) => a + Math.random() * (b - a);
+let vrSeed = 0x9e3779b9;
+const vrnd = () => (vrSeed = (Math.imul(vrSeed, 1664525) + 1013904223) >>> 0) / 4294967296;
+const rnd = (a, b) => a + vrnd() * (b - a);
+const vpick = arr => arr[(vrnd() * arr.length) | 0];
 const pick = arr => arr[(Math.random() * arr.length) | 0];
 const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+</script>
+<script>
+'use strict';
+/* ============================================================
+   人物模型（2.4，Jack：比例像真人、肌肉线条、阴影体现立体、关节不再半透明、前后分得清）
+   想调人物「长什么样」只改这个文件最上面的 BODY 表；动作（姿势、招式）在 pose.js / moves.js。
+   调完打开 poses.html（动作台）看效果，滑块调好了能直接复制出数值贴回来。
+
+   · 骨架：髋 → 脊柱 → 脖子根 → 脖子 → 头；两个肩关节（拧腰 tw 时前后错开）；两个大腿根；肘、膝用两节 IK（fighter.js fk()）
+   · 外形：每一节（大臂、小臂、大腿、小腿、脖子）按「轮廓表」长出一圈外形 —— 沿着骨头走，前侧、后侧各给一串半宽，
+     肌肉的鼓包（三角肌、二头、股四头、小腿肚……）就是这串数字里鼓起来的那几格；躯干是倒三角（胸宽、腰细、臀圆）
+   · 画法：一块一块按前后顺序整块不透明地画（远侧手 → 远侧腿 → 躯干 → 近侧腿 → 头 → 近侧手），
+     阴影用「错位填色」：整块先涂亮色，再把同一块往背光那边挪几像素涂本色 —— 剩下的那一道就是受光的亮边（参考图那种），
+     背光那边同样压一道暗边；肌肉的分界画成几道浅线；关节（肘、膝）里侧一道暗折痕、外侧一点亮
+   · 前后：近侧（离镜头近）的手脚描一圈浅边，叠在身子上分得开；远侧的手脚整块用淡一点的墨（不透明，像水墨画里远的东西淡），
+     关节、重叠的地方不会再叠出深一块浅一块
+   · 参考图的习惯：护在下巴前面的后手、往前伸的前腿在近侧（离镜头近）；前手、后腿在远侧。转过身（spin 过了 90°）两边对调
+   ============================================================ */
+const BODY = {
+  // 骨头长度（逻辑像素）。头是半径。肩 = 肩关节在脊柱上离髋多远（比脖子根低一点：斜方肌往下斜）
+  // 2.4 比例（Jack：头比以前小、比参考图第三张略大一点点；手臂比以前短；整体像真人）：
+  //   头半径 13 → 12（站着约 6.3 个头高，以前 5.5）；腿 69 → 81（大腿 39 + 小腿 37 + 脚踝 4.8）；手臂 49 → 48（大臂 25 + 小臂到拳心 23），
+  //   身子比以前粗壮得多，看着手就短了；前手护在肩前收得更紧
+  bone: { torso: 46, shoulder: 41, neck: 4.4, head: 12, ua: 25, fa: 23, th: 39, sh: 37, ankle: 4.8 },
+  shoulderW: 13.5,   // 肩宽的一半：拧腰（tw）时两个肩膀前后错开 ±shoulderW·sin(tw)；转身（spin）时左右分开
+  hipW: 6,           // 两个大腿根离中线多远（转身时左右分开用）
+  hipSplit: 2.4,     // 侧面看两个大腿根前后错开一点（前腿根靠前），两条腿分得开
+  wrist: 4.4,        // 小臂画到拳心往回这么多（这一截被拳头盖住）
+  fist: { len: 13.2, h: 11.6, r: 4.8 },        // 拳头：顺着小臂方向的长、横着的高、圆角
+  foot: { heel: 6.2, toe: 17.4, h: 7.4, toeH: 5.6 },   // 脚（鞋）：脚跟在脚踝后面多远、脚尖在前面多远、鞋高、鞋头高
+  // 轮廓表：[沿着这一节骨头的位置 0（根）~1（梢）, 前侧半宽, 后侧半宽]。「前侧」：
+  //   大臂 = 二头肌那一侧（胳膊弯起来小臂折过去的那一侧）；小臂 = 掌心那一侧；大腿 = 膝盖顶出去那一侧；小腿 = 小腿骨那一侧（后侧是小腿肚）
+  ua: [[0, 7.0, 7.2], [0.14, 6.6, 7.0], [0.34, 5.7, 5.7], [0.5, 5.6, 5.3], [0.78, 4.5, 4.5], [1, 4.0, 4.1]],
+  fa: [[0, 4.3, 4.2], [0.2, 4.8, 4.5], [0.45, 4.3, 4.0], [0.75, 3.6, 3.4], [1, 3.2, 3.1]],
+  th: [[0, 8.4, 8.8], [0.2, 8.2, 8.1], [0.45, 7.5, 7.1], [0.72, 6.3, 6.0], [0.9, 5.5, 5.4], [1, 5.2, 5.2]],
+  sh: [[0, 5.1, 5.5], [0.16, 4.8, 6.9], [0.34, 4.6, 6.5], [0.58, 4.1, 5.1], [0.82, 3.6, 3.8], [1, 3.4, 3.4]],
+  neck: [[0, 6.0, 6.8], [0.6, 5.2, 5.6], [1, 5.0, 5.4]],
+  // 躯干：[沿脊柱的位置（0 = 髋关节，1 = 脖子根；负的在髋下面）, 胸腹那侧半宽, 后背那侧半宽, 正面对着镜头时的半宽]
+  // 侧着看：胸大肌鼓出来、腰收进去、臀部往后圆；正面看（转身转到一半）：肩宽、腰细
+  torso: [[-0.17, 9.6, 11.4, 12.4], [-0.06, 11.6, 13.0, 13.6], [0.06, 11.4, 12.2, 13.4], [0.2, 10.6, 10.6, 12.2],
+    [0.34, 10.8, 10.4, 12.6], [0.52, 12.6, 11.6, 14.6], [0.68, 15.0, 13.4, 17.0], [0.82, 14.8, 15.2, 18.8],
+    [0.91, 13.4, 14.4, 16.4], [0.97, 9.8, 11.0, 11.4], [1, 6.8, 7.4, 7.6]],
+  belt: { at: 0.11, h: 5.6 },                  // 腰带：在脊柱上的位置（参考图那样系得低，在胯上）、宽
+  // 阴影（单位：逻辑像素）：亮边多宽、暗边多宽；光从哪边来（人自己的方向：-x = 背后，-y = 上面）
+  light: [-0.6, -0.8], rim: 1.9, rimTorso: 2.8, dark: 2.0,
+  // 颜色（从身体色算，k = 往纸色 / 往黑里混多少）：近侧亮边、远侧整块（墨往淡里 far、别的颜色往暗里 farDark）、远侧亮边、背光暗边、肌肉线、近侧描边
+  tone: { rim: 0.34, far: 0.09, farDark: 0.24, farRim: 0.3, dark: 0.32, line: 0.15, edge: 0.26, edgeW: 0.85, lineW: 0.95 },
+};
+// 以前的名字（别的文件、测试还在用）：头半径、大臂、小臂、大腿、小腿、躯干、脖子
+const BONE = { torso: BODY.bone.torso, neck: BODY.bone.neck, head: BODY.bone.head, ua: BODY.bone.ua, fa: BODY.bone.fa, th: BODY.bone.th, sh: BODY.bone.sh };
+
+/* ---------- 颜色 ---------- */
+const bodyRgb = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+const bodyMix = (a, b, k) => { const A = bodyRgb(a), B = bodyRgb(b); return '#' + A.map((v, i) => clamp(Math.round(v + (B[i] - v) * k), 0, 255).toString(16).padStart(2, '0')).join(''); };
+const BODY_TONES = {};
+function bodyTones(col) {
+  if (BODY_TONES[col]) return BODY_TONES[col];
+  // 远侧：很深的颜色（墨）往纸色提一点点（水墨画里远的淡）；别的颜色往暗里压（背光那一侧）—— 都是实心的
+  const T = BODY.tone, P = C.paper, lum = bodyRgb(col).reduce((a, v, i) => a + v * [0.299, 0.587, 0.114][i], 0) / 255;
+  const far = lum < 0.16 ? bodyMix(col, P, T.far) : bodyMix(col, '#000000', T.farDark);
+  return (BODY_TONES[col] = { base: col, rim: bodyMix(col, P, T.rim), far, farRim: bodyMix(far, P, T.farRim * 0.7), dark: bodyMix(col, '#000000', T.dark),
+    farDark: bodyMix(far, '#000000', T.dark * 0.6), line: bodyMix(col, P, T.line), farLine: bodyMix(far, P, T.line * 0.8), edge: bodyMix(col, P, T.edge) });
+}
+
+/* ---------- 外形 ---------- */
+function bodyCmr(p0, p1, p2, p3, t) {
+  const t2 = t * t, t3 = t2 * t;
+  return 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3);
+}
+// 轮廓表在 t 处的值（第 k 列），控制点之间用平滑曲线连
+function profAt(P, t, k) {
+  if (t <= P[0][0]) return P[0][k];
+  for (let i = 1; i < P.length; i++) {
+    if (t <= P[i][0]) {
+      const a = P[Math.max(0, i - 2)], b = P[i - 1], c = P[i], d = P[Math.min(P.length - 1, i + 1)];
+      return bodyCmr(a[k], b[k], c[k], d[k], (t - b[0]) / (c[0] - b[0]));
+    }
+  }
+  return P[P.length - 1][k];
+}
+/* 一节肢体（A → B）的外形：一圈点。as = 前侧在哪边（+1：法线 n = (-uy, ux) 那边是前侧；-1 反过来；中间两边按比例混，
+   肢体伸直、看不出弯向时就是两边的平均）。g = 往外多胖一点（运气的光用）。返回 { pts, n, u, L }，pts 顺时针、逆时针不一定 */
+function limbShape(A, B, prof, as, g) {
+  const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1e-3, ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+  const wa = (clamp(as, -1, 1) + 1) / 2, N = 8, left = [], right = [];
+  let wl0 = 0, wr0 = 0, wl1 = 0, wr1 = 0;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, f = profAt(prof, t, 1), b = profAt(prof, t, 2);
+    const wl = Math.max(0.6, b + (f - b) * wa + g), wr = Math.max(0.6, f + (b - f) * wa + g);
+    const cx = A[0] + dx * t, cy = A[1] + dy * t;
+    left.push([cx + nx * wl, cy + ny * wl]); right.push([cx - nx * wr, cy - ny * wr]);
+    if (i === 0) { wl0 = wl; wr0 = wr; } if (i === N) { wl1 = wl; wr1 = wr; }
+  }
+  const pts = left.slice(), an = Math.atan2(ny, nx);
+  const cap = (cx, cy, r, a0, a1) => { for (let i = 1; i < 6; i++) { const a = a0 + (a1 - a0) * i / 6; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+  // 梢头：从左边绕到右边（经过 +u）；根头：从右边绕回左边（经过 -u）
+  cap(B[0] + nx * (wl1 - wr1) / 2, B[1] + ny * (wl1 - wr1) / 2, (wl1 + wr1) / 2, an, an - Math.PI);
+  for (let i = N; i >= 0; i--) pts.push(right[i]);
+  cap(A[0] + nx * (wl0 - wr0) / 2, A[1] + ny * (wl0 - wr0) / 2, (wl0 + wr0) / 2, an + Math.PI, an);
+  return { pts, nx, ny, ux, uy, L, wa };
+}
+// 拳头：顺着小臂方向的圆角方块（中心 H，方向 u）
+function fistShape(H, ux, uy, g) {
+  const Fi = BODY.fist, hl = Fi.len / 2 + g * 0.5, hh = Fi.h / 2 + g * 0.5, r = Math.min(Fi.r + g * 0.5, hh - 0.5), nx = -uy, ny = ux, pts = [];
+  for (const [sx, sy, a0] of [[1, 1, 0], [-1, 1, Math.PI / 2], [-1, -1, Math.PI], [1, -1, Math.PI * 1.5]]) {
+    const cx = sx * (hl - r), cy = sy * (hh - r);
+    for (let i = 0; i <= 4; i++) {
+      const a = a0 + Math.PI / 2 * i / 4, lx = cx + Math.cos(a) * r, ly = cy + Math.sin(a) * r;
+      pts.push([H[0] + ux * lx + nx * ly, H[1] + uy * lx + ny * ly]);
+    }
+  }
+  return pts;
+}
+// 脚（鞋）：脚踝 K，脚尖方向 d，s = 朝鞋底的方向。参考图那种圆头鞋
+const FOOT_PTS = (() => {
+  const Fo = BODY.foot, a = BODY.bone.ankle;
+  return [[-2.6, -2.6], [-Fo.heel + 0.6, -0.9], [-Fo.heel, 1.4], [-Fo.heel + 0.8, a - 0.3], [-Fo.heel + 2.4, a + 0.3], [Fo.toe - 4.5, a + 0.35],
+    [Fo.toe - 1.6, a - 0.2], [Fo.toe, a - 1.9], [Fo.toe - 0.5, a - Fo.toeH + 0.6], [Fo.toe - 3, a - Fo.toeH - 0.3], [6.5, -1.9], [2.2, -3.4]];
+})();
+function footShape(K, dx, dy, sx, sy, g) {
+  return FOOT_PTS.map(([x, y]) => { const k = 1 + g / 8; return [K[0] + (dx * x + sx * y) * k, K[1] + (dy * x + sy * y) * k]; });
+}
+/* 躯干：沿脊柱（髋 → 脖子根）长出来。fx, fy = 身子朝前的方向（垂直于脊柱）；spin = 转身角（转到一半时是正面，宽）。
+   返回外形一圈点 + 一个 at(t, w) 换算（脊柱上 t 处、往前 w 的那个点，画肌肉线、腰带用） */
+function torsoShape(H, N, fx, fy, spin, g) {
+  const dx = N[0] - H[0], dy = N[1] - H[1], P = BODY.torso;
+  const ss = Math.abs(Math.sin(spin)), cs = Math.abs(Math.cos(spin));
+  const half = (t, k) => profAt(P, t, k) * cs + profAt(P, t, 3) * ss + g;     // k = 1 胸腹、2 后背
+  const at = (t, w) => [H[0] + dx * t + fx * w, H[1] + dy * t + fy * w];
+  const ts = [], t0 = P[0][0];
+  for (let i = 0; i <= 14; i++) ts.push(t0 + (1 - t0) * i / 14);
+  const pts = [];
+  for (const t of ts) pts.push(at(t, half(t, 1)));
+  // 顶上（斜方肌 → 脖子根），往上拱一点
+  pts.push(at(1.035, half(1, 1) * 0.35)); pts.push(at(1.045, -half(1, 2) * 0.3));
+  for (let i = ts.length - 1; i >= 0; i--) pts.push(at(ts[i], -half(ts[i], 2)));
+  // 底下（臀部 → 裆）：往下圆过去
+  const b = half(t0, 2), f = half(t0, 1);
+  pts.push(at(t0 - 0.06, -b * 0.72)); pts.push(at(t0 - 0.085, -b * 0.25)); pts.push(at(t0 - 0.08, f * 0.3)); pts.push(at(t0 - 0.05, f * 0.78));
+  return { pts, at, half };
+}
+
+/* ---------- 骨骼 → 一块一块 ----------
+   J 是 fighter.js fk() 算出来的世界坐标骨骼。返回按画的先后排好的部件：{ k 名字, pts 外形, far 远侧, lines 肌肉线, joint 关节折痕 }
+   only（可选，Set）：只要这几块（量碰没碰到时一帧要算好几回，只算用得着的）。块的名字：
+   aFU / aFL / aFH 前手大臂 / 小臂 / 拳，aB* 后手；FU / FL / FF 前腿大腿 / 小腿 / 脚，B* 后腿；torso、neck、head */
+function bodyParts(J, g, only) {
+  g = g || 0;
+  const need = k => !only || only.has(k);
+  const B = BODY.bone, f = J.facing * (J.turned ? -1 : 1);
+  // 脊柱、朝前
+  const sx = J.neck[0] - J.hip[0], sy = J.neck[1] - J.hip[1], sl = Math.hypot(sx, sy) || 1;
+  const fx = f * (-sy / sl), fy = f * (sx / sl);
+  const parts = [];
+  // 两节肢体：根 R、关节 M、梢 E；hint = 关节该往哪边顶（世界方向）；arm：是不是胳膊
+  const limb = (key, R, M, E, hint, arm, far) => {
+    const nU = need(key + 'U'), nL = need(key + 'L'), nE = need(key + (arm ? 'H' : 'F'));
+    if (!nU && !nL && !nE) return;
+    // 「前侧」在哪边：胳膊 —— 小臂折向的那一侧（大臂）/ 朝大臂的那一侧（小臂）；腿 —— 膝盖顶出去的那一侧。伸直了看不出来，就按 hint 定
+    const side = (A2, B2, toward, sign) => {
+      const dx = B2[0] - A2[0], dy = B2[1] - A2[1], L = Math.hypot(dx, dy) || 1e-3, nx = -dy / L, ny = dx / L;
+      const tx = toward[0] - B2[0], ty = toward[1] - B2[1], tl = Math.hypot(tx, ty) || 1e-3;
+      const v = sign * (nx * tx + ny * ty) / tl / 0.14;
+      const hs = (nx * hint[0] + ny * hint[1]) >= 0 ? 1 : -1;               // 关节往 hint 那边顶
+      const h = arm ? -hs : hs;                                               // 胳膊：前侧在肘尖的反面；腿：前侧就是膝盖那一面
+      return Math.abs(v) >= 1 ? Math.sign(v) : v + (1 - Math.abs(v)) * h;
+    };
+    const aUp = side(R, M, E, arm ? 1 : -1);       // 大臂：梢往小臂那边折 = 前侧；大腿：小腿往后收 = 后侧
+    const aLo = side(M, E, R, arm ? 1 : -1);
+    if (arm) {
+      const ex = E[0] - M[0], ey = E[1] - M[1], el = Math.hypot(ex, ey) || 1e-3, ux = ex / el, uy = ey / el;
+      const W = [E[0] - ux * BODY.wrist, E[1] - uy * BODY.wrist];
+      if (nU) { const up = limbShape(R, M, BODY.ua, aUp, g); parts.push({ k: key + 'U', pts: up.pts, far, sh: up, seg: 'ua', A: R }); }
+      if (nL) { const lo = limbShape(M, W, BODY.fa, aLo, g); parts.push({ k: key + 'L', pts: lo.pts, far, sh: lo, seg: 'fa', A: M, joint: { at: M, a: R, b: E } }); }
+      if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, fist: { E, ux, uy } });
+    } else {
+      // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）
+      const kd = key === 'F' ? J.fkd : J.bkd, sg = f * (kd < 0 ? -1 : 1);
+      const lx = E[0] - M[0], ly = E[1] - M[1], ll = Math.hypot(lx, ly) || 1e-3;
+      const up2 = Math.cos(J.rot) > 0.7 ? 1 : 0, gr = up2 * clamp(1 - (FLOOR - B.ankle - E[1]) / 7, 0, 1);
+      const pa = (90 - 22 * (1 - gr)) * D2R * -sg, ca = Math.cos(pa), sa = Math.sin(pa);
+      let dx = (lx * ca - ly * sa) / ll, dy = (lx * sa + ly * ca) / ll;
+      dx += (sg - dx) * gr; dy += (0 - dy) * gr;
+      let dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+      const tilt = (key === 'F' ? J.fft : J.bft) || 0;        // 脚尖往上勾（度）
+      if (tilt) { const a = -sg * tilt * D2R, c = Math.cos(a), s2 = Math.sin(a), x2 = dx * c - dy * s2; dy = dx * s2 + dy * c; dx = x2; }
+      if (nU) { const up = limbShape(R, M, BODY.th, aUp, g); parts.push({ k: key + 'U', pts: up.pts, far, sh: up, seg: 'th', A: R }); }
+      if (nL) { const lo = limbShape(M, E, BODY.sh, aLo, g); parts.push({ k: key + 'L', pts: lo.pts, far, sh: lo, seg: 'sh', A: M, joint: { at: M, a: R, b: E } }); }
+      if (nE) parts.push({ k: key + 'F', pts: footShape(E, dx, dy, -sg * dy, sg * dx, g), far, foot: true });
+    }
+  };
+  const tor = need('torso') || need('neck') ? torsoShape(J.hip, J.neck, fx, fy, J.spin || 0, g) : null;
+  const nk = need('neck') ? limbShape(J.neck, J.neckTop, BODY.neck, 1, g) : null;
+  // 头：圆
+  const hr = B.head + g * 0.5, head = [];
+  if (need('head')) for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; head.push([J.head[0] + Math.cos(a) * hr, J.head[1] + Math.sin(a) * hr]); }
+  // 近侧 / 远侧：护着下巴的后手、往前的前腿在近侧；转过身两边对调
+  const t = !!J.turned;
+  const farArm = t ? ['B', J.shB, J.be, J.bh, J.hBe] : ['F', J.shF, J.fe, J.fh, J.hFe];
+  const nearArm = t ? ['F', J.shF, J.fe, J.fh, J.hFe] : ['B', J.shB, J.be, J.bh, J.hBe];
+  const farLeg = t ? ['F', J.hipF, J.fk, J.ff, J.hFk] : ['B', J.hipB, J.bk, J.bf, J.hBk];
+  const nearLeg = t ? ['B', J.hipB, J.bk, J.bf, J.hBk] : ['F', J.hipF, J.fk, J.ff, J.hFk];
+  limb('a' + farArm[0], farArm[1], farArm[2], farArm[3], farArm[4], true, true);
+  limb(farLeg[0], farLeg[1], farLeg[2], farLeg[3], farLeg[4], false, true);
+  if (need('torso')) parts.push({ k: 'torso', pts: tor.pts, torso: tor, fx, fy });
+  if (nk) parts.push({ k: 'neck', pts: nk.pts, sh: nk, seg: 'neck' });
+  limb(nearLeg[0], nearLeg[1], nearLeg[2], nearLeg[3], nearLeg[4], false, false);
+  if (head.length) parts.push({ k: 'head', pts: head, head: true });
+  limb('a' + nearArm[0], nearArm[1], nearArm[2], nearArm[3], nearArm[4], true, false);
+  return { parts, f, fx, fy, tor };
+}
+
+/* ---------- 碰没碰到（2.4：打中时拳脚要真的碰到对面身上 —— 动作台、测试都用这个量） ----------
+   strikeParts(J, limb)：出招的那只拳 / 脚 / 肘 / 肩是哪几块（外形点）；bodyGap(点, 对手骨骼)：这些点离对手身子最近还差多少
+   （正 = 还差这么多像素才碰到；负 = 已经扎进去这么深）；bodyPen：往前打过了对方迎面那一层多远（离得近时拳脚停在身上用，fighter.js fitContact） */
+const STRIKE_SET = { fh: ['aFH'], bh: ['aBH'], ff: ['FF', 'FL'], bf: ['BF', 'BL'], fe: ['aFL', 'aFU'], be: ['aBL', 'aBU'], sh: ['aFU', 'aBU', 'torso'] };
+for (const k in STRIKE_SET) STRIKE_SET[k] = new Set(STRIKE_SET[k]);
+function strikeParts(J, limb, parts) {
+  parts = parts || bodyParts(J, 0, STRIKE_SET[limb]).parts;
+  const by = k => parts.filter(p => p.k === k).map(p => p.pts);
+  if (limb === 'fh') return by('aFH');
+  if (limb === 'bh') return by('aBH');
+  if (limb === 'ff') return by('FF').concat(by('FL'));
+  if (limb === 'bf') return by('BF').concat(by('BL'));
+  if (limb === 'fe') return by('aFL').concat(by('aFU'));
+  if (limb === 'be') return by('aBL').concat(by('aBU'));
+  if (limb === 'sh') return by('aFU').concat(by('aBU'), by('torso'));
+  return [];
+}
+function pointInPoly(x, y, pts) {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[i], b = pts[j];
+    if ((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+  }
+  return c;
+}
+function distToPoly(x, y, pts) {
+  let m = 1e9;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const a = pts[j], b = pts[i], dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy || 1e-6;
+    const t = clamp(((x - a[0]) * dx + (y - a[1]) * dy) / L, 0, 1), ex = a[0] + dx * t - x, ey = a[1] + dy * t - y;
+    m = Math.min(m, Math.hypot(ex, ey));
+  }
+  return m;
+}
+function bodyGap(polys, J2) {
+  const tgt = bodyParts(J2, 0).parts.map(p => p.pts);
+  let best = 1e9;
+  for (const poly of polys) for (const [x, y] of poly) {
+    let inside = 0, out = 1e9;
+    for (const q of tgt) { const d = distToPoly(x, y, q); if (pointInPoly(x, y, q)) inside = Math.max(inside, d); else out = Math.min(out, d); }
+    const g = inside > 0 ? -inside : out;
+    if (g < best) best = g;
+  }
+  return best;
+}
+
+// 打进去多深：polys 往 dir（1 往右 / -1 往左）打，最靠前的那一点过了对方身子迎面那一层多远（还没碰到 = 负的）。
+// 按横着的一条条线量（这个高度上对方身子最靠近打过来那一边的边），拳头整个穿过去到了身子后面也算得出来（bodyGap 那时候以为又「没碰到」了）。
+// noArms：对方的胳膊不算（没在挡的人，拳头从他护着的手上面过去打在身上）
+// 对方的外形（量 bodyPen 用）：每一块的点 + 上下范围（这一块不在这个高度上就不用一条边一条边看）
+const bodyTargets = (J2, noArms, parts) => (parts || bodyParts(J2, 0).parts).filter(p => !(noArms && p.k[0] === 'a')).map(p => {
+  let y0 = 1e9, y1 = -1e9; for (const q of p.pts) { if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
+  return { pts: p.pts, y0, y1 };
+});
+function bodyPen(polys, J2, dir, noArms) { return bodyPenT(polys, bodyTargets(J2, noArms), dir); }
+// 同上，对方的外形已经算好了（tgt = bodyTargets(...)，一帧里量好几次时省得每次重算）
+function bodyPenT(polys, tgt, dir) {
+  let best = -1e9;
+  for (const poly of polys) for (const [x, y] of poly) {
+    let near = 1e9;
+    for (const T of tgt) {
+      if (y < T.y0 || y > T.y1) continue;
+      const q = T.pts;
+      for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+        const a = q[j], c = q[i];
+        if ((a[1] > y) !== (c[1] > y)) { const u = (a[0] + (c[0] - a[0]) * (y - a[1]) / (c[1] - a[1])) * dir; if (u < near) near = u; }
+      }
+    }
+    if (near < 1e9 && x * dir - near > best) best = x * dir - near;
+  }
+  return best;
+}
+
+/* ---------- 画 ---------- */
+function bodyPath(pts, dx, dy) {
+  const p = new Path2D(), o = dx || 0, q = dy || 0;
+  p.moveTo(pts[0][0] + o, pts[0][1] + q);
+  for (let i = 1; i < pts.length; i++) p.lineTo(pts[i][0] + o, pts[i][1] + q);
+  p.closePath();
+  return p;
+}
+// 一圈点的绕向（剪影要把所有块合成一个路径填一次：绕向统一，重叠的地方才不会挖成洞）
+function signedArea(pts) { let s = 0; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) s += (pts[j][0] - pts[i][0]) * (pts[j][1] + pts[i][1]); return s; }
+// 整个人的剪影（残影、运气的光、挨打白闪、身子外面那圈影子）：一个路径、填一次 —— 关节、重叠的地方不会叠出深色的点
+function bodySilhouette(J, g) {
+  const { parts } = bodyParts(J, g || 0), p = new Path2D();
+  for (const pt of parts) {
+    const pts = signedArea(pt.pts) < 0 ? pt.pts.slice().reverse() : pt.pts;
+    p.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) p.lineTo(pts[i][0], pts[i][1]);
+    p.closePath();
+  }
+  return p;
+}
+function drawSilhouette(J, col, alpha, grow) {
+  if (alpha <= 0) return;
+  ctx.globalAlpha = Math.min(1, alpha); ctx.fillStyle = col;
+  ctx.fill(bodySilhouette(J, grow));
+  ctx.globalAlpha = 1;
+}
+// 一条线（肌肉分界）：pts 一串点，画成平滑的曲线
+function bodyStroke(pts, col, w) {
+  if (pts.length < 2) return;
+  ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+  if (pts.length === 2) ctx.lineTo(pts[1][0], pts[1][1]);
+  else { for (let i = 1; i < pts.length - 1; i++) { const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; ctx.quadraticCurveTo(pts[i][0], pts[i][1], i === pts.length - 2 ? pts[i + 1][0] : mx, i === pts.length - 2 ? pts[i + 1][1] : my); } }
+  ctx.stroke();
+}
+// 肢体上 t 处、离骨头 w（正 = 前侧）的那个点
+const segAt = (s, A, t, w) => { const sg = s.wa >= 0.5 ? 1 : -1; return [A[0] + s.ux * s.L * t + s.nx * w * sg, A[1] + s.uy * s.L * t + s.ny * w * sg]; };
+/* 整个人：J 骨骼，col 身体色，band 头带 / 腰带色。一块一块画：本色 → 背光暗边 → 受光亮边 → 肌肉线；
+   近侧的块叠在前面画过的块上时，重叠的那一段描一道浅边（只描叠在身上的那段，外轮廓不描：纸上不会出一圈灰边） */
+function drawBody(J, col, band) {
+  const T = bodyTones(col), bp = bodyParts(J, 0), f = bp.f, BT = BODY.tone;
+  const lx = BODY.light[0] * f, ly = BODY.light[1];
+  const under = new Path2D();                         // 已经画过的块合起来（描边只描在这里面）
+  let any = false;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (const pt of bp.parts) {
+    const far = !!pt.far, path = bodyPath(pt.pts);
+    const base = far ? T.far : T.base, rim = far ? T.farRim : T.rim, dark = far ? T.farDark : T.dark, line = far ? T.farLine : T.line;
+    const rw = pt.torso ? BODY.rimTorso : pt.head ? BODY.rim * 0.8 : BODY.rim, dw = BODY.dark;
+    // 先整块涂本色；亮边 = 这一块减去「往背光那边挪 rw 的这一块」剩下的那一道（evenodd 一次填出来，剪在这一块里面）；
+    // 暗边 = 这一块减去「往受光那边挪 dw 的这一块」。只在一道带子上叠色，外沿不会出一圈浅色的毛边
+    ctx.fillStyle = base; ctx.fill(path);
+    ctx.save();
+    ctx.clip(path);
+    const strip = (dx, dy, c) => { const p2 = bodyPath(pt.pts); p2.addPath(bodyPath(pt.pts, dx, dy)); ctx.fillStyle = c; ctx.fill(p2, 'evenodd'); };
+    if (dark !== base) strip(lx * dw, ly * dw, dark);
+    strip(-lx * rw, -ly * rw, rim);
+    bodyDetail(J, pt, line, dark, bp);
+    ctx.restore();
+    if (!far && any) { ctx.save(); ctx.clip(under); ctx.strokeStyle = T.edge; ctx.lineWidth = BT.edgeW; ctx.stroke(path); ctx.restore(); }
+    if (pt.k === 'torso') drawWaistBelt(pt, band, T);
+    if (pt.head) drawHeadGear(J, band);
+    const pts = signedArea(pt.pts) < 0 ? pt.pts.slice().reverse() : pt.pts;
+    under.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) under.lineTo(pts[i][0], pts[i][1]); under.closePath();
+    any = true;
+  }
+}
+// 肌肉线、关节折痕（在这一块里面画，已经剪在这一块的外形里）
+function bodyDetail(J, pt, line, dark, bp) {
+  const W = BODY.tone.lineW;
+  if (pt.torso) {
+    const tr = pt.torso, h1 = t => tr.half(t, 1), h2 = t => tr.half(t, 2);
+    if (Math.abs(Math.cos(J.spin || 0)) > 0.3) {
+      // 胸大肌下沿：从腋下往胸口斜着弯下来（参考图那一道 V）；背阔肌往腰收的那一道，淡淡的
+      bodyStroke([tr.at(0.85, h1(0.85) * 0.98), tr.at(0.75, h1(0.75) * 0.8), tr.at(0.67, h1(0.67) * 0.38)], line, W * 1.15);
+      bodyStroke([tr.at(0.78, -h2(0.78) * 0.7), tr.at(0.6, -h2(0.6) * 0.62)], line, W * 0.8);
+    }
+    return;
+  }
+  const s = pt.sh, A = pt.A, at = (t, w) => segAt(s, A, t, w);
+  if (s && A) {
+    // 肌肉的分界（w 正 = 前侧）：三角肌下沿、二头 / 三头之间的沟；小臂的肱桡肌；股四头肌外沿、腘绳肌；小腿肚的内沿
+    if (pt.seg === 'ua') bodyStroke([at(0.06, 5.2), at(0.22, 2.0), at(0.34, -3.8)], line, W);                 // 三角肌下沿
+    else if (pt.seg === 'fa') bodyStroke([at(0.12, 2.4), at(0.4, 1.4)], line, W * 0.8);                            // 肱桡肌
+    else if (pt.seg === 'th') bodyStroke([at(0.22, 3.4), at(0.48, 1.8), at(0.74, 2.6)], line, W * 0.9);            // 股四头肌外沿
+    else if (pt.seg === 'sh') bodyStroke([at(0.1, -2.6), at(0.3, -3.3), at(0.52, -2.0)], line, W * 0.9);           // 小腿肚
+  }
+  if (pt.joint) {
+    // 关节：里侧（弯进去的那一侧）一道暗折痕，外侧一小点亮 —— 伸直了也看得出肘、膝在哪
+    const { at: M, a: R, b: E } = pt.joint;
+    const ax = R[0] - M[0], ay = R[1] - M[1], bx = E[0] - M[0], by = E[1] - M[1];
+    const al = Math.hypot(ax, ay) || 1, bl = Math.hypot(bx, by) || 1;
+    let ix = ax / al + bx / bl, iy = ay / al + by / bl;            // 指向弯进去那一侧
+    const bend = Math.hypot(ix, iy);                                // 0 = 伸直，越大弯得越多
+    const tx = bx / bl, ty = by / bl;                               // 顺着下面那一节
+    let nx = -ty, ny = tx;
+    if (bend > 0.12) { if (nx * ix + ny * iy < 0) { nx = -nx; ny = -ny; } }
+    else { const sg = s.wa >= 0.5 ? 1 : -1; nx = s.nx * sg; ny = s.ny * sg; if (pt.seg === 'fa') { nx = -nx; ny = -ny; } }   // 伸直：胳膊里侧 = 掌心那侧，腿里侧 = 膝窝（后侧）
+    const r = pt.seg === 'fa' ? 3.4 : 4.3, k = 0.45 + Math.min(1, bend) * 0.55;
+    const c = [M[0] + nx * r * 0.9, M[1] + ny * r * 0.9];
+    bodyStroke([[c[0] - tx * r * 0.9 * k, c[1] - ty * r * 0.9 * k], [M[0] + nx * r * 0.55, M[1] + ny * r * 0.55], [c[0] + tx * r * 0.9 * k, c[1] + ty * r * 0.9 * k]], dark, BODY.tone.lineW * 1.5);
+    // 外侧（肘尖、膝盖骨）一点亮
+    bodyStroke([[M[0] - nx * r * 0.62 - tx * 1.4, M[1] - ny * r * 0.62 - ty * 1.4], [M[0] - nx * r * 0.78 + tx * 1.2, M[1] - ny * r * 0.78 + ty * 1.2]], line, BODY.tone.lineW * 1.25);
+  }
+}
+// 腰带：横着箍在腰上，比身子宽一点点，跟着身子的方向
+function drawWaistBelt(pt, band, T) {
+  const tr = pt.torso, t = BODY.belt.at, h = BODY.belt.h / 2 / BODY.bone.torso;
+  const f1 = tr.half(t + h, 1) + 0.9, b1 = tr.half(t + h, 2) + 0.9, f0 = tr.half(t - h, 1) + 0.9, b0 = tr.half(t - h, 2) + 0.9;
+  const pts = [tr.at(t + h, f1), tr.at(t + h * 1.15, 0), tr.at(t + h, -b1), tr.at(t - h, -b0), tr.at(t - h * 0.85, 0), tr.at(t - h, f0)];
+  ctx.fillStyle = band; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = T.dark; ctx.lineWidth = 0.8; ctx.stroke();
+}
+// 头带 + 眼睛（头带结在后脑勺，发带从那里飘出去）
+function drawHeadGear(J, band) {
+  const R = BODY.bone.head, ht = J.headTilt, fdir = J.facing;
+  ctx.save(); ctx.translate(J.head[0], J.head[1]); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
+  ctx.fillStyle = band;
+  ctx.beginPath(); ctx.moveTo(-R * 1.05, -R * 0.6); ctx.lineTo(R * 1.06, -R * 0.52); ctx.lineTo(R * 1.04, -R * 0.13); ctx.lineTo(-R * 1.02, -R * 0.2); ctx.closePath(); ctx.fill();
+  if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(R * 0.53, R * 0.14, R * 0.22, R * 0.112, -0.15, 0, Math.PI * 2); ctx.fill(); }
+  ctx.restore();
+}
 </script>
 <script>
 'use strict';
 /* 姿势系统：关键帧插值 + 两节骨骼 IK。改动作手感看 moves.js 的关键帧，这里一般不用动 */
 
 /* ============================================================
-   姿势：所有角度单位为度；手脚用 IK 目标点
-   fh/bh: 前手/后手 相对肩膀 [x,y]
-   ff/bf: 前脚/后脚 [相对髋 x, 离地高度]
+   姿势：所有角度单位为度；手脚用 IK 目标点（2.4 新人物模型的骨头长短见 body.js BODY.bone：腿 39 + 37、手 25 + 23）
+   tor 上身前倾 / head 头再往前低 / hy 髋离地多高 / dx 髋往前挪 / air 整个人往上抬 / rot 整个人转 / spin 绕竖轴转身
+   tw  拧腰（2.4）：正 = 前手那边的肩膀往前送（出前手拳），负 = 后手肩膀往前（出后手拳）
+   fh/bh: 前手 / 后手拳心，相对「两肩中间」[往前, 往下]（不跟着上身转，横平竖直）；fe/be 肘往哪边顶（1 往下，-1 往上）
+   ff/bf: 前脚 / 后脚的脚踝 [相对髋往前, 鞋底离地多高]；fn/bn 膝盖往哪边顶（1 往前；-1 往后 —— 仆步那条蹲着的腿）；
+          ft/bt 脚尖再往上勾多少度（扫堂腿伸出去那只脚勾着）
+   画的时候：护着下巴的后手、前腿离镜头近（画在前面），前手、后腿在远侧（淡一点）
    ============================================================ */
-// 出招时的底子（招式关键帧没写的部分都从这里来）：身子直、略往后仰；两脚前后分开、膝盖微屈（1.9.3 从 hy 48 抬到 56，
-// 后脚收近一点，不再蹲得那么低）；前手拳护在下巴前，后手拳收在胸口，两肘往下沉
-const BASE = { rot: 0, spin: 0, tor: -3, head: 5, hy: 56, dx: 0, air: 0, fe: 1, be: 1,
-  fh: [28, -7], bh: [14, 9], ff: [30, 0], bf: [-26, 0] };
-const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be'];
+// 出招时的底子（招式关键帧没写的部分都从这里来）：和站姿差不多、略低一点 —— 前手在肩前、后手护着下巴，两脚前后分开
+const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 70, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0,
+  fh: [26, -2], bh: [7, -6], ff: [27, 0], bf: [-32, 0] };
+const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
 function mk(o) {
   const p = Object.assign({}, BASE, o || {});
@@ -1033,66 +1470,63 @@ function evalKeys(keys, t) {
 }
 
 // 跳跃三段：上升（提膝）→ 顶点（收腿团身）→ 下落（伸腿找地）。
-// 2.1（Jack 给了参考图：后腿别张那么开，手臂也别张那么开）：两条腿并在一起 —— 膝盖往前上提、小腿往后下收，脚在屁股底下
-// （以前后腿往后蹬直、像跨栏）；两只手顺着身子往下垂、稍微张开一点：前手肘往后弯、拳头在腰前，后手往后下垂、肘往后（以前两臂往前后张开、像展翅）。
-// 上身略往前倾，头跟着往前。上升时前膝提得高一点，下落时两腿往下伸、准备落地
-const P_JUP = { hy: 48, tor: 10, head: -4, ff: [11, 16], bf: [-3, 6], fh: [12, 41], bh: [-18, 38], fe: 1, be: -1 };
-const P_JTOP = { hy: 48, tor: 15, head: -1, ff: [6, 10], bf: [1, 8], fh: [14, 40], bh: [-20, 37], fe: 1, be: -1 };
-const P_JDN = { hy: 48, tor: 8, head: -2, ff: [10, 4], bf: [-4, 2], fh: [16, 39], bh: [-20, 37], fe: 1, be: -1 };
-// 跑着起跳：飞身 —— 身子更往前倾、前膝提得更高往前送，后腿也收着（只比前腿靠后一点，不再往后蹬直）；手还是往下垂
-const P_JLEAP = { hy: 48, tor: 22, head: -6, ff: [13, 15], bf: [-8, 8], fh: [16, 38], bh: [-21, 36], fe: 1, be: -1 };
-const P_JLEAP_DN = { hy: 48, tor: 12, head: -4, ff: [12, 6], bf: [-7, 4], fh: [17, 38], bh: [-20, 36], fe: 1, be: -1 };   // 飞身往下落：两腿往下伸着找地
+// 2.1（Jack 给了参考图：后腿别张那么开，手臂也别张那么开）：两条腿并在一起 —— 膝盖往前上提、小腿往后下收，脚在屁股底下；
+// 两只手顺着身子往下垂、稍微张开一点。2.4 按新的腿长、手长重新摆
+const P_JUP = { hy: 56, tor: 10, head: -2, tw: 10, ff: [13, 20], bf: [-3, 8], fh: [12, 40], bh: [-14, 39], fe: 1, be: -1 };
+const P_JTOP = { hy: 56, tor: 14, head: 0, tw: 10, ff: [8, 13], bf: [1, 10], fh: [14, 39], bh: [-16, 38], fe: 1, be: -1 };
+const P_JDN = { hy: 56, tor: 8, head: -1, tw: 10, ff: [12, 5], bf: [-5, 3], fh: [16, 38], bh: [-16, 38], fe: 1, be: -1 };
+// 跑着起跳：飞身 —— 身子更往前倾、前膝提得更高往前送，后腿也收着；手还是往下垂
+const P_JLEAP = { hy: 56, tor: 22, head: -4, tw: 10, ff: [15, 19], bf: [-6, 10], fh: [16, 37], bh: [-18, 36], fe: 1, be: -1 };
+const P_JLEAP_DN = { hy: 56, tor: 12, head: -3, tw: 10, ff: [14, 7], bf: [-7, 5], fh: [17, 37], bh: [-17, 36], fe: 1, be: -1 };   // 飞身往下落：两腿往下伸着找地
 const POSE = {
-  // 待机站姿（1.9.4，Jack：前腿别往前伸那么多，两腿岔开站就行，后腿别弯）：两腿各往外斜一点，站成一个「人」字，
-  // 两条腿都差不多直（膝盖只弯一点点），两脚一共岔开 30（以前前脚 +30、后脚 -10，前腿直直地往前戳）。
-  // 两条腿一样长：要是后腿完全竖直伸直，前脚往前就够不着地，所以两条腿一起往外斜。
-  // 2.0.2（Jack：两只拳头别都在头边上）：前手拳护在胸口上面、靠近脖子；后手拳垂在腰下面一点、身子前面
-  // 2.1（Jack：合人体一点）：后手拳从腰下面提到腰带上面一点（护着肚子）；前手小臂往前放下来一点（拳头往前、稍低）
-  stance: mk({ hy: 66.7, ff: [15, 0], bf: [-15, 0], fh: [24, 6], bh: [12, 24] }),
-  run: mk({ tor: 26, head: -16, hy: 54, fe: 0.2, be: 0.2 }),   // 跑步只用到这几个，手脚每帧现算（fighter.js runPose）
-  crouch: mk({ hy: 38, tor: 26, head: -12, ff: [32, 0], bf: [-30, 0], fh: [26, 2], bh: [14, 12] }),
-  block: mk({ hy: 56, tor: 0, head: 10, dx: -4, fh: [12, -30], bh: [18, -10], ff: [24, 0], bf: [-30, 0] }),
-  cblock: mk({ hy: 38, tor: 14, head: 8, ff: [30, 0], bf: [-30, 0], fh: [14, -26], bh: [20, -10] }),
-  squat: mk({ hy: 44, tor: 24, head: -8, ff: [26, 0], bf: [-26, 0], fh: [26, 0], bh: [-10, 4] }),
-  land: mk({ hy: 42, tor: 26, head: -6, ff: [32, 0], bf: [-30, 0], fh: [36, -6], bh: [-18, -2] }),
+  /* 待机站姿（2.4，Jack 的参考图第三张）：身子正、略往前，头微低；两腿前后岔开 —— 后腿直、前腿膝盖微屈；
+     前手：比参考图收短、往里收 —— 大臂往下垂（肘护着肋）、小臂往上立，拳在肩前；后手拳护在下巴前 */
+  stance: mk({ tor: 4, head: 3, hy: 72, tw: 22, ff: [26, 0], bf: [-33, 0], fh: [27, -1], bh: [6, -6] }),
+  run: mk({ tor: 26, head: -16, hy: 62, fe: 0.2, be: 0.2, tw: 0 }),   // 跑步只用到这几个，手脚每帧现算（fighter.js runPose）
+  crouch: mk({ hy: 50, tor: 24, head: -6, tw: 18, ff: [27, 0], bf: [-25, 0], fh: [24, 3], bh: [8, -3] }),
+  // 格挡：两只小臂竖起来挡在脸前（肘往下沉护着肋），身子微微往后坐
+  block: mk({ hy: 70, tor: 2, head: 8, dx: -3, tw: 8, fh: [17, -17], bh: [13, -13], ff: [24, 0], bf: [-33, 0] }),
+  cblock: mk({ hy: 50, tor: 18, head: 8, tw: 8, ff: [26, 0], bf: [-25, 0], fh: [19, -13], bh: [15, -10] }),
+  squat: mk({ hy: 54, tor: 20, head: -6, tw: 10, ff: [25, 0], bf: [-27, 0], fh: [24, 2], bh: [-4, 8] }),
+  land: mk({ hy: 52, tor: 24, head: -4, tw: 10, ff: [30, 0], bf: [-30, 0], fh: [28, 2], bh: [-10, 6] }),
   jup: mk(P_JUP), jtop: mk(P_JTOP), jdn: mk(P_JDN), leap: mk(P_JLEAP), leapDn: mk(P_JLEAP_DN),
   // 被过肩摔扛起来：被拽着一只手、身子缩着、腿乱蹬（整个人的转角 rot 由 fighter.js 按摔的进度算）
-  thrown: mk({ tor: 14, head: 18, hy: 46, fh: [28, -44], bh: [-6, -40], ff: [30, 30], bf: [-14, 18] }),
-  tuck: mk({ hy: 48, tor: 40, head: 16, ff: [8, 52], bf: [-2, 46], fh: [20, 14], bh: [12, 18] }),
-  hurtL: mk({ tor: -22, head: -30, dx: -10, hy: 58, fh: [4, 0], bh: [-12, 6], ff: [30, 0], bf: [-30, 0] }),
-  hurtH: mk({ tor: 38, head: 32, dx: -16, hy: 48, fh: [24, 24], bh: [12, 30], ff: [20, 0], bf: [-36, 0] }),
-  hurtAir: mk({ rot: -30, tor: -14, head: -26, fh: [-10, -30], bh: [-24, -16], ff: [30, 26], bf: [2, 12] }),
-  pulled: mk({ tor: 30, head: 18, dx: 8, hy: 56, fh: [20, 16], bh: [8, 20], ff: [34, 0], bf: [-14, 0] }),
-  reel: mk({ tor: -34, head: -34, dx: -14, hy: 60, fh: [-18, -34], bh: [-32, -22], ff: [36, 4], bf: [-24, 0] }),   // 失衡：被卸力/推开
-  recoil: mk({ tor: -18, head: -20, dx: -12, hy: 56, fh: [34, -30], bh: [20, -26], ff: [30, 0], bf: [-36, 0] }), // 拼招震退
-  parry: mk({ tor: -6, head: 8, dx: -6, hy: 56, fh: [46, -34], fe: -1, bh: [12, -18], ff: [24, 0], bf: [-32, 0] }),
-  fall: mk({ rot: -60, tor: -16, head: -24, ff: [38, 34], bf: [14, 26], fh: [-14, -34], bh: [-26, -24] }),
+  thrown: mk({ tor: 14, head: 18, hy: 52, tw: 0, fh: [28, -42], bh: [-6, -38], ff: [32, 34], bf: [-14, 22] }),
+  // 团身（翻滚、被顶回去翻跟头、滚身起）：大腿往前收到胸口、膝盖往前，小腿折回来脚跟贴着屁股（2.4 以前脚放在髋上面，膝盖是反着折的）
+  tuck: mk({ hy: 52, tor: 40, head: 16, tw: 0, ff: [4, 33], bf: [-3, 30], fh: [20, 14], bh: [12, 18] }),
+  // 挨打：轻的 —— 头往后一甩、上身往后仰、手松开；重的 —— 弯腰缩成一团
+  hurtL: mk({ tor: -20, head: -24, dx: -10, hy: 72, tw: -10, fh: [12, -6], bh: [-4, -2], ff: [30, 0], bf: [-32, 0] }),
+  hurtH: mk({ tor: 36, head: 28, dx: -14, hy: 62, tw: 0, fh: [22, 22], bh: [10, 26], ff: [22, 0], bf: [-38, 0] }),
+  hurtAir: mk({ rot: -30, tor: -14, head: -26, tw: 0, fh: [-10, -30], bh: [-24, -16], ff: [32, 28], bf: [2, 14] }),
+  pulled: mk({ tor: 30, head: 18, dx: 8, hy: 64, tw: 0, fh: [20, 16], bh: [8, 20], ff: [36, 0], bf: [-14, 0] }),
+  reel: mk({ tor: -32, head: -30, dx: -14, hy: 74, tw: -16, fh: [-16, -32], bh: [-30, -20], ff: [38, 4], bf: [-26, 0] }),   // 失衡：被卸力/推开
+  recoil: mk({ tor: -16, head: -18, dx: -12, hy: 70, tw: 0, fh: [30, -24], bh: [18, -20], ff: [30, 0], bf: [-38, 0] }), // 拼招震退
+  parry: mk({ tor: -6, head: 8, dx: -6, hy: 70, tw: 26, fh: [44, -28], fe: -1, bh: [12, -14], ff: [24, 0], bf: [-34, 0] }),
+  fall: mk({ rot: -60, tor: -16, head: -24, tw: 0, ff: [40, 36], bf: [16, 28], fh: [-14, -34], bh: [-26, -24] }),
   /* 躺着（2.0，Jack：身子和腿要躺在地上，头也在地上、发带平铺在地上，两手平放在身体两边，看着合人体）：
-     整个人转 -90°（rot）就是仰面平躺：身体坐标里「往下」= 地上往脚那边，「往前」= 往上。
-     所以脚的目标点 [0, x] 在身体坐标里正下方 = 平平放在地上；膝盖往「前」弯 = 往上拱一点（腿稍微弯着）。
-     上身抬 4°、头再仰 10°：后脑勺正好垫在地上，身子那条线贴着地（只往地里穿两三像素，不会因为头圆、整个人被垫高一截）。
-     两只手从肩膀顺着身子往脚那边伸直，放在身体两边（侧面看就叠在身子上）。lie 一条腿稍微弯；lieFlat 两腿伸直 —— 每次倒地换着来 */
-  lie: mk({ rot: -90, tor: 4, head: 10, hy: 64, air: 0, ff: [0, 0], bf: [0, -4], fh: [-3, 48.4], bh: [-2, 47.8], fe: 1, be: 1 }),
-  lieFlat: mk({ rot: -90, tor: 4, head: 10, hy: 64, air: 0, ff: [0, -5], bf: [-1, -4], fh: [-3, 48.4], bh: [-2, 47.8], fe: 1, be: 1 }),
+     整个人转 -90°（rot）就是仰面平躺：身体坐标里「往下」= 地上往脚那边，「往前」= 往上，「往后」= 往地里。
+     2.4 人变厚了：后背比腿厚，腿的中线要比脊柱低一点（脚往「后」放一点）才贴得着地；头往后仰一点（head -20），后脑勺垫在地上 */
+  lie: mk({ rot: -90, tor: 4, head: -20, hy: 82, air: 0, tw: 0, ff: [-6, 4], bf: [-7, -2], fh: [-6, 46], bh: [-5, 45.5], fe: 1, be: 1 }),
+  lieFlat: mk({ rot: -90, tor: 4, head: -20, hy: 82, air: 0, tw: 0, ff: [-6, -2], bf: [-7, -1], fh: [-6, 46], bh: [-5, 45.5], fe: 1, be: 1 }),
   // 起身硬直（2.0）：从蹲着站起来、两手还垂在下面没护住 —— 一看就知道「现在打得着他」
-  rise: mk({ hy: 48, tor: 18, head: -2, dx: -2, ff: [24, 0], bf: [-26, 0], fh: [22, 12], bh: [10, 18] }),
-  win: mk({ tor: -2, head: -16, fh: [6, -56], bh: [18, -6], ff: [22, 0], bf: [-24, 0] }),
+  rise: mk({ hy: 56, tor: 18, head: -2, dx: -2, tw: 0, ff: [26, 0], bf: [-28, 0], fh: [22, 14], bh: [10, 20] }),
+  win: mk({ tor: -2, head: -14, hy: 74, tw: 10, fh: [6, -54], bh: [10, -4], ff: [22, 0], bf: [-26, 0] }),
 };
 /* 被回身肘打在背上（2.0.2）：背对着出肘的人往前踉跄 —— u 是踉跄的进度（0 ~ 1）。
    先是背上挨了一下：胸口往前一挺、头往后一仰、两手往后甩；接着往前扑、一脚往前跨出去接住身子、两手往前乱抓；最后慢慢站稳 */
 const STAGGER_KEYS = [
-  [0, mk({ tor: -16, head: -22, dx: 10, hy: 58, fh: [-18, -8], bh: [-28, 2], ff: [26, 0], bf: [-26, 0] }), 'io'],
-  [0.14, mk({ tor: -10, head: -16, dx: 13, hy: 57, fh: [-22, -4], bh: [-30, 6], ff: [30, 8], bf: [-24, 0] }), 'out'],
-  [0.38, mk({ tor: 38, head: 18, dx: 16, hy: 50, fh: [34, 22], bh: [18, 30], ff: [46, 14], bf: [-30, 0] }), 'io'],
-  [0.6, mk({ tor: 34, head: 12, dx: 12, hy: 52, fh: [30, 16], bh: [-16, -14], ff: [40, 0], bf: [-12, 8] }), 'io'],
-  [0.82, mk({ tor: 16, head: 4, dx: 4, hy: 56, fh: [26, 4], bh: [10, 12], ff: [32, 0], bf: [-22, 0] }), 'io'],
+  [0, mk({ tor: -16, head: -22, dx: 10, hy: 72, tw: 0, fh: [-18, -8], bh: [-28, 2], ff: [26, 0], bf: [-28, 0] }), 'io'],
+  [0.14, mk({ tor: -10, head: -16, dx: 13, hy: 71, tw: 0, fh: [-22, -4], bh: [-30, 6], ff: [30, 8], bf: [-26, 0] }), 'out'],
+  [0.38, mk({ tor: 38, head: 18, dx: 16, hy: 60, tw: 0, fh: [34, 22], bh: [18, 30], ff: [48, 14], bf: [-32, 0] }), 'io'],
+  [0.6, mk({ tor: 34, head: 12, dx: 12, hy: 62, tw: 0, fh: [30, 16], bh: [-16, -14], ff: [42, 0], bf: [-14, 8] }), 'io'],
+  [0.82, mk({ tor: 16, head: 4, dx: 4, hy: 68, tw: 10, fh: [26, 4], bh: [10, 6], ff: [32, 0], bf: [-24, 0] }), 'io'],
   [1, POSE.stance, 'io'],
 ];
 // 起身（2.0：20 帧 → GETUP 13 帧左右）：躺着 → 撑起来坐着 → 蹲着；接着起身硬直（RISE）从蹲着站起来（fighter.js target 'rise'）
 const GETUP_KEYS = [
   [0, POSE.lie, 'io'],
-  [GETUP * 0.4, mk({ rot: -38, tor: 34, hy: 30, head: 0, ff: [32, 0], bf: [2, 0], fh: [-12, 32], bh: [-22, 36] }), 'io'],
-  [GETUP * 0.78, mk({ hy: 36, tor: 30, head: -8, ff: [30, 0], bf: [-26, 0], fh: [24, 14], bh: [10, 20] }), 'io'],
+  [GETUP * 0.4, mk({ rot: -38, tor: 34, hy: 34, head: 0, tw: 0, ff: [34, 0], bf: [2, 0], fh: [-12, 32], bh: [-22, 36] }), 'io'],
+  [GETUP * 0.78, mk({ hy: 42, tor: 30, head: -8, tw: 0, ff: [30, 0], bf: [-28, 0], fh: [24, 14], bh: [10, 20] }), 'io'],
   [GETUP, POSE.rise, 'io'],
 ];
 
@@ -1156,293 +1590,303 @@ function M(o) {
 const J_ = (base, o) => Object.assign({}, base, o);
 const JT = P_JTOP, JD = P_JDN;
 
-// 常用姿势片段
-const P_JAB = { tor: 26, dx: 12, head: -12, fh: [62, -12], bh: [4, -22], ff: [36, 0], bf: [-30, 0] };
-const P_CROSS = { tor: 32, dx: 14, head: -12, bh: [64, -10], fh: [4, -24], bf: [-34, 0], ff: [32, 0] };
-const P_HEAVY = { tor: 42, dx: 30, hy: 50, head: -8, bh: [72, -8], fh: [-2, 8], ff: [48, 0], bf: [-42, 0] };   // 后手冲出去，前手收到腰间
-const P_KICK = { ff: [98, 66], tor: -36, dx: 26, bf: [-8, 0], fh: [-12, -26], bh: [-26, 0], head: 12 };
-const P_LOW = { hy: 36, tor: 32, head: -12, ff: [34, 0], bf: [-30, 0] };
+// 常用姿势片段（2.4 按新人物模型重摆。fh / bh 是拳心相对两肩中间，ff / bf 是脚踝相对髋 + 离地高；tw 拧腰）
+// 短拳（参考图第一张）：前手一拳直直打出去、和肩一样高（胳膊伸直，肘关节用阴影表现），前手那边的肩膀跟着送出去；
+// 后手拳护在下巴前；身子微微前倾，前腿弓、后腿蹬直
+const P_JAB = { tor: 14, head: 4, dx: 10, hy: 69, tw: 46, fh: [58, -2], bh: [7, -7], ff: [38, 0], bf: [-30, 0] };
+// 后手直拳：反过来，后手那边的肩膀拧过来、后手打直，前手收回下巴
+const P_CROSS = { tor: 18, head: 4, dx: 12, hy: 68, tw: -40, bh: [62, -2], fh: [9, -7], ff: [36, 0], bf: [-34, 0] };
+// 重拳（2.4 重做，Jack：以前那下像撒娇）：蹬地、转胯、拧腰，后手整条胳膊打直砸出去，前手拉回来护住下巴，后脚跟抬起
+const P_HEAVY = { tor: 22, head: 2, dx: 21, hy: 66, tw: -48, bh: [70, -3], fh: [8, -6], ff: [44, 0], bf: [-40, 2] };
+// 腿踢：支撑腿站直、身子往后靠，前腿顶着髋整条蹬出去；两手还护着
+const P_KICK = { tor: -30, head: 10, dx: 30, hy: 74, tw: 10, ff: [100, 64], bf: [-12, 0], fh: [18, -12], bh: [6, -6] };
+// 下蹲（下盘拳、托天掌、扫堂腿的起手）
+const P_LOW = { hy: 50, tor: 28, head: -6, tw: 18, ff: [28, 0], bf: [-26, 0], fh: [24, 2], bh: [8, -3] };
 
 const MOVES = {
   /* ---- 拳系（light）：快，近身抢先；被重拳霸体吃掉，但能打断腿 ---- */
   // 短拳：前手从胸口直接往前弹出去，第一帧就往前走、不往回收（1.7.0：以前也先往回收一下，和重拳的起手分不清）
   jab: M({ kind: 'jab', label: '短拳', open: true, S: 4, A: 3, R: 7, dmg: 5, reach: 92, stun: 13, bstun: 7, kb: 2.2, stop: 4, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 4, 5],
-    keys: [[0, {}], [1, P_JAB, 'back'], [2, P_JAB], [3, {}]] }),
+    keys: [[0, {}], [1, P_JAB, 'back'], [2, P_JAB], [2.45, J_(P_JAB, { tor: 10, dx: 6, tw: 32, fh: [38, -3], ff: [34, 0] })], [3, {}]] }),
   jab2: M({ kind: 'jab', label: '后手直拳', tag: '后手直拳', S: 4, A: 3, R: 7, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
     limb: 'bh', fx: 'jab2', lunge: [1, 4, 6],
-    keys: [[0, {}], [0.4, { bh: [2, 0], fh: [26, -6], tor: 4, dx: -2 }], [1, P_CROSS, 'back'], [2, P_CROSS], [3, {}]] }),
+    keys: [[0, {}], [0.4, { tw: 30, fh: [22, -4], tor: 4 }], [1, P_CROSS, 'back'], [2, P_CROSS], [2.45, J_(P_CROSS, { tor: 12, dx: 8, tw: -24, bh: [38, -3] })], [3, {}]] }),
   jab3: M({ kind: 'jab', label: '摆拳', tag: '摆拳', S: 5, A: 3, R: 8, dmg: 6, reach: 90, stun: 14, bstun: 8, kb: 2.8, stop: 5, power: .4,
     limb: 'fh', fx: 'hook', lunge: [1, 5, 5],
-    keys: [[0, {}], [0.5, { fh: [-8, -14], fe: -1, tor: -4, dx: -4, head: 4 }], [1, { fh: [44, -18], fe: -1, tor: 36, dx: 10, head: -14, ff: [36, 0], bf: [-30, 0] }, 'back'],
-      [2, { fh: [48, -10], fe: -1, tor: 40, dx: 10, head: -14, ff: [36, 0], bf: [-30, 0] }], [3, {}]] }),
+    keys: [[0, {}], [0.5, { fh: [4, -8], fe: -1, tor: 0, dx: -3, head: 4, tw: 0 }],
+      [1, { fh: [46, -14], fe: -1, tor: 24, dx: 10, head: -4, tw: 54, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }, 'back'],
+      [2, { fh: [48, -11], fe: -1, tor: 28, dx: 10, head: -4, tw: 58, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }], [3, {}]] }),
   rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 4, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
-    keys: [[0, { tor: 20 }], [1, J_(P_JAB, { tor: 28, dx: 14, fh: [64, -8] }), 'back'], [2, J_(P_JAB, { tor: 28, dx: 14, fh: [64, -8] })], [3, { tor: 20 }]] }),
+    keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] })], [3, { tor: 14 }]] }),
   rushR: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 4, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'bh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
-    keys: [[0, { tor: 20 }], [1, J_(P_CROSS, { tor: 30, dx: 15 }), 'back'], [2, J_(P_CROSS, { tor: 30, dx: 15 })], [3, { tor: 20 }]] }),
+    keys: [[0, { tor: 14 }], [1, J_(P_CROSS, { tor: 22, dx: 12 }), 'back'], [2, J_(P_CROSS, { tor: 22, dx: 12 })], [3, { tor: 14 }]] }),
   rushEnd: M({ kind: 'jab', label: '寸劲', tag: '寸劲', S: 5, A: 3, R: 12, dmg: 7, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'rushEnd', ghost: true, lunge: [1, 5, 8], ender: true, noCancel: true,
-    keys: [[0, { tor: 10, dx: -6, fh: [4, -6] }], [1, { tor: 40, dx: 22, hy: 52, head: -14, fh: [66, -4], bh: [-10, -10], ff: [46, 0], bf: [-34, 0] }, 'back'],
-      [2, { tor: 40, dx: 22, hy: 52, head: -14, fh: [66, -4], bh: [-10, -10], ff: [46, 0], bf: [-34, 0] }], [3, {}]] }),
+    keys: [[0, { tor: 6, dx: -6, fh: [10, -4], tw: 0 }], [1, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }, 'back'],
+      [2, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
   lowJab: M({ kind: 'jab', label: '下盘拳', open: true, S: 5, A: 3, R: 8, dmg: 4, reach: 88, stun: 12, bstun: 7, kb: 2, stop: 4, power: .3, height: 'low',
     limb: 'fh', fx: 'low', lunge: [1, 5, 4],
-    keys: [[0, J_(P_LOW, { fh: [24, -10] })], [1, J_(P_LOW, { tor: 40, dx: 10, fh: [58, 26], bh: [8, -14] }), 'back'],
-      [2, J_(P_LOW, { tor: 40, dx: 10, fh: [58, 26], bh: [8, -14] })], [3, J_(P_LOW, { fh: [24, -10] })]] }),
+    keys: [[0, J_(P_LOW, { fh: [24, -6] })], [1, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] }), 'back'],
+      [2, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] })], [3, J_(P_LOW, { fh: [24, -6] })]] }),
   // 重→拳：贴身顶肘
   elbow: M({ kind: 'jab', label: '顶肘', tag: '顶肘', lead: 'heavy', S: 4, A: 3, R: 9, dmg: 7, reach: 84, stun: 14, bstun: 8, kb: 4, stop: 5, shake: 2, power: .5,
     limb: 'fe', fx: 'elbow', lunge: [1, 4, 10],
-    keys: [[0, { tor: 20 }], [0.5, { tor: 4, dx: -4, fh: [6, -24], fe: -1 }],
-      [1, { tor: 38, dx: 22, hy: 52, head: -10, fh: [8, 0], fe: -1, bh: [4, -16], ff: [46, 0], bf: [-30, 0] }, 'back'],
-      [2, { tor: 38, dx: 22, hy: 52, head: -10, fh: [8, 0], fe: -1, bh: [4, -16], ff: [46, 0], bf: [-30, 0] }], [3, {}]] }),
+    keys: [[0, { tor: 14 }], [0.5, { tor: 2, dx: -4, tw: -10, fh: [8, -12] }],
+      [1, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }, 'back'],
+      [2, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }], [3, {}]] }),
   // 腿→拳：踢完落步往前冲拳
   stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 6, reach: 100, stun: 14, bstun: 8, kb: 3.5, stop: 5, power: .5,
     limb: 'bh', fx: 'jab2', lunge: [1, 5, 24],
-    keys: [[0, { tor: -6, ff: [30, 30] }], [1, { tor: 36, dx: 26, hy: 50, head: -12, bh: [66, -6], fh: [2, -20], ff: [52, 0], bf: [-36, 0] }, 'back'],
-      [2, { tor: 36, dx: 26, hy: 50, head: -12, bh: [66, -6], fh: [2, -20], ff: [52, 0], bf: [-36, 0] }], [3, {}]] }),
+    keys: [[0, { tor: -4, ff: [32, 30] }], [1, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }, 'back'],
+      [2, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }], [3, {}]] }),
 
   /* ---- 重系（heavy）：前摇里带霸体，能硬吃一记短拳；怕腿 ---- */
   // 重拳：先往后蓄 —— 身子后坐、后手拉到耳朵后面、前手伸出去瞄（拳头上聚墨气），再拧腰把后手砸出去。和短拳反着来，一眼分得开
   heavy: M({ kind: 'heavy', label: '重拳', open: true, S: 11, A: 4, R: 13, dmg: 12, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [6, 11, 14], armor: { n: 1, from: 2, vs: ['light'] },
-    keys: [[0, {}], [0.3, { tor: -2, dx: -8, hy: 56, head: 2, fh: [40, -14], bh: [-22, -32], ff: [30, 0], bf: [-36, 0] }, 'out'],
-      [0.9, { tor: -14, dx: -14, hy: 57, head: 6, fh: [46, -10], bh: [-38, -40], ff: [32, 0], bf: [-42, 0] }],
-      [1, P_HEAVY, 'back'], [2, P_HEAVY], [2.5, { tor: 28, dx: 16, hy: 52, bh: [46, 0], fh: [8, -6] }], [3, {}]] }),
+    keys: [[0, {}], [0.3, { tor: 2, dx: -6, hy: 68, head: 4, tw: 34, fh: [32, -4], bh: [-4, -8], ff: [30, 0], bf: [-36, 0] }, 'out'],
+      [0.9, { tor: -6, dx: -10, hy: 67, head: 6, tw: 48, fh: [36, -6], bh: [-12, -10], ff: [30, 0], bf: [-40, 0] }],
+      [1, P_HEAVY, 'back'], [2, P_HEAVY], [2.5, J_(P_HEAVY, { tor: 16, dx: 14, tw: -30, bh: [44, -2] })], [3, {}]] }),
   // 拳→重
   beng: M({ kind: 'heavy', label: '崩拳', stamp: '崩拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 15, reach: 112, stun: 19, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [4, 9, 18],
-    keys: [[0, {}], [0.5, { fh: [-4, 2], tor: 0, hy: 50, dx: -6, bh: [12, -14] }],
-      [1, { fh: [66, 2], tor: 32, dx: 32, hy: 48, ff: [48, 0], bf: [-8, 0], head: -8, bh: [0, -16] }, 'back'],
-      [2, { fh: [66, 2], tor: 32, dx: 32, hy: 48, ff: [48, 0], bf: [-8, 0], head: -8, bh: [0, -16] }], [3, {}]] }),
+    keys: [[0, {}], [0.5, { fh: [2, 4], tor: 2, hy: 64, dx: -6, tw: -10, bh: [6, -6] }],
+      [1, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }, 'back'],
+      [2, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }], [3, {}]] }),
   // 重→重：劈挂，上段（蹲着挡不住）
   chop: M({ kind: 'heavy', label: '劈挂掌', stamp: '劈挂', lead: 'heavy', height: 'high', S: 9, A: 4, R: 14, dmg: 13, reach: 104, stun: 18, bstun: 12, kb: 6, stop: 9, shake: 6, power: .9, heavy: true,
     limb: 'bh', fx: 'chop', ghost: true, lunge: [4, 9, 12], ender: true, noCancel: true,
-    keys: [[0, { tor: 20 }], [0.6, { tor: -18, head: -10, dx: -6, hy: 62, bh: [-8, -64], fh: [24, -10], ff: [30, 0], bf: [-30, 0] }],
-      [1, { tor: 48, dx: 22, hy: 48, head: -4, bh: [58, 26], fh: [-14, -6], ff: [46, 0], bf: [-34, 0] }, 'out'],
-      [2, { tor: 50, dx: 22, hy: 48, head: -4, bh: [56, 32], fh: [-14, -6], ff: [46, 0], bf: [-34, 0] }], [3, {}]] }),
+    keys: [[0, { tor: 12 }], [0.6, { tor: -16, head: -8, dx: -6, hy: 72, tw: 40, bh: [-6, -60], be: -1, fh: [26, -8], ff: [30, 0], bf: [-32, 0] }],
+      [1, { tor: 40, dx: 22, hy: 60, head: -2, tw: -40, bh: [56, 22], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }, 'out'],
+      [2, { tor: 42, dx: 22, hy: 60, head: -2, tw: -42, bh: [54, 28], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
   // 腿→重：盖步砸拳，击倒
   hammer: M({ kind: 'heavy', label: '盖步砸拳', stamp: '盖步砸拳', lead: 'kick', S: 9, A: 5, R: 15, dmg: 14, reach: 108, stun: 20, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'bh', fx: 'hammerFist', ghost: true, lunge: [2, 9, 26], launch: 5, ender: true, noCancel: true,
-    keys: [[0, { tor: 0 }], [0.6, { spin: 30, tor: -10, head: -14, hy: 60, bh: [-22, -58], fh: [18, -30], ff: [10, 0], bf: [-36, 0] }],
-      [1, { spin: 10, tor: 54, dx: 26, hy: 44, head: 6, bh: [52, 34], fh: [-6, -4], ff: [48, 0], bf: [-30, 0] }, 'out'],
-      [2, { spin: 10, tor: 54, dx: 26, hy: 44, head: 6, bh: [52, 34], fh: [-6, -4], ff: [48, 0], bf: [-30, 0] }], [3, { spin: 0 }]] }),
+    keys: [[0, { tor: 0 }], [0.6, { spin: 30, tor: -10, head: -12, hy: 72, tw: 30, bh: [-20, -58], be: -1, fh: [18, -26], ff: [12, 0], bf: [-38, 0] }],
+      [1, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }, 'out'],
+      [2, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }], [3, { spin: 0 }]] }),
   // 拳拳重：冲天炮（对空，击倒）
   upper: M({ kind: 'heavy', label: '冲天炮', stamp: '冲天炮', tier: 'aa', lead: 'light', S: 8, A: 4, R: 16, dmg: 16, reach: 98, stun: 19, bstun: 12, kb: 3, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'bh', fx: 'upper', ghost: true, lunge: [4, 8, 9], launch: 9, noCancel: true, ender: true, antiAir: 120,
-    keys: [[0, {}], [0.5, { bh: [16, 38], hy: 38, tor: 28, fh: [12, -16], dx: 2 }],
-      [1, { bh: [26, -66], hy: 70, tor: -14, dx: 14, bf: [-12, 14], head: -20, fh: [4, -8], air: 8 }, 'out'],
-      [2, { bh: [26, -66], hy: 70, tor: -14, dx: 14, bf: [-12, 14], head: -20, fh: [4, -8], air: 8 }], [3, {}]] }),
+    keys: [[0, {}], [0.5, { bh: [14, 30], hy: 50, tor: 26, fh: [16, -10], dx: 4, tw: 34 }],
+      [1, { bh: [60, -30], hy: 78, tor: 6, dx: 29, bf: [-20, 10], head: -10, fh: [10, -8], air: 6, tw: -44, ff: [42, 0] }, 'out'],
+      [2, { bh: [30, -62], hy: 82, tor: -10, dx: 22, bf: [-14, 14], head: -18, fh: [8, -8], air: 8, tw: -40, ff: [38, 0] }], [3, {}]] }),
   // 蹲+重：托天掌（对空）
   palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', open: true, S: 7, A: 5, R: 15, dmg: 10, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
     limb: 'fh', fx: 'palm', ghost: true, lunge: [2, 7, 6], launchAir: 9, antiAir: 160, airInv: [1, 12], ender: true, noCancel: true,
-    keys: [[0, J_(P_LOW, { fh: [20, 10], bh: [10, 14] })], [0.5, J_(P_LOW, { hy: 32, fh: [24, 22], bh: [14, 24], tor: 36 })],
-      [1, { hy: 68, tor: -8, head: -22, fh: [30, -64], bh: [18, -60], ff: [30, 0], bf: [-20, 8], air: 6, dx: 8 }, 'out'],
-      [2, { hy: 68, tor: -8, head: -22, fh: [30, -64], bh: [18, -60], ff: [30, 0], bf: [-20, 8], air: 6, dx: 8 }], [3, {}]] }),
+    keys: [[0, J_(P_LOW, { fh: [20, 10], bh: [10, 14] })], [0.5, J_(P_LOW, { hy: 40, fh: [24, 22], bh: [14, 24], tor: 34 })],
+      [1, { hy: 76, tor: 8, head: -12, fh: [54, -34], bh: [48, -30], ff: [42, 0], bf: [-24, 6], air: 4, dx: 28, tw: 14 }, 'out'],
+      [2, { hy: 80, tor: -6, head: -20, fh: [34, -60], bh: [24, -56], ff: [36, 0], bf: [-20, 8], air: 6, dx: 18, tw: 10 }], [3, {}]] }),
   // 跑+重：铁山靠
   shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 13, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
-    keys: [[0, { tor: 30 }], [0.5, { tor: 6, spin: 40, dx: -6, hy: 54, fh: [6, -6], bh: [-6, 0], ff: [30, 0], bf: [-30, 0] }],
-      [1, { tor: 44, spin: 70, dx: 34, hy: 48, head: 6, fh: [-2, 8], bh: [-16, 10], ff: [52, 0], bf: [-36, 0] }, 'out'],
-      [2, { tor: 44, spin: 70, dx: 34, hy: 48, head: 6, fh: [-2, 8], bh: [-16, 10], ff: [52, 0], bf: [-36, 0] }], [3, { spin: 0 }]] }),
+    // 2.4：先缩身蓄一下，再侧过身、压低重心，肩背撞进去（低头、两手收在身前，前脚一大步落地）
+    keys: [[0, { tor: 24 }], [0.5, { tor: 10, spin: 30, dx: -8, hy: 62, head: 6, fh: [10, -6], bh: [-2, 0], ff: [26, 0], bf: [-34, 0], tw: 0 }],
+      [1, { tor: 40, spin: 56, dx: 44, hy: 54, head: 12, fh: [4, 14], bh: [-12, 6], ff: [62, 0], bf: [-40, 0], tw: 0 }, 'out'],
+      [2, { tor: 40, spin: 56, dx: 44, hy: 54, head: 12, fh: [4, 14], bh: [-12, 6], ff: [62, 0], bf: [-40, 0], tw: 0 }], [3, { spin: 0 }]] }),
 
   /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ----
      2.0（Jack：腿踢还是超标，尤其距离）：腿踢射程 134 → 126，腿系连招、飞踢也一起短 4~10 */
   kick: M({ kind: 'kick', label: '腿踢', open: true, S: 13, A: 5, R: 14, dmg: 10, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
     limb: 'ff', fx: 'kick', lunge: [6, 13, 12],
-    keys: [[0, {}], [0.55, { ff: [26, 58], tor: -6, bf: [-20, 0], fh: [22, -26], bh: [2, -10], head: 0 }],
-      [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [30, 44], tor: -12, dx: 16 }], [3, {}]] }),
+    keys: [[0, {}], [0.55, { ff: [30, 62], tor: -6, bf: [-20, 0], fh: [22, -12], bh: [6, -7], head: 2, hy: 74, dx: 6, tw: 10 }],
+      [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [34, 46], tor: -12, dx: 16, hy: 72, bf: [-16, 0] }], [3, {}]] }),
   // 拳→踢
   whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 12, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
     limb: 'bf', fx: 'whip', lunge: [5, 10, 10],
-    keys: [[0, {}], [0.5, { bf: [8, 52], tor: -10, ff: [22, 0], fh: [20, -24], spin: 20 }],
-      [1, { bf: [92, 92], tor: -44, dx: 22, ff: [8, 0], fh: [-6, -30], bh: [-24, 0], head: 18, spin: 30 }, 'back'],
-      [2, { bf: [92, 92], tor: -44, dx: 22, ff: [8, 0], fh: [-6, -30], bh: [-24, 0], head: 18, spin: 30 }],
-      [2.4, { bf: [22, 44], tor: -12, dx: 12, spin: 10 }], [3, {}]] }),
-  // 踢→踢：二起脚（腾空连环踢，击倒）
+    keys: [[0, {}], [0.5, { bf: [10, 56], tor: -10, ff: [22, 0], fh: [20, -14], bh: [6, -6], spin: 20, hy: 74, tw: 0 }],
+      [1, { bf: [94, 96], tor: -40, dx: 22, ff: [8, 0], fh: [-4, -22], bh: [2, -10], head: 16, spin: 30, hy: 76, tw: -10 }, 'back'],
+      [2, { bf: [94, 96], tor: -40, dx: 22, ff: [8, 0], fh: [-4, -22], bh: [2, -10], head: 16, spin: 30, hy: 76, tw: -10 }],
+      [2.4, { bf: [24, 48], tor: -12, dx: 12, spin: 10, hy: 72 }], [3, {}]] }),
+  // 踢→踢：二起脚（腾空飞脚，击倒）。2.4：腾起来先提前膝（第一脚），身子在空中基本立着、微微后仰，
+  // 后腿从后面撩上来踢到头那么高，前手往前拍过去（以前整个人往后躺，像摔出去）
   twinKick: M({ kind: 'kick', label: '二起脚', stamp: '二起脚', lead: 'kick', S: 8, A: 5, R: 16, dmg: 11, reach: 116, stun: 18, bstun: 11, kb: 6, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'twinKick', ghost: true, lunge: [2, 8, 22], launch: 6, ender: true, noCancel: true,
-    keys: [[0, { ff: [30, 30] }], [0.5, { air: 22, tor: 4, ff: [24, 60], bf: [-10, 30], fh: [26, -44], bh: [-18, -40] }],
-      [1, { air: 30, tor: -38, head: 16, dx: 16, ff: [12, 54], bf: [84, 104], fh: [-10, -34], bh: [-30, -12] }, 'back'],
-      [2, { air: 26, tor: -38, head: 16, dx: 16, ff: [12, 54], bf: [84, 104], fh: [-10, -34], bh: [-30, -12] }],
-      [2.5, { air: 6, tor: 6, ff: [30, 10], bf: [-20, 12] }], [3, {}]] }),
+    keys: [[0, { ff: [32, 32] }], [0.5, { air: 24, tor: 8, head: 2, ff: [24, 40], bf: [-12, 30], fh: [26, -34], bh: [-12, -30], hy: 66, tw: 20 }],
+      [1, { air: 34, tor: -16, head: 8, dx: 22, ff: [4, 44], bf: [98, 104], fh: [42, -14], bh: [-30, -4], hy: 66, tw: -10 }, 'back'],
+      [2, { air: 30, tor: -16, head: 8, dx: 22, ff: [4, 44], bf: [98, 104], fh: [42, -14], bh: [-30, -4], hy: 66, tw: -10 }],
+      [2.5, { air: 6, tor: 6, ff: [32, 10], bf: [-20, 12], hy: 68 }], [3, {}]] }),
   // 拳拳踢：转身蹬
   backKick: M({ kind: 'kick', label: '转身蹬', stamp: '转身蹬', lead: 'light', S: 8, A: 5, R: 16, dmg: 12, reach: 116, stun: 19, bstun: 11, kb: 11, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'backKick', ghost: true, lunge: [2, 8, 12], ender: true, noCancel: true,
-    keys: [[0, {}], [0.5, { spin: 130, tor: 24, head: 10, bf: [-30, 34], ff: [10, 0], fh: [18, -10], bh: [8, -6] }],
-      [1, { spin: 180, tor: 50, head: 16, dx: 16, bf: [-100, 58], ff: [8, 0], fh: [22, 12], bh: [10, 18], hy: 56 }, 'back'],
-      [2, { spin: 180, tor: 50, head: 16, dx: 16, bf: [-100, 58], ff: [8, 0], fh: [22, 12], bh: [10, 18], hy: 56 }],
-      [2.5, { spin: 270, tor: 20, bf: [-20, 20] }], [3, { spin: 360 }]] }),
+    keys: [[0, {}], [0.5, { spin: 130, tor: 22, head: 8, bf: [-30, 36], ff: [10, 0], fh: [16, -10], bh: [8, -8], hy: 70, tw: 0 }],
+      [1, { spin: 180, tor: 46, head: 14, dx: 16, bf: [-104, 62], ff: [8, 0], fh: [20, 8], bh: [10, 14], hy: 72, tw: 0 }, 'back'],
+      [2, { spin: 180, tor: 46, head: 14, dx: 16, bf: [-104, 62], ff: [8, 0], fh: [20, 8], bh: [10, 14], hy: 72, tw: 0 }],
+      [2.5, { spin: 270, tor: 20, bf: [-22, 22], hy: 70 }], [3, { spin: 360 }]] }),
   // 重→踢：旋风腿（击倒）
   whirl: M({ kind: 'kick', label: '旋风腿', stamp: '旋风腿', lead: 'heavy', S: 12, A: 6, R: 16, dmg: 15, reach: 126, stun: 19, bstun: 13, kb: 6, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'ff', fx: 'whirl', ghost: true, lunge: [4, 12, 16], launch: 7, ender: true, noCancel: true,
-    keys: [[0, {}], [0.4, { spin: 90, tor: -4, ff: [12, 36], air: 8, fh: [-10, -40], bh: [-20, -30] }],
-      [0.75, { spin: 220, ff: [64, 66], tor: -24, air: 22, fh: [-8, -28], bh: [-22, -6] }],
-      [1, { spin: 350, ff: [96, 78], tor: -38, dx: 24, air: 22, fh: [-10, -30], bh: [-28, 0] }, 'out'],
-      [2, { spin: 360, ff: [92, 70], tor: -34, dx: 24, air: 10, fh: [-10, -30], bh: [-28, 0] }],
-      [2.5, { spin: 360, ff: [34, 34], tor: -8, dx: 14 }], [3, { spin: 360 }]] }),
+    keys: [[0, {}], [0.4, { spin: 90, tor: -4, ff: [14, 38], air: 8, fh: [-8, -36], bh: [-16, -28], hy: 70, tw: 0 }],
+      [0.75, { spin: 220, ff: [66, 70], tor: -22, air: 22, fh: [-6, -26], bh: [-20, -6], hy: 70 }],
+      [1, { spin: 350, ff: [100, 80], tor: -36, dx: 28, air: 22, fh: [-8, -26], bh: [-24, 2], hy: 70 }, 'out'],
+      [2, { spin: 360, ff: [96, 72], tor: -32, dx: 28, air: 10, fh: [-8, -26], bh: [-24, 2], hy: 70 }],
+      [2.5, { spin: 360, ff: [36, 36], tor: -8, dx: 14, hy: 70 }], [3, { spin: 360 }]] }),
   // 蹲+踢：扫堂腿（下段，击倒）
   // 1.8.0：扫堂腿太好用（快、远、下段、击倒）→ 前摇长一点、射程短一点（比腿踢近）、收招更长、倒地时间短一点；
   //        反制多了：蹲挡后踩腿、抄腿接住、跳过去打它收招（破绽）、近身短拳打失衡
   sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 8, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
     limb: 'ff', fx: 'sweep', lunge: [3, 10, 10], launch: 3, lie: 26, ender: true, noCancel: true,
     // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前，后手往后伸着保持平衡（不是伸手去够）
-    keys: [[0, J_(P_LOW, {})], [0.45, { hy: 26, tor: 20, head: -6, spin: 20, dx: -4, ff: [14, 10], bf: [-10, 0], fh: [10, 28], bh: [-20, 26] }],
-      [1, { hy: 22, tor: 8, head: -12, spin: 12, dx: 4, ff: [64, 2], bf: [-8, 0], fh: [6, 24], bh: [-34, 14] }, 'out'],
-      [2, { hy: 22, tor: 8, head: -12, spin: 12, dx: 4, ff: [64, 2], bf: [-8, 0], fh: [6, 24], bh: [-34, 14] }],
-      [2.5, { hy: 26, tor: 14, head: -8, spin: 4, ff: [34, 4], bf: [-10, 0], fh: [14, 16], bh: [-20, 12] }], [3, J_(P_LOW, { spin: 0 })]] }),
+    keys: [[0, J_(P_LOW, {})],
+      [0.45, { hy: 34, tor: 14, head: -2, dx: -4, tw: 18, bn: -1, ff: [22, 4], bf: [-6, 0], fh: [22, -2], bh: [8, -8] }],
+      [1, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bn: -1, ft: 40, ff: [72, 0], bf: [-6, 0], fh: [24, -2], bh: [8, -8] }, 'out'],
+      [2, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bn: -1, ft: 46, ff: [76, 0], bf: [-6, 0], fh: [24, -2], bh: [8, -8] }],
+      [2.5, { hy: 38, tor: 16, head: -4, dx: 0, tw: 18, bn: -0.2, ff: [40, 2], bf: [-12, 0], fh: [24, 0], bh: [8, -6] }], [3, J_(P_LOW, {})]] }),
 
   /* ---- 空中（上段：蹲着挡不住；飞踢可以蹲下躲）。都是先往后蓄、再往前打的整套动作 ----
      1.7.0：出手时整个人往前下方倾（rot），拳脚真的够得着对面；判定持续到快落地，同一个距离什么时候出都打得到；
      往下够的深度统一 AIR_VREACH。前摇没出完就落地 = 落地后马上在地上出这一招（fighter.js onLand），按了一定有反应 */
-  // 空中挥拳：拳头先甩到脑后，人往前一扑，从上往前下方砸过去
-  airJab: M({ kind: 'jab', label: '空中挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
+  // 挥拳（跳起来出；2.4 Jack：跳起来出的招名字不要「空中」两个字，以前叫空中挥拳）：拳头先甩到脑后，人往前一扑，从上往前下方砸过去
+  airJab: M({ kind: 'jab', label: '挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
-    keys: [[0, JT], [0.55, J_(JT, { rot: 4, tor: -10, head: -8, fh: [-22, -52], bh: [24, -8], ff: [18, 46], bf: [-4, 40] })],
-      [1, { rot: 22, tor: 34, head: -10, fh: [62, 10], bh: [-18, -18], ff: [16, 40], bf: [-34, 24] }, 'back'],
-      [2, { rot: 24, tor: 36, head: -10, fh: [60, 14], bh: [-18, -18], ff: [16, 40], bf: [-34, 24] }], [3, JD]] }),
+    keys: [[0, JT], [0.55, J_(JT, { rot: 4, tor: -10, head: -6, fh: [-20, -50], fe: -1, bh: [8, -8], ff: [20, 48], bf: [-4, 42], tw: 20 })],
+      [1, { rot: 22, tor: 30, head: -8, fh: [60, 12], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }, 'back'],
+      [2, { rot: 24, tor: 32, head: -8, fh: [58, 16], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }], [3, JD]] }),
   // 泰山压顶：后仰把双拳举过头顶，再整个人往前下方卷下去砸（1.9.0 伤害 12 → 11：打蹲着的人让给千斤坠）
   // 2.1（Jack：打电脑像「版本答案」，前摇、整个动作都太快）：前摇 7 → 10、判定 10 → 11、后摇 8 → 10（举过头顶那一下看得清）
   airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 11, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'hammer', air: true,
-    keys: [[0, JT], [0.7, { rot: -8, tor: -30, head: -14, fh: [-14, -62], bh: [-24, -56], ff: [16, 54], bf: [2, 48] }],
-      [1, { rot: 26, tor: 56, head: 22, fh: [40, 50], bh: [32, 54], ff: [20, 22], bf: [-24, 34] }, 'out'],
-      [2, { rot: 28, tor: 56, head: 22, fh: [40, 52], bh: [32, 56], ff: [20, 22], bf: [-24, 34] }], [3, JD]] }),
+    keys: [[0, JT], [0.7, { rot: -8, tor: -28, head: -12, fh: [-12, -60], bh: [-22, -54], fe: -1, be: -1, ff: [18, 56], bf: [2, 50], tw: 0 }],
+      [1, { rot: 26, tor: 50, head: 18, dx: 12, fh: [56, 42], bh: [50, 46], ff: [22, 24], bf: [-24, 36], tw: 0 }, 'out'],
+      [2, { rot: 28, tor: 52, head: 18, dx: 12, fh: [54, 46], bh: [48, 50], ff: [22, 24], bf: [-24, 36], tw: 0 }], [3, JD]] }),
   // 飞踢：先把膝盖收到胸口，身体后仰，整个人前倾着一脚往前下方蹬出去
   // 2.1（Jack：和泰山压顶一样太快、太好用）：前摇 6 → 9、判定 12 → 13、后摇 7 → 9（收膝那一下看得清，整个动作慢一点）
   airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 10, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
-    keys: [[0, JT], [0.6, { rot: -6, tor: 12, head: -6, ff: [8, 60], bf: [-6, 46], fh: [26, -42], bh: [-18, -36] }],
-      [1, { rot: 14, tor: -40, head: 16, ff: [96, 22], bf: [-12, 50], fh: [-14, -30], bh: [-32, -12] }, 'back'],
-      [2, { rot: 14, tor: -40, head: 16, ff: [96, 22], bf: [-12, 50], fh: [-14, -30], bh: [-32, -12] }], [3, JD]] }),
+    keys: [[0, JT], [0.6, { rot: -6, tor: 12, head: -6, ff: [10, 62], bf: [-6, 48], fh: [24, -30], bh: [6, -8], tw: 10 }],
+      [1, { rot: 14, tor: -38, head: 14, dx: 16, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }, 'back'],
+      [2, { rot: 14, tor: -38, head: 14, dx: 16, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }], [3, JD]] }),
   // 千斤坠：空中按住蹲再踢。先往上一腾、团身（从高处起），再整个人斜成一条线，前脚笔直往前下方踩下去（打到会往后翻着弹开）
   // 1.9.0：主系「坠」—— 专破蹲着的防守和反击：踩蹲着 / 蹲挡 / 出下段的 ×1.3，对空招（托天掌、冲天炮）打不到它、反被踩倒 ×1.5；
   //        怕站着的拳：被短拳系 / 重拳系迎着打中 = 倒栽葱 ×1.4、倒地更久；站挡挡得住。前摇更慢（腾得更高）。
   //        踩中后弹起落在对手面前，这一下算「腿起手」：落地 踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳（都是真连）
   dive: M({ kind: 'kick', label: '千斤坠', stamp: '千斤坠', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 9, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
     limb: 'ff', fx: 'dive', air: true, ghost: true, dive: true, aaProof: true,
-    keys: [[0, JT], [0.7, { rot: -8, tor: 8, head: 4, ff: [20, 58], bf: [-10, 44], fh: [14, -52], bh: [-30, -40] }],
-      [1, { rot: -42, tor: 2, head: 12, ff: [14, -16], bf: [-22, 34], fh: [-30, -34], bh: [-40, -14] }, 'out'],
-      [2, { rot: -42, tor: 2, head: 12, ff: [14, -16], bf: [-22, 34], fh: [-30, -34], bh: [-40, -14] }], [3, JD]] }),
+    keys: [[0, JT], [0.7, { rot: -8, tor: 8, head: 4, ff: [22, 60], bf: [-10, 46], fh: [16, -46], bh: [-24, -36], tw: 0 }],
+      [1, { rot: -42, tor: 2, head: 12, ff: [16, -16], bf: [-22, 36], fh: [-26, -30], bh: [-36, -12], tw: 0 }, 'out'],
+      [2, { rot: -42, tor: 2, head: 12, ff: [16, -16], bf: [-22, 36], fh: [-26, -30], bh: [-36, -12], tw: 0 }], [3, JD]] }),
 
   /* ---- 擒拿（挡不住；出腿时被拿 = 接腿摔；被任何正在判定中的打击打断）----
      1.8.0：抓住以后先「擒住」一小会儿 —— 这时候按 拳 = 提膝撞，踢 = 别腿摔，重 / 后 = 过肩摔，什么都不按 = 推开；
      被抓的人在擒住刚开始那几帧按「拿」能挣脱。蹲着的人站着抓不到（要用蹲+拿「抄腿」）；抄腿只抓蹲着的和出腿的 */
   grab: M({ kind: 'grab', label: '擒拿', open: true, S: 6, A: 4, R: 15, dmg: 5, reach: 84, power: .4,
     limb: 'fh', lunge: [2, 6, 8],
-    keys: [[0, {}], [0.4, { fh: [10, 0], bh: [4, 4], tor: 4, dx: -4, hy: 56 }],
-      [1, { fh: [54, 40], bh: [50, 44], tor: 36, dx: 18, hy: 50, ff: [40, 0], bf: [-24, 0], head: -12 }, 'out'],
-      [2, { fh: [54, 40], bh: [50, 44], tor: 36, dx: 18, hy: 50, ff: [40, 0], bf: [-24, 0], head: -12 }], [3, {}]] }),
+    keys: [[0, {}], [0.4, { fh: [12, 2], bh: [8, 4], tor: 4, dx: -4, hy: 70, tw: 0 }],
+      [1, { fh: [54, 16], bh: [50, 20], tor: 30, dx: 18, hy: 64, ff: [42, 0], bf: [-26, 0], head: -8, tw: 0 }, 'out'],
+      [2, { fh: [54, 16], bh: [50, 20], tor: 30, dx: 18, hy: 64, ff: [42, 0], bf: [-26, 0], head: -8, tw: 0 }], [3, {}]] }),
   // 推开：擒住后什么都不按，两手往前一推，把人推出去（自己先动一点）
   grabHit: M({ kind: 'script', label: '推开', S: 0, A: 0, R: 16, script: true, evPush: 4,
-    keys: [[0, { fh: [30, 10], bh: [24, 14], tor: 10, dx: 4, hy: 54 }],
-      [0.25, { fh: [66, -4], bh: [60, 0], tor: 36, dx: 22, hy: 52, ff: [42, 0], bf: [-16, 0] }, 'back'],
-      [0.5, { fh: [66, -4], bh: [60, 0], tor: 36, dx: 22, hy: 52, ff: [42, 0], bf: [-16, 0] }], [1, {}]] }),
+    keys: [[0, { fh: [32, 8], bh: [26, 12], tor: 10, dx: 4, hy: 66, tw: 0 }],
+      [0.25, { fh: [66, -4], bh: [60, 0], tor: 32, dx: 22, hy: 64, ff: [44, 0], bf: [-18, 0], tw: 0 }, 'back'],
+      [0.5, { fh: [66, -4], bh: [60, 0], tor: 32, dx: 22, hy: 64, ff: [44, 0], bf: [-18, 0], tw: 0 }], [1, {}]] }),
   // 过肩摔：往怀里一带 → 下蹲扛起 → 起身后仰把人从头顶抡过去 → 往身后砸 → 收势。对手跟着手走的路线见 fighter.js THROW_PATH
   throwBack: M({ kind: 'script', label: '过肩摔', S: 0, A: 0, R: 30, script: true, evSlam: 14,
-    keys: [[0, { fh: [34, 4], bh: [28, 8], tor: 20, hy: 50, head: -6, ff: [32, 0], bf: [-30, 0] }],
-      [0.13, { fh: [16, 2], bh: [8, 6], tor: 10, hy: 42, dx: 2, head: -4, ff: [34, 0], bf: [-32, 0] }],
-      [0.3, { fh: [4, -56], bh: [-6, -52], tor: -14, head: -20, hy: 60, dx: -4, ff: [30, 0], bf: [-34, 0] }],
-      [0.47, { fh: [-44, 24], bh: [-50, 28], tor: -40, head: -22, hy: 46, dx: -10, ff: [38, 0], bf: [-26, 0] }, 'out'],
-      [0.62, { fh: [-40, 28], bh: [-46, 32], tor: -34, head: -18, hy: 44, dx: -8, ff: [38, 0], bf: [-26, 0] }], [1, {}]] }),
+    keys: [[0, { fh: [34, 4], bh: [28, 8], tor: 20, hy: 62, head: -6, ff: [34, 0], bf: [-32, 0], tw: 0 }],
+      [0.13, { fh: [16, 2], bh: [8, 6], tor: 10, hy: 52, dx: 2, head: -4, ff: [36, 0], bf: [-34, 0], tw: 0 }],
+      [0.3, { fh: [4, -56], bh: [-6, -52], fe: -1, be: -1, tor: -14, head: -18, hy: 74, dx: -4, ff: [32, 0], bf: [-36, 0], tw: 0 }],
+      [0.47, { fh: [-44, 24], bh: [-50, 28], tor: -38, head: -20, hy: 58, dx: -10, ff: [40, 0], bf: [-28, 0], tw: 0 }, 'out'],
+      [0.62, { fh: [-40, 28], bh: [-46, 32], tor: -32, head: -16, hy: 56, dx: -8, ff: [40, 0], bf: [-28, 0], tw: 0 }], [1, {}]] }),
   legCatch: M({ kind: 'script', label: '接腿摔', S: 0, A: 0, R: 26, script: true, evSlam: 13,
-    keys: [[0, { fh: [50, 32], bh: [44, 36], tor: 26, dx: 14, hy: 54 }],
-      [0.25, { fh: [30, 4], bh: [22, 8], tor: -14, dx: -2, hy: 62, head: -14 }],
-      [0.5, { fh: [36, 50], bh: [26, 54], tor: 48, dx: 12, hy: 42, head: 12 }, 'out'],
-      [0.7, { fh: [36, 50], bh: [26, 54], tor: 48, dx: 12, hy: 42, head: 12 }], [1, {}]] }),
+    keys: [[0, { fh: [50, 30], bh: [44, 34], tor: 24, dx: 14, hy: 66, tw: 0 }],
+      [0.25, { fh: [30, 4], bh: [22, 8], tor: -12, dx: -2, hy: 74, head: -12, tw: 0 }],
+      [0.5, { fh: [36, 48], bh: [26, 52], tor: 46, dx: 12, hy: 54, head: 10, tw: 0 }, 'out'],
+      [0.7, { fh: [36, 48], bh: [26, 52], tor: 46, dx: 12, hy: 54, head: 10, tw: 0 }], [1, {}]] }),
   // 抄腿（蹲+拿）：压低身子往前一扑，两手抄对方的腿。抓得到：出腿的（含扫堂腿 → 抄腿摔）、蹲着 / 蹲挡的（→ 擒住 → 抱腿摔）；
   // 站着的人抓不到（抓空，收招长）
   lowGrab: M({ kind: 'grab', label: '抄腿', low: true, height: 'low', open: true, S: 8, A: 4, R: 16, dmg: 0, reach: 88, power: .5,
     limb: 'fh', lunge: [2, 8, 14],
-    keys: [[0, J_(P_LOW, { fh: [20, 8], bh: [10, 12] })], [0.5, J_(P_LOW, { hy: 34, tor: 22, fh: [6, 10], bh: [-6, 14], dx: -4 })],
-      [1, { hy: 30, tor: 56, dx: 20, head: -16, fh: [60, 52], bh: [54, 56], ff: [44, 0], bf: [-34, 0] }, 'out'],
-      [2, { hy: 30, tor: 56, dx: 20, head: -16, fh: [60, 52], bh: [54, 56], ff: [44, 0], bf: [-34, 0] }], [3, J_(P_LOW, {})]] }),
+    keys: [[0, J_(P_LOW, { fh: [20, 8], bh: [10, 12] })], [0.5, J_(P_LOW, { hy: 40, tor: 22, fh: [8, 10], bh: [-4, 14], dx: -4 })],
+      [1, { hy: 36, tor: 54, dx: 20, head: -14, fh: [60, 50], bh: [54, 54], ff: [46, 0], bf: [-36, 0], tw: 0 }, 'out'],
+      [2, { hy: 36, tor: 54, dx: 20, head: -14, fh: [60, 50], bh: [54, 54], ff: [46, 0], bf: [-36, 0], tw: 0 }], [3, J_(P_LOW, {})]] }),
   // 擒住：抓住后的一小会儿，两手揪住对方往怀里带。这几帧决定后续（拳 / 踢 / 重或后 / 不按）；被抓的在前 ESC_WIN 帧按拿能挣脱
   hold: M({ kind: 'script', label: '擒住', S: 0, A: 0, R: 10, script: true,
-    keys: [[0, { fh: [52, 30], bh: [46, 34], tor: 30, dx: 14, hy: 52, ff: [36, 0], bf: [-22, 0] }],
-      [0.5, { fh: [34, 12], bh: [28, 16], tor: 14, dx: 6, hy: 54, head: 2, ff: [32, 0], bf: [-26, 0] }],
-      [1, { fh: [30, 10], bh: [24, 14], tor: 10, dx: 4, hy: 54, head: 4, ff: [32, 0], bf: [-28, 0] }]] }),
+    keys: [[0, { fh: [50, 18], bh: [44, 22], tor: 28, dx: 14, hy: 64, ff: [38, 0], bf: [-24, 0], tw: 0 }],
+      [0.5, { fh: [34, 10], bh: [28, 14], tor: 14, dx: 6, hy: 66, head: 2, ff: [34, 0], bf: [-28, 0], tw: 0 }],
+      [1, { fh: [30, 8], bh: [24, 12], tor: 10, dx: 4, hy: 66, head: 4, ff: [34, 0], bf: [-30, 0], tw: 0 }]] }),
   // 提膝撞：揪住连顶两膝，不击倒，但顶完自己先动（帧差 +KNEE_ADV）
   knee: M({ kind: 'script', label: '提膝撞', S: 0, A: 0, R: 22, script: true, evHit: 5, evHit2: 13,
-    keys: [[0, { fh: [30, 10], bh: [24, 14], tor: 10, dx: 4, hy: 54 }],
-      [0.2, { fh: [26, 16], bh: [20, 20], tor: -10, dx: 8, hy: 58, head: 8, ff: [34, 58], bf: [-20, 0] }, 'out'],
-      [0.36, { fh: [30, 10], bh: [24, 14], tor: 8, dx: 4, hy: 54, ff: [24, 4], bf: [-24, 0] }],
-      [0.56, { fh: [26, 16], bh: [20, 20], tor: -12, dx: 10, hy: 58, head: 8, ff: [36, 62], bf: [-20, 0] }, 'out'],
-      [0.75, { fh: [44, -4], bh: [38, 0], tor: 20, dx: 10, hy: 52, ff: [30, 0], bf: [-30, 0] }], [1, {}]] }),
+    keys: [[0, { fh: [30, 8], bh: [24, 12], tor: 10, dx: 4, hy: 66, tw: 0 }],
+      [0.2, { fh: [26, 14], bh: [20, 18], tor: -10, dx: 8, hy: 72, head: 8, ff: [36, 62], bf: [-20, 0], tw: 0 }, 'out'],
+      [0.36, { fh: [30, 8], bh: [24, 12], tor: 8, dx: 4, hy: 66, ff: [26, 4], bf: [-26, 0], tw: 0 }],
+      [0.56, { fh: [26, 14], bh: [20, 18], tor: -12, dx: 10, hy: 72, head: 8, ff: [38, 66], bf: [-20, 0], tw: 0 }, 'out'],
+      [0.75, { fh: [44, -4], bh: [38, 0], tor: 18, dx: 10, hy: 64, ff: [32, 0], bf: [-32, 0], tw: 0 }], [1, {}]] }),
   // 别腿摔：脚往对方脚后一别，手往前下一推，对方往后仰倒在面前（倒在跟前，起身由你压）
   trip: M({ kind: 'script', label: '别腿摔', S: 0, A: 0, R: 24, script: true, evSlam: 9,
-    keys: [[0, { fh: [30, 10], bh: [24, 14], tor: 10, dx: 4, hy: 54 }],
-      [0.25, { fh: [40, -6], bh: [34, -2], tor: 26, dx: 16, hy: 50, ff: [58, 6], bf: [-22, 0], head: -8 }],
-      [0.4, { fh: [56, 28], bh: [50, 32], tor: 50, dx: 22, hy: 44, ff: [62, 0], bf: [-30, 0], head: 4 }, 'out'],
-      [0.6, { fh: [52, 36], bh: [46, 40], tor: 48, dx: 20, hy: 44, ff: [56, 0], bf: [-32, 0] }], [1, {}]] }),
+    keys: [[0, { fh: [30, 8], bh: [24, 12], tor: 10, dx: 4, hy: 66, tw: 0 }],
+      [0.25, { fh: [40, -6], bh: [34, -2], tor: 24, dx: 16, hy: 64, ff: [60, 8], bf: [-24, 0], head: -8, tw: 0 }],
+      [0.4, { fh: [56, 26], bh: [50, 30], tor: 46, dx: 22, hy: 56, ff: [64, 0], bf: [-32, 0], head: 4, tw: 0 }, 'out'],
+      [0.6, { fh: [52, 34], bh: [46, 38], tor: 44, dx: 20, hy: 56, ff: [58, 0], bf: [-34, 0], tw: 0 }], [1, {}]] }),
   // 抱腿摔：抄腿抓住蹲着的人，抱着腿往前一顶把人掀翻
   tackle: M({ kind: 'script', label: '抱腿摔', S: 0, A: 0, R: 26, script: true, evSlam: 10,
-    keys: [[0, { hy: 30, tor: 56, dx: 20, head: -16, fh: [56, 50], bh: [50, 54], ff: [44, 0], bf: [-34, 0] }],
-      [0.3, { hy: 40, tor: 40, dx: 30, head: -10, fh: [44, 20], bh: [38, 24], ff: [56, 0], bf: [-40, 0] }],
-      [0.45, { hy: 48, tor: 30, dx: 34, head: -6, fh: [50, -16], bh: [44, -12], ff: [58, 0], bf: [-36, 0] }, 'out'],
-      [0.65, { hy: 46, tor: 34, dx: 30, fh: [48, 4], bh: [42, 8], ff: [54, 0], bf: [-36, 0] }], [1, {}]] }),
+    keys: [[0, { hy: 36, tor: 54, dx: 20, head: -14, fh: [56, 50], bh: [50, 54], ff: [46, 0], bf: [-36, 0], tw: 0 }],
+      [0.3, { hy: 48, tor: 38, dx: 30, head: -8, fh: [44, 20], bh: [38, 24], ff: [58, 0], bf: [-42, 0], tw: 0 }],
+      [0.45, { hy: 58, tor: 28, dx: 34, head: -4, fh: [50, -16], bh: [44, -12], ff: [60, 0], bf: [-38, 0], tw: 0 }, 'out'],
+      [0.65, { hy: 56, tor: 32, dx: 30, fh: [48, 4], bh: [42, 8], ff: [56, 0], bf: [-38, 0], tw: 0 }], [1, {}]] }),
   // 抄腿摔：抄腿接住对方出腿（含扫堂腿），把腿往上一掀，人仰面摔倒
   scoop: M({ kind: 'script', label: '抄腿摔', S: 0, A: 0, R: 26, script: true, evSlam: 12,
-    keys: [[0, { hy: 32, tor: 50, dx: 18, head: -14, fh: [58, 48], bh: [52, 52], ff: [44, 0], bf: [-34, 0] }],
-      [0.3, { hy: 52, tor: 10, dx: 10, head: -16, fh: [46, -10], bh: [40, -6], ff: [40, 0], bf: [-30, 0] }],
-      [0.5, { hy: 58, tor: -18, dx: 4, head: -22, fh: [30, -54], bh: [24, -50], ff: [34, 0], bf: [-30, 0] }, 'out'],
-      [0.7, { hy: 54, tor: 6, dx: 6, fh: [40, -20], bh: [34, -16], ff: [34, 0], bf: [-30, 0] }], [1, {}]] }),
+    keys: [[0, { hy: 38, tor: 48, dx: 18, head: -12, fh: [58, 48], bh: [52, 52], ff: [46, 0], bf: [-36, 0], tw: 0 }],
+      [0.3, { hy: 62, tor: 10, dx: 10, head: -14, fh: [46, -10], bh: [40, -6], ff: [42, 0], bf: [-32, 0], tw: 0 }],
+      [0.5, { hy: 70, tor: -16, dx: 4, head: -20, fh: [30, -54], bh: [24, -50], ff: [36, 0], bf: [-32, 0], tw: 0 }, 'out'],
+      [0.7, { hy: 66, tor: 6, dx: 6, fh: [40, -20], bh: [34, -16], ff: [36, 0], bf: [-32, 0], tw: 0 }], [1, {}]] }),
 
   /* ---- 防守反击 ---- */
   // 推挡：格挡中按拳。出手期间打不中他，把对方推开并打断；空了后摇很长
   shove: M({ kind: 'push', label: '推挡', tier: 'push', S: 2, A: 4, R: 12, dmg: 0, reach: 108, stun: 9, bstun: 0, kb: PUSH_KB, stop: 4, power: .3,
     limb: 'fh', fx: 'shove', push: true, sinv: [0, 6], noCancel: true,
-    keys: [[0, { fh: [12, -30], bh: [18, -10], tor: 0, head: 10, dx: -4, hy: 56 }],
-      [1, { fh: [62, -14], bh: [58, -8], tor: 32, dx: 16, hy: 54, head: -6, ff: [38, 0], bf: [-32, 0] }, 'back'],
-      [2, { fh: [62, -14], bh: [58, -8], tor: 32, dx: 16, hy: 54, head: -6, ff: [38, 0], bf: [-32, 0] }], [3, {}]] }),
+    keys: [[0, { fh: [17, -17], bh: [13, -13], tor: 2, head: 8, dx: -3, hy: 70, tw: 8 }],
+      [1, { fh: [64, -12], bh: [60, -6], tor: 28, dx: 37, hy: 64, head: -4, ff: [50, 0], bf: [-32, 0], tw: 10 }, 'back'],
+      [2, { fh: [64, -12], bh: [60, -6], tor: 28, dx: 37, hy: 64, head: -4, ff: [50, 0], bf: [-32, 0], tw: 10 }], [3, {}]] }),
   // 截拳（1.8.0）：挡住以后（格挡硬直里）按「重」，花 GC_COST 气从格挡里直接打出一拳。出手前打击无敌，把对方打开
   jieQuan: M({ kind: 'heavy', label: '截拳', stamp: '截拳', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 9, reach: 104, stun: 18, bstun: 10, kb: 9, stop: 9, shake: 5, power: .9, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [0, 5, 18], sinv: [0, 6], cost: GC_COST, ender: true, noCancel: true,
-    keys: [[0, { hy: 56, tor: 0, head: 10, dx: -4, fh: [12, -30], bh: [18, -10], ff: [24, 0], bf: [-30, 0] }],
-      [0.5, { hy: 54, tor: 8, head: 2, dx: -2, fh: [24, -16], bh: [16, -6], ff: [28, 0], bf: [-32, 0] }],
-      [1, { hy: 50, tor: 36, head: -12, dx: 26, fh: [72, -12], bh: [6, -14], ff: [50, 0], bf: [-34, 0] }, 'back'],
-      [2, { hy: 50, tor: 36, head: -12, dx: 26, fh: [72, -12], bh: [6, -14], ff: [50, 0], bf: [-34, 0] }], [3, {}]] }),
+    keys: [[0, { hy: 70, tor: 2, head: 8, dx: -3, tw: 8, fh: [17, -17], bh: [13, -13], ff: [24, 0], bf: [-33, 0] }],
+      [0.5, { hy: 68, tor: 8, head: 4, dx: -2, tw: 24, fh: [26, -10], bh: [9, -8], ff: [28, 0], bf: [-33, 0] }],
+      [1, { hy: 64, tor: 24, head: -4, dx: 17, tw: 50, fh: [64, -4], bh: [6, -6], ff: [46, 0], bf: [-36, 0] }, 'back'],
+      [2, { hy: 64, tor: 24, head: -4, dx: 17, tw: 50, fh: [64, -4], bh: [6, -6], ff: [46, 0], bf: [-36, 0] }], [3, {}]] }),
   // 踩腿（1.8.0）：蹲挡住扫堂腿这类下段腿以后按「踢」，抬膝往前下一脚踩在对方伸出来的腿上。击倒
   stomp: M({ kind: 'kick', label: '踩腿', stamp: '踩腿', height: 'low', S: 4, A: 4, R: 14, dmg: 10, reach: 122, stun: 16, bstun: 9, kb: 4, stop: 9, shake: 6, power: .9,
     limb: 'ff', fx: 'stomp', lunge: [1, 4, 24], launch: 4, lie: 30, ender: true, noCancel: true,
-    keys: [[0, J_(P_LOW, { ff: [30, 0] })], [0.6, { hy: 58, tor: -8, head: 6, dx: 4, ff: [30, 64], bf: [-22, 0], fh: [30, -30], bh: [-20, -24] }],
-      [1, { hy: 50, tor: 26, head: -14, dx: 22, ff: [74, 4], bf: [-26, 0], fh: [22, -10], bh: [-26, -8] }, 'out'],
-      [2, { hy: 50, tor: 26, head: -14, dx: 22, ff: [74, 2], bf: [-26, 0], fh: [22, -10], bh: [-26, -8] }], [3, {}]] }),
+    keys: [[0, J_(P_LOW, { ff: [30, 0] })], [0.6, { hy: 72, tor: -8, head: 6, dx: 4, ff: [30, 66], bf: [-22, 0], fh: [26, -14], bh: [6, -8], tw: 10 }],
+      [1, { hy: 62, tor: 22, head: -10, dx: 22, ff: [76, 4], bf: [-26, 0], fh: [22, -6], bh: [6, -6], tw: 10 }, 'out'],
+      [2, { hy: 62, tor: 22, head: -10, dx: 22, ff: [76, 2], bf: [-26, 0], fh: [22, -6], bh: [6, -6], tw: 10 }], [3, {}]] }),
   // 冲刺：同一方向双击。压低身子贴地滑出一大步，前 8 帧谁都碰不到，能穿到对面身后；
   // 第 DASH_CANCEL 帧起可以直接按招打出去，冲刺后的第一招带「冲势」
   dash: M({ kind: 'script', label: '冲刺', S: 0, A: 0, R: 16, script: true, lunge: [0, 10, 96], inv: [0, 8],
-    keys: [[0, { hy: 50, tor: 24, head: -6, ff: [30, 0], bf: [-26, 0], fh: [16, -8], bh: [4, -4] }],
-      [0.12, { hy: 46, tor: 38, head: -16, dx: 8, ff: [46, 8], bf: [-58, 14], fh: [12, 2], bh: [-34, 6] }, 'out'],
-      [0.45, { hy: 44, tor: 36, head: -14, dx: 10, ff: [48, 2], bf: [-58, 6], fh: [14, 0], bh: [-34, 4] }],
-      [0.7, { hy: 46, tor: 18, head: -8, dx: 4, ff: [42, 0], bf: [-44, 0], fh: [28, -24], bh: [14, -18] }], [1, {}]] }),
+    keys: [[0, { hy: 62, tor: 22, head: -6, ff: [32, 0], bf: [-28, 0], fh: [18, -6], bh: [8, -6], tw: 10 }],
+      [0.12, { hy: 56, tor: 34, head: -14, dx: 8, ff: [50, 8], bf: [-62, 14], fh: [14, 2], bh: [-30, 6], tw: 10 }, 'out'],
+      [0.45, { hy: 54, tor: 32, head: -12, dx: 10, ff: [52, 2], bf: [-62, 6], fh: [16, 0], bh: [-30, 4], tw: 10 }],
+      [0.7, { hy: 60, tor: 16, head: -6, dx: 4, ff: [44, 0], bf: [-46, 0], fh: [26, -14], bh: [10, -8], tw: 16 }], [1, {}]] }),
   // 闪身（2.0，边挡边冲刺）：按住格挡、朝对手双击方向（格挡中、挡住的硬直里都行）。压低身子、两手护着头，从对手身边钻过去到他身后。
   // 2.0.2：钻的那十来帧（slipInv）只有重系的手上招打不中（闪），短拳、腿、下段、擒拿都截得住（截住闪身 ×1.3）。冲多远按对手在哪算（fighter.js beginSlip），
   // 前冲的距离写在这一招自己身上（move.lungePx）。躲过了重拳 → 自动接回身肘（slipElbow）；钻空了第 SLIP_CANCEL 帧起能直接出招
   slip: M({ kind: 'script', label: '闪身', S: 0, A: 0, R: 22, script: true, lunge: [0, 11, 110], slipInv: [0, 11],
-    keys: [[0, { hy: 46, tor: 26, head: 2, dx: -2, fh: [12, -28], bh: [20, -12], fe: -1, ff: [28, 0], bf: [-30, 0] }],
-      [0.14, { hy: 38, tor: 46, head: -6, dx: 12, fh: [16, -24], bh: [22, -8], fe: -1, ff: [50, 6], bf: [-50, 12] }, 'out'],
-      [0.48, { hy: 38, tor: 44, head: -6, dx: 12, fh: [16, -24], bh: [22, -8], fe: -1, ff: [46, 2], bf: [-52, 8] }],
-      [0.72, { hy: 52, tor: 12, head: 6, dx: 2, fh: [12, -28], bh: [18, -12], fe: -1, ff: [26, 0], bf: [-30, 0] }], [1, {}]] }),
+    keys: [[0, { hy: 58, tor: 24, head: 4, dx: -2, fh: [14, -22], bh: [18, -12], fe: -1, ff: [30, 0], bf: [-32, 0], tw: 8 }],
+      [0.14, { hy: 46, tor: 42, head: -4, dx: 12, fh: [18, -20], bh: [20, -8], fe: -1, ff: [52, 6], bf: [-54, 12], tw: 8 }, 'out'],
+      [0.48, { hy: 46, tor: 40, head: -4, dx: 12, fh: [18, -20], bh: [20, -8], fe: -1, ff: [48, 2], bf: [-56, 8], tw: 8 }],
+      [0.72, { hy: 64, tor: 12, head: 6, dx: 2, fh: [14, -22], bh: [16, -12], fe: -1, ff: [28, 0], bf: [-32, 0], tw: 8 }], [1, {}]] }),
   // 回身肘（2.0.2）：闪身躲过重拳、钻到对手身后，自动转身一肘顶在他背上（fighter.js slipElbow）。
   // 打中：他背对着你往前踉跄 STAGGER 帧（打得中、动不了、不自动转身，combat.js applyHit 的 stagger），你先动二十来帧接着打。
   // 姿势：一开始还背对着他（spin 165，刚钻过去的样子），拧身转过来（spin 95，肘往后蓄），再把前手的肘往前顶出去
-  slipElbow: M({ kind: 'heavy', label: '回身肘', stamp: '回身肘', tier: 'heavy', lead: 'heavy', S: 5, A: 3, R: 12, dmg: 8, reach: 96, stun: 18, bstun: 10, kb: STAGGER_KB,
+  slipElbow: M({ kind: 'heavy', label: '回身肘', stamp: '回身肘', tier: 'heavy', lead: 'heavy', S: 5, A: 3, R: 12, dmg: 8, reach: 86, stun: 18, bstun: 10, kb: STAGGER_KB,
     stop: 8, shake: 4, power: .8, limb: 'fe', fx: 'slipElbow', ghost: true, lunge: [0, 5, 18], stagger: true, ender: true, noCancel: true,
-    keys: [[0, { spin: 165, tor: 24, hy: 46, head: 2, fh: [12, -26], bh: [20, -10], fe: -1, ff: [30, 0], bf: [-30, 0] }],
-      [0.55, { spin: 95, tor: 6, hy: 54, head: -6, dx: -4, fh: [-14, -4], fe: -1, bh: [8, -18], ff: [24, 0], bf: [-34, 0] }],
-      [1, { spin: 8, tor: 34, dx: 20, hy: 52, head: -10, fh: [6, 2], fe: -1, bh: [2, -18], ff: [46, 0], bf: [-30, 0] }, 'back'],
-      [2, { spin: 4, tor: 34, dx: 20, hy: 52, head: -10, fh: [6, 2], fe: -1, bh: [2, -18], ff: [46, 0], bf: [-30, 0] }], [3, {}]] }),
+    keys: [[0, { spin: 165, tor: 24, hy: 58, head: 2, fh: [14, -18], bh: [16, -12], fe: -1, ff: [30, 0], bf: [-32, 0], tw: 0 }],
+      [0.55, { spin: 95, tor: 6, hy: 66, head: -4, dx: -4, fh: [-8, -8], bh: [8, -10], ff: [24, 0], bf: [-36, 0], tw: -20 }],
+      [1, { spin: 8, tor: 26, dx: 24, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }, 'back'],
+      [2, { spin: 4, tor: 26, dx: 24, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }], [3, {}]] }),
   // 爆气：挨打时按「重+踢」，花 50 气从身上炸开 —— 2.1（Jack）：把对方炸倒、打掉 18（以前只是震开）
   burst: M({ kind: 'script', label: '爆气', S: 0, A: 0, R: 22, script: true, inv: [0, 18], evWave: 3,
-    keys: [[0, { tor: 30, hy: 46, head: 10, fh: [8, 12], bh: [4, 14] }],
-      [0.14, { tor: -20, head: -24, hy: 66, fh: [42, -56], bh: [-40, -54], ff: [40, 0], bf: [-40, 0], air: 6 }, 'out'],
-      [0.5, { tor: -16, head: -20, hy: 64, fh: [40, -50], bh: [-38, -48], ff: [40, 0], bf: [-40, 0], air: 2 }], [1, {}]] }),
+    keys: [[0, { tor: 28, hy: 54, head: 10, fh: [8, 12], bh: [4, 14], tw: 0 }],
+      [0.14, { tor: -18, head: -22, hy: 78, fh: [42, -54], bh: [-40, -52], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
+      [0.5, { tor: -14, head: -18, hy: 76, fh: [40, -48], bh: [-38, -46], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
   // 泼墨：气满时按「重+踢」，出手前打击无敌。2.1（Jack：伤害太低）22 → 40
   super: M({ kind: 'heavy', label: '泼墨', stamp: '泼墨', tier: 'super', S: 8, A: 6, R: 22, dmg: 40, reach: 136, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
     limb: 'fh', fx: 'splash', ghost: true, lunge: [2, 8, 34], sinv: [0, 14], launch: 8, ender: true, noCancel: true, cost: QI_MAX, antiAir: 40,
-    keys: [[0, {}], [0.6, { tor: -24, dx: -12, hy: 52, fh: [-14, -46], bh: [-34, -34], head: -12, ff: [30, 0], bf: [-36, 0] }],
-      [1, { tor: 46, dx: 36, hy: 46, head: -12, fh: [68, -6], bh: [62, 4], ff: [54, 0], bf: [-38, 0] }, 'back'],
-      [2, { tor: 46, dx: 36, hy: 46, head: -12, fh: [68, -6], bh: [62, 4], ff: [54, 0], bf: [-38, 0] }], [3, {}]] }),
+    keys: [[0, {}], [0.6, { tor: -20, dx: -12, hy: 64, fh: [-12, -44], bh: [-30, -32], fe: -1, be: -1, head: -10, ff: [30, 0], bf: [-38, 0], tw: 0 }],
+      [1, { tor: 34, dx: 44, hy: 58, head: -6, fh: [72, -6], bh: [66, 2], ff: [60, 0], bf: [-40, 0], tw: 16 }, 'back'],
+      [2, { tor: 34, dx: 44, hy: 58, head: -6, fh: [72, -6], bh: [66, 2], ff: [60, 0], bf: [-40, 0], tw: 16 }], [3, {}]] }),
 };
 
 /* ============================================================
@@ -1552,20 +1996,21 @@ const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, '
 
 // 角色内部的输入：按住状态 + 带时间戳的按键缓冲
 class Input {
-  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.buf = []; }
+  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.buf = []; this.keyDash = false; }
   press(a, t) { this.buf.push({ a, t }); if (this.buf.length > 12) this.buf.shift(); }
   clear() { this.buf.length = 0; for (const k in this.held) this.held[k] = false; }
 }
 
-// 编码：低 5 位是按住，往上 5 位是本帧新按下
+// 编码：低 5 位是按住，往上 6 位是本帧新按下（2.4 多了「冲刺」键），再往上一位是「这个人用冲刺键冲刺」（双击方向不冲 —— 键位设置里选的）
 const HELD_ACTS = ['left', 'right', 'up', 'down', 'block'];
-const PRESS_ACTS = ['up', 'jab', 'heavy', 'kick', 'grab'];
+const PRESS_ACTS = ['up', 'jab', 'heavy', 'kick', 'grab', 'dash'];
 const PRESS_SET = new Set(PRESS_ACTS);
 const HOLD = a => 1 << HELD_ACTS.indexOf(a);
 const TAP = a => 1 << (5 + PRESS_ACTS.indexOf(a));
+const DASH_KEY = 1 << (5 + PRESS_ACTS.length);   // 2.4：冲刺用冲刺键（这一位一直带着，联机时对面也知道这个人双击方向不冲刺）
 
 class Pad {
-  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.pending = []; }
+  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.pending = []; this.keyDash = null; }
   down(a, repeat) {
     if (a in this.held) this.held[a] = true;
     if (PRESS_SET.has(a) && !repeat) this.pending.push(a);
@@ -1576,6 +2021,7 @@ class Pad {
     for (let i = 0; i < HELD_ACTS.length; i++) if (this.held[HELD_ACTS[i]]) v |= 1 << i;
     for (const a of this.pending) v |= TAP(a);
     this.pending.length = 0;
+    if (this.keyDash && this.keyDash()) v |= DASH_KEY;      // ui.js 接上：这一局用的那套键位选了「冲刺键」
     return v;
   }
   clear() { this.pending.length = 0; for (const k in this.held) this.held[k] = false; }
@@ -1585,12 +2031,13 @@ const pads = [new Pad(), new Pad()];   // pads[0] = 本机玩家（人机/联机
 function applyInput(F, v) {
   for (let i = 0; i < HELD_ACTS.length; i++) F.inp.held[HELD_ACTS[i]] = !!(v & (1 << i));
   for (let i = 0; i < PRESS_ACTS.length; i++) if (v & (1 << (5 + i))) F.inp.press(PRESS_ACTS[i], F.clock);
+  F.inp.keyDash = !!(v & DASH_KEY);
 }
 
 // 键位（KeyboardEvent.code，不受输入法影响）
-const MAP_P1 = { KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', KeyF: 'jab', KeyG: 'heavy', KeyH: 'kick', KeyR: 'block', KeyT: 'grab' };
-const MAP_P2 = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Comma: 'jab', Period: 'heavy', Slash: 'kick', KeyL: 'block', Semicolon: 'grab' };
-const MAP_P2X = { Numpad1: 'jab', Numpad2: 'heavy', Numpad3: 'kick', Numpad4: 'block', Numpad5: 'grab' };   // 玩家二第二格：小键盘
+const MAP_P1 = { KeyA: 'left', KeyD: 'right', KeyW: 'up', KeyS: 'down', KeyF: 'jab', KeyG: 'heavy', KeyH: 'kick', KeyR: 'block', KeyT: 'grab', ShiftLeft: 'dash' };
+const MAP_P2 = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', Comma: 'jab', Period: 'heavy', Slash: 'kick', KeyL: 'block', Semicolon: 'grab', ShiftRight: 'dash' };
+const MAP_P2X = { Numpad1: 'jab', Numpad2: 'heavy', Numpad3: 'kick', Numpad4: 'block', Numpad5: 'grab', Numpad0: 'dash' };   // 玩家二第二格：小键盘
 
 /* ---------- 自定义键位（1.6.0 单人；1.8.0 双人对战也能改；1.9.1 单人和双人分开） ----------
    三套：单人（人机 / 联机 / 打桩）、双人对战的玩家一、双人对战的玩家二。每个动作两格。
@@ -1598,22 +2045,33 @@ const MAP_P2X = { Numpad1: 'jab', Numpad2: 'heavy', Numpad3: 'kick', Numpad4: 'b
    单人那套和双人那两套互不影响：单人随便用方向键、小键盘，不用管会不会和玩家二抢键。
    双人对战时，两人都绑了的键归玩家二（玩家一那个键在双人对战里不起作用，键位设置里会标出来）。
    1.9.1 以前单人和双人的玩家一是同一套（存在 modou.keys）：第一次打开新版本时，双人的玩家一照抄这一套 */
-const ACTIONS = [['left', '左'], ['right', '右'], ['up', '跳'], ['down', '蹲'], ['jab', '短拳'], ['heavy', '重拳'], ['kick', '腿踢'], ['block', '格挡'], ['grab', '擒拿']];
+/* 2.4 冲刺怎么按（Jack：可以设成双击 A / D，也可以单按一个键冲刺）：每套键位各选各的 —— dash: 'tap' 双击方向（默认，和以前一样）/ 'key' 冲刺键。
+   选「冲刺键」：按一下冲刺键 = 往按着的方向冲（没按方向就往前冲；按着挡往前冲 = 闪身），双击方向就只是走路；
+   选「双击」：冲刺键那一行不用（不算缺键，也不和别的键算冲突）。触屏的「冲」按钮两种都能用 */
+const ACTIONS = [['left', '左'], ['right', '右'], ['up', '跳'], ['down', '蹲'], ['jab', '短拳'], ['heavy', '重拳'], ['kick', '腿踢'], ['block', '格挡'], ['grab', '擒拿'], ['dash', '冲刺']];
 const ACT_NAME = Object.fromEntries(ACTIONS);
 const codeOf = (map, a) => Object.keys(map).find(k => map[k] === a) || null;
 const DEFAULT_KEYS = {}, DEFAULT_KEYS2 = {};          // 单人、双人玩家一默认一样；玩家二另一套
 for (const [a] of ACTIONS) { DEFAULT_KEYS[a] = [codeOf(MAP_P1, a), null]; DEFAULT_KEYS2[a] = [codeOf(MAP_P2, a), codeOf(MAP_P2X, a)]; }
+DEFAULT_KEYS.dashMode = DEFAULT_KEYS2.dashMode = 'tap';
 const NO_BIND = new Set(['Escape', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'OSLeft', 'OSRight', 'ContextMenu']);
-const cloneKeys = k => Object.fromEntries(ACTIONS.map(([a]) => [a, (k[a] || [null, null]).slice(0, 2).concat([null, null]).slice(0, 2)]));
+// 一套键位：每个动作两格 + dashMode（'tap' 双击方向冲刺 / 'key' 冲刺键）。1.x ~ 2.3 存的没有冲刺这一行：补上默认的冲刺键
+const cloneKeys = (k, def) => {
+  const o = Object.fromEntries(ACTIONS.map(([a]) => [a, (k[a] || (a === 'dash' && def ? def.dash : null) || [null, null]).slice(0, 2).concat([null, null]).slice(0, 2)]));
+  o.dashMode = k.dashMode === 'key' ? 'key' : 'tap';
+  return o;
+};
+// 这套键位里真正在用的动作（选了「双击」，冲刺键那一行不用）
+const liveActs = k => ACTIONS.filter(([a]) => a !== 'dash' || k.dashMode === 'key');
 // 冲突检查：同一个键给了两个动作 → 冲突；某个动作一个键都没有 → 缺键
 function keyProblems(k) {
   const used = {}, out = { dup: [], missing: [], dupCodes: new Set() };
-  for (const [a] of ACTIONS) for (const c of k[a]) if (c) (used[c] = used[c] || []).push(a);
+  for (const [a] of liveActs(k)) for (const c of k[a]) if (c) (used[c] = used[c] || []).push(a);
   for (const c in used) if (new Set(used[c]).size > 1 || used[c].length > 1) { out.dup.push([c, used[c]]); out.dupCodes.add(c); }
-  for (const [a] of ACTIONS) if (!k[a].some(Boolean)) out.missing.push(a);
+  for (const [a] of liveActs(k)) if (!k[a].some(Boolean)) out.missing.push(a);
   return out;
 }
-function keyMapOf(k) { const m = {}; for (const [a] of ACTIONS) for (const c of k[a]) if (c) m[c] = a; return m; }
+function keyMapOf(k) { const m = {}; for (const [a] of liveActs(k)) for (const c of k[a]) if (c) m[c] = a; return m; }
 // 两个玩家都绑了的键（双人对战时归玩家二）
 function sharedKeys(k1, k2) { const m2 = keyMapOf(k2); return new Set(Object.keys(keyMapOf(k1)).filter(c => m2[c])); }
 const KEY_STORE = ['modou.keys', 'modou.keys1', 'modou.keys2'];     // 单人、双人玩家一、双人玩家二
@@ -1626,7 +2084,7 @@ const Keys = {
     const read = key => {
       try {
         const v = JSON.parse(get(key) || 'null');
-        if (v && typeof v === 'object') { const k = cloneKeys(v); if (!keyProblems(k).dup.length) return k; }
+        if (v && typeof v === 'object') { const k = cloneKeys(v, key === KEY_STORE[2] ? DEFAULT_KEYS2 : DEFAULT_KEYS); if (!keyProblems(k).dup.length) return k; }
       } catch (e) {}
       return null;
     };
@@ -1641,6 +2099,8 @@ const Keys = {
     try { [this.solo, this.p1, this.p2].forEach((k, i) => localStorage.setItem(KEY_STORE[i], JSON.stringify(k))); } catch (e) {}
   },
   route(code, mode) { return keyRoute(code, mode, this.map, this.map1, this.map2); },
+  // 2.4 这一局第 i 个玩家（本机）用的那套键位选没选「冲刺键」：双人对战看双人那两套，别的模式看单人那套
+  keyDash(i, mode) { return (mode === 'pvp' ? (i ? this.p2 : this.p1) : this.solo).dashMode === 'key'; },
   bound(code) { return !!(this.map[code] || this.map1[code] || this.map2[code]); },   // 哪一套里绑了这个键
 };
 // 这一局里这个键是谁的什么动作：[0 或 1, 动作]，没有就 null。
@@ -1650,6 +2110,13 @@ function keyRoute(code, mode, ms, m1, m2) {
   return ms[code] ? [0, ms[code]] : null;
 }
 Keys.load();
+// 2.4 教程、破招练习里讲冲刺的话：这套键位选了「冲刺键」，「双击 [前]」都换成「按 [冲]」（[冲] 换成冲刺键）
+function dashWords(s, set) {
+  if ((set || Keys.solo).dashMode !== 'key') return s;
+  return s.replace(/双击 \[前\]（或 \[后\]）/g, '按 [冲]（按着 [后] 再按 = 往后冲）')
+    .replace(/朝对手双击 \[前\]/g, '按 [冲]').replace(/双击 \[前\]/g, '按 [冲]')
+    .replace(/双击方向/g, '按冲刺键').replace(/双击冲进来/g, '冲刺冲进来').replace(/朝你双击/g, '朝你冲刺');
+}
 // 鼠标按键（1.7.0）：记成 Mouse0~4（MouseEvent.button）。3、4 是侧键（一般是「后退」「前进」）
 const MOUSE_NAME = ['鼠标左键', '鼠标中键', '鼠标右键', '鼠标侧键·后', '鼠标侧键·前'];
 // 键的显示名
@@ -1749,9 +2216,9 @@ const addFx = o => { o.max = o.max || o.life; fxDo(o.type + (o.text || ''), () =
 const flashTo = v => fxDo('flash', () => { game.flash = Math.max(game.flash, v); });
 function drops(n, x, y, dir, spd, cols, spread = 0.9, up = 0.35) {
   for (let i = 0; i < n; i++) {
-    const a = (Math.random() - 0.5) * 2 * spread - up;
+    const a = (vrnd() - 0.5) * 2 * spread - up;
     const s = spd * rnd(0.35, 1.15);
-    addFx({ type: 'drop', x, y, vx: Math.cos(a) * s * dir, vy: Math.sin(a) * s - rnd(0, 1.5), r: rnd(1.2, 3.6), color: pick(cols), life: 90 });
+    addFx({ type: 'drop', x, y, vx: Math.cos(a) * s * dir, vy: Math.sin(a) * s - rnd(0, 1.5), r: rnd(1.2, 3.6), color: vpick(cols), life: 90 });
   }
 }
 function burst(x, y, dir, n, len, w, color) {
@@ -1911,6 +2378,8 @@ const Sound = {
       const n = 1024, curve = new Float32Array(n);
       for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; curve[i] = Math.tanh(x * 3.2); }
       this.curve = curve;
+      // 2.4 古筝的几个音先算好（第一次开场时不卡那一下）
+      for (const f of ZHENG_UP.concat(ZHENG_CHORD, [659.26])) this.zhengBuf(f);
     } catch (e) { this.ctx = null; }
   },
   // 浏览器会把声音引擎挂起（页面切到后台、切去微信、联机时这一局是对方按「开始」开的、没点过页面……）。
@@ -1977,17 +2446,8 @@ const Sound = {
   clash() { if (!this.ok()) return; this.tone(980, 0.16, 0.12, 'square', 520); this.tone(1460, 0.12, 0.08, 'triangle', 900); this.nz(0.12, 2400, 1.2, 0.3, 'bandpass', 900); this.tone(120, 0.2, 0.3, 'sine', 50); },
   parry() { if (!this.ok()) return; this.tone(1760, 0.25, 0.1, 'sine', 1700); this.tone(2640, 0.18, 0.06, 'sine', 2600); this.nz(0.05, 5000, 1, 0.12, 'highpass'); },
   burst() { if (!this.ok()) return; this.tone(70, 0.45, 0.4, 'sine', 30); this.nz(0.4, 300, 0.6, 0.35, 'lowpass', 1200); },
-  // 胜负已分：一声大锣（2.3 换成和开场一样的大锣，敲下去音往下掉一截再拖长）
-  gong() { if (!this.ok()) return; this.bigGong(1.15, 0); this.cymbal(0.45, 0.01); },
-  /* ---------- 2.3 锣鼓（Jack：开场字幕加音效 —— 中式格斗那种敲锣打鼓）----------
-     京剧锣鼓经里的几样家伙，全是现合成的（走 master，跟着音量、压缩器、限幅）：
-     · 板「八」：木头一拍，又干又脆          · 单皮鼓「大」：小而紧的鼓，「嗒」一声
-     · 堂鼓（战鼓）「咚」：大鼓，低音往下沉    · 铙钹「才」：一片高频的「嚓」+ 几声金属响
-     · 大锣「哐」：一组不成倍数的正弦（金属味），敲下去音往下掉一截再拖长（京剧大锣的「下滑」）
-     · 小锣「台」：高的锣，敲下去音往上挑（京剧小锣的「上挑」）
-     · 仓 = 大锣 + 铙钹 + 小锣一齐响
-     game.js 开场按 LUOGU_INTRO 一帧一帧敲：Sound.luogu(家伙, 力度) 走 fxDo（联机回滚不重复响） */
-  luogu(k, p) { if (!this.ok()) return; const f = this[LUOGU_KIT[k]]; if (f) f.call(this, p || 1, 0); },
+  // 胜负已分（2.4 不敲锣了）：一声战鼓，紧跟着「锵」（大鼓 + 战鼓 + 镲）和古筝一个和弦
+  finale() { if (!this.ok()) return; this.taiko(1, 0); this.qiang(1.15, 0.16); this.zhengChord(1, 0.16); },
   // 一个音：f 在 glide 秒内滑到 f2（之后不动），dur 秒衰减完
   glide(f, f2, glide, dur, gain, delay, type) {
     const c = this.ctx, t = c.currentTime + (delay || 0);
@@ -1996,71 +2456,98 @@ const Sound = {
     const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
   },
-  bigGong(p, d) {
-    const f0 = 205 * (0.98 + srnd() * 0.04), L = 0.75 + 0.25 * Math.min(1.4, p);
-    // [倍数, 响度, 多久衰减完]：第二个和第一个差一点点（两个一起「嗡嗡」地起伏，像真锣）
-    for (const [r, a, s] of [[1, 1, 2.7], [1.006, 0.55, 2.5], [1.49, 0.5, 1.9], [1.98, 0.55, 1.6], [2.55, 0.32, 1.1], [3.11, 0.26, 0.9], [3.72, 0.18, 0.7], [4.66, 0.1, 0.5]])
-      this.glide(f0 * r, f0 * r * 0.86, 0.45, s * L, 0.15 * a * p, d);
-    this.nz(0.2, 1300, 0.6, 0.2 * p, 'bandpass', 600, false, d);         // 锣槌砸上去那一下
-    this.nz(0.75 * L, 5200, 0.7, 0.025 * p, 'highpass', null, false, d); // 锣面「沙沙」的余音（淡一点，主要听「哐」）
-  },
-  smallGong(p, d) {
-    const f0 = 740 * (0.98 + srnd() * 0.04);
-    for (const [r, a, s] of [[1, 1, 0.95], [2.13, 0.32, 0.5], [3.3, 0.12, 0.3]]) this.glide(f0 * r, f0 * r * 1.13, 0.16, s, 0.1 * a * p, d);
-    this.nz(0.04, 3000, 1.2, 0.1 * p, 'bandpass', null, false, d);
-  },
-  cymbal(p, d) {
-    this.nz(0.42 + 0.22 * Math.min(1.4, p), 3800, 0.5, 0.17 * p, 'highpass', null, false, d);
-    this.nz(0.3, 7200, 0.9, 0.13 * p, 'bandpass', null, false, d);
-    for (const f of [2870, 3990, 5310]) this.glide(f, f * 0.995, 0.3, 0.26, 0.02 * p, d, 'square');
-  },
-  danpi(p, d) { this.glide(700, 380, 0.05, 0.09, 0.28 * p, d, 'triangle'); this.nz(0.025, 2600, 1.4, 0.24 * p, 'bandpass', null, false, d); },
-  clapper(p, d) {
-    this.nz(0.03, 1900, 5, 0.28 * p, 'bandpass', null, false, d);
-    this.nz(0.022, 3300, 4, 0.2 * p, 'bandpass', null, false, (d || 0) + 0.004);
-    this.glide(1250, 1150, 0.03, 0.045, 0.07 * p, d);
-  },
-  warDrum(p, d) {
+  /* ---------- 2.4 开场的鼓（Jack：2.3 的锣鼓不好听、太诡异 —— 大锣敲下去音往下滑、小锣往上挑，听着瘆人）----------
+     换成战鼓 + 镲 + 古筝，都是「正」的音，不往上往下滑：
+     · 战鼓「咚」：鼓皮一下（音高几十毫秒里就落定 —— 真鼓就这样，不是「呜」地滑）+ 鼓槌「噗」
+     · 大鼓：更低更长的「咚」          · 鼓边「嗒」：敲在鼓框上，又干又脆
+     · 镲「嚓」：一片亮的「沙」慢慢散开（不带方波那种怪金属音）
+     · 古筝「铮」：五声音阶（D 宫：D E F♯ A B）一串往上拨；「和」：D、A、D、A 几根弦一齐拨
+     · 「锵」= 大鼓 + 战鼓 + 镲一齐响
+     全是现合成的（走 master，跟着音量、压缩器、限幅）。game.js 开场按 INTRO_BEATS 一帧一帧敲：Sound.beat(字, 力度) 走 fxDo（联机回滚不重复响） */
+  beat(k, p) { if (!this.ok()) return; const f = this[BEAT_KIT[k]]; if (f) f.call(this, p || 1, 0); },
+  taiko(p, d) {
     const k = 0.97 + srnd() * 0.06;
-    this.glide(150 * k, 66 * k, 0.2, 0.42, 0.5 * p, d);
-    this.glide(240 * k, 120 * k, 0.12, 0.18, 0.11 * p, d, 'triangle');
-    this.nz(0.06, 700, 0.8, 0.2 * p, 'lowpass', 250, false, d);
+    this.glide(124 * k, 58 * k, 0.06, 0.46 + 0.1 * Math.min(1.4, p), 0.56 * p, d);   // 鼓皮
+    this.glide(270 * k, 160 * k, 0.04, 0.15, 0.1 * p, d, 'triangle');               // 鼓皮上面一点的泛音
+    this.nz(0.06, 520, 0.7, 0.24 * p, 'lowpass', 180, false, d);                      // 鼓槌「噗」
+    this.nz(0.012, 2400, 1, 0.05 * p, 'bandpass', null, false, d);                    // 一点点「啪」
   },
-  cang(p, d) { this.bigGong(p, d); this.cymbal(p * 0.9, (d || 0) + 0.004); this.smallGong(p * 0.4, (d || 0) + 0.008); if (p > 1.1) this.warDrum(p * 0.75, d); },
-  /* ---------- 2.3 菜单的声音（Jack：鼠标移到按钮上要有声音，按下去是另一声）----------
-     移上去：轻轻一声木鱼「笃」；按下去：单皮鼓「嗒」加一点低音。菜单背景里也响（不走 ok() 的「菜单里不出声」），
-     浏览器还没让出声（没点过页面）就不响；不走 fxDo（不是对局里的事） */
+  taikoLo(p, d) {
+    this.glide(86, 46, 0.08, 0.8, 0.5 * p, d);
+    this.nz(0.1, 360, 0.6, 0.22 * p, 'lowpass', 120, false, d);
+  },
+  rim(p, d) { this.nz(0.03, 2300, 2.2, 0.2 * p, 'bandpass', null, false, d); this.tone(610, 0.045, 0.07 * p, 'triangle', null, d); },
+  cha(p, d) {
+    this.nz(0.85 + 0.3 * Math.min(1.4, p), 6200, 0.5, 0.085 * p, 'highpass', null, false, d);   // 亮的「沙」，慢慢散开
+    this.nz(0.2, 3600, 0.8, 0.1 * p, 'bandpass', 5200, false, d);                                // 打上去那一下「嚓」
+  },
+  qiang(p, d) { this.taikoLo(p, d); this.taiko(p * 0.85, (d || 0) + 0.004); this.cha(p * 0.8, (d || 0) + 0.008); },
+  // 古筝拨弦：Karplus-Strong（一小段噪声在「弦」里一圈圈走、一圈圈磨平 = 弦振动的声音）。每个音第一次用时现算、存起来
+  zhengBuf(freq) {
+    const c = this.ctx, cache = this.zbuf || (this.zbuf = {}), key = Math.round(freq * 10);
+    if (cache[key]) return cache[key];
+    const sr = c.sampleRate, n = Math.floor(sr * 1.8), N = Math.max(2, Math.round(sr / freq));
+    const buf = c.createBuffer(1, n, sr), out = buf.getChannelData(0), ring = new Float32Array(N);
+    let lp = 0;
+    for (let i = 0; i < N; i++) { lp = lp * 0.45 + (srnd() * 2 - 1) * 0.55; ring[i] = lp; }   // 拨的那一下：磨圆一点的噪声（不扎耳朵）
+    const fb = Math.pow(0.001, 1 / (freq * 1.7));                                             // 每走一圈再衰减一点：1.7 秒落到 -60dB
+    let j = 0, peak = 1e-6;
+    for (let i = 0; i < n; i++) { const a = ring[j], b2 = ring[j + 1 < N ? j + 1 : 0]; out[i] = a; ring[j] = (a + b2) * 0.5 * fb; j = j + 1 < N ? j + 1 : 0; if (a > peak) peak = a; else if (-a > peak) peak = -a; }
+    for (let i = 0; i < n; i++) out[i] /= peak;
+    return (cache[key] = buf);
+  },
+  zheng(freq, gain, delay, dur) {
+    const c = this.ctx, t = c.currentTime + (delay || 0), L = dur || 1.2;
+    const s = c.createBufferSource(); s.buffer = this.zhengBuf(freq);
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = Math.min(9000, freq * 7); f.Q.value = 0.5;
+    const g = c.createGain(); g.gain.setValueAtTime(gain, t); g.gain.setTargetAtTime(0.0001, t + L * 0.55, L * 0.22);
+    s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t + L + 0.5);
+  },
+  zhengUp(p, d) { ZHENG_UP.forEach((f, i) => this.zheng(f, 0.12 * p * (0.8 + i * 0.05), (d || 0) + i * 0.034, 1.1)); },
+  zhengChord(p, d) { ZHENG_CHORD.forEach((f, i) => this.zheng(f, 0.15 * p * [1, 0.8, 0.7, 0.5][i], (d || 0) + i * 0.016, 1.7)); },
+  /* ---------- 菜单的声音（2.3；2.4 Jack：按下去那一声太诡异 —— 以前是往下滑的「嘟」）----------
+     移上去：轻轻一声木鱼「笃」；按下去：古筝拨一下「叮」（E，不滑音）+ 一点点「嗒」。菜单背景里也响（不走 ok() 的「菜单里不出声」）；
+     不走 fxDo（不是对局里的事）。2.4：一打开游戏就把声音引擎建好（软件版一进来就有声；网页版浏览器要先点一下页面），
+     按下去那一下要是声音引擎还睡着，先叫醒再响（以前第一下按了没声） */
   uiReady() { return this.on && this.vol > 0 && !!this.ctx && this.ctx.state === 'running'; },
   uiHover() {
-    if (!this.uiReady()) return;
+    if (!this.uiReady()) { if (this.on && this.ctx) this.wake(); return; }
     const now = performance.now(); if (now - (this.uiT || 0) < 45) return; this.uiT = now;
     this.glide(1520, 1380, 0.04, 0.07, 0.055);
     this.nz(0.016, 2400, 3, 0.035, 'bandpass');
   },
   uiPress() {
-    if (!this.uiReady()) return;
-    this.uiT = performance.now();
-    this.glide(520, 260, 0.06, 0.12, 0.11, 0, 'triangle');
-    this.nz(0.022, 2200, 1.6, 0.08, 'bandpass');
-    this.glide(150, 80, 0.08, 0.14, 0.08);
+    if (!this.on || this.vol <= 0) return;
+    this.init();
+    if (!this.ctx) return;
+    const play = () => {
+      if (!this.uiReady()) return;
+      this.uiT = performance.now();
+      this.zheng(659.26, 0.16, 0, 0.5);
+      this.nz(0.012, 1900, 2, 0.05, 'bandpass');
+    };
+    if (this.ctx.state === 'running') play(); else this.ctx.resume().then(play).catch(() => {});
   },
 };
-// 锣鼓经的字 → 家伙
-const LUOGU_KIT = { 八: 'clapper', 大: 'danpi', 仓: 'cang', 台: 'smallGong', 才: 'cymbal', 咚: 'warDrum' };
-/* 开场锣鼓（帧 → [[字, 力度]…]）：「八 大 仓」—— 回合名在第 10 帧随「仓」砸下来（game.js）；
-   接着战鼓一下比一下密、越敲越响（急急风）；第 68 帧「战」：大仓 + 一声战鼓。决胜局在前面多一声「仓」、鼓点更密 */
-const LUOGU_INTRO = { 2: [['八', 0.85]], 6: [['大', 0.95]], 10: [['仓', 0.9]] };
+// 开场鼓经的字 → 家伙
+const BEAT_KIT = { 咚: 'taiko', 嗵: 'taikoLo', 嗒: 'rim', 嚓: 'cha', 锵: 'qiang', 铮: 'zhengUp', 和: 'zhengChord' };
+const ZHENG_UP = [587.33, 659.26, 739.99, 880, 987.77, 1174.66];      // D5 E5 F♯5 A5 B5 D6
+const ZHENG_CHORD = [293.66, 440, 587.33, 880];                       // D4 A4 D5 A5
+/* 开场的鼓（帧 → [[字, 力度]…]）：两声战鼓，回合名在第 10 帧随「锵」砸下来（game.js）；接着战鼓一下比一下密、越敲越响；
+   快到「战」古筝一串往上拨，第 68 帧「战」：「锵」+ 古筝一个和弦。决胜局在前面多一声「锵」、鼓点更密、多一声镲 */
+const INTRO_BEATS = { 2: [['咚', 0.8]], 6: [['咚', 0.62]], 10: [['锵', 0.9]] };
 [[24, .4], [31, .44], [37, .48], [42, .52], [46, .56], [50, .6], [53, .64], [56, .68], [58, .72], [60, .76], [62, .8], [64, .84], [66, .88]]
-  .forEach(([f, p]) => (LUOGU_INTRO[f] = LUOGU_INTRO[f] || []).push(['咚', p]));
-LUOGU_INTRO[46].push(['台', 0.55]);
-LUOGU_INTRO[68] = [['仓', 1.2]];
-const LUOGU_FINAL = { 18: [['仓', 0.8]], 27: [['咚', 0.42]], 34: [['咚', 0.46]], 40: [['咚', 0.5]], 44: [['才', 0.5]] };
-function luoguIntro(t, final) {
-  for (const [k, p] of LUOGU_INTRO[t] || []) Sound.luogu(k, p);
-  if (final) for (const [k, p] of LUOGU_FINAL[t] || []) Sound.luogu(k, p);
+  .forEach(([f, p]) => (INTRO_BEATS[f] = INTRO_BEATS[f] || []).push(['咚', p]));
+INTRO_BEATS[46].push(['嗒', 0.6]); INTRO_BEATS[56].push(['嗒', 0.7]);
+INTRO_BEATS[60].push(['铮', 0.9]);
+INTRO_BEATS[68] = [['锵', 1.2], ['和', 0.9]];
+const FINAL_BEATS = { 18: [['锵', 0.8]], 27: [['咚', 0.42]], 34: [['咚', 0.46]], 40: [['咚', 0.5]], 44: [['嚓', 0.5]] };
+function introBeats(t, final) {
+  for (const [k, p] of INTRO_BEATS[t] || []) Sound.beat(k, p);
+  if (final) for (const [k, p] of FINAL_BEATS[t] || []) Sound.beat(k, p);
 }
 // 声音也走 fxDo：回滚重算时先攒着，算完只补放新时间线里多出来的（1.9.0）
-for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'gong', 'luogu']) {
+for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'finale', 'beat']) {
   const play = Sound[k];
   Sound[k] = function (...a) { fxDo('S' + k, () => play.apply(Sound, a)); };
 }
@@ -2274,7 +2761,7 @@ function dashInFx(F) {
    · 一圈火（qiRing）：爆气、泼墨起手、连招打到第 5 下 / 第 7 下 —— 从胸口一圈往外炸开的火舌，炸出去再往上卷
    ============================================================ */
 const QI = [];
-const addQi = o => { o.max = o.life; o.v = o.v === undefined ? (Math.random() * 4) | 0 : o.v; QI.push(o); };
+const addQi = o => { o.max = o.life; o.v = o.v === undefined ? (vrnd() * 4) | 0 : o.v; QI.push(o); };
 // 连击数 → 火有多旺（2.0.2：1、2 连没有；3 连 0.4、4 连 0.65、5 连 0.9、6 连 1.15、7 连以上 1.4 到顶）
 const comboHeat = n => n >= 3 ? Math.min(1.4, 0.4 + 0.25 * (n - 3)) : 0;
 function qiLevel(F) {
@@ -2321,7 +2808,7 @@ function qiRing(F, n, k) {
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + rnd(-0.15, 0.15), s = rnd(3.2, 4.8) * k, r0 = rnd(14, 22);
     flame(F, P.qi, cx + Math.cos(a) * r0, cy + Math.sin(a) * r0 * 0.9, Math.cos(a) * s, Math.sin(a) * s * 0.9 - 0.6,
-      rnd(7, 11) * k, rnd(0.42, 0.6), rnd(20, 30), { buoy: 0.12, drag: 0.88, hot: Math.random() < 0.5, fr: Math.sin(a) > 0.2 && Math.random() < 0.35 });
+      rnd(7, 11) * k, rnd(0.42, 0.6), rnd(20, 30), { buoy: 0.12, drag: 0.88, hot: vrnd() < 0.5, fr: Math.sin(a) > 0.2 && vrnd() < 0.35 });
   }
   for (let i = 0; i < 8; i++) {
     const a = rnd(0, Math.PI * 2), s = rnd(3, 6) * k;
@@ -2339,7 +2826,7 @@ function emitQi(F) {
   if (reduceMotion || !F.J) return;
   const J = F.J, h = F.heat, P = pal(F), L = flow.lean, bk = flow.back;
   const spot = bones => {                                    // 在这些骨头上随便挑一点
-    const [p0, p1] = bones[(Math.random() * bones.length) | 0], u = Math.random();
+    const [p0, p1] = bones[(vrnd() * bones.length) | 0], u = vrnd();
     return [J[p0][0] + (J[p1][0] - J[p0][0]) * u + rnd(-7, 7), J[p0][1] + (J[p1][1] - J[p0][1]) * u + rnd(-7, 7)];
   };
   // 一条普通的火：往上冒（略往身后飘）；动得快就往身后斜着拖（L 越大越斜、飘得越快、拉得越长）
@@ -2350,10 +2837,10 @@ function emitQi(F) {
   // 招式的气（泼墨、爆气、截拳、卸力）
   let n = a * (2 + 2.6 * a);
   while (n > 0 && a > 0.02) {
-    if (n < 1 && Math.random() > n) break;
+    if (n < 1 && vrnd() > n) break;
     n--;
     const [x, y] = spot(QI_BONES);
-    if (Math.random() < 0.84) lick(x, y, rnd(1.2, 2.6) * (0.8 + a * 0.4), rnd(4, 8) * (0.7 + a * 0.6), rnd(0.22, 0.36) * (0.5 + a * 0.6), rnd(16, 28));
+    if (vrnd() < 0.84) lick(x, y, rnd(1.2, 2.6) * (0.8 + a * 0.4), rnd(4, 8) * (0.7 + a * 0.6), rnd(0.22, 0.36) * (0.5 + a * 0.6), rnd(16, 28));
     else addQi({ k: 'ember', f: F.idx, col: P.fx, x, y, vx: bk * rnd(0, 0.8) + rnd(-0.4, 0.4), vy: -rnd(1.4, 3), r: rnd(1.2, 2.2), a: 0.9, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
   }
   // 连招的火（2.0.2）：3 连才起，只在拳脚上冒；4 连起整个人冒火，一部分火苗烧到身子前面；越往后火苗越多、越大、越浓、窜得越高
@@ -2361,23 +2848,23 @@ function emitQi(F) {
     const big = h > 0.6, hm = Math.min(1, h);
     let k = h * (1.6 + 2.6 * h);                              // 每帧几个：3 连 1、4 连 2.1、5 连 3.5、6 连 5.3、7 连以上 7.3（2.1：少一点，一条一条火舌看得清）
     while (k > 0) {
-      if (k < 1 && Math.random() > k) break;
+      if (k < 1 && vrnd() > k) break;
       k--;
       const [x, y] = spot(h < 0.5 ? QI_LIMBS : QI_BONES);
-      if (Math.random() < 0.86) lick(x, y, rnd(1.5, 3.2) * (0.8 + 0.55 * h), rnd(5.5, 8.5) * (0.8 + 0.55 * h), rnd(0.46, 0.64) * (0.65 + 0.35 * hm), rnd(16, 28),
-        { hot: big && Math.random() < 0.55, fr: big && Math.random() < 0.08 });   // 烧到身前的很少：气再旺，身子也看得清
+      if (vrnd() < 0.86) lick(x, y, rnd(1.5, 3.2) * (0.8 + 0.55 * h), rnd(5.5, 8.5) * (0.8 + 0.55 * h), rnd(0.46, 0.64) * (0.65 + 0.35 * hm), rnd(16, 28),
+        { hot: big && vrnd() < 0.55, fr: big && vrnd() < 0.08 });   // 烧到身前的很少：气再旺，身子也看得清
       else addQi({ k: 'ember', f: F.idx, col: P.fx, x, y, vx: bk * (rnd(0, 1) + L * 3) + rnd(-0.5, 0.5), vy: -rnd(1.6, 3.6) * (0.8 + 0.45 * h), r: rnd(1, 1.8) * (0.8 + 0.4 * h), a: 1, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
     }
     // 5 连起：背上往身后斜着往上喷大火舌（像一件火做的披风；跑起来就整片往后拖）
     if (h > 0.8) {
       let p = (h - 0.7) * 2.2;                                // 5 连每帧 0.44 条、6 连 1、7 连以上 1.5
       while (p > 0) {
-        if (p < 1 && Math.random() > p) break;
+        if (p < 1 && vrnd() > p) break;
         p--;
         const [x, y] = spot(QI_BACK), sp = rnd(1.6, 2.8) * (0.8 + 0.3 * h);
         const ang = (0.5 + 0.45 * L + rnd(-0.18, 0.18)) * Math.PI / 2;      // 离竖直往后偏多少：站着 45° 左右，跑起来更平
         flame(F, P.qi, x + bk * 6, y + rnd(0, 8), bk * Math.sin(ang) * sp, -Math.cos(ang) * sp,
-          rnd(13, 20) * (0.55 + 0.45 * h), rnd(0.2, 0.3) * hm, rnd(22, 34), { hot: Math.random() < 0.4, buoy: 0.05, drag: 0.98, len: 1.25 });
+          rnd(13, 20) * (0.55 + 0.45 * h), rnd(0.2, 0.3) * hm, rnd(22, 34), { hot: vrnd() < 0.4, buoy: 0.05, drag: 0.98, len: 1.25 });
       }
     }
   }
@@ -2424,8 +2911,9 @@ function takeoffVx(o) {
 const TAU = Math.PI * 2;
 // 1.9.0：以前踩地占三成多、步子小，看着像竞走。现在踩地只占四分之一出头、步子大：
 // 蹬地后脚跟往后上方甩到屁股高，再提膝往前带、小腿甩出去 —— 两脚都离地的时间长，人是一窜一窜往前飞的（火影手游那种跑法）
-const RUN_ST = 0.26, RUN_X0 = 36, RUN_X1 = -42;           // 踩地占周期的比例、落地点、蹬离点（相对髋）
-const RUN_SWING = [[0, RUN_X1, 0], [0.14, -60, 22], [0.34, -40, 46], [0.55, 4, 44], [0.76, 42, 30], [0.9, 46, 12], [1, RUN_X0, 0]];  // [进度, x, 离地高]
+// 2.4 腿长了（69 → 76）：步子、抬腿跟着放大一成
+const RUN_ST = 0.26, RUN_X0 = 40, RUN_X1 = -46;           // 踩地占周期的比例、落地点、蹬离点（相对髋）
+const RUN_SWING = [[0, RUN_X1, 0], [0.14, -66, 24], [0.34, -44, 51], [0.55, 4, 48], [0.76, 46, 33], [0.9, 51, 13], [1, RUN_X0, 0]];  // [进度, x, 离地高]
 function catmull(p0, p1, p2, p3, t) {
   const t2 = t * t, t3 = t2 * t;
   return 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3);
@@ -2465,6 +2953,8 @@ function runArm(u, tor, amp) {
   return [ex + Math.sin(th + ph) * BONE.fa, ey + Math.cos(th + ph) * BONE.fa];
 }
 
+const FIT_KEYS = ['hip', 'neck', 'head', 'shF', 'shB', 'fe', 'be', 'fh', 'bh', 'fk', 'bk', 'ff', 'bf'];   // fitContact 粗看一眼用的关节
+const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
 class Fighter {
   constructor(idx, cfg) {
     this.idx = idx; this.setLook(cfg.look);
@@ -2493,7 +2983,7 @@ class Fighter {
     copyPose(this.disp, POSE.stance); this.hipY = -62; this.J = null;
     this.inp.clear();
     this.fk();
-    // 发带：两条从头带结上飘出去（2.0.2 以前还有第三条从腰上飘，改成箍着的腰带了，见 render.js drawBelt）
+    // 发带：两条从头带结上飘出去（2.0.2 以前还有第三条从腰上飘，改成箍着的腰带了，见 body.js drawWaistBelt）
     this.ribbons = [0, 1].map(() => {
       const a = this.J.knot, pts = [];
       for (let i = 0; i < 8; i++) pts.push({ x: a[0] - facing * i * 6, y: a[1] + i * 2, px: a[0] - facing * i * 6, py: a[1] + i * 2 });
@@ -2560,7 +3050,7 @@ class Fighter {
          他会按「我」这时候在哪重新瞄（和 aimDive 一样），然后直线往下踩、落在我身上 —— 以前当他照惯性一直往前飞，算出来他会落到我身后，就转身往后打空了；
        · 普通跳在空中按着方向：会加速 / 减速（AIR_ACC，有上限），松开才慢慢变慢（以前一律按松开算）；
        · 被顶回去翻跟头（tumble）：横着匀速飞，方向键管不了；
-       · 他空中的招（千斤坠、飞踢、空中挥拳、泰山压顶）在判定帧里够到我了：他就停在那儿 —— 真打起来是我先挨这一下，
+       · 他空中的招（千斤坠、飞踢、挥拳、泰山压顶）在判定帧里够到我了：他就停在那儿 —— 真打起来是我先挨这一下，
          以前接着按惯性推，推出来他「飞过我、落到我身后」，我的招慢一点就转身往后打，结果背对着挨踢 / 挨踩 */
     const odir = o.state === 'tumble' ? 0 : dirOf(o.inp.held);
     const oam = om && om.air && !om.hit && !om.blocked ? om : null, odv = oam && oam.def.dive ? oam : null;
@@ -2848,8 +3338,12 @@ class Fighter {
     const bl = !!h.block;
     if (bl && !this.prevBlock) { this.parryOK = this.clock - this.blockPress >= PARRY_LOCK; this.blockPress = this.clock; }
     this.prevBlock = bl;
-    if (h.left && !this.prevL) { if (this.clock - this.tapL <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = -1; this.tapL = -999; } else this.tapL = this.clock; }
-    if (h.right && !this.prevR) { if (this.clock - this.tapR <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = 1; this.tapR = -999; } else this.tapR = this.clock; }
+    // 2.4 冲刺键（键位设置里选了「冲刺键」的人，双击方向就只是走路 —— inp.keyDash）：按一下 = 往按着的方向冲，没按方向就往前（面朝的方向）
+    if (!this.inp.keyDash) {
+      if (h.left && !this.prevL) { if (this.clock - this.tapL <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = -1; this.tapL = -999; } else this.tapL = this.clock; }
+      if (h.right && !this.prevR) { if (this.clock - this.tapR <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = 1; this.tapR = -999; } else this.tapR = this.clock; }
+    }
+    if (this.takePress(['dash'])) { this.dashT = this.clock; this.dashDir = dirOf(h) || this.facing; this.tapL = this.tapR = -999; }
     this.prevL = !!h.left; this.prevR = !!h.right;
 
     switch (this.state) {
@@ -3145,7 +3639,7 @@ class Fighter {
     t.ff[0] = f[0]; t.ff[1] = f[1]; t.bf[0] = b[0]; t.bf[1] = b[1];
     const bob = Math.cos(TAU * 2 * (u - 0.38));             // 一步一起伏：腾空正中最高，踩地正中最低
     t.tor = 18 + 14 * k - 2 * bob; t.head = -12 - 8 * k;
-    t.hy = 52 + 1.5 * bob; t.air = Math.min(f[1], b[1]) + 2 + 4 * bob;
+    t.hy = 62 + 1.5 * bob; t.air = Math.min(f[1], b[1]) + 2 + 4 * bob;
     const amp = 0.75 + 0.25 * k;
     const fa = runArm(u, t.tor, amp), ba = runArm(u + 0.5, t.tor, amp);   // 手的相位 = 同侧腿的相位，runArm 里自己反着摆
     t.fh[0] = fa[0]; t.fh[1] = fa[1]; t.bh[0] = ba[0]; t.bh[1] = ba[1];
@@ -3237,14 +3731,17 @@ class Fighter {
     return copyPose(t, POSE.stance);
   }
   animate(frozen) {
+    const hold = this.holdPose; this.holdPose = false;      // 2.4 刚挨了一下（combat.js applyHit）：这一帧姿势先不变，顿帧过了再往后仰
     if (!frozen) {
       const tg = this.target();
       const st = this.state;
       // 跑步是循环动作，跟得紧一点（不然摆幅被抹平、脚会打滑）；刚起跑那几帧松一点，从站姿顺过去
       const k = st === 'attack' || st === 'tumble' ? 0.78 : this.carried ? 0.85 : (st === 'hit' || st === 'blockstun' || st === 'parry') ? 0.6
         : (st === 'down' || st === 'ko') ? (this.slam && this.downPhase === 'fall' ? 0.6 : 0.3) : st === 'run' ? (this.runT < 5 ? 0.5 : 0.88) : st === 'air' ? 0.32 : 0.4;
-      lerpPose(this.disp, tg, k, this.disp, true);
+      if (!hold) lerpPose(this.disp, tg, k, this.disp, true);
+      const hy0 = this.hipY, ik0 = this.ikS ? this.ikS.slice() : null;
       this.fk();
+      this.fitContact(hy0, ik0);
       emitQi(this);
       // 拳脚轨迹 + 残影（只在出招时有；跑步不留残影）
       const m = this.move;
@@ -3279,41 +3776,128 @@ class Fighter {
       pts.forEach((q, j) => { const o = r[j] || (r[j] = { x: 0, y: 0 }); o.x = q.x; o.y = q.y; });
     });
   }
+  /* 2.4 拳脚停在对方身上（只是画面）：出招时离得比射程近，照着姿势探身、伸直的拳脚会整个扎进对方身子里 ——
+     ① 先看身子：探身、前冲（姿势的 dx）把头、躯干送进了对方身子里，就整个人往回让到刚贴上（踩在地上的脚不动）；
+        往前上步的脚别踩进对方两脚中间；
+     ② 再看拳脚：过了对方迎面那一层（body.js bodyPen）超过 CONTACT_SINK，就从这一帧真正伸到的地方把那只手 / 脚往回收
+        （胳膊、腿自己弯回来）；肘、肩撞人收不了手，整个人往回让。
+     姿势本身不改（下一帧照样从原来的姿势算），只是这一帧的骨骼 J */
+  fitContact(hy0, ik0) {
+    const m = this.move, o = this.opp, limb = m && this.state === 'attack' && !m.def.script ? m.def.limb : null;
+    if (!limb || !o || !o.J || !this.J || !this.fkL || (o.x - this.x) * this.facing < 24) return;
+    // 对手躺在地上、飞在空中（看画面：髋贴着地、两只脚都离地老高）不管 —— 往下踩、往上托的不是横着打
+    if (FLOOR - o.J.hip[1] < 30 || FLOOR - Math.max(o.J.ff[1], o.J.bf[1]) > 24) return;
+    // 先粗看一眼：自己最往前的关节都还够不着对方最靠前的关节（各留 22 的胖瘦、拳头、脚尖），就不用细量了
+    const fw = this.facing, OJ = o.J, MJ = this.J;
+    let oFront = 1e9, mFront = -1e9;
+    for (const k of FIT_KEYS) { const a = OJ[k][0] * fw, b = MJ[k][0] * fw; if (a < oFront) oFront = a; if (b > mFront) mFront = b; }
+    if (mFront + 22 < oFront - 22) return;
+    const p = this.disp, arm = limb === 'fh' || limb === 'bh', leg = limb === 'ff' || limb === 'bf', A = BODY.bone.ankle;
+    const ax = Math.cos(p.spin * D2R) * Math.cos(p.rot * D2R);   // 姿势里往前（x）挪 1，画面上往前挪多少（转身、翻滚时变小、反过来）
+    const keep = { dx: p.dx, fh: p.fh.slice(), bh: p.bh.slice(), ff: p.ff.slice(), bf: p.bf.slice() };
+    const noArms = !o.isBlocking();                             // 挡着的：拳头停在他的胳膊上；没挡：从护着的手上面过去，停在身上
+    const oParts = bodyParts(OJ, 0).parts, tgtBody = bodyTargets(OJ, true, oParts), tgtHit = noArms ? tgtBody : bodyTargets(OJ, false, oParts);
+    const CORE = FIT_CORE, FEET = FIT_FEET;
+    const refit = () => { this.hipY = hy0; if (ik0) for (let i = 0; i < 4; i++) this.ikS[i] = ik0[i]; this.fk(); };
+    // 脚踝目标放到 x（姿势的坐标），腿够不着就往髋底下收到刚好够着（不然脚会被拽离地）
+    const legLen = BODY.bone.th + BODY.bone.sh - 0.8;
+    const footTo = (k, x, y) => {
+      const hj = k === 'ff' ? BODY.hipSplit : -BODY.hipSplit, dx2 = x - hj;
+      if (Math.hypot(dx2, y) > legLen) x = hj + Math.sign(dx2) * Math.sqrt(Math.max(0, legLen * legLen - y * y));
+      p[k][0] = x; p[k][1] = p.hy - A - y;
+    };
+    // 整个人往回让 d：踩在地上的脚尽量踩着原地（够不着就跟着往回滑一点；转身转得多了就跟着挪，不然腿要拧成麻花）
+    const back = d => {
+      const L = this.fkL; p.dx -= d;
+      if (Math.abs(ax) >= 0.6) for (const k of ['ff', 'bf']) if (Math.abs(L[k][1] - (p.hy - A)) < 6) footTo(k, L[k][0] + d / ax, L[k][1]);
+    };
+    let moved = 0;
+    for (let it = 0; it < 2; it++) {
+      const core = bodyParts(this.J, 0, CORE).parts.map(q => q.pts);
+      const pen = bodyPenT(core, tgtBody, fw) - 2;
+      if (pen <= 0.4 || moved >= 40) break;
+      const d = Math.min(pen + 0.6, 40 - moved); moved += d; back(d); refit();
+    }
+    // 踩在地上的脚：往前上步别踩进对方两脚中间（脚尖最多到对方前脚尖再过去一点点）
+    if (Math.abs(ax) >= 0.6) {
+      const f = fw, opFeet = oParts.filter(q => q.foot);
+      let front = 1e9; for (const q of opFeet) for (const [x] of q.pts) front = Math.min(front, x * f);
+      const my = bodyParts(this.J, 0, FEET).parts, L = this.fkL;
+      let fixed = false;
+      for (const k of ['ff', 'bf']) {
+        if (k === limb || Math.abs(L[k][1] - (p.hy - A)) >= 6) continue;
+        const q = my.find(r => r.k === (k === 'ff' ? 'FF' : 'BF')); if (!q) continue;
+        let toe = -1e9; for (const [x] of q.pts) toe = Math.max(toe, x * f);
+        const over = toe - (front + 4);
+        if (over > 0.5) { footTo(k, L[k][0] - over / ax, L[k][1]); fixed = true; }
+      }
+      if (fixed) refit();
+    }
+    if (!((arm || leg) && Math.abs(ax) < 0.35)) {
+      let cut = 0;
+      for (let it = 0; it < 4; it++) {
+        const sp = strikeParts(this.J, limb), pen = bodyPenT(leg ? sp.slice(0, 1) : sp, tgtHit, fw) - CONTACT_SINK;   // 腿：只看脚（膝盖顶进去像提膝，不管）
+        if (pen <= 0.4 || cut >= 120) break;
+        const d = Math.min(pen + 0.6, 120 - cut), dl = d / ax, L = this.fkL, e = L[limb]; cut += d;
+        if (arm) { p[limb][0] = e[0] - L.sh[0] - dl; p[limb][1] = e[1] - L.sh[1]; }
+        else if (leg) { p[limb][0] = e[0] - dl; p[limb][1] = p.hy - A - e[1]; }
+        else back(d);
+        refit();
+      }
+    }
+    p.dx = keep.dx; for (const k of ['fh', 'bh', 'ff', 'bf']) { p[k][0] = keep[k][0]; p[k][1] = keep[k][1]; }
+  }
+  /* 骨骼（2.4 新人物模型，比例、肩宽这些在 body.js 的 BODY 表）：
+     髋（原点）→ 脊柱（tor 前倾）→ 脖子根 → 脖子 → 头；肩关节在脊柱上，拧腰 tw（度）时前手肩膀往前、后手肩膀往后错开；
+     两个大腿根前后错开一点。手的目标点 fh / bh 是相对「两肩中间」sh 的；脚的目标点是脚踝（离鞋底 BODY.bone.ankle）。
+     转身 spin：每个点除了前后（x）、上下（y）还有左右（z：后手肩、前腿根在近侧），绕竖轴转过去再投到画面上 ——
+     转到一半时肩膀、两腿左右分开（正面看的样子），以前只是把 x 压扁 */
   fk() {
-    const p = this.disp;
+    const p = this.disp, L = BODY.bone;
     const tor = p.tor * D2R, hd = (p.tor + p.head) * D2R;
-    const tx = Math.sin(tor), ty = -Math.cos(tor);
-    const L = BONE;
+    const tx = Math.sin(tor), ty = -Math.cos(tor);            // 脊柱往上的方向
+    const nx = -ty, ny = tx;                                   // 胸口朝前的方向（垂直于脊柱）
     const neck = [tx * L.torso, ty * L.torso];
-    const sh = [tx * (L.torso - 3), ty * (L.torso - 3)];
-    const head = [neck[0] + Math.sin(hd) * (L.neck + L.head), neck[1] - Math.cos(hd) * (L.neck + L.head)];
+    const sh = [tx * L.shoulder, ty * L.shoulder];
+    const hx = Math.sin(hd), hy = -Math.cos(hd);              // 脖子、头往上的方向
+    const neckTop = [neck[0] + hx * L.neck, neck[1] + hy * L.neck];
+    const head = [neckTop[0] + hx * L.head * 0.84 - hy * L.head * 0.1, neckTop[1] + hy * L.head * 0.84 + hx * L.head * 0.1];
+    // 拧腰：前手肩膀往前、后手肩膀往后（出前手拳往前送肩，出后手拳反过来）
+    const tw = (p.tw || 0) * D2R, ts = Math.sin(tw) * BODY.shoulderW, tc = Math.cos(tw) * BODY.shoulderW;
+    const shF = [sh[0] + nx * ts, sh[1] + ny * ts], shB = [sh[0] - nx * ts, sh[1] - ny * ts];
+    const hipF = [BODY.hipSplit, 0], hipB = [-BODY.hipSplit, 0];
     // 2.1 肘、膝不「跳」（查动作衔接时发现的）：IK 每帧按提示硬挑弯向，手走到肩膀上方、起跳落地这些地方，
     // 提示一过线整条胳膊就一帧翻到另一边（出短拳时后手肘、起跳、落地、被打倒摔下去都有）。现在记着上一帧弯在哪边（ikS，画面用），
     // 要换边就每帧最多挪 IK_FLIP，几帧挪过去；一直弯在同一边的时候和以前一模一样
     const S = this.ikS || (this.ikS = [0, 0, 0, 0]), fresh = !this.J;
-    const limb = (i, px, py, qx, qy, a, b, hx, hy) => {
-      const want = ik(px, py, qx, qy, a, b, hx, hy)[4];
+    const limb = (i, px, py, qx, qy, a, b, hx2, hy2) => {
+      const want = ik(px, py, qx, qy, a, b, hx2, hy2)[4];
       S[i] = fresh ? want : S[i] + clamp(want - S[i], -IK_FLIP, IK_FLIP);
-      return ik(px, py, qx, qy, a, b, hx, hy, S[i]);
+      return ik(px, py, qx, qy, a, b, hx2, hy2, S[i]);
     };
-    const fA = limb(0, sh[0], sh[1], sh[0] + p.fh[0], sh[1] + p.fh[1], L.ua, L.fa, -0.3, p.fe);
-    const bA = limb(1, sh[0], sh[1], sh[0] + p.bh[0], sh[1] + p.bh[1], L.ua, L.fa, -0.3, p.be);
-    const fL = limb(2, 0, 0, p.ff[0], p.hy - p.ff[1], L.th, L.sh, 1, -0.15);
-    const bL = limb(3, 0, 0, p.bf[0], p.hy - p.bf[1], L.th, L.sh, 1, -0.15);
-    // 头带结、腰带结
-    const knot = [head[0] - Math.cos(hd) * 11, head[1] - Math.sin(hd) * 11 - 3];
+    const kf = p.fn === undefined ? 1 : p.fn, kb = p.bn === undefined ? 1 : p.bn;   // 膝盖往哪边顶（1 往前；-1 往后：仆步那条蹲着的腿脚尖外摆）
+    const fA = limb(0, shF[0], shF[1], sh[0] + p.fh[0], sh[1] + p.fh[1], L.ua, L.fa, -0.3, p.fe);
+    const bA = limb(1, shB[0], shB[1], sh[0] + p.bh[0], sh[1] + p.bh[1], L.ua, L.fa, -0.3, p.be);
+    const fL = limb(2, hipF[0], hipF[1], p.ff[0], p.hy - L.ankle - p.ff[1], L.th, L.sh, kf, -0.15);
+    const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, kb, -0.15);
+    // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收
+    this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]] };
+    // 头带结（后脑勺）、腰带结
+    const knot = [head[0] + hy * L.head * 0.95 + hx * L.head * 0.22, head[1] - hx * L.head * 0.95 + hy * L.head * 0.22];
     const belt = [-tx * 2 - 4, ty * 4];
-    const pts = { hip: [0, 0], neck, sh, head, knot, belt,
-      fe: [fA[0], fA[1]], fh: [fA[2], fA[3]], be: [bA[0], bA[1]], bh: [bA[2], bA[3]],
-      fk: [fL[0], fL[1]], ff: [fL[2], fL[3]], bk: [bL[0], bL[1]], bf: [bL[2], bL[3]] };
-    const sc = Math.cos(p.spin * D2R), r = p.rot * D2R, cr = Math.cos(r), sr = Math.sin(r);
+    const zF = -tc, zB = tc, zHF = BODY.hipW, zHB = -BODY.hipW;   // 左右：后手肩、前腿根在近侧
+    const pts = { hip: [0, 0, 0], hipF: [hipF[0], 0, zHF], hipB: [hipB[0], 0, zHB], neck: [neck[0], neck[1], 0], neckTop: [neckTop[0], neckTop[1], 0],
+      head: [head[0], head[1], 0], sh: [sh[0], sh[1], 0], shF: [shF[0], shF[1], zF], shB: [shB[0], shB[1], zB], knot: [knot[0], knot[1], 0], belt: [belt[0], belt[1], 0],
+      fe: [fA[0], fA[1], zF], fh: [fA[2], fA[3], zF], be: [bA[0], bA[1], zB], bh: [bA[2], bA[3], zB],
+      fk: [fL[0], fL[1], zHF], ff: [fL[2], fL[3], zHF], bk: [bL[0], bL[1], zHB], bf: [bL[2], bL[3], zHB] };
+    const sp = p.spin * D2R, sc = Math.cos(sp), ss = Math.sin(sp), r = p.rot * D2R, cr = Math.cos(r), sr = Math.sin(r);
     let maxY = -1e9;
     for (const k in pts) {
       const v = pts[k];
-      const x = v[0] * sc, y = v[1];
-      v[0] = x * cr - y * sr + p.dx; v[1] = x * sr + y * cr;
+      const x = v[0] * sc - v[2] * ss, y = v[1];
+      v[0] = x * cr - y * sr + p.dx; v[1] = x * sr + y * cr; v.length = 2;
       let low = v[1];
-      if (k === 'head') low += L.head; else if (k === 'ff' || k === 'bf') low += 2; else if (k === 'knot' || k === 'belt') continue;
+      if (k === 'head') low += L.head; else if (k === 'ff' || k === 'bf') low += L.ankle; else if (k === 'knot' || k === 'belt') continue;
       if (low > maxY) maxY = low;
     }
     let hipT;
@@ -3324,7 +3908,11 @@ class Fighter {
     const J = this.J || (this.J = {});
     const f = this.facing, ox = this.x, oy = FLOOR + this.hipY;
     for (const k in pts) J[k] = [ox + f * pts[k][0], oy + pts[k][1]];
-    J.turned = sc < 0; J.facing = f; J.rot = r; J.headTilt = hd;
+    J.turned = sc < 0; J.facing = f; J.rot = r; J.headTilt = hd; J.spin = sp;
+    // 肘、膝该往哪边顶（世界方向）：画肌肉时分前侧后侧用（body.js）。是方向不是位置：故意不用数组（画面插值、转身平移只动数组）
+    const hv = (x, y) => { const X = x * sc; return { 0: (X * cr - y * sr) * f, 1: X * sr + y * cr }; };
+    J.hFe = hv(-0.3, p.fe); J.hBe = hv(-0.3, p.be); J.hFk = hv(kf, -0.15); J.hBk = hv(kb, -0.15); J.fkd = kf; J.bkd = kb;
+    J.fft = p.ft || 0; J.bft = p.bt || 0;                      // 脚尖勾多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }
   updateRibbons() {
@@ -3503,6 +4091,7 @@ function resolve(a, b) {
 }
 // 两边的招同时到：克 / 压 / 平。空中的腿撞上地上的腿 = 空中那个被顶得翻滚回去（1.9.0）
 function exchange(A, B) {
+  A.holdPose = B.holdPose = true;
   if (airKick(A) && groundKick(B)) return tumble(A, B);
   if (airKick(B) && groundKick(A)) return tumble(B, A);
   const r = relation(A.move.def, B.move.def);
@@ -3540,6 +4129,7 @@ function evade(A, B) {
 function applyHit(A, B, how) {
   const m = A.move, d = m.def, dir = A.facing;
   m.done = true;
+  B.holdPose = true;          // 2.4 打中（挡住）那一帧挨打的人先不动，顿帧里拳脚正好落在身上，顿完了才往后仰（只是画面）
   const c = contactPoint(A, B);
   const bm = B.state === 'attack' && B.move && !B.move.def.script ? B.move : null;
   const inStartup = !!bm && bm.t <= bm.S;
@@ -3638,7 +4228,7 @@ function applyHit(A, B, how) {
   else if (label === '截住闪身') A.info.why = '闪身只躲得过重拳';
   else if (d.stagger && B.stagger) A.info.why = '闪身躲过重拳，回身一肘打在背上：他背对着你踉跄、动不了，你先动';
   if (offBalance) tag(B.x, B.J.head[1] - 62, '失衡', A, 24);
-  tag(c.x + dir * 10, c.y - 14, (m.air ? '空中 ' : '') + '-' + dmg, A, 18);
+  tag(c.x + dir * 10, c.y - 14, '-' + dmg, A, 18);          // 2.4 跳起来打中的也只写伤害（以前前面加「空中」）
   const sx0 = A.J.head[0] - dir * 52, sy0 = A.J.head[1] - 46;
   if (d.stamp) { stamp(sx0, sy0, d.stamp, 30, A); A.stats.specials++; }
   else if (d.rush && !A.rushStamped) { A.rushStamped = true; stamp(sx0, sy0, '连珠快拳', 26, A); A.stats.specials++; }
@@ -3787,6 +4377,7 @@ function tumble(A, B) {            // A = 空中出腿的，B = 地上出腿的
 function shoveHit(A, B) {
   const m = A.move, dir = A.facing;
   m.done = true; m.hit = true;
+  B.holdPose = true;          // 2.4 推中那一帧先不动（只是画面，和 applyHit 一样）
   B.kvx = dir * PUSH_KB;
   if (B.isBlocking() && B.facingTo(A)) { B.state = 'blockstun'; B.stunT = 8; }
   else {
@@ -3850,7 +4441,7 @@ function doGrab(A, B, type) {
     game.freeze = stop(10); game.shake = Math.max(game.shake, 6);
     dust(foot[0], foot[1], 5); impact(foot[0], foot[1], dir, 36, pal(A).ink, 6, 1.0); sparks(foot[0], foot[1], dir, 8, 7, pal(A).fx, 1.0, 0.4);
     stamp(A.J.head[0] - dir * 52, A.J.head[1] - 46, scoop ? '抄腿摔' : '接腿摔', 30, A);
-    tag(B.x, B.J.head[1] - 30, scoop ? (wasSweep ? '扫堂腿被抄' : '腿被抄住') : airK ? '空中被接 · 久倒' : '倒地', A, 18);
+    tag(B.x, B.J.head[1] - 30, scoop ? (wasSweep ? '扫堂腿被抄' : '腿被抄住') : airK ? '腿被接 · 久倒' : '倒地', A, 18);
     tag(B.x + dir * 16, B.J.head[1] + 4, '-' + dmg, A, 18);
     Sound.hit(0.7);
     bumpCombo(A, B); noteGrab(A, dmg, scoop ? '抄腿摔' : '接腿摔');
@@ -4968,7 +5559,7 @@ const DRILL_TOPICS = [
   ['palm', '托天掌', '对空招：专打跳过来的人'],
   ['airHeavy', '泰山压顶', '跳起来双拳往下砸（上段）'],
   ['airKick', '飞踢', '跳起来一脚蹬过来（上段）'],
-  ['airJab', '空中挥拳', '跳起来挥拳（上段，最快的空中招）'],
+  ['airJab', '挥拳', '跳起来挥拳（上段，跳起来出的招里最快的）'],
   ['dive', '千斤坠', '空中按住蹲再踢：先腾一下，再斜着踩下来'],
   ['grab', '擒拿', '挡不住的抓'],
   ['lowGrab', '抄腿', '蹲下抱腿，专抓蹲着的'],
@@ -5201,7 +5792,7 @@ const DRILLS = [
     how: ['按住 [挡] 挡住托天掌', '托天掌被挡住收招很长：一能动就 [拳] [拳] [重]'],
     why: '挡后反击：托天掌是击倒招，挡住以后打它收招 ×1.5',
     demo: punishAfterBlock(), win: R => R.my('hit', e => /挡后反击/.test(e.how)) },
-  /* —— 泰山压顶 / 飞踢 / 空中挥拳 —— */
+  /* —— 泰山压顶 / 飞踢 / 挥拳（跳起来出的） —— */
   ...['airHeavy', 'airKick', 'airJab'].flatMap(an => {
     const key = { airHeavy: 'heavy', airKick: 'kick', airJab: 'jab' }[an], nm = MOVES[an].label;
     const list = [
@@ -5581,8 +6172,8 @@ const Drill = {
       if (!c.demo) Sound.stamp && Sound.stamp();
       if (!c.demo && c.ok >= c.def.need && !c.passed) {
         c.passed = true; c.passAt = c.frame; this.passes++; this.save();
-        // 2.3：「过关」印章盖在上面的练习面板上（render.js drawDrillPanel，以前盖在你头顶、被面板挡住），配一声锣
-        if (Sound.luogu) Sound.luogu('仓', 0.75);
+        // 2.3：「过关」印章盖在上面的练习面板上（render.js drawDrillPanel，以前盖在你头顶、被面板挡住），配一声「锵」（2.4 以前是锣）
+        if (Sound.beat) Sound.beat('锵', 0.75);
         if (this.onPass) this.onPass(c.def);
       }
     }
@@ -5724,9 +6315,9 @@ const Drill = {
 };
 Drill.load();
 // 文字里的 [拳] 之类换成按键：html = true 给界面用（<kbd>），否则给画面上的字用
-const DRILL_KEYS = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up' };
+const DRILL_KEYS = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up', 冲: 'dash' };
 function drillText(s, html) {
-  return s.replace(/\[([拳重踢拿挡蹲跳前后])\]/g, (m, k) => {
+  return dashWords(s, Keys.solo).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => {
     if (k === '前' || k === '后') {       // 方向：看你站在他哪一边（左 / 右键里朝着他 / 背着他的那个）
       const dirs = `${keyName((Keys.solo.left || [])[0])} / ${keyName((Keys.solo.right || [])[0])}`;
       return html ? `<kbd class="lt" title="${dirs} 里${k === '前' ? '朝着' : '背着'}他的那个">${k === '前' ? '朝他' : '背他'}</kbd>` : `「${k === '前' ? '朝他' : '背他'}」`;
@@ -5774,24 +6365,7 @@ function resize() {
 // 给场景用：这一帧画面多大、地线在哪、最大放大倍数（地面层按这个分辨率画）
 const viewInfo = () => ({ vw: VW, vh: VH, fy: FY, scale, pxr, zmax: ZOOM * zoomBoost() * 1.06 });
 
-/* 锥形骨骼（毛笔感） */
-function bone(a, b, wa, wb) {
-  const dx = b[0] - a[0], dy = b[1] - a[1], ang = Math.atan2(dy, dx);
-  const nx = -Math.sin(ang), ny = Math.cos(ang);
-  ctx.beginPath();
-  ctx.moveTo(a[0] + nx * wa / 2, a[1] + ny * wa / 2);
-  ctx.lineTo(b[0] + nx * wb / 2, b[1] + ny * wb / 2);
-  ctx.arc(b[0], b[1], wb / 2, ang + Math.PI / 2, ang - Math.PI / 2, true);
-  ctx.lineTo(a[0] - nx * wa / 2, a[1] - ny * wa / 2);
-  ctx.arc(a[0], a[1], wa / 2, ang - Math.PI / 2, ang - 3 * Math.PI / 2, true);
-  ctx.closePath(); ctx.fill();
-}
-function footStub(knee, foot, f, g) {
-  const a = Math.atan2(foot[1] - knee[1], foot[0] - knee[0]) - f * Math.PI / 2 * 0.9;
-  const tip = [foot[0] + Math.cos(a) * 10, foot[1] + Math.sin(a) * 10];
-  bone(foot, tip, 6 * THICK + g, 4.2 * THICK + g);
-}
-// grow：每段骨头额外加粗多少（画运气时的光用）
+/* 人物的外形、阴影、剪影都在 body.js（2.4 新模型）：drawBody 画整个人、drawSilhouette 画一整块剪影（残影、运气的光、白闪） */
 /* ---------- 画面插值（2.0.1，Jack：人跑起来有虚影，尤其跑到地图边上）----------
    游戏逻辑固定每秒 60 帧；显示器是 120 / 144Hz 时，同一帧的画面要连着显示两三次，镜头却每次都在挪 ——
    人一顿一顿地往前跳，眼睛跟着看就是重影。跑到地图边上镜头停了、人在画面里走，最明显。
@@ -5819,40 +6393,6 @@ function viewOf(F) {
   const ribbons = F.ribbons.map((pts, i) => { const q = v.rb[i]; return pts.map((p, j) => q && q[j] ? { x: lerp(q[j].x, p.x, k), y: lerp(q[j].y, p.y, k) } : p); });
   return { J: out, ribbons, x: lerp(v.J.x, J.x, k), alt: lerp(v.J.alt, J.alt, k) };
 }
-// mid：画完身子、头以后，画前侧手脚之前调一下（腰带画在这里：箍在身上，但不盖住前面的手脚）
-function drawSkeleton(J, color, alpha, back, grow, mid) {
-  const g = grow || 0, k = THICK;
-  const turned = J.turned, f = J.facing * (turned ? -1 : 1);
-  const legs = turned ? [['fk', 'ff'], ['bk', 'bf']] : [['bk', 'bf'], ['fk', 'ff']];
-  const arms = turned ? [['fe', 'fh'], ['be', 'bh']] : [['be', 'bh'], ['fe', 'fh']];
-  ctx.fillStyle = color;
-  const limbSet = (leg, arm) => {
-    bone(J.hip, J[leg[0]], 7.5 * k + g, 6.2 * k + g); bone(J[leg[0]], J[leg[1]], 6.2 * k + g, 4.8 * k + g); footStub(J[leg[0]], J[leg[1]], f, g);
-    bone(J.sh, J[arm[0]], 6 * k + g, 5 * k + g); bone(J[arm[0]], J[arm[1]], 5 * k + g, 4.2 * k + g);
-    ctx.beginPath(); ctx.arc(J[arm[1]][0], J[arm[1]][1], FIST_R * k + g / 2, 0, Math.PI * 2); ctx.fill();   // 拳头（1.9.0 改小：4.8 → 3.5）
-  };
-  // 后侧肢体
-  ctx.globalAlpha = alpha * back;
-  limbSet(legs[0], arms[0]);
-  ctx.globalAlpha = alpha;
-  // 躯干与头
-  bone(J.hip, J.neck, 10 * k + g, 8 * k + g);
-  bone(J.neck, J.head, 5 * k + g, 5 * k + g);
-  ctx.beginPath(); ctx.arc(J.head[0], J.head[1], BONE.head + g / 2, 0, Math.PI * 2); ctx.fill();
-  if (mid) { mid(); ctx.fillStyle = color; ctx.globalAlpha = alpha; }
-  // 前侧肢体
-  limbSet(legs[1], arms[1]);
-  ctx.globalAlpha = 1;
-}
-/* 腰带（2.0.2，Jack：底下那条飘带改成腰带，和头带一样是一箍「柱形」的带子）：横着箍在腰上（髋往上 9），
-   跟着上身的方向转（弯腰、躺下都贴着身子），比身子宽一点点，看着是一圈缠在身上的；颜色和头带一样（身体色提亮的那一版） */
-function drawBelt(J, col) {
-  const h = J.hip, n = J.neck, dx = n[0] - h[0], dy = n[1] - h[1], L = Math.hypot(dx, dy) || 1;
-  const half = (10 * THICK - 3.2 * THICK * 9 / BONE.torso) / 2 + 1;     // 那个高度身子的半宽（躯干从髋往脖子越来越细）+ 1
-  ctx.save(); ctx.translate(h[0] + dx / L * 9, h[1] + dy / L * 9); ctx.rotate(Math.atan2(dy, dx));
-  ctx.fillStyle = col; ctx.fillRect(-2.6, -half, 5.2, half * 2);
-  ctx.restore();
-}
 function drawFighter(F, V) {
   V = V || viewOf(F);
   const J = V.J, P = pal(F);
@@ -5876,7 +6416,7 @@ function drawFighter(F, V) {
   // 气：火苗（在身体后面）
   drawQi(F, false);
   // 残影（2.0.1：自己的气的颜色，淡的，和真身分得开）
-  for (const g of F.ghosts) drawSkeleton(g.J, P.qi, (g.dash ? 0.16 : 0.26) * RL(g) / 12, 1);
+  for (const g of F.ghosts) drawSilhouette(g.J, P.qi, (g.dash ? 0.16 : 0.26) * RL(g) / 12, 0);   // 2.4 一整块剪影，关节不会叠出深色的点
   // 轨迹：短拳细细一道墨（身体色）；重招一道粗的淡色（气的颜色），和短拳一眼分开
   let tr = F.trail;
   const m = F.move;
@@ -5896,7 +6436,7 @@ function drawFighter(F, V) {
     }
     ctx.globalAlpha = 1;
   }
-  // 发带（在身体后面）：两条从头带结上飘出去（2.0.2 起只有发带飘，腰上那条改成箍着的腰带，见 drawBelt）
+  // 发带（在身体后面）：两条从头带结上飘出去（2.0.2 起只有发带飘，腰上那条改成箍着的腰带，见 body.js drawWaistBelt）
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.strokeStyle = F.sash;
   for (const pts of V.ribbons) {
@@ -5914,7 +6454,7 @@ function drawFighter(F, V) {
     const layer = (blur, alpha, grow) => {
       ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * s; ctx.shadowOffsetX = D;
       ctx.translate(-D / s, 0);
-      drawSkeleton(J, col, Math.min(1, alpha), 1, grow);
+      drawSilhouette(J, col, Math.min(1, alpha), grow);
       ctx.restore();
     };
     layer(16 + 10 * hk, F.qiGlow * pulse * 0.85, 5 + 6 * hk);
@@ -5922,17 +6462,14 @@ function drawFighter(F, V) {
   }
   // 身子：平时一圈淡淡的墨影；身上气旺的时候（连招的火、泼墨、爆气）换成一圈纸色的亮边 —— 气是同色的，人身子的边要分得开（2.0.1）
   const aura = reduceMotion ? 0 : Math.max(F.qiGlow, Math.min(1, heat * 1.2));
+  // 2.4：先把整个人的剪影填一次（只为了外面那圈影子 / 亮边），再一块一块不透明地画（drawBody：阴影、肌肉线、前后分得清）
   if (aura > 0.15) { const tf = ctx.getTransform(); ctx.shadowColor = `rgba(246,245,238,${(0.35 + 0.4 * Math.min(1, aura)).toFixed(2)})`; ctx.shadowBlur = 3.2 * Math.hypot(tf.a, tf.b); }
   else { ctx.shadowColor = 'rgba(23,24,26,.35)'; ctx.shadowBlur = 2.5; }
-  drawSkeleton(J, F.color, 1, 0.62, 0, () => drawBelt(J, F.sash));
+  ctx.fillStyle = F.color; ctx.fill(bodySilhouette(J, 0));
   ctx.shadowBlur = 0;
-  if (F.hitFlash > 0) drawSkeleton(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 1);   // 挨打那一下身上白闪
-  // 头带 + 眼
-  const ht = J.headTilt, hx = J.head[0], hy = J.head[1], fdir = J.facing;
-  ctx.save(); ctx.translate(hx, hy); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
-  ctx.fillStyle = F.sash; ctx.fillRect(-13.5, -6.8, 27, 5);
-  if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(6.8, 1.6, 2.8, 1.4, -0.15, 0, Math.PI * 2); ctx.fill(); }
-  ctx.restore();
+  drawBody(J, F.color, F.sash);                       // 头带、眼睛、腰带也在里面
+  if (F.hitFlash > 0) drawSilhouette(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 0);   // 挨打那一下身上白闪（一整块，关节不会更亮）
+  const hx = J.head[0], hy = J.head[1];
   // 气：火星（在身体前面）
   drawQi(F, true);
   // 势破标记（是对面挡出来的：对面的颜色）
@@ -5964,13 +6501,9 @@ function drawFigure(J, col, band, trail) {
     ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
   }
   ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;
-  drawSkeleton(J, col, 1, 0.62, 0, () => drawBelt(J, band));
+  ctx.fillStyle = col; ctx.fill(bodySilhouette(J, 0));
   ctx.shadowBlur = 0;
-  const ht = J.headTilt, hx = J.head[0], hy = J.head[1], fdir = J.facing;
-  ctx.save(); ctx.translate(hx, hy); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
-  ctx.fillStyle = band; ctx.fillRect(-13.5, -6.8, 27, 5);
-  if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(6.8, 1.6, 2.8, 1.4, -0.15, 0, Math.PI * 2); ctx.fill(); }
-  ctx.restore();
+  drawBody(J, col, band);
 }
 function drawFx() {
   ctx.lineCap = 'round';
@@ -7934,7 +8467,7 @@ function endRound(winner, reason) {
   game.phase = 'ko'; game.phaseT = 0; game.winner = winner;
   if (reason === 'time') announce('时间到', null, 80, 110);
   else if (winner === -1) announce('两败俱伤', null, 80, 100);
-  else { announce('胜负已分', null, 80, 110, game.p[winner]); Sound.gong(); }
+  else { announce('胜负已分', null, 80, 110, game.p[winner]); Sound.finale(); }
 }
 
 function step(inputs) {
@@ -7971,8 +8504,8 @@ function step(inputs) {
       if (a.hp <= 0 || b.hp <= 0) { if (++game.phaseT > 130) { resetFighters(); game.phaseT = 0; } }
       break;
     case 'intro':
-      // 2.3（Jack：开场字幕加锣鼓）：「八 大 仓」—— 回合名随着「仓」砸下来；战鼓越敲越密；「战」的时候大仓（fx.js LUOGU_INTRO）
-      luoguIntro(game.phaseT, roundName() === '决胜局');
+      // 2.3 开场字幕配锣鼓；2.4（Jack：锣鼓太诡异）换成战鼓 + 镲 + 古筝：回合名随着「锵」砸下来；战鼓越敲越密；「战」的时候「锵」+ 古筝和弦（fx.js INTRO_BEATS）
+      introBeats(game.phaseT, roundName() === '决胜局');
       if (game.phaseT === 10) announce(roundName(), null, 56, 96);
       if (game.phaseT === 68) announce('战', null, 38, 170);
       if (++game.phaseT >= 100) { game.phase = 'fight'; game.phaseT = 0; }
@@ -8031,7 +8564,7 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'vp', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'ikS']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'ikS', 'holdPose', 'fkL']);
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};
@@ -8281,7 +8814,7 @@ function decodeInputs(buf) {
 }
 
 /* ---------- 回滚帧同步的核心（不碰网络，tests.js 直接拿来测） ---------- */
-const HELD_MASK = (1 << HELD_ACTS.length) - 1;    // 输入里「按住」的那几位：猜对方的输入只猜这几位（新按的招不猜）
+const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY;    // 输入里「按住」的那几位：猜对方的输入只猜这几位（新按的招不猜）；2.4 加上「用冲刺键」那一位
 class Rollback {
   // role：'host' 算 step([本机, 对方])，'guest' 算 step([对方, 本机])
   constructor(delay, role) {
@@ -8846,7 +9379,8 @@ async function unpackDesc(code) {
    · 一份内容（下面 G_ 开头的表），两种排法：
      网页版 Guide：游戏下面一块「教程」，分页 —— 上手 / 招式 / 连招 / 攻防 / 规则 / 查表；招式、连招、技巧都配游戏里的动作小图
      软件版 Manual：菜单、暂停里的「教程」面板，左边章节、右边文字 + 表格（网页版全屏时也用它：全屏时看不到页面下面）
-   · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] 换成按键（按你自己设的单人键位显示）
+   · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] [冲] 换成按键（按你自己设的单人键位显示）；
+     2.4 键位里选了「冲刺键」，「双击 [前]」自动写成「按 [冲]」（input.js dashWords）
    · 前摇、伤害、倍率都直接读 MOVES 和 config.js 的常数：改了数值，教程跟着变
    · 动作小图 PoseIcon：用游戏自己的姿势（moves.js 的关键帧）和画法（render.js drawFigure）画，招式改了动作，小图跟着变
    ============================================================ */
@@ -8898,7 +9432,7 @@ const PoseIcon = {
     for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); }
     x0 -= 16; x1 += 16; y0 -= BONE.head + 10;
     const y1 = FLOOR + 6, m = 4;
-    const s = Math.min(h * 0.86 / 182, (w - 2 * m) / (x1 - x0), (h - 2 * m) / (y1 - y0));
+    const s = Math.min(h * 0.86 / 162, (w - 2 * m) / (x1 - x0), (h - 2 * m) / (y1 - y0));   // 2.4 新人物站着约 150 高（以前按 182 算，小图显得小）
     g.scale(k, k);
     if (o.flip) { g.translate(w, 0); g.scale(-1, 1); }
     g.translate(w / 2 - (x0 + x1) / 2 * s, h - m - y1 * s + 2); g.scale(s, s);
@@ -8922,7 +9456,7 @@ const PoseIcon = {
 const iconSlot = (spec, w, h, cls, o) => `<span class="${cls || 'gicon'}" data-icon='${JSON.stringify(spec)}' data-w="${w}" data-h="${h}"${o && o.flip ? ' data-flip="1"' : ''}${o && o.col ? ` data-col="${o.col}"` : ''}></span>`;
 
 /* ---------- 按键 ---------- */
-const G_ACT = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up' };
+const G_ACT = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up', 冲: 'dash' };
 const gEsc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const gKey = (a, set) => keyName(((set || Keys.solo)[a] || []).find(Boolean) || null);
 function gKbd(ch, set) {
@@ -8932,7 +9466,7 @@ function gKbd(ch, set) {
   }
   return `<kbd class="kc"><b>${ch}</b><span>${gEsc(gKey(G_ACT[ch], set))}</span></kbd>`;
 }
-const gText = (s, set) => gEsc(s).replace(/\[([拳重踢拿挡蹲跳前后])\]/g, (m, k) => gKbd(k, set));
+const gText = (s, set) => gEsc(dashWords(s, set)).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => gKbd(k, set));
 // 连招的按法：'jab' 'heavy' 'kick' 'd:kick'（蹲踢）…… → 一串字（不带键位，键位在页面上方写一次）
 const COMBO_TOK = { jab: '拳', heavy: '重', kick: '踢', 'd:kick': '蹲踢', 'd:jab': '蹲拳' };
 const comboKeys = (keys, times) => keys.map(k => `<i class="tok${k.startsWith('d:') ? ' low' : ''}">${COMBO_TOK[k]}</i>`).join('<i class="sep">›</i>') + (times ? `<i class="tok times">${times}</i>` : '');
@@ -9084,8 +9618,12 @@ function frameTableHtml() {
 const FRAME_NOTE = '1 帧 = 1/60 秒。射程是两人中心距（像素，含往前冲的那一段）；空中招伤害已含 ×' + AIR_BONUS + '。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。';
 
 // 键位表的一行一行：[说明, 动作…]
-const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']]];
-const keyCaps = (set, acts) => acts.map(a => ((set[a] || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')).join('<i class="or">/</i>');
+const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']],
+  ['冲刺', ['dash'], '按着挡朝对手冲 = 闪身']];
+// 2.4 冲刺：选了「双击」显示「左左 / 右右」；选了「冲刺键」显示冲刺键
+const dashCaps = set => set.dashMode === 'key' ? ((set.dash || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')
+  : ['left', 'right'].map(a => { const c = gEsc(keyName((set[a] || []).find(Boolean) || null)); return `<kbd>${c}</kbd><kbd>${c}</kbd>`; }).join('<i class="or">/</i>') + '<i class="or">双击</i>';
+const keyCaps = (set, acts) => acts[0] === 'dash' ? dashCaps(set) : acts.map(a => ((set[a] || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')).join('<i class="or">/</i>');
 
 /* ============================================================
    网页版：游戏下面的「教程」，分页
@@ -9150,7 +9688,7 @@ const Guide = {
   },
   /* 招式：一张一张卡片（小图 + 名字 + 按法 + 系 / 段 + 一句话） */
   p_moves() {
-    return `<p class="g-lead">「系」决定谁克谁，「段」决定站着还是蹲着挡。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲', '跳'].map(c => gKbd(c)).join(' ')}</span></p>
+    return `<p class="g-lead">「系」决定谁克谁，「段」决定站着还是蹲着挡。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲', '跳'].concat(Keys.solo.dashMode === 'key' ? ['冲'] : []).map(c => gKbd(c)).join(' ')}</span></p>
       <div class="g-grid moves">${G_MOVES.map(g => {
         const d = MOVES[g.id];
         return `<article class="g-move">${iconSlot(g.icon, 108, 108)}<div class="gm-body"><h4>${d.label}</h4><div class="gm-how">${gText(g.how)}</div>
@@ -9408,7 +9946,7 @@ function renderDrillList() {
   $('drillList').innerHTML = tids.map(tid => {
     const t = DRILL_TOPICS.find(x => x[0] === tid), list = DRILLS.filter(d => d.topic === tid);
     if (!t || !list.length) return '';
-    return `<article class="dtopic">${iconSlot(DRILL_ICON[tid] || { pose: 'stance' }, 104, 104, 'dt-icon', { flip: true, col: C.cin })}<div class="dt-body"><h4>${esc(t[1])}</h4><p>${esc(t[2])}</p>` +
+    return `<article class="dtopic">${iconSlot(DRILL_ICON[tid] || { pose: 'stance' }, 104, 104, 'dt-icon', { flip: true, col: C.cin })}<div class="dt-body"><h4>${esc(t[1])}</h4><p>${esc(dashWords(t[2]))}</p>` +
       `<div class="dsols">${list.map((d, i) => `<button type="button" class="dsol" data-drill="${d.id}"><i>${i + 1}</i>${esc(d.name)}</button>`).join('')}</div></div></article>`;
   }).join('');
   PoseIcon.fill($('drillList'));
@@ -9720,11 +10258,19 @@ function closeKeys() {
 function renderKeys() {
   const k = keyDraft[keyWho], pr = keyProblems(k);
   const shared = keyWho ? sharedKeys(keyDraft[1], keyDraft[2]) : new Set();      // 两人都绑了的键只有双人那两套要管
-  $('keyRows').innerHTML = ACTIONS.map(([a, n]) => `<tr><td>${n}</td>` + [0, 1].map(i => {
-    const c = k[a][i], waiting = keyWait && keyWait[0] === a && keyWait[1] === i;
-    const cls = waiting ? 'wait' : !c ? 'empty' : pr.dupCodes.has(c) ? 'bad' : shared.has(c) ? 'shared' : '';
-    return `<td><button type="button" class="kbtn ${cls}" data-a="${a}" data-i="${i}">${waiting ? '按一个键…' : keyName(c)}</button></td>`;
-  }).join('') + '</tr>').join('');
+  const tap = k.dashMode !== 'key';                                               // 2.4 冲刺：双击方向（冲刺键那一行不用）/ 冲刺键
+  for (const b of document.querySelectorAll('[data-dm]')) b.setAttribute('aria-pressed', String(b.dataset.dm === (tap ? 'tap' : 'key')));
+  const L = keyName(k.left[0] || k.left[1]), R = keyName(k.right[0] || k.right[1]);
+  $('dashHint').textContent = tap ? `双击左 / 右（${L}${L} / ${R}${R}）往那边冲；按着挡朝对手双击 = 闪身。冲刺键那一行不用。`
+    : '按冲刺键往按着的方向冲（不按方向就往前；按着挡按 = 闪身）。双击方向不再冲刺。';
+  $('keyRows').innerHTML = ACTIONS.map(([a, n]) => {
+    const off = a === 'dash' && tap;
+    return `<tr${off ? ' class="off"' : ''}><td>${n}</td>` + [0, 1].map(i => {
+      const c = k[a][i], waiting = keyWait && keyWait[0] === a && keyWait[1] === i;
+      const cls = waiting ? 'wait' : off ? 'off' : !c ? 'empty' : pr.dupCodes.has(c) ? 'bad' : shared.has(c) ? 'shared' : '';
+      return `<td><button type="button" class="kbtn ${cls}" data-a="${a}" data-i="${i}"${off ? ' disabled title="选了「双击」，冲刺键不用"' : ''}>${waiting ? '按一个键…' : keyName(c)}</button></td>`;
+    }).join('') + '</tr>';
+  }).join('');
   const msg = [];
   for (const [c, acts] of pr.dup) {
     const names = [...new Set(acts)].map(a => '「' + ACT_NAME[a] + '」');
@@ -9744,6 +10290,7 @@ function renderKeys() {
   $('keyInfo').textContent = info.join(' ');
 }
 for (const b of document.querySelectorAll('[data-who]')) b.addEventListener('click', () => setKeyWho(+b.dataset.who));
+for (const b of document.querySelectorAll('[data-dm]')) b.addEventListener('click', () => { keyDraft[keyWho].dashMode = b.dataset.dm; keyWait = null; renderKeys(); });
 $('keyRows').addEventListener('click', e => {
   if (performance.now() - swallowClick < 600) { swallowClick = 0; return; }   // 这一下是刚才「绑鼠标左键」那一下的 click
   const b = e.target.closest('.kbtn'); if (!b) return;
@@ -9773,6 +10320,9 @@ $('btnKeysSave').addEventListener('click', () => {
   Keys.save(keyDraft[0], keyDraft[1], keyDraft[2]); showKeyCards(); closeKeys();
 });
 $('btnKeysReset').addEventListener('click', () => { keyDraft[keyWho] = cloneKeys(keyWho === 2 ? DEFAULT_KEYS2 : DEFAULT_KEYS); keyWait = null; renderKeys(); });
+// 2.4 冲刺键：这一局用的那套键位选了「冲刺键」，输入里带上这一位（双击方向不冲；联机时对面也按这个算）
+pads[0].keyDash = () => Keys.keyDash(0, game.mode);
+pads[1].keyDash = () => Keys.keyDash(1, game.mode);
 $('btnKeysCancel').addEventListener('click', closeKeys);
 $('btnKeys').addEventListener('click', () => openKeys('menu'));
 $('btnPauseKeys').addEventListener('click', () => openKeys('pause'));
@@ -9933,6 +10483,16 @@ $('btnPauseLegend').addEventListener('click', openGuide);
    · 没有浏览器：鼠标不用锁（MouseLock）、也不用防「后退」（Guard）；
    · Steam 连上了才有成就（Ach）；没连上（直接双击 exe、没开 Steam）照常玩 */
 $('btnExit').addEventListener('click', () => { if (Desk) Desk.quit(); });
+// 2.4 画面三种（Jack：软件要有真正全屏和全屏窗口）：设置里三选一；顶栏 ⛶、F11、Alt+Enter 在窗口和上次用的那种全屏之间切
+const DISP_HINT = {
+  fullscreen: '全屏：系统的全屏，盖住整块屏幕和任务栏。',
+  borderless: '全屏窗口：没边框的窗口铺满屏幕，切出去（Alt+Tab、点另一块屏幕）不最小化、不闪。',
+  window: '窗口：普通窗口，能拖、能改大小。',
+};
+function showDisplay(m) {
+  for (const b of document.querySelectorAll('[data-disp]')) b.setAttribute('aria-pressed', String(b.dataset.disp === m));
+  $('dispHint').textContent = (DISP_HINT[m] || '') + '按 F11 / Alt+Enter 在窗口和全屏之间切。';
+}
 if (Desk) {
   document.documentElement.classList.add('desktop');
   playEl.classList.add('fs');
@@ -9940,6 +10500,11 @@ if (Desk) {
   const showFs = on => { btnFull.textContent = on ? '退出全屏' : '⛶ 全屏'; $('btnPauseFull').hidden = !on; setTimeout(resize, 60); };
   showFs(Desk.isFullscreen());
   Desk.onFullscreenChange(showFs);
+  if (Desk.setDisplay && Desk.display) {
+    $('dispBox').hidden = false; showDisplay(Desk.display());
+    if (Desk.onDisplayChange) Desk.onDisplayChange(showDisplay);
+    for (const b of document.querySelectorAll('[data-disp]')) b.addEventListener('click', () => { Desk.setDisplay(b.dataset.disp); showDisplay(b.dataset.disp); });
+  }
 }
 /* 成就（API Name 要和 Steamworks 后台建的一模一样，见 desktop/STEAM.md「建成就」）。
    人机：对局里每半秒看一眼连击、泼墨；联机只在结算时看（回滚前猜错的那几帧不算进去）。解锁过的 Steam 自己记着，这里只是同一次别重复发 */
@@ -10215,6 +10780,9 @@ function boot(data) {
   if (data && data.diff) d = data.diff;
   if (data && typeof data.sound === 'boolean') snd = data.sound;
   setDiff(LEVELS[d] ? d : 'normal'); setSound(snd);
+  // 2.4（Jack：刚进去主菜单没声音，打完一局出来才有木鱼声）：一打开就把声音引擎建好 —— 软件版马上有声；
+  // 网页版浏览器规定先点一下页面才让出声，点的那一下（ui.js 下面的 wake）就叫醒它
+  Sound.init();
   if (!Desk) Guide.init();                            // 2.2 页面下面的教程（软件版没有这一块，用「教程」面板）
   resize(); startAttract();
   openInvite();

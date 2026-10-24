@@ -121,7 +121,7 @@ function renderDrillList() {
   $('drillList').innerHTML = tids.map(tid => {
     const t = DRILL_TOPICS.find(x => x[0] === tid), list = DRILLS.filter(d => d.topic === tid);
     if (!t || !list.length) return '';
-    return `<article class="dtopic">${iconSlot(DRILL_ICON[tid] || { pose: 'stance' }, 104, 104, 'dt-icon', { flip: true, col: C.cin })}<div class="dt-body"><h4>${esc(t[1])}</h4><p>${esc(t[2])}</p>` +
+    return `<article class="dtopic">${iconSlot(DRILL_ICON[tid] || { pose: 'stance' }, 104, 104, 'dt-icon', { flip: true, col: C.cin })}<div class="dt-body"><h4>${esc(t[1])}</h4><p>${esc(dashWords(t[2]))}</p>` +
       `<div class="dsols">${list.map((d, i) => `<button type="button" class="dsol" data-drill="${d.id}"><i>${i + 1}</i>${esc(d.name)}</button>`).join('')}</div></div></article>`;
   }).join('');
   PoseIcon.fill($('drillList'));
@@ -433,11 +433,19 @@ function closeKeys() {
 function renderKeys() {
   const k = keyDraft[keyWho], pr = keyProblems(k);
   const shared = keyWho ? sharedKeys(keyDraft[1], keyDraft[2]) : new Set();      // 两人都绑了的键只有双人那两套要管
-  $('keyRows').innerHTML = ACTIONS.map(([a, n]) => `<tr><td>${n}</td>` + [0, 1].map(i => {
-    const c = k[a][i], waiting = keyWait && keyWait[0] === a && keyWait[1] === i;
-    const cls = waiting ? 'wait' : !c ? 'empty' : pr.dupCodes.has(c) ? 'bad' : shared.has(c) ? 'shared' : '';
-    return `<td><button type="button" class="kbtn ${cls}" data-a="${a}" data-i="${i}">${waiting ? '按一个键…' : keyName(c)}</button></td>`;
-  }).join('') + '</tr>').join('');
+  const tap = k.dashMode !== 'key';                                               // 2.4 冲刺：双击方向（冲刺键那一行不用）/ 冲刺键
+  for (const b of document.querySelectorAll('[data-dm]')) b.setAttribute('aria-pressed', String(b.dataset.dm === (tap ? 'tap' : 'key')));
+  const L = keyName(k.left[0] || k.left[1]), R = keyName(k.right[0] || k.right[1]);
+  $('dashHint').textContent = tap ? `双击左 / 右（${L}${L} / ${R}${R}）往那边冲；按着挡朝对手双击 = 闪身。冲刺键那一行不用。`
+    : '按冲刺键往按着的方向冲（不按方向就往前；按着挡按 = 闪身）。双击方向不再冲刺。';
+  $('keyRows').innerHTML = ACTIONS.map(([a, n]) => {
+    const off = a === 'dash' && tap;
+    return `<tr${off ? ' class="off"' : ''}><td>${n}</td>` + [0, 1].map(i => {
+      const c = k[a][i], waiting = keyWait && keyWait[0] === a && keyWait[1] === i;
+      const cls = waiting ? 'wait' : off ? 'off' : !c ? 'empty' : pr.dupCodes.has(c) ? 'bad' : shared.has(c) ? 'shared' : '';
+      return `<td><button type="button" class="kbtn ${cls}" data-a="${a}" data-i="${i}"${off ? ' disabled title="选了「双击」，冲刺键不用"' : ''}>${waiting ? '按一个键…' : keyName(c)}</button></td>`;
+    }).join('') + '</tr>';
+  }).join('');
   const msg = [];
   for (const [c, acts] of pr.dup) {
     const names = [...new Set(acts)].map(a => '「' + ACT_NAME[a] + '」');
@@ -457,6 +465,7 @@ function renderKeys() {
   $('keyInfo').textContent = info.join(' ');
 }
 for (const b of document.querySelectorAll('[data-who]')) b.addEventListener('click', () => setKeyWho(+b.dataset.who));
+for (const b of document.querySelectorAll('[data-dm]')) b.addEventListener('click', () => { keyDraft[keyWho].dashMode = b.dataset.dm; keyWait = null; renderKeys(); });
 $('keyRows').addEventListener('click', e => {
   if (performance.now() - swallowClick < 600) { swallowClick = 0; return; }   // 这一下是刚才「绑鼠标左键」那一下的 click
   const b = e.target.closest('.kbtn'); if (!b) return;
@@ -486,6 +495,9 @@ $('btnKeysSave').addEventListener('click', () => {
   Keys.save(keyDraft[0], keyDraft[1], keyDraft[2]); showKeyCards(); closeKeys();
 });
 $('btnKeysReset').addEventListener('click', () => { keyDraft[keyWho] = cloneKeys(keyWho === 2 ? DEFAULT_KEYS2 : DEFAULT_KEYS); keyWait = null; renderKeys(); });
+// 2.4 冲刺键：这一局用的那套键位选了「冲刺键」，输入里带上这一位（双击方向不冲；联机时对面也按这个算）
+pads[0].keyDash = () => Keys.keyDash(0, game.mode);
+pads[1].keyDash = () => Keys.keyDash(1, game.mode);
 $('btnKeysCancel').addEventListener('click', closeKeys);
 $('btnKeys').addEventListener('click', () => openKeys('menu'));
 $('btnPauseKeys').addEventListener('click', () => openKeys('pause'));
@@ -646,6 +658,16 @@ $('btnPauseLegend').addEventListener('click', openGuide);
    · 没有浏览器：鼠标不用锁（MouseLock）、也不用防「后退」（Guard）；
    · Steam 连上了才有成就（Ach）；没连上（直接双击 exe、没开 Steam）照常玩 */
 $('btnExit').addEventListener('click', () => { if (Desk) Desk.quit(); });
+// 2.4 画面三种（Jack：软件要有真正全屏和全屏窗口）：设置里三选一；顶栏 ⛶、F11、Alt+Enter 在窗口和上次用的那种全屏之间切
+const DISP_HINT = {
+  fullscreen: '全屏：系统的全屏，盖住整块屏幕和任务栏。',
+  borderless: '全屏窗口：没边框的窗口铺满屏幕，切出去（Alt+Tab、点另一块屏幕）不最小化、不闪。',
+  window: '窗口：普通窗口，能拖、能改大小。',
+};
+function showDisplay(m) {
+  for (const b of document.querySelectorAll('[data-disp]')) b.setAttribute('aria-pressed', String(b.dataset.disp === m));
+  $('dispHint').textContent = (DISP_HINT[m] || '') + '按 F11 / Alt+Enter 在窗口和全屏之间切。';
+}
 if (Desk) {
   document.documentElement.classList.add('desktop');
   playEl.classList.add('fs');
@@ -653,6 +675,11 @@ if (Desk) {
   const showFs = on => { btnFull.textContent = on ? '退出全屏' : '⛶ 全屏'; $('btnPauseFull').hidden = !on; setTimeout(resize, 60); };
   showFs(Desk.isFullscreen());
   Desk.onFullscreenChange(showFs);
+  if (Desk.setDisplay && Desk.display) {
+    $('dispBox').hidden = false; showDisplay(Desk.display());
+    if (Desk.onDisplayChange) Desk.onDisplayChange(showDisplay);
+    for (const b of document.querySelectorAll('[data-disp]')) b.addEventListener('click', () => { Desk.setDisplay(b.dataset.disp); showDisplay(b.dataset.disp); });
+  }
 }
 /* 成就（API Name 要和 Steamworks 后台建的一模一样，见 desktop/STEAM.md「建成就」）。
    人机：对局里每半秒看一眼连击、泼墨；联机只在结算时看（回滚前猜错的那几帧不算进去）。解锁过的 Steam 自己记着，这里只是同一次别重复发 */
@@ -928,6 +955,9 @@ function boot(data) {
   if (data && data.diff) d = data.diff;
   if (data && typeof data.sound === 'boolean') snd = data.sound;
   setDiff(LEVELS[d] ? d : 'normal'); setSound(snd);
+  // 2.4（Jack：刚进去主菜单没声音，打完一局出来才有木鱼声）：一打开就把声音引擎建好 —— 软件版马上有声；
+  // 网页版浏览器规定先点一下页面才让出声，点的那一下（ui.js 下面的 wake）就叫醒它
+  Sound.init();
   if (!Desk) Guide.init();                            // 2.2 页面下面的教程（软件版没有这一块，用「教程」面板）
   resize(); startAttract();
   openInvite();

@@ -140,7 +140,7 @@ const DRILL_TOPICS = [
   ['palm', '托天掌', '对空招：专打跳过来的人'],
   ['airHeavy', '泰山压顶', '跳起来双拳往下砸（上段）'],
   ['airKick', '飞踢', '跳起来一脚蹬过来（上段）'],
-  ['airJab', '空中挥拳', '跳起来挥拳（上段，最快的空中招）'],
+  ['airJab', '挥拳', '跳起来挥拳（上段，跳起来出的招里最快的）'],
   ['dive', '千斤坠', '空中按住蹲再踢：先腾一下，再斜着踩下来'],
   ['grab', '擒拿', '挡不住的抓'],
   ['lowGrab', '抄腿', '蹲下抱腿，专抓蹲着的'],
@@ -373,7 +373,7 @@ const DRILLS = [
     how: ['按住 [挡] 挡住托天掌', '托天掌被挡住收招很长：一能动就 [拳] [拳] [重]'],
     why: '挡后反击：托天掌是击倒招，挡住以后打它收招 ×1.5',
     demo: punishAfterBlock(), win: R => R.my('hit', e => /挡后反击/.test(e.how)) },
-  /* —— 泰山压顶 / 飞踢 / 空中挥拳 —— */
+  /* —— 泰山压顶 / 飞踢 / 挥拳（跳起来出的） —— */
   ...['airHeavy', 'airKick', 'airJab'].flatMap(an => {
     const key = { airHeavy: 'heavy', airKick: 'kick', airJab: 'jab' }[an], nm = MOVES[an].label;
     const list = [
@@ -753,8 +753,8 @@ const Drill = {
       if (!c.demo) Sound.stamp && Sound.stamp();
       if (!c.demo && c.ok >= c.def.need && !c.passed) {
         c.passed = true; c.passAt = c.frame; this.passes++; this.save();
-        // 2.3：「过关」印章盖在上面的练习面板上（render.js drawDrillPanel，以前盖在你头顶、被面板挡住），配一声锣
-        if (Sound.luogu) Sound.luogu('仓', 0.75);
+        // 2.3：「过关」印章盖在上面的练习面板上（render.js drawDrillPanel，以前盖在你头顶、被面板挡住），配一声「锵」（2.4 以前是锣）
+        if (Sound.beat) Sound.beat('锵', 0.75);
         if (this.onPass) this.onPass(c.def);
       }
     }
@@ -896,9 +896,9 @@ const Drill = {
 };
 Drill.load();
 // 文字里的 [拳] 之类换成按键：html = true 给界面用（<kbd>），否则给画面上的字用
-const DRILL_KEYS = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up' };
+const DRILL_KEYS = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up', 冲: 'dash' };
 function drillText(s, html) {
-  return s.replace(/\[([拳重踢拿挡蹲跳前后])\]/g, (m, k) => {
+  return dashWords(s, Keys.solo).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => {
     if (k === '前' || k === '后') {       // 方向：看你站在他哪一边（左 / 右键里朝着他 / 背着他的那个）
       const dirs = `${keyName((Keys.solo.left || [])[0])} / ${keyName((Keys.solo.right || [])[0])}`;
       return html ? `<kbd class="lt" title="${dirs} 里${k === '前' ? '朝着' : '背着'}他的那个">${k === '前' ? '朝他' : '背他'}</kbd>` : `「${k === '前' ? '朝他' : '背他'}」`;

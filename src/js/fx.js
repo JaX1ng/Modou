@@ -78,9 +78,9 @@ const addFx = o => { o.max = o.max || o.life; fxDo(o.type + (o.text || ''), () =
 const flashTo = v => fxDo('flash', () => { game.flash = Math.max(game.flash, v); });
 function drops(n, x, y, dir, spd, cols, spread = 0.9, up = 0.35) {
   for (let i = 0; i < n; i++) {
-    const a = (Math.random() - 0.5) * 2 * spread - up;
+    const a = (vrnd() - 0.5) * 2 * spread - up;
     const s = spd * rnd(0.35, 1.15);
-    addFx({ type: 'drop', x, y, vx: Math.cos(a) * s * dir, vy: Math.sin(a) * s - rnd(0, 1.5), r: rnd(1.2, 3.6), color: pick(cols), life: 90 });
+    addFx({ type: 'drop', x, y, vx: Math.cos(a) * s * dir, vy: Math.sin(a) * s - rnd(0, 1.5), r: rnd(1.2, 3.6), color: vpick(cols), life: 90 });
   }
 }
 function burst(x, y, dir, n, len, w, color) {
@@ -240,6 +240,8 @@ const Sound = {
       const n = 1024, curve = new Float32Array(n);
       for (let i = 0; i < n; i++) { const x = i / (n - 1) * 2 - 1; curve[i] = Math.tanh(x * 3.2); }
       this.curve = curve;
+      // 2.4 古筝的几个音先算好（第一次开场时不卡那一下）
+      for (const f of ZHENG_UP.concat(ZHENG_CHORD, [659.26])) this.zhengBuf(f);
     } catch (e) { this.ctx = null; }
   },
   // 浏览器会把声音引擎挂起（页面切到后台、切去微信、联机时这一局是对方按「开始」开的、没点过页面……）。
@@ -306,17 +308,8 @@ const Sound = {
   clash() { if (!this.ok()) return; this.tone(980, 0.16, 0.12, 'square', 520); this.tone(1460, 0.12, 0.08, 'triangle', 900); this.nz(0.12, 2400, 1.2, 0.3, 'bandpass', 900); this.tone(120, 0.2, 0.3, 'sine', 50); },
   parry() { if (!this.ok()) return; this.tone(1760, 0.25, 0.1, 'sine', 1700); this.tone(2640, 0.18, 0.06, 'sine', 2600); this.nz(0.05, 5000, 1, 0.12, 'highpass'); },
   burst() { if (!this.ok()) return; this.tone(70, 0.45, 0.4, 'sine', 30); this.nz(0.4, 300, 0.6, 0.35, 'lowpass', 1200); },
-  // 胜负已分：一声大锣（2.3 换成和开场一样的大锣，敲下去音往下掉一截再拖长）
-  gong() { if (!this.ok()) return; this.bigGong(1.15, 0); this.cymbal(0.45, 0.01); },
-  /* ---------- 2.3 锣鼓（Jack：开场字幕加音效 —— 中式格斗那种敲锣打鼓）----------
-     京剧锣鼓经里的几样家伙，全是现合成的（走 master，跟着音量、压缩器、限幅）：
-     · 板「八」：木头一拍，又干又脆          · 单皮鼓「大」：小而紧的鼓，「嗒」一声
-     · 堂鼓（战鼓）「咚」：大鼓，低音往下沉    · 铙钹「才」：一片高频的「嚓」+ 几声金属响
-     · 大锣「哐」：一组不成倍数的正弦（金属味），敲下去音往下掉一截再拖长（京剧大锣的「下滑」）
-     · 小锣「台」：高的锣，敲下去音往上挑（京剧小锣的「上挑」）
-     · 仓 = 大锣 + 铙钹 + 小锣一齐响
-     game.js 开场按 LUOGU_INTRO 一帧一帧敲：Sound.luogu(家伙, 力度) 走 fxDo（联机回滚不重复响） */
-  luogu(k, p) { if (!this.ok()) return; const f = this[LUOGU_KIT[k]]; if (f) f.call(this, p || 1, 0); },
+  // 胜负已分（2.4 不敲锣了）：一声战鼓，紧跟着「锵」（大鼓 + 战鼓 + 镲）和古筝一个和弦
+  finale() { if (!this.ok()) return; this.taiko(1, 0); this.qiang(1.15, 0.16); this.zhengChord(1, 0.16); },
   // 一个音：f 在 glide 秒内滑到 f2（之后不动），dur 秒衰减完
   glide(f, f2, glide, dur, gain, delay, type) {
     const c = this.ctx, t = c.currentTime + (delay || 0);
@@ -325,71 +318,98 @@ const Sound = {
     const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
   },
-  bigGong(p, d) {
-    const f0 = 205 * (0.98 + srnd() * 0.04), L = 0.75 + 0.25 * Math.min(1.4, p);
-    // [倍数, 响度, 多久衰减完]：第二个和第一个差一点点（两个一起「嗡嗡」地起伏，像真锣）
-    for (const [r, a, s] of [[1, 1, 2.7], [1.006, 0.55, 2.5], [1.49, 0.5, 1.9], [1.98, 0.55, 1.6], [2.55, 0.32, 1.1], [3.11, 0.26, 0.9], [3.72, 0.18, 0.7], [4.66, 0.1, 0.5]])
-      this.glide(f0 * r, f0 * r * 0.86, 0.45, s * L, 0.15 * a * p, d);
-    this.nz(0.2, 1300, 0.6, 0.2 * p, 'bandpass', 600, false, d);         // 锣槌砸上去那一下
-    this.nz(0.75 * L, 5200, 0.7, 0.025 * p, 'highpass', null, false, d); // 锣面「沙沙」的余音（淡一点，主要听「哐」）
-  },
-  smallGong(p, d) {
-    const f0 = 740 * (0.98 + srnd() * 0.04);
-    for (const [r, a, s] of [[1, 1, 0.95], [2.13, 0.32, 0.5], [3.3, 0.12, 0.3]]) this.glide(f0 * r, f0 * r * 1.13, 0.16, s, 0.1 * a * p, d);
-    this.nz(0.04, 3000, 1.2, 0.1 * p, 'bandpass', null, false, d);
-  },
-  cymbal(p, d) {
-    this.nz(0.42 + 0.22 * Math.min(1.4, p), 3800, 0.5, 0.17 * p, 'highpass', null, false, d);
-    this.nz(0.3, 7200, 0.9, 0.13 * p, 'bandpass', null, false, d);
-    for (const f of [2870, 3990, 5310]) this.glide(f, f * 0.995, 0.3, 0.26, 0.02 * p, d, 'square');
-  },
-  danpi(p, d) { this.glide(700, 380, 0.05, 0.09, 0.28 * p, d, 'triangle'); this.nz(0.025, 2600, 1.4, 0.24 * p, 'bandpass', null, false, d); },
-  clapper(p, d) {
-    this.nz(0.03, 1900, 5, 0.28 * p, 'bandpass', null, false, d);
-    this.nz(0.022, 3300, 4, 0.2 * p, 'bandpass', null, false, (d || 0) + 0.004);
-    this.glide(1250, 1150, 0.03, 0.045, 0.07 * p, d);
-  },
-  warDrum(p, d) {
+  /* ---------- 2.4 开场的鼓（Jack：2.3 的锣鼓不好听、太诡异 —— 大锣敲下去音往下滑、小锣往上挑，听着瘆人）----------
+     换成战鼓 + 镲 + 古筝，都是「正」的音，不往上往下滑：
+     · 战鼓「咚」：鼓皮一下（音高几十毫秒里就落定 —— 真鼓就这样，不是「呜」地滑）+ 鼓槌「噗」
+     · 大鼓：更低更长的「咚」          · 鼓边「嗒」：敲在鼓框上，又干又脆
+     · 镲「嚓」：一片亮的「沙」慢慢散开（不带方波那种怪金属音）
+     · 古筝「铮」：五声音阶（D 宫：D E F♯ A B）一串往上拨；「和」：D、A、D、A 几根弦一齐拨
+     · 「锵」= 大鼓 + 战鼓 + 镲一齐响
+     全是现合成的（走 master，跟着音量、压缩器、限幅）。game.js 开场按 INTRO_BEATS 一帧一帧敲：Sound.beat(字, 力度) 走 fxDo（联机回滚不重复响） */
+  beat(k, p) { if (!this.ok()) return; const f = this[BEAT_KIT[k]]; if (f) f.call(this, p || 1, 0); },
+  taiko(p, d) {
     const k = 0.97 + srnd() * 0.06;
-    this.glide(150 * k, 66 * k, 0.2, 0.42, 0.5 * p, d);
-    this.glide(240 * k, 120 * k, 0.12, 0.18, 0.11 * p, d, 'triangle');
-    this.nz(0.06, 700, 0.8, 0.2 * p, 'lowpass', 250, false, d);
+    this.glide(124 * k, 58 * k, 0.06, 0.46 + 0.1 * Math.min(1.4, p), 0.56 * p, d);   // 鼓皮
+    this.glide(270 * k, 160 * k, 0.04, 0.15, 0.1 * p, d, 'triangle');               // 鼓皮上面一点的泛音
+    this.nz(0.06, 520, 0.7, 0.24 * p, 'lowpass', 180, false, d);                      // 鼓槌「噗」
+    this.nz(0.012, 2400, 1, 0.05 * p, 'bandpass', null, false, d);                    // 一点点「啪」
   },
-  cang(p, d) { this.bigGong(p, d); this.cymbal(p * 0.9, (d || 0) + 0.004); this.smallGong(p * 0.4, (d || 0) + 0.008); if (p > 1.1) this.warDrum(p * 0.75, d); },
-  /* ---------- 2.3 菜单的声音（Jack：鼠标移到按钮上要有声音，按下去是另一声）----------
-     移上去：轻轻一声木鱼「笃」；按下去：单皮鼓「嗒」加一点低音。菜单背景里也响（不走 ok() 的「菜单里不出声」），
-     浏览器还没让出声（没点过页面）就不响；不走 fxDo（不是对局里的事） */
+  taikoLo(p, d) {
+    this.glide(86, 46, 0.08, 0.8, 0.5 * p, d);
+    this.nz(0.1, 360, 0.6, 0.22 * p, 'lowpass', 120, false, d);
+  },
+  rim(p, d) { this.nz(0.03, 2300, 2.2, 0.2 * p, 'bandpass', null, false, d); this.tone(610, 0.045, 0.07 * p, 'triangle', null, d); },
+  cha(p, d) {
+    this.nz(0.85 + 0.3 * Math.min(1.4, p), 6200, 0.5, 0.085 * p, 'highpass', null, false, d);   // 亮的「沙」，慢慢散开
+    this.nz(0.2, 3600, 0.8, 0.1 * p, 'bandpass', 5200, false, d);                                // 打上去那一下「嚓」
+  },
+  qiang(p, d) { this.taikoLo(p, d); this.taiko(p * 0.85, (d || 0) + 0.004); this.cha(p * 0.8, (d || 0) + 0.008); },
+  // 古筝拨弦：Karplus-Strong（一小段噪声在「弦」里一圈圈走、一圈圈磨平 = 弦振动的声音）。每个音第一次用时现算、存起来
+  zhengBuf(freq) {
+    const c = this.ctx, cache = this.zbuf || (this.zbuf = {}), key = Math.round(freq * 10);
+    if (cache[key]) return cache[key];
+    const sr = c.sampleRate, n = Math.floor(sr * 1.8), N = Math.max(2, Math.round(sr / freq));
+    const buf = c.createBuffer(1, n, sr), out = buf.getChannelData(0), ring = new Float32Array(N);
+    let lp = 0;
+    for (let i = 0; i < N; i++) { lp = lp * 0.45 + (srnd() * 2 - 1) * 0.55; ring[i] = lp; }   // 拨的那一下：磨圆一点的噪声（不扎耳朵）
+    const fb = Math.pow(0.001, 1 / (freq * 1.7));                                             // 每走一圈再衰减一点：1.7 秒落到 -60dB
+    let j = 0, peak = 1e-6;
+    for (let i = 0; i < n; i++) { const a = ring[j], b2 = ring[j + 1 < N ? j + 1 : 0]; out[i] = a; ring[j] = (a + b2) * 0.5 * fb; j = j + 1 < N ? j + 1 : 0; if (a > peak) peak = a; else if (-a > peak) peak = -a; }
+    for (let i = 0; i < n; i++) out[i] /= peak;
+    return (cache[key] = buf);
+  },
+  zheng(freq, gain, delay, dur) {
+    const c = this.ctx, t = c.currentTime + (delay || 0), L = dur || 1.2;
+    const s = c.createBufferSource(); s.buffer = this.zhengBuf(freq);
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = Math.min(9000, freq * 7); f.Q.value = 0.5;
+    const g = c.createGain(); g.gain.setValueAtTime(gain, t); g.gain.setTargetAtTime(0.0001, t + L * 0.55, L * 0.22);
+    s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t + L + 0.5);
+  },
+  zhengUp(p, d) { ZHENG_UP.forEach((f, i) => this.zheng(f, 0.12 * p * (0.8 + i * 0.05), (d || 0) + i * 0.034, 1.1)); },
+  zhengChord(p, d) { ZHENG_CHORD.forEach((f, i) => this.zheng(f, 0.15 * p * [1, 0.8, 0.7, 0.5][i], (d || 0) + i * 0.016, 1.7)); },
+  /* ---------- 菜单的声音（2.3；2.4 Jack：按下去那一声太诡异 —— 以前是往下滑的「嘟」）----------
+     移上去：轻轻一声木鱼「笃」；按下去：古筝拨一下「叮」（E，不滑音）+ 一点点「嗒」。菜单背景里也响（不走 ok() 的「菜单里不出声」）；
+     不走 fxDo（不是对局里的事）。2.4：一打开游戏就把声音引擎建好（软件版一进来就有声；网页版浏览器要先点一下页面），
+     按下去那一下要是声音引擎还睡着，先叫醒再响（以前第一下按了没声） */
   uiReady() { return this.on && this.vol > 0 && !!this.ctx && this.ctx.state === 'running'; },
   uiHover() {
-    if (!this.uiReady()) return;
+    if (!this.uiReady()) { if (this.on && this.ctx) this.wake(); return; }
     const now = performance.now(); if (now - (this.uiT || 0) < 45) return; this.uiT = now;
     this.glide(1520, 1380, 0.04, 0.07, 0.055);
     this.nz(0.016, 2400, 3, 0.035, 'bandpass');
   },
   uiPress() {
-    if (!this.uiReady()) return;
-    this.uiT = performance.now();
-    this.glide(520, 260, 0.06, 0.12, 0.11, 0, 'triangle');
-    this.nz(0.022, 2200, 1.6, 0.08, 'bandpass');
-    this.glide(150, 80, 0.08, 0.14, 0.08);
+    if (!this.on || this.vol <= 0) return;
+    this.init();
+    if (!this.ctx) return;
+    const play = () => {
+      if (!this.uiReady()) return;
+      this.uiT = performance.now();
+      this.zheng(659.26, 0.16, 0, 0.5);
+      this.nz(0.012, 1900, 2, 0.05, 'bandpass');
+    };
+    if (this.ctx.state === 'running') play(); else this.ctx.resume().then(play).catch(() => {});
   },
 };
-// 锣鼓经的字 → 家伙
-const LUOGU_KIT = { 八: 'clapper', 大: 'danpi', 仓: 'cang', 台: 'smallGong', 才: 'cymbal', 咚: 'warDrum' };
-/* 开场锣鼓（帧 → [[字, 力度]…]）：「八 大 仓」—— 回合名在第 10 帧随「仓」砸下来（game.js）；
-   接着战鼓一下比一下密、越敲越响（急急风）；第 68 帧「战」：大仓 + 一声战鼓。决胜局在前面多一声「仓」、鼓点更密 */
-const LUOGU_INTRO = { 2: [['八', 0.85]], 6: [['大', 0.95]], 10: [['仓', 0.9]] };
+// 开场鼓经的字 → 家伙
+const BEAT_KIT = { 咚: 'taiko', 嗵: 'taikoLo', 嗒: 'rim', 嚓: 'cha', 锵: 'qiang', 铮: 'zhengUp', 和: 'zhengChord' };
+const ZHENG_UP = [587.33, 659.26, 739.99, 880, 987.77, 1174.66];      // D5 E5 F♯5 A5 B5 D6
+const ZHENG_CHORD = [293.66, 440, 587.33, 880];                       // D4 A4 D5 A5
+/* 开场的鼓（帧 → [[字, 力度]…]）：两声战鼓，回合名在第 10 帧随「锵」砸下来（game.js）；接着战鼓一下比一下密、越敲越响；
+   快到「战」古筝一串往上拨，第 68 帧「战」：「锵」+ 古筝一个和弦。决胜局在前面多一声「锵」、鼓点更密、多一声镲 */
+const INTRO_BEATS = { 2: [['咚', 0.8]], 6: [['咚', 0.62]], 10: [['锵', 0.9]] };
 [[24, .4], [31, .44], [37, .48], [42, .52], [46, .56], [50, .6], [53, .64], [56, .68], [58, .72], [60, .76], [62, .8], [64, .84], [66, .88]]
-  .forEach(([f, p]) => (LUOGU_INTRO[f] = LUOGU_INTRO[f] || []).push(['咚', p]));
-LUOGU_INTRO[46].push(['台', 0.55]);
-LUOGU_INTRO[68] = [['仓', 1.2]];
-const LUOGU_FINAL = { 18: [['仓', 0.8]], 27: [['咚', 0.42]], 34: [['咚', 0.46]], 40: [['咚', 0.5]], 44: [['才', 0.5]] };
-function luoguIntro(t, final) {
-  for (const [k, p] of LUOGU_INTRO[t] || []) Sound.luogu(k, p);
-  if (final) for (const [k, p] of LUOGU_FINAL[t] || []) Sound.luogu(k, p);
+  .forEach(([f, p]) => (INTRO_BEATS[f] = INTRO_BEATS[f] || []).push(['咚', p]));
+INTRO_BEATS[46].push(['嗒', 0.6]); INTRO_BEATS[56].push(['嗒', 0.7]);
+INTRO_BEATS[60].push(['铮', 0.9]);
+INTRO_BEATS[68] = [['锵', 1.2], ['和', 0.9]];
+const FINAL_BEATS = { 18: [['锵', 0.8]], 27: [['咚', 0.42]], 34: [['咚', 0.46]], 40: [['咚', 0.5]], 44: [['嚓', 0.5]] };
+function introBeats(t, final) {
+  for (const [k, p] of INTRO_BEATS[t] || []) Sound.beat(k, p);
+  if (final) for (const [k, p] of FINAL_BEATS[t] || []) Sound.beat(k, p);
 }
 // 声音也走 fxDo：回滚重算时先攒着，算完只补放新时间线里多出来的（1.9.0）
-for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'gong', 'luogu']) {
+for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'finale', 'beat']) {
   const play = Sound[k];
   Sound[k] = function (...a) { fxDo('S' + k, () => play.apply(Sound, a)); };
 }
@@ -603,7 +623,7 @@ function dashInFx(F) {
    · 一圈火（qiRing）：爆气、泼墨起手、连招打到第 5 下 / 第 7 下 —— 从胸口一圈往外炸开的火舌，炸出去再往上卷
    ============================================================ */
 const QI = [];
-const addQi = o => { o.max = o.life; o.v = o.v === undefined ? (Math.random() * 4) | 0 : o.v; QI.push(o); };
+const addQi = o => { o.max = o.life; o.v = o.v === undefined ? (vrnd() * 4) | 0 : o.v; QI.push(o); };
 // 连击数 → 火有多旺（2.0.2：1、2 连没有；3 连 0.4、4 连 0.65、5 连 0.9、6 连 1.15、7 连以上 1.4 到顶）
 const comboHeat = n => n >= 3 ? Math.min(1.4, 0.4 + 0.25 * (n - 3)) : 0;
 function qiLevel(F) {
@@ -650,7 +670,7 @@ function qiRing(F, n, k) {
   for (let i = 0; i < n; i++) {
     const a = (i / n) * Math.PI * 2 + rnd(-0.15, 0.15), s = rnd(3.2, 4.8) * k, r0 = rnd(14, 22);
     flame(F, P.qi, cx + Math.cos(a) * r0, cy + Math.sin(a) * r0 * 0.9, Math.cos(a) * s, Math.sin(a) * s * 0.9 - 0.6,
-      rnd(7, 11) * k, rnd(0.42, 0.6), rnd(20, 30), { buoy: 0.12, drag: 0.88, hot: Math.random() < 0.5, fr: Math.sin(a) > 0.2 && Math.random() < 0.35 });
+      rnd(7, 11) * k, rnd(0.42, 0.6), rnd(20, 30), { buoy: 0.12, drag: 0.88, hot: vrnd() < 0.5, fr: Math.sin(a) > 0.2 && vrnd() < 0.35 });
   }
   for (let i = 0; i < 8; i++) {
     const a = rnd(0, Math.PI * 2), s = rnd(3, 6) * k;
@@ -668,7 +688,7 @@ function emitQi(F) {
   if (reduceMotion || !F.J) return;
   const J = F.J, h = F.heat, P = pal(F), L = flow.lean, bk = flow.back;
   const spot = bones => {                                    // 在这些骨头上随便挑一点
-    const [p0, p1] = bones[(Math.random() * bones.length) | 0], u = Math.random();
+    const [p0, p1] = bones[(vrnd() * bones.length) | 0], u = vrnd();
     return [J[p0][0] + (J[p1][0] - J[p0][0]) * u + rnd(-7, 7), J[p0][1] + (J[p1][1] - J[p0][1]) * u + rnd(-7, 7)];
   };
   // 一条普通的火：往上冒（略往身后飘）；动得快就往身后斜着拖（L 越大越斜、飘得越快、拉得越长）
@@ -679,10 +699,10 @@ function emitQi(F) {
   // 招式的气（泼墨、爆气、截拳、卸力）
   let n = a * (2 + 2.6 * a);
   while (n > 0 && a > 0.02) {
-    if (n < 1 && Math.random() > n) break;
+    if (n < 1 && vrnd() > n) break;
     n--;
     const [x, y] = spot(QI_BONES);
-    if (Math.random() < 0.84) lick(x, y, rnd(1.2, 2.6) * (0.8 + a * 0.4), rnd(4, 8) * (0.7 + a * 0.6), rnd(0.22, 0.36) * (0.5 + a * 0.6), rnd(16, 28));
+    if (vrnd() < 0.84) lick(x, y, rnd(1.2, 2.6) * (0.8 + a * 0.4), rnd(4, 8) * (0.7 + a * 0.6), rnd(0.22, 0.36) * (0.5 + a * 0.6), rnd(16, 28));
     else addQi({ k: 'ember', f: F.idx, col: P.fx, x, y, vx: bk * rnd(0, 0.8) + rnd(-0.4, 0.4), vy: -rnd(1.4, 3), r: rnd(1.2, 2.2), a: 0.9, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
   }
   // 连招的火（2.0.2）：3 连才起，只在拳脚上冒；4 连起整个人冒火，一部分火苗烧到身子前面；越往后火苗越多、越大、越浓、窜得越高
@@ -690,23 +710,23 @@ function emitQi(F) {
     const big = h > 0.6, hm = Math.min(1, h);
     let k = h * (1.6 + 2.6 * h);                              // 每帧几个：3 连 1、4 连 2.1、5 连 3.5、6 连 5.3、7 连以上 7.3（2.1：少一点，一条一条火舌看得清）
     while (k > 0) {
-      if (k < 1 && Math.random() > k) break;
+      if (k < 1 && vrnd() > k) break;
       k--;
       const [x, y] = spot(h < 0.5 ? QI_LIMBS : QI_BONES);
-      if (Math.random() < 0.86) lick(x, y, rnd(1.5, 3.2) * (0.8 + 0.55 * h), rnd(5.5, 8.5) * (0.8 + 0.55 * h), rnd(0.46, 0.64) * (0.65 + 0.35 * hm), rnd(16, 28),
-        { hot: big && Math.random() < 0.55, fr: big && Math.random() < 0.08 });   // 烧到身前的很少：气再旺，身子也看得清
+      if (vrnd() < 0.86) lick(x, y, rnd(1.5, 3.2) * (0.8 + 0.55 * h), rnd(5.5, 8.5) * (0.8 + 0.55 * h), rnd(0.46, 0.64) * (0.65 + 0.35 * hm), rnd(16, 28),
+        { hot: big && vrnd() < 0.55, fr: big && vrnd() < 0.08 });   // 烧到身前的很少：气再旺，身子也看得清
       else addQi({ k: 'ember', f: F.idx, col: P.fx, x, y, vx: bk * (rnd(0, 1) + L * 3) + rnd(-0.5, 0.5), vy: -rnd(1.6, 3.6) * (0.8 + 0.45 * h), r: rnd(1, 1.8) * (0.8 + 0.4 * h), a: 1, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
     }
     // 5 连起：背上往身后斜着往上喷大火舌（像一件火做的披风；跑起来就整片往后拖）
     if (h > 0.8) {
       let p = (h - 0.7) * 2.2;                                // 5 连每帧 0.44 条、6 连 1、7 连以上 1.5
       while (p > 0) {
-        if (p < 1 && Math.random() > p) break;
+        if (p < 1 && vrnd() > p) break;
         p--;
         const [x, y] = spot(QI_BACK), sp = rnd(1.6, 2.8) * (0.8 + 0.3 * h);
         const ang = (0.5 + 0.45 * L + rnd(-0.18, 0.18)) * Math.PI / 2;      // 离竖直往后偏多少：站着 45° 左右，跑起来更平
         flame(F, P.qi, x + bk * 6, y + rnd(0, 8), bk * Math.sin(ang) * sp, -Math.cos(ang) * sp,
-          rnd(13, 20) * (0.55 + 0.45 * h), rnd(0.2, 0.3) * hm, rnd(22, 34), { hot: Math.random() < 0.4, buoy: 0.05, drag: 0.98, len: 1.25 });
+          rnd(13, 20) * (0.55 + 0.45 * h), rnd(0.2, 0.3) * hm, rnd(22, 34), { hot: vrnd() < 0.4, buoy: 0.05, drag: 0.98, len: 1.25 });
       }
     }
   }

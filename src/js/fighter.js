@@ -26,8 +26,9 @@ function takeoffVx(o) {
 const TAU = Math.PI * 2;
 // 1.9.0：以前踩地占三成多、步子小，看着像竞走。现在踩地只占四分之一出头、步子大：
 // 蹬地后脚跟往后上方甩到屁股高，再提膝往前带、小腿甩出去 —— 两脚都离地的时间长，人是一窜一窜往前飞的（火影手游那种跑法）
-const RUN_ST = 0.26, RUN_X0 = 36, RUN_X1 = -42;           // 踩地占周期的比例、落地点、蹬离点（相对髋）
-const RUN_SWING = [[0, RUN_X1, 0], [0.14, -60, 22], [0.34, -40, 46], [0.55, 4, 44], [0.76, 42, 30], [0.9, 46, 12], [1, RUN_X0, 0]];  // [进度, x, 离地高]
+// 2.4 腿长了（69 → 76）：步子、抬腿跟着放大一成
+const RUN_ST = 0.26, RUN_X0 = 40, RUN_X1 = -46;           // 踩地占周期的比例、落地点、蹬离点（相对髋）
+const RUN_SWING = [[0, RUN_X1, 0], [0.14, -66, 24], [0.34, -44, 51], [0.55, 4, 48], [0.76, 46, 33], [0.9, 51, 13], [1, RUN_X0, 0]];  // [进度, x, 离地高]
 function catmull(p0, p1, p2, p3, t) {
   const t2 = t * t, t3 = t2 * t;
   return 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3);
@@ -67,6 +68,8 @@ function runArm(u, tor, amp) {
   return [ex + Math.sin(th + ph) * BONE.fa, ey + Math.cos(th + ph) * BONE.fa];
 }
 
+const FIT_KEYS = ['hip', 'neck', 'head', 'shF', 'shB', 'fe', 'be', 'fh', 'bh', 'fk', 'bk', 'ff', 'bf'];   // fitContact 粗看一眼用的关节
+const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
 class Fighter {
   constructor(idx, cfg) {
     this.idx = idx; this.setLook(cfg.look);
@@ -95,7 +98,7 @@ class Fighter {
     copyPose(this.disp, POSE.stance); this.hipY = -62; this.J = null;
     this.inp.clear();
     this.fk();
-    // 发带：两条从头带结上飘出去（2.0.2 以前还有第三条从腰上飘，改成箍着的腰带了，见 render.js drawBelt）
+    // 发带：两条从头带结上飘出去（2.0.2 以前还有第三条从腰上飘，改成箍着的腰带了，见 body.js drawWaistBelt）
     this.ribbons = [0, 1].map(() => {
       const a = this.J.knot, pts = [];
       for (let i = 0; i < 8; i++) pts.push({ x: a[0] - facing * i * 6, y: a[1] + i * 2, px: a[0] - facing * i * 6, py: a[1] + i * 2 });
@@ -162,7 +165,7 @@ class Fighter {
          他会按「我」这时候在哪重新瞄（和 aimDive 一样），然后直线往下踩、落在我身上 —— 以前当他照惯性一直往前飞，算出来他会落到我身后，就转身往后打空了；
        · 普通跳在空中按着方向：会加速 / 减速（AIR_ACC，有上限），松开才慢慢变慢（以前一律按松开算）；
        · 被顶回去翻跟头（tumble）：横着匀速飞，方向键管不了；
-       · 他空中的招（千斤坠、飞踢、空中挥拳、泰山压顶）在判定帧里够到我了：他就停在那儿 —— 真打起来是我先挨这一下，
+       · 他空中的招（千斤坠、飞踢、挥拳、泰山压顶）在判定帧里够到我了：他就停在那儿 —— 真打起来是我先挨这一下，
          以前接着按惯性推，推出来他「飞过我、落到我身后」，我的招慢一点就转身往后打，结果背对着挨踢 / 挨踩 */
     const odir = o.state === 'tumble' ? 0 : dirOf(o.inp.held);
     const oam = om && om.air && !om.hit && !om.blocked ? om : null, odv = oam && oam.def.dive ? oam : null;
@@ -450,8 +453,12 @@ class Fighter {
     const bl = !!h.block;
     if (bl && !this.prevBlock) { this.parryOK = this.clock - this.blockPress >= PARRY_LOCK; this.blockPress = this.clock; }
     this.prevBlock = bl;
-    if (h.left && !this.prevL) { if (this.clock - this.tapL <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = -1; this.tapL = -999; } else this.tapL = this.clock; }
-    if (h.right && !this.prevR) { if (this.clock - this.tapR <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = 1; this.tapR = -999; } else this.tapR = this.clock; }
+    // 2.4 冲刺键（键位设置里选了「冲刺键」的人，双击方向就只是走路 —— inp.keyDash）：按一下 = 往按着的方向冲，没按方向就往前（面朝的方向）
+    if (!this.inp.keyDash) {
+      if (h.left && !this.prevL) { if (this.clock - this.tapL <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = -1; this.tapL = -999; } else this.tapL = this.clock; }
+      if (h.right && !this.prevR) { if (this.clock - this.tapR <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = 1; this.tapR = -999; } else this.tapR = this.clock; }
+    }
+    if (this.takePress(['dash'])) { this.dashT = this.clock; this.dashDir = dirOf(h) || this.facing; this.tapL = this.tapR = -999; }
     this.prevL = !!h.left; this.prevR = !!h.right;
 
     switch (this.state) {
@@ -747,7 +754,7 @@ class Fighter {
     t.ff[0] = f[0]; t.ff[1] = f[1]; t.bf[0] = b[0]; t.bf[1] = b[1];
     const bob = Math.cos(TAU * 2 * (u - 0.38));             // 一步一起伏：腾空正中最高，踩地正中最低
     t.tor = 18 + 14 * k - 2 * bob; t.head = -12 - 8 * k;
-    t.hy = 52 + 1.5 * bob; t.air = Math.min(f[1], b[1]) + 2 + 4 * bob;
+    t.hy = 62 + 1.5 * bob; t.air = Math.min(f[1], b[1]) + 2 + 4 * bob;
     const amp = 0.75 + 0.25 * k;
     const fa = runArm(u, t.tor, amp), ba = runArm(u + 0.5, t.tor, amp);   // 手的相位 = 同侧腿的相位，runArm 里自己反着摆
     t.fh[0] = fa[0]; t.fh[1] = fa[1]; t.bh[0] = ba[0]; t.bh[1] = ba[1];
@@ -839,14 +846,17 @@ class Fighter {
     return copyPose(t, POSE.stance);
   }
   animate(frozen) {
+    const hold = this.holdPose; this.holdPose = false;      // 2.4 刚挨了一下（combat.js applyHit）：这一帧姿势先不变，顿帧过了再往后仰
     if (!frozen) {
       const tg = this.target();
       const st = this.state;
       // 跑步是循环动作，跟得紧一点（不然摆幅被抹平、脚会打滑）；刚起跑那几帧松一点，从站姿顺过去
       const k = st === 'attack' || st === 'tumble' ? 0.78 : this.carried ? 0.85 : (st === 'hit' || st === 'blockstun' || st === 'parry') ? 0.6
         : (st === 'down' || st === 'ko') ? (this.slam && this.downPhase === 'fall' ? 0.6 : 0.3) : st === 'run' ? (this.runT < 5 ? 0.5 : 0.88) : st === 'air' ? 0.32 : 0.4;
-      lerpPose(this.disp, tg, k, this.disp, true);
+      if (!hold) lerpPose(this.disp, tg, k, this.disp, true);
+      const hy0 = this.hipY, ik0 = this.ikS ? this.ikS.slice() : null;
       this.fk();
+      this.fitContact(hy0, ik0);
       emitQi(this);
       // 拳脚轨迹 + 残影（只在出招时有；跑步不留残影）
       const m = this.move;
@@ -881,41 +891,128 @@ class Fighter {
       pts.forEach((q, j) => { const o = r[j] || (r[j] = { x: 0, y: 0 }); o.x = q.x; o.y = q.y; });
     });
   }
+  /* 2.4 拳脚停在对方身上（只是画面）：出招时离得比射程近，照着姿势探身、伸直的拳脚会整个扎进对方身子里 ——
+     ① 先看身子：探身、前冲（姿势的 dx）把头、躯干送进了对方身子里，就整个人往回让到刚贴上（踩在地上的脚不动）；
+        往前上步的脚别踩进对方两脚中间；
+     ② 再看拳脚：过了对方迎面那一层（body.js bodyPen）超过 CONTACT_SINK，就从这一帧真正伸到的地方把那只手 / 脚往回收
+        （胳膊、腿自己弯回来）；肘、肩撞人收不了手，整个人往回让。
+     姿势本身不改（下一帧照样从原来的姿势算），只是这一帧的骨骼 J */
+  fitContact(hy0, ik0) {
+    const m = this.move, o = this.opp, limb = m && this.state === 'attack' && !m.def.script ? m.def.limb : null;
+    if (!limb || !o || !o.J || !this.J || !this.fkL || (o.x - this.x) * this.facing < 24) return;
+    // 对手躺在地上、飞在空中（看画面：髋贴着地、两只脚都离地老高）不管 —— 往下踩、往上托的不是横着打
+    if (FLOOR - o.J.hip[1] < 30 || FLOOR - Math.max(o.J.ff[1], o.J.bf[1]) > 24) return;
+    // 先粗看一眼：自己最往前的关节都还够不着对方最靠前的关节（各留 22 的胖瘦、拳头、脚尖），就不用细量了
+    const fw = this.facing, OJ = o.J, MJ = this.J;
+    let oFront = 1e9, mFront = -1e9;
+    for (const k of FIT_KEYS) { const a = OJ[k][0] * fw, b = MJ[k][0] * fw; if (a < oFront) oFront = a; if (b > mFront) mFront = b; }
+    if (mFront + 22 < oFront - 22) return;
+    const p = this.disp, arm = limb === 'fh' || limb === 'bh', leg = limb === 'ff' || limb === 'bf', A = BODY.bone.ankle;
+    const ax = Math.cos(p.spin * D2R) * Math.cos(p.rot * D2R);   // 姿势里往前（x）挪 1，画面上往前挪多少（转身、翻滚时变小、反过来）
+    const keep = { dx: p.dx, fh: p.fh.slice(), bh: p.bh.slice(), ff: p.ff.slice(), bf: p.bf.slice() };
+    const noArms = !o.isBlocking();                             // 挡着的：拳头停在他的胳膊上；没挡：从护着的手上面过去，停在身上
+    const oParts = bodyParts(OJ, 0).parts, tgtBody = bodyTargets(OJ, true, oParts), tgtHit = noArms ? tgtBody : bodyTargets(OJ, false, oParts);
+    const CORE = FIT_CORE, FEET = FIT_FEET;
+    const refit = () => { this.hipY = hy0; if (ik0) for (let i = 0; i < 4; i++) this.ikS[i] = ik0[i]; this.fk(); };
+    // 脚踝目标放到 x（姿势的坐标），腿够不着就往髋底下收到刚好够着（不然脚会被拽离地）
+    const legLen = BODY.bone.th + BODY.bone.sh - 0.8;
+    const footTo = (k, x, y) => {
+      const hj = k === 'ff' ? BODY.hipSplit : -BODY.hipSplit, dx2 = x - hj;
+      if (Math.hypot(dx2, y) > legLen) x = hj + Math.sign(dx2) * Math.sqrt(Math.max(0, legLen * legLen - y * y));
+      p[k][0] = x; p[k][1] = p.hy - A - y;
+    };
+    // 整个人往回让 d：踩在地上的脚尽量踩着原地（够不着就跟着往回滑一点；转身转得多了就跟着挪，不然腿要拧成麻花）
+    const back = d => {
+      const L = this.fkL; p.dx -= d;
+      if (Math.abs(ax) >= 0.6) for (const k of ['ff', 'bf']) if (Math.abs(L[k][1] - (p.hy - A)) < 6) footTo(k, L[k][0] + d / ax, L[k][1]);
+    };
+    let moved = 0;
+    for (let it = 0; it < 2; it++) {
+      const core = bodyParts(this.J, 0, CORE).parts.map(q => q.pts);
+      const pen = bodyPenT(core, tgtBody, fw) - 2;
+      if (pen <= 0.4 || moved >= 40) break;
+      const d = Math.min(pen + 0.6, 40 - moved); moved += d; back(d); refit();
+    }
+    // 踩在地上的脚：往前上步别踩进对方两脚中间（脚尖最多到对方前脚尖再过去一点点）
+    if (Math.abs(ax) >= 0.6) {
+      const f = fw, opFeet = oParts.filter(q => q.foot);
+      let front = 1e9; for (const q of opFeet) for (const [x] of q.pts) front = Math.min(front, x * f);
+      const my = bodyParts(this.J, 0, FEET).parts, L = this.fkL;
+      let fixed = false;
+      for (const k of ['ff', 'bf']) {
+        if (k === limb || Math.abs(L[k][1] - (p.hy - A)) >= 6) continue;
+        const q = my.find(r => r.k === (k === 'ff' ? 'FF' : 'BF')); if (!q) continue;
+        let toe = -1e9; for (const [x] of q.pts) toe = Math.max(toe, x * f);
+        const over = toe - (front + 4);
+        if (over > 0.5) { footTo(k, L[k][0] - over / ax, L[k][1]); fixed = true; }
+      }
+      if (fixed) refit();
+    }
+    if (!((arm || leg) && Math.abs(ax) < 0.35)) {
+      let cut = 0;
+      for (let it = 0; it < 4; it++) {
+        const sp = strikeParts(this.J, limb), pen = bodyPenT(leg ? sp.slice(0, 1) : sp, tgtHit, fw) - CONTACT_SINK;   // 腿：只看脚（膝盖顶进去像提膝，不管）
+        if (pen <= 0.4 || cut >= 120) break;
+        const d = Math.min(pen + 0.6, 120 - cut), dl = d / ax, L = this.fkL, e = L[limb]; cut += d;
+        if (arm) { p[limb][0] = e[0] - L.sh[0] - dl; p[limb][1] = e[1] - L.sh[1]; }
+        else if (leg) { p[limb][0] = e[0] - dl; p[limb][1] = p.hy - A - e[1]; }
+        else back(d);
+        refit();
+      }
+    }
+    p.dx = keep.dx; for (const k of ['fh', 'bh', 'ff', 'bf']) { p[k][0] = keep[k][0]; p[k][1] = keep[k][1]; }
+  }
+  /* 骨骼（2.4 新人物模型，比例、肩宽这些在 body.js 的 BODY 表）：
+     髋（原点）→ 脊柱（tor 前倾）→ 脖子根 → 脖子 → 头；肩关节在脊柱上，拧腰 tw（度）时前手肩膀往前、后手肩膀往后错开；
+     两个大腿根前后错开一点。手的目标点 fh / bh 是相对「两肩中间」sh 的；脚的目标点是脚踝（离鞋底 BODY.bone.ankle）。
+     转身 spin：每个点除了前后（x）、上下（y）还有左右（z：后手肩、前腿根在近侧），绕竖轴转过去再投到画面上 ——
+     转到一半时肩膀、两腿左右分开（正面看的样子），以前只是把 x 压扁 */
   fk() {
-    const p = this.disp;
+    const p = this.disp, L = BODY.bone;
     const tor = p.tor * D2R, hd = (p.tor + p.head) * D2R;
-    const tx = Math.sin(tor), ty = -Math.cos(tor);
-    const L = BONE;
+    const tx = Math.sin(tor), ty = -Math.cos(tor);            // 脊柱往上的方向
+    const nx = -ty, ny = tx;                                   // 胸口朝前的方向（垂直于脊柱）
     const neck = [tx * L.torso, ty * L.torso];
-    const sh = [tx * (L.torso - 3), ty * (L.torso - 3)];
-    const head = [neck[0] + Math.sin(hd) * (L.neck + L.head), neck[1] - Math.cos(hd) * (L.neck + L.head)];
+    const sh = [tx * L.shoulder, ty * L.shoulder];
+    const hx = Math.sin(hd), hy = -Math.cos(hd);              // 脖子、头往上的方向
+    const neckTop = [neck[0] + hx * L.neck, neck[1] + hy * L.neck];
+    const head = [neckTop[0] + hx * L.head * 0.84 - hy * L.head * 0.1, neckTop[1] + hy * L.head * 0.84 + hx * L.head * 0.1];
+    // 拧腰：前手肩膀往前、后手肩膀往后（出前手拳往前送肩，出后手拳反过来）
+    const tw = (p.tw || 0) * D2R, ts = Math.sin(tw) * BODY.shoulderW, tc = Math.cos(tw) * BODY.shoulderW;
+    const shF = [sh[0] + nx * ts, sh[1] + ny * ts], shB = [sh[0] - nx * ts, sh[1] - ny * ts];
+    const hipF = [BODY.hipSplit, 0], hipB = [-BODY.hipSplit, 0];
     // 2.1 肘、膝不「跳」（查动作衔接时发现的）：IK 每帧按提示硬挑弯向，手走到肩膀上方、起跳落地这些地方，
     // 提示一过线整条胳膊就一帧翻到另一边（出短拳时后手肘、起跳、落地、被打倒摔下去都有）。现在记着上一帧弯在哪边（ikS，画面用），
     // 要换边就每帧最多挪 IK_FLIP，几帧挪过去；一直弯在同一边的时候和以前一模一样
     const S = this.ikS || (this.ikS = [0, 0, 0, 0]), fresh = !this.J;
-    const limb = (i, px, py, qx, qy, a, b, hx, hy) => {
-      const want = ik(px, py, qx, qy, a, b, hx, hy)[4];
+    const limb = (i, px, py, qx, qy, a, b, hx2, hy2) => {
+      const want = ik(px, py, qx, qy, a, b, hx2, hy2)[4];
       S[i] = fresh ? want : S[i] + clamp(want - S[i], -IK_FLIP, IK_FLIP);
-      return ik(px, py, qx, qy, a, b, hx, hy, S[i]);
+      return ik(px, py, qx, qy, a, b, hx2, hy2, S[i]);
     };
-    const fA = limb(0, sh[0], sh[1], sh[0] + p.fh[0], sh[1] + p.fh[1], L.ua, L.fa, -0.3, p.fe);
-    const bA = limb(1, sh[0], sh[1], sh[0] + p.bh[0], sh[1] + p.bh[1], L.ua, L.fa, -0.3, p.be);
-    const fL = limb(2, 0, 0, p.ff[0], p.hy - p.ff[1], L.th, L.sh, 1, -0.15);
-    const bL = limb(3, 0, 0, p.bf[0], p.hy - p.bf[1], L.th, L.sh, 1, -0.15);
-    // 头带结、腰带结
-    const knot = [head[0] - Math.cos(hd) * 11, head[1] - Math.sin(hd) * 11 - 3];
+    const kf = p.fn === undefined ? 1 : p.fn, kb = p.bn === undefined ? 1 : p.bn;   // 膝盖往哪边顶（1 往前；-1 往后：仆步那条蹲着的腿脚尖外摆）
+    const fA = limb(0, shF[0], shF[1], sh[0] + p.fh[0], sh[1] + p.fh[1], L.ua, L.fa, -0.3, p.fe);
+    const bA = limb(1, shB[0], shB[1], sh[0] + p.bh[0], sh[1] + p.bh[1], L.ua, L.fa, -0.3, p.be);
+    const fL = limb(2, hipF[0], hipF[1], p.ff[0], p.hy - L.ankle - p.ff[1], L.th, L.sh, kf, -0.15);
+    const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, kb, -0.15);
+    // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收
+    this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]] };
+    // 头带结（后脑勺）、腰带结
+    const knot = [head[0] + hy * L.head * 0.95 + hx * L.head * 0.22, head[1] - hx * L.head * 0.95 + hy * L.head * 0.22];
     const belt = [-tx * 2 - 4, ty * 4];
-    const pts = { hip: [0, 0], neck, sh, head, knot, belt,
-      fe: [fA[0], fA[1]], fh: [fA[2], fA[3]], be: [bA[0], bA[1]], bh: [bA[2], bA[3]],
-      fk: [fL[0], fL[1]], ff: [fL[2], fL[3]], bk: [bL[0], bL[1]], bf: [bL[2], bL[3]] };
-    const sc = Math.cos(p.spin * D2R), r = p.rot * D2R, cr = Math.cos(r), sr = Math.sin(r);
+    const zF = -tc, zB = tc, zHF = BODY.hipW, zHB = -BODY.hipW;   // 左右：后手肩、前腿根在近侧
+    const pts = { hip: [0, 0, 0], hipF: [hipF[0], 0, zHF], hipB: [hipB[0], 0, zHB], neck: [neck[0], neck[1], 0], neckTop: [neckTop[0], neckTop[1], 0],
+      head: [head[0], head[1], 0], sh: [sh[0], sh[1], 0], shF: [shF[0], shF[1], zF], shB: [shB[0], shB[1], zB], knot: [knot[0], knot[1], 0], belt: [belt[0], belt[1], 0],
+      fe: [fA[0], fA[1], zF], fh: [fA[2], fA[3], zF], be: [bA[0], bA[1], zB], bh: [bA[2], bA[3], zB],
+      fk: [fL[0], fL[1], zHF], ff: [fL[2], fL[3], zHF], bk: [bL[0], bL[1], zHB], bf: [bL[2], bL[3], zHB] };
+    const sp = p.spin * D2R, sc = Math.cos(sp), ss = Math.sin(sp), r = p.rot * D2R, cr = Math.cos(r), sr = Math.sin(r);
     let maxY = -1e9;
     for (const k in pts) {
       const v = pts[k];
-      const x = v[0] * sc, y = v[1];
-      v[0] = x * cr - y * sr + p.dx; v[1] = x * sr + y * cr;
+      const x = v[0] * sc - v[2] * ss, y = v[1];
+      v[0] = x * cr - y * sr + p.dx; v[1] = x * sr + y * cr; v.length = 2;
       let low = v[1];
-      if (k === 'head') low += L.head; else if (k === 'ff' || k === 'bf') low += 2; else if (k === 'knot' || k === 'belt') continue;
+      if (k === 'head') low += L.head; else if (k === 'ff' || k === 'bf') low += L.ankle; else if (k === 'knot' || k === 'belt') continue;
       if (low > maxY) maxY = low;
     }
     let hipT;
@@ -926,7 +1023,11 @@ class Fighter {
     const J = this.J || (this.J = {});
     const f = this.facing, ox = this.x, oy = FLOOR + this.hipY;
     for (const k in pts) J[k] = [ox + f * pts[k][0], oy + pts[k][1]];
-    J.turned = sc < 0; J.facing = f; J.rot = r; J.headTilt = hd;
+    J.turned = sc < 0; J.facing = f; J.rot = r; J.headTilt = hd; J.spin = sp;
+    // 肘、膝该往哪边顶（世界方向）：画肌肉时分前侧后侧用（body.js）。是方向不是位置：故意不用数组（画面插值、转身平移只动数组）
+    const hv = (x, y) => { const X = x * sc; return { 0: (X * cr - y * sr) * f, 1: X * sr + y * cr }; };
+    J.hFe = hv(-0.3, p.fe); J.hBe = hv(-0.3, p.be); J.hFk = hv(kf, -0.15); J.hBk = hv(kb, -0.15); J.fkd = kf; J.bkd = kb;
+    J.fft = p.ft || 0; J.bft = p.bt || 0;                      // 脚尖勾多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }
   updateRibbons() {

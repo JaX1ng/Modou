@@ -1,0 +1,8 @@
+/* 2.4 字体打包进游戏（Jack：别让上不了谷歌的人用不了）：不再向 Google Fonts 要字体 —— 马善政（毛笔字）、思源黑体（界面字）
+   裁成只含游戏里用到的字（fonts/*.woff2，python build.py --fonts 重新生成），和游戏放在一起。
+   打包时（build.py）：单文件 dist/modou.html 把字体直接嵌进去（双击、离线都能用）；网页版 dist/index.html 指向仓库里的 src/fonts/；
+   软件版换成自己那一套（多带 GB2312 一级常用字）。字体是 OFL 许可证（fonts/OFL-*.txt） */
+@font-face{font-family:"Ma Shan Zheng";font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/MaShanZheng-Regular.woff2) format("woff2")}
+@font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/NotoSansSC-Regular.woff2) format("woff2")}
+@font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/NotoSansSC-Medium.woff2) format("woff2")}
+@font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/NotoSansSC-Bold.woff2) format("woff2")}

@@ -35,24 +35,7 @@ function resize() {
 // 给场景用：这一帧画面多大、地线在哪、最大放大倍数（地面层按这个分辨率画）
 const viewInfo = () => ({ vw: VW, vh: VH, fy: FY, scale, pxr, zmax: ZOOM * zoomBoost() * 1.06 });
 
-/* 锥形骨骼（毛笔感） */
-function bone(a, b, wa, wb) {
-  const dx = b[0] - a[0], dy = b[1] - a[1], ang = Math.atan2(dy, dx);
-  const nx = -Math.sin(ang), ny = Math.cos(ang);
-  ctx.beginPath();
-  ctx.moveTo(a[0] + nx * wa / 2, a[1] + ny * wa / 2);
-  ctx.lineTo(b[0] + nx * wb / 2, b[1] + ny * wb / 2);
-  ctx.arc(b[0], b[1], wb / 2, ang + Math.PI / 2, ang - Math.PI / 2, true);
-  ctx.lineTo(a[0] - nx * wa / 2, a[1] - ny * wa / 2);
-  ctx.arc(a[0], a[1], wa / 2, ang - Math.PI / 2, ang - 3 * Math.PI / 2, true);
-  ctx.closePath(); ctx.fill();
-}
-function footStub(knee, foot, f, g) {
-  const a = Math.atan2(foot[1] - knee[1], foot[0] - knee[0]) - f * Math.PI / 2 * 0.9;
-  const tip = [foot[0] + Math.cos(a) * 10, foot[1] + Math.sin(a) * 10];
-  bone(foot, tip, 6 * THICK + g, 4.2 * THICK + g);
-}
-// grow：每段骨头额外加粗多少（画运气时的光用）
+/* 人物的外形、阴影、剪影都在 body.js（2.4 新模型）：drawBody 画整个人、drawSilhouette 画一整块剪影（残影、运气的光、白闪） */
 /* ---------- 画面插值（2.0.1，Jack：人跑起来有虚影，尤其跑到地图边上）----------
    游戏逻辑固定每秒 60 帧；显示器是 120 / 144Hz 时，同一帧的画面要连着显示两三次，镜头却每次都在挪 ——
    人一顿一顿地往前跳，眼睛跟着看就是重影。跑到地图边上镜头停了、人在画面里走，最明显。
@@ -80,40 +63,6 @@ function viewOf(F) {
   const ribbons = F.ribbons.map((pts, i) => { const q = v.rb[i]; return pts.map((p, j) => q && q[j] ? { x: lerp(q[j].x, p.x, k), y: lerp(q[j].y, p.y, k) } : p); });
   return { J: out, ribbons, x: lerp(v.J.x, J.x, k), alt: lerp(v.J.alt, J.alt, k) };
 }
-// mid：画完身子、头以后，画前侧手脚之前调一下（腰带画在这里：箍在身上，但不盖住前面的手脚）
-function drawSkeleton(J, color, alpha, back, grow, mid) {
-  const g = grow || 0, k = THICK;
-  const turned = J.turned, f = J.facing * (turned ? -1 : 1);
-  const legs = turned ? [['fk', 'ff'], ['bk', 'bf']] : [['bk', 'bf'], ['fk', 'ff']];
-  const arms = turned ? [['fe', 'fh'], ['be', 'bh']] : [['be', 'bh'], ['fe', 'fh']];
-  ctx.fillStyle = color;
-  const limbSet = (leg, arm) => {
-    bone(J.hip, J[leg[0]], 7.5 * k + g, 6.2 * k + g); bone(J[leg[0]], J[leg[1]], 6.2 * k + g, 4.8 * k + g); footStub(J[leg[0]], J[leg[1]], f, g);
-    bone(J.sh, J[arm[0]], 6 * k + g, 5 * k + g); bone(J[arm[0]], J[arm[1]], 5 * k + g, 4.2 * k + g);
-    ctx.beginPath(); ctx.arc(J[arm[1]][0], J[arm[1]][1], FIST_R * k + g / 2, 0, Math.PI * 2); ctx.fill();   // 拳头（1.9.0 改小：4.8 → 3.5）
-  };
-  // 后侧肢体
-  ctx.globalAlpha = alpha * back;
-  limbSet(legs[0], arms[0]);
-  ctx.globalAlpha = alpha;
-  // 躯干与头
-  bone(J.hip, J.neck, 10 * k + g, 8 * k + g);
-  bone(J.neck, J.head, 5 * k + g, 5 * k + g);
-  ctx.beginPath(); ctx.arc(J.head[0], J.head[1], BONE.head + g / 2, 0, Math.PI * 2); ctx.fill();
-  if (mid) { mid(); ctx.fillStyle = color; ctx.globalAlpha = alpha; }
-  // 前侧肢体
-  limbSet(legs[1], arms[1]);
-  ctx.globalAlpha = 1;
-}
-/* 腰带（2.0.2，Jack：底下那条飘带改成腰带，和头带一样是一箍「柱形」的带子）：横着箍在腰上（髋往上 9），
-   跟着上身的方向转（弯腰、躺下都贴着身子），比身子宽一点点，看着是一圈缠在身上的；颜色和头带一样（身体色提亮的那一版） */
-function drawBelt(J, col) {
-  const h = J.hip, n = J.neck, dx = n[0] - h[0], dy = n[1] - h[1], L = Math.hypot(dx, dy) || 1;
-  const half = (10 * THICK - 3.2 * THICK * 9 / BONE.torso) / 2 + 1;     // 那个高度身子的半宽（躯干从髋往脖子越来越细）+ 1
-  ctx.save(); ctx.translate(h[0] + dx / L * 9, h[1] + dy / L * 9); ctx.rotate(Math.atan2(dy, dx));
-  ctx.fillStyle = col; ctx.fillRect(-2.6, -half, 5.2, half * 2);
-  ctx.restore();
-}
 function drawFighter(F, V) {
   V = V || viewOf(F);
   const J = V.J, P = pal(F);
@@ -137,7 +86,7 @@ function drawFighter(F, V) {
   // 气：火苗（在身体后面）
   drawQi(F, false);
   // 残影（2.0.1：自己的气的颜色，淡的，和真身分得开）
-  for (const g of F.ghosts) drawSkeleton(g.J, P.qi, (g.dash ? 0.16 : 0.26) * RL(g) / 12, 1);
+  for (const g of F.ghosts) drawSilhouette(g.J, P.qi, (g.dash ? 0.16 : 0.26) * RL(g) / 12, 0);   // 2.4 一整块剪影，关节不会叠出深色的点
   // 轨迹：短拳细细一道墨（身体色）；重招一道粗的淡色（气的颜色），和短拳一眼分开
   let tr = F.trail;
   const m = F.move;
@@ -157,7 +106,7 @@ function drawFighter(F, V) {
     }
     ctx.globalAlpha = 1;
   }
-  // 发带（在身体后面）：两条从头带结上飘出去（2.0.2 起只有发带飘，腰上那条改成箍着的腰带，见 drawBelt）
+  // 发带（在身体后面）：两条从头带结上飘出去（2.0.2 起只有发带飘，腰上那条改成箍着的腰带，见 body.js drawWaistBelt）
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   ctx.strokeStyle = F.sash;
   for (const pts of V.ribbons) {
@@ -175,7 +124,7 @@ function drawFighter(F, V) {
     const layer = (blur, alpha, grow) => {
       ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = blur * s; ctx.shadowOffsetX = D;
       ctx.translate(-D / s, 0);
-      drawSkeleton(J, col, Math.min(1, alpha), 1, grow);
+      drawSilhouette(J, col, Math.min(1, alpha), grow);
       ctx.restore();
     };
     layer(16 + 10 * hk, F.qiGlow * pulse * 0.85, 5 + 6 * hk);
@@ -183,17 +132,14 @@ function drawFighter(F, V) {
   }
   // 身子：平时一圈淡淡的墨影；身上气旺的时候（连招的火、泼墨、爆气）换成一圈纸色的亮边 —— 气是同色的，人身子的边要分得开（2.0.1）
   const aura = reduceMotion ? 0 : Math.max(F.qiGlow, Math.min(1, heat * 1.2));
+  // 2.4：先把整个人的剪影填一次（只为了外面那圈影子 / 亮边），再一块一块不透明地画（drawBody：阴影、肌肉线、前后分得清）
   if (aura > 0.15) { const tf = ctx.getTransform(); ctx.shadowColor = `rgba(246,245,238,${(0.35 + 0.4 * Math.min(1, aura)).toFixed(2)})`; ctx.shadowBlur = 3.2 * Math.hypot(tf.a, tf.b); }
   else { ctx.shadowColor = 'rgba(23,24,26,.35)'; ctx.shadowBlur = 2.5; }
-  drawSkeleton(J, F.color, 1, 0.62, 0, () => drawBelt(J, F.sash));
+  ctx.fillStyle = F.color; ctx.fill(bodySilhouette(J, 0));
   ctx.shadowBlur = 0;
-  if (F.hitFlash > 0) drawSkeleton(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 1);   // 挨打那一下身上白闪
-  // 头带 + 眼
-  const ht = J.headTilt, hx = J.head[0], hy = J.head[1], fdir = J.facing;
-  ctx.save(); ctx.translate(hx, hy); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
-  ctx.fillStyle = F.sash; ctx.fillRect(-13.5, -6.8, 27, 5);
-  if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(6.8, 1.6, 2.8, 1.4, -0.15, 0, Math.PI * 2); ctx.fill(); }
-  ctx.restore();
+  drawBody(J, F.color, F.sash);                       // 头带、眼睛、腰带也在里面
+  if (F.hitFlash > 0) drawSilhouette(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 0);   // 挨打那一下身上白闪（一整块，关节不会更亮）
+  const hx = J.head[0], hy = J.head[1];
   // 气：火星（在身体前面）
   drawQi(F, true);
   // 势破标记（是对面挡出来的：对面的颜色）
@@ -225,13 +171,9 @@ function drawFigure(J, col, band, trail) {
     ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
   }
   ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;
-  drawSkeleton(J, col, 1, 0.62, 0, () => drawBelt(J, band));
+  ctx.fillStyle = col; ctx.fill(bodySilhouette(J, 0));
   ctx.shadowBlur = 0;
-  const ht = J.headTilt, hx = J.head[0], hy = J.head[1], fdir = J.facing;
-  ctx.save(); ctx.translate(hx, hy); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
-  ctx.fillStyle = band; ctx.fillRect(-13.5, -6.8, 27, 5);
-  if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(6.8, 1.6, 2.8, 1.4, -0.15, 0, Math.PI * 2); ctx.fill(); }
-  ctx.restore();
+  drawBody(J, col, band);
 }
 function drawFx() {
   ctx.lineCap = 'round';

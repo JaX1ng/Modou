@@ -90,7 +90,7 @@ function endRound(winner, reason) {
   game.phase = 'ko'; game.phaseT = 0; game.winner = winner;
   if (reason === 'time') announce('时间到', null, 80, 110);
   else if (winner === -1) announce('两败俱伤', null, 80, 100);
-  else { announce('胜负已分', null, 80, 110, game.p[winner]); Sound.gong(); }
+  else { announce('胜负已分', null, 80, 110, game.p[winner]); Sound.finale(); }
 }
 
 function step(inputs) {
@@ -127,8 +127,8 @@ function step(inputs) {
       if (a.hp <= 0 || b.hp <= 0) { if (++game.phaseT > 130) { resetFighters(); game.phaseT = 0; } }
       break;
     case 'intro':
-      // 2.3（Jack：开场字幕加锣鼓）：「八 大 仓」—— 回合名随着「仓」砸下来；战鼓越敲越密；「战」的时候大仓（fx.js LUOGU_INTRO）
-      luoguIntro(game.phaseT, roundName() === '决胜局');
+      // 2.3 开场字幕配锣鼓；2.4（Jack：锣鼓太诡异）换成战鼓 + 镲 + 古筝：回合名随着「锵」砸下来；战鼓越敲越密；「战」的时候「锵」+ 古筝和弦（fx.js INTRO_BEATS）
+      introBeats(game.phaseT, roundName() === '决胜局');
       if (game.phaseT === 10) announce(roundName(), null, 56, 96);
       if (game.phaseT === 68) announce('战', null, 38, 170);
       if (++game.phaseT >= 100) { game.phase = 'fight'; game.phaseT = 0; }
@@ -187,7 +187,7 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'vp', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'ikS']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'ikS', 'holdPose', 'fkL']);
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};

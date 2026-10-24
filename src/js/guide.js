@@ -5,7 +5,8 @@
    · 一份内容（下面 G_ 开头的表），两种排法：
      网页版 Guide：游戏下面一块「教程」，分页 —— 上手 / 招式 / 连招 / 攻防 / 规则 / 查表；招式、连招、技巧都配游戏里的动作小图
      软件版 Manual：菜单、暂停里的「教程」面板，左边章节、右边文字 + 表格（网页版全屏时也用它：全屏时看不到页面下面）
-   · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] 换成按键（按你自己设的单人键位显示）
+   · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] [冲] 换成按键（按你自己设的单人键位显示）；
+     2.4 键位里选了「冲刺键」，「双击 [前]」自动写成「按 [冲]」（input.js dashWords）
    · 前摇、伤害、倍率都直接读 MOVES 和 config.js 的常数：改了数值，教程跟着变
    · 动作小图 PoseIcon：用游戏自己的姿势（moves.js 的关键帧）和画法（render.js drawFigure）画，招式改了动作，小图跟着变
    ============================================================ */
@@ -57,7 +58,7 @@ const PoseIcon = {
     for (const p of pts) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); }
     x0 -= 16; x1 += 16; y0 -= BONE.head + 10;
     const y1 = FLOOR + 6, m = 4;
-    const s = Math.min(h * 0.86 / 182, (w - 2 * m) / (x1 - x0), (h - 2 * m) / (y1 - y0));
+    const s = Math.min(h * 0.86 / 162, (w - 2 * m) / (x1 - x0), (h - 2 * m) / (y1 - y0));   // 2.4 新人物站着约 150 高（以前按 182 算，小图显得小）
     g.scale(k, k);
     if (o.flip) { g.translate(w, 0); g.scale(-1, 1); }
     g.translate(w / 2 - (x0 + x1) / 2 * s, h - m - y1 * s + 2); g.scale(s, s);
@@ -81,7 +82,7 @@ const PoseIcon = {
 const iconSlot = (spec, w, h, cls, o) => `<span class="${cls || 'gicon'}" data-icon='${JSON.stringify(spec)}' data-w="${w}" data-h="${h}"${o && o.flip ? ' data-flip="1"' : ''}${o && o.col ? ` data-col="${o.col}"` : ''}></span>`;
 
 /* ---------- 按键 ---------- */
-const G_ACT = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up' };
+const G_ACT = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up', 冲: 'dash' };
 const gEsc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const gKey = (a, set) => keyName(((set || Keys.solo)[a] || []).find(Boolean) || null);
 function gKbd(ch, set) {
@@ -91,7 +92,7 @@ function gKbd(ch, set) {
   }
   return `<kbd class="kc"><b>${ch}</b><span>${gEsc(gKey(G_ACT[ch], set))}</span></kbd>`;
 }
-const gText = (s, set) => gEsc(s).replace(/\[([拳重踢拿挡蹲跳前后])\]/g, (m, k) => gKbd(k, set));
+const gText = (s, set) => gEsc(dashWords(s, set)).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => gKbd(k, set));
 // 连招的按法：'jab' 'heavy' 'kick' 'd:kick'（蹲踢）…… → 一串字（不带键位，键位在页面上方写一次）
 const COMBO_TOK = { jab: '拳', heavy: '重', kick: '踢', 'd:kick': '蹲踢', 'd:jab': '蹲拳' };
 const comboKeys = (keys, times) => keys.map(k => `<i class="tok${k.startsWith('d:') ? ' low' : ''}">${COMBO_TOK[k]}</i>`).join('<i class="sep">›</i>') + (times ? `<i class="tok times">${times}</i>` : '');
@@ -243,8 +244,12 @@ function frameTableHtml() {
 const FRAME_NOTE = '1 帧 = 1/60 秒。射程是两人中心距（像素，含往前冲的那一段）；空中招伤害已含 ×' + AIR_BONUS + '。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。';
 
 // 键位表的一行一行：[说明, 动作…]
-const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']]];
-const keyCaps = (set, acts) => acts.map(a => ((set[a] || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')).join('<i class="or">/</i>');
+const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']],
+  ['冲刺', ['dash'], '按着挡朝对手冲 = 闪身']];
+// 2.4 冲刺：选了「双击」显示「左左 / 右右」；选了「冲刺键」显示冲刺键
+const dashCaps = set => set.dashMode === 'key' ? ((set.dash || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')
+  : ['left', 'right'].map(a => { const c = gEsc(keyName((set[a] || []).find(Boolean) || null)); return `<kbd>${c}</kbd><kbd>${c}</kbd>`; }).join('<i class="or">/</i>') + '<i class="or">双击</i>';
+const keyCaps = (set, acts) => acts[0] === 'dash' ? dashCaps(set) : acts.map(a => ((set[a] || []).filter(Boolean).map(c => `<kbd>${gEsc(keyName(c))}</kbd>`).join('') || '—')).join('<i class="or">/</i>');
 
 /* ============================================================
    网页版：游戏下面的「教程」，分页
@@ -309,7 +314,7 @@ const Guide = {
   },
   /* 招式：一张一张卡片（小图 + 名字 + 按法 + 系 / 段 + 一句话） */
   p_moves() {
-    return `<p class="g-lead">「系」决定谁克谁，「段」决定站着还是蹲着挡。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲', '跳'].map(c => gKbd(c)).join(' ')}</span></p>
+    return `<p class="g-lead">「系」决定谁克谁，「段」决定站着还是蹲着挡。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲', '跳'].concat(Keys.solo.dashMode === 'key' ? ['冲'] : []).map(c => gKbd(c)).join(' ')}</span></p>
       <div class="g-grid moves">${G_MOVES.map(g => {
         const d = MOVES[g.id];
         return `<article class="g-move">${iconSlot(g.icon, 108, 108)}<div class="gm-body"><h4>${d.label}</h4><div class="gm-how">${gText(g.how)}</div>

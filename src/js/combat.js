@@ -143,6 +143,7 @@ function resolve(a, b) {
 }
 // 两边的招同时到：克 / 压 / 平。空中的腿撞上地上的腿 = 空中那个被顶得翻滚回去（1.9.0）
 function exchange(A, B) {
+  A.holdPose = B.holdPose = true;
   if (airKick(A) && groundKick(B)) return tumble(A, B);
   if (airKick(B) && groundKick(A)) return tumble(B, A);
   const r = relation(A.move.def, B.move.def);
@@ -180,6 +181,7 @@ function evade(A, B) {
 function applyHit(A, B, how) {
   const m = A.move, d = m.def, dir = A.facing;
   m.done = true;
+  B.holdPose = true;          // 2.4 打中（挡住）那一帧挨打的人先不动，顿帧里拳脚正好落在身上，顿完了才往后仰（只是画面）
   const c = contactPoint(A, B);
   const bm = B.state === 'attack' && B.move && !B.move.def.script ? B.move : null;
   const inStartup = !!bm && bm.t <= bm.S;
@@ -278,7 +280,7 @@ function applyHit(A, B, how) {
   else if (label === '截住闪身') A.info.why = '闪身只躲得过重拳';
   else if (d.stagger && B.stagger) A.info.why = '闪身躲过重拳，回身一肘打在背上：他背对着你踉跄、动不了，你先动';
   if (offBalance) tag(B.x, B.J.head[1] - 62, '失衡', A, 24);
-  tag(c.x + dir * 10, c.y - 14, (m.air ? '空中 ' : '') + '-' + dmg, A, 18);
+  tag(c.x + dir * 10, c.y - 14, '-' + dmg, A, 18);          // 2.4 跳起来打中的也只写伤害（以前前面加「空中」）
   const sx0 = A.J.head[0] - dir * 52, sy0 = A.J.head[1] - 46;
   if (d.stamp) { stamp(sx0, sy0, d.stamp, 30, A); A.stats.specials++; }
   else if (d.rush && !A.rushStamped) { A.rushStamped = true; stamp(sx0, sy0, '连珠快拳', 26, A); A.stats.specials++; }
@@ -427,6 +429,7 @@ function tumble(A, B) {            // A = 空中出腿的，B = 地上出腿的
 function shoveHit(A, B) {
   const m = A.move, dir = A.facing;
   m.done = true; m.hit = true;
+  B.holdPose = true;          // 2.4 推中那一帧先不动（只是画面，和 applyHit 一样）
   B.kvx = dir * PUSH_KB;
   if (B.isBlocking() && B.facingTo(A)) { B.state = 'blockstun'; B.stunT = 8; }
   else {
@@ -490,7 +493,7 @@ function doGrab(A, B, type) {
     game.freeze = stop(10); game.shake = Math.max(game.shake, 6);
     dust(foot[0], foot[1], 5); impact(foot[0], foot[1], dir, 36, pal(A).ink, 6, 1.0); sparks(foot[0], foot[1], dir, 8, 7, pal(A).fx, 1.0, 0.4);
     stamp(A.J.head[0] - dir * 52, A.J.head[1] - 46, scoop ? '抄腿摔' : '接腿摔', 30, A);
-    tag(B.x, B.J.head[1] - 30, scoop ? (wasSweep ? '扫堂腿被抄' : '腿被抄住') : airK ? '空中被接 · 久倒' : '倒地', A, 18);
+    tag(B.x, B.J.head[1] - 30, scoop ? (wasSweep ? '扫堂腿被抄' : '腿被抄住') : airK ? '腿被接 · 久倒' : '倒地', A, 18);
     tag(B.x + dir * 16, B.J.head[1] + 4, '-' + dmg, A, 18);
     Sound.hit(0.7);
     bumpCombo(A, B); noteGrab(A, dmg, scoop ? '抄腿摔' : '接腿摔');

@@ -1,7 +1,7 @@
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '2.3.0';
+const VERSION = '2.4.0';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -160,11 +160,7 @@ const NET = {
   GUEST_WAIT: 300000,     // 加入方生成应答码后最多等房主 5 分钟（中途浏览器报「失败」也不放弃，房主一连就通）
 };
 
-// 骨骼长度与配色
-// 1.9.4 手臂比例（Jack：小臂短一点、大臂长一点）：大臂 24 → 26.5、小臂 25 → 22.5，整条胳膊一样长（够得着的地方不变）
-const BONE = { torso: 44, neck: 6, head: 13, ua: 26.5, fa: 22.5, th: 34, sh: 35 };
-const THICK = 1.6;                        // 线条粗细倍率（1.8.0 从 1.3 加粗；1.7.0 去掉了身体外面那圈纸色白边）
-const FIST_R = 3.5;                       // 拳头半径（× THICK）。1.9.0 从 4.8 改小，只比手腕粗一点
+// 配色。2.4 骨骼长短、人物外形（比例、肌肉、阴影）都搬到 body.js 的 BODY 表（BONE 也在那里）
 const C = { ink: '#17181a', indigo: '#28518f', cin: '#b8321d', gam: '#d39c1f', paper: '#ebeae2', paper2: '#dcdad0', dust: '#8d8a7e' };
 // 人物颜色（1.7.0）：color 身体、text 写在纸上的字（颜色太浅就用深一点的）。名字就是颜色名。
 // 2.0.2（Jack：头带、腰带的颜色怪）：头带、发带、腰带不再另配一个颜色，用身体色提亮的那一版（fx.js palOf 的 band，和身子分得开、一看是一家的）
@@ -183,10 +179,17 @@ const BRUSH = '"Ma Shan Zheng","Kaiti SC","STKaiti","KaiTi",serif';
 const UIF = '"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif';
 // 2.1 肘、膝换弯向时每帧最多挪多少（-1 → +1 要 5 帧；只是画面，见 fighter.js fk()）
 const IK_FLIP = 0.4;
+// 2.4 出招时拳脚最多扎进对方身子多深（画面，fighter.js fitContact）：离得近了，胳膊、腿自己弯回来一点，拳脚停在对方身上，不穿过去
+const CONTACT_SINK = 7;
 
 // 小工具。注意：rnd/pick 只能用在特效和 AI 里，战斗逻辑不能用随机数（联机靠逻辑可重放）
+// 2.4：rnd（特效、画面用）换成自己的随机数 vrnd，不再吃 Math.random —— 电脑 AI 用 Math.random（pick 和 ai.js 里的 R），
+// 画面多一颗火星、少一粒尘，不会让电脑下一步变了（测试里给 AI 固定了种子，以前改个动作电脑就打得不一样）
 const D2R = Math.PI / 180;
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-const rnd = (a, b) => a + Math.random() * (b - a);
+let vrSeed = 0x9e3779b9;
+const vrnd = () => (vrSeed = (Math.imul(vrSeed, 1664525) + 1013904223) >>> 0) / 4294967296;
+const rnd = (a, b) => a + vrnd() * (b - a);
+const vpick = arr => arr[(vrnd() * arr.length) | 0];
 const pick = arr => arr[(Math.random() * arr.length) | 0];
 const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);

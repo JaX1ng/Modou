@@ -146,7 +146,7 @@ function decodeInputs(buf) {
 }
 
 /* ---------- 回滚帧同步的核心（不碰网络，tests.js 直接拿来测） ---------- */
-const HELD_MASK = (1 << HELD_ACTS.length) - 1;    // 输入里「按住」的那几位：猜对方的输入只猜这几位（新按的招不猜）
+const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY;    // 输入里「按住」的那几位：猜对方的输入只猜这几位（新按的招不猜）；2.4 加上「用冲刺键」那一位
 class Rollback {
   // role：'host' 算 step([本机, 对方])，'guest' 算 step([对方, 本机])
   constructor(delay, role) {

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>墨斗 动作台</title>
+<style>
+  :root{--bg:#20272a;--panel:#2a3236;--line:#3b4549;--ink:#ebeae2;--dim:#9ea29a;--hi:#d39c1f;--ok:#9fd49b;--bad:#ff8f7a;--cin:#b8321d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 "Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+  header{display:flex;align-items:baseline;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:18px;letter-spacing:.08em}
+  header p{margin:0;color:var(--dim)}
+  .wrap{display:grid;grid-template-columns:230px minmax(0,1fr) 380px;gap:0;height:calc(100vh - 46px)}
+  aside,section{overflow:auto}
+  aside{border-right:1px solid var(--line);padding:10px}
+  .tabs{display:flex;gap:4px;margin-bottom:8px}
+  .tabs button,.btn{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:4px 10px;font:inherit;cursor:pointer}
+  .tabs button[aria-pressed=true],.btn.on{background:var(--ink);color:#1c2124;border-color:var(--ink)}
+  .btn:hover{border-color:var(--dim)}
+  .grp{margin:10px 0 4px;color:var(--hi);font-size:12px;letter-spacing:.1em}
+  .item{display:block;width:100%;text-align:left;background:none;border:0;color:var(--ink);padding:3px 8px;border-radius:3px;cursor:pointer;font:inherit}
+  .item small{color:var(--dim);margin-left:6px}
+  .item:hover{background:var(--panel)}
+  .item.on{background:var(--cin)}
+  .item.warn::after{content:" ⚠";color:var(--bad)}
+  main{display:flex;flex-direction:column;min-width:0}
+  #view{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#ebeae2}
+  #pc{width:100%;height:100%;display:block}
+  .bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line)}
+  .bar input[type=range]{flex:1;min-width:160px}
+  .bar label{display:flex;align-items:center;gap:4px;color:var(--dim)}
+  #strip{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;border-top:1px solid var(--line);background:#1b2124}
+  #strip figure{margin:0;text-align:center;color:var(--dim);font-size:11px}
+  #strip canvas{background:#ebeae2;border-radius:3px;display:block;cursor:pointer}
+  section{border-left:1px solid var(--line);padding:10px 12px}
+  section h2{font-size:14px;margin:4px 0 6px}
+  .info{color:var(--dim);margin:0 0 8px}
+  #report b.ok{color:var(--ok)} #report b.bad{color:var(--bad)}
+  textarea{width:100%;height:300px;background:#151a1c;color:#e9e6d6;border:1px solid var(--line);border-radius:4px;font:12px/1.5 Consolas,"Courier New",monospace;padding:8px;resize:vertical}
+  .row{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+  .sl{display:grid;grid-template-columns:96px 1fr 44px;gap:6px;align-items:center;margin:3px 0}
+  .sl span{color:var(--dim)} .sl b{font-weight:normal;text-align:right}
+  table{border-collapse:collapse;width:100%;font-size:12px}
+  td,th{border-bottom:1px solid var(--line);padding:3px 4px;text-align:left}
+  th{color:var(--dim);font-weight:normal}
+  .msg{color:var(--hi);min-height:1.4em;margin:4px 0}
+  kbd{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:0 4px}
+</style>
+</head>
+<body>
+<header><h1>墨斗 · 动作台</h1><p>看每一招一帧一帧怎么动、打中时拳脚碰没碰到人；右边能直接改关键帧、调人物比例，改好了点「复制」贴回 js/moves.js 或 js/body.js。</p></header>
+<div class="wrap">
+  <aside>
+    <div class="tabs" role="tablist"><button type="button" data-tab="moves" aria-pressed="true">招式</button><button type="button" data-tab="poses" aria-pressed="false">姿势</button><button type="button" data-tab="model" aria-pressed="false">模型</button></div>
+    <div id="list"></div>
+  </aside>
+  <main>
+    <div id="view"><canvas id="pc"></canvas></div>
+    <div class="bar">
+      <button class="btn" id="bPlay" type="button">▶ 播放</button>
+      <button class="btn" id="bPrev" type="button">◀</button>
+      <button class="btn" id="bNext" type="button">▶|</button>
+      <input type="range" id="frame" min="0" max="10" value="0" aria-label="第几帧">
+      <b id="fLab">0</b>
+      <label>速度 <select id="speed"><option value="0.25">¼</option><option value="0.5" selected>½</option><option value="1">1</option></select></label>
+    </div>
+    <div class="bar">
+      <label>对手 <select id="def"><option value="stand">站着</option><option value="crouch">蹲着</option><option value="block">站挡</option><option value="none">不要</option></select></label>
+      <label>距离 <input type="range" id="dist" min="40" max="260" value="100" style="width:160px"> <b id="dLab"></b></label>
+      <label><input type="checkbox" id="oBones"> 骨骼</label>
+      <label><input type="checkbox" id="oReach" checked> 射程</label>
+      <label><input type="checkbox" id="oSil"> 只看剪影</label>
+      <label>颜色 <select id="col"></select></label>
+    </div>
+    <div id="strip"></div>
+  </main>
+  <section>
+    <h2 id="title">—</h2>
+    <p class="info" id="meta"></p>
+    <p id="report" class="info"></p>
+    <div id="editBox">
+      <p class="info">关键帧（阶段：0 起手 → 1 出手 → 2 判定完 → 3 收招完；script 动作写 0~1）。只写和底子 BASE 不一样的字段。</p>
+      <textarea id="keys" spellcheck="false"></textarea>
+      <div class="row"><button class="btn" id="bApply" type="button">应用（Ctrl+Enter）</button><button class="btn" id="bReset" type="button">还原</button><button class="btn" id="bCopy" type="button">复制</button></div>
+      <p class="msg" id="msg"></p>
+    </div>
+    <div id="modelBox" hidden></div>
+    <h2>全部招式：打中时碰没碰到</h2>
+    <p class="info">每一招在最远射程（射程 + 前冲）对着站着的人出，判定第一帧拳脚离对方身子还差多少（负 = 扎进去）。−12 ~ +1 算对得上（测试 tests.js 里也查这个）。</p>
+    <div class="row"><button class="btn" id="bAll" type="button">查全部</button></div>
+    <div id="allTable"></div>
+  </section>
+</div>
+<canvas id="cv" width="10" height="10" hidden></canvas>
+<script src="js/config.js"></script>
+<script src="js/body.js"></script>
+<script src="js/pose.js"></script>
+<script src="js/moves.js"></script>
+<script src="js/input.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/fighter.js"></script>
+<script src="js/combat.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/drills.js"></script>
+<script src="js/render.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/game.js"></script>
+<script src="js/net.js"></script>
+<script src="js/benchsim.js"></script>
+<script src="js/posebench.js"></script>
+</body>
+</html>

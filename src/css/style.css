@@ -231,6 +231,9 @@ table.frames tbody tr:hover td{background:rgba(23,24,26,.04)}
 .ibtn.ghost.mn-close{width:100%;font-size:21px;color:var(--paper);box-shadow:inset 0 0 0 1.5px var(--silk-line)}
 .ibtn.ghost.mn-close:hover{background:var(--paper);color:var(--ink)}
 .mn-main{overflow:auto;padding:34px clamp(24px,5vw,80px) 64px;outline:none}
+/* 2.4（Jack：网页全屏、软件版的教程不要右边的滚动条）：教程、各个面板照样能滚（滚轮、触屏、↑↓ / PgUp / PgDn），只是不显示滚动条 */
+.mn-main,.mn-side,.overlay.scroll{scrollbar-width:none;-ms-overflow-style:none}
+.mn-main::-webkit-scrollbar,.mn-side::-webkit-scrollbar,.overlay.scroll::-webkit-scrollbar{display:none;width:0;height:0}
 .mn-main > *{max-width:1100px}
 .mn-h{margin-bottom:16px;border-bottom:2px solid var(--ink);padding-bottom:12px}
 .mn-h span{font-size:14px;letter-spacing:.3em;color:var(--cinnabar)}
@@ -330,6 +333,11 @@ details#manualBox .netbox{margin-top:6px}
 .kbtn.empty{color:#8a8b85;border-style:dashed}
 .kbtn.bad{background:var(--cinnabar);border-color:var(--cinnabar);color:var(--paper)}
 .kbtn.shared{background:#ecd48a;border-color:#a77c12}
+.kbtn.off,.kbtn:disabled{opacity:.38;cursor:default;border-style:dashed;background:transparent}
+.keytable tr.off td:first-child{color:#8a8b85}
+.dashmode{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center;font-family:var(--brush);font-size:20px;color:var(--ink)}
+.dashmode .seg button{font-size:17px;padding:7px 12px 6px}
+#dashHint{max-width:440px;margin-top:-4px}
 #keysPanel .seg{margin-top:-2px}
 .kbtn.wait{background:var(--ink);color:var(--paper);animation:kblink 1s steps(2) infinite}
 @keyframes kblink{50%{opacity:.55}}

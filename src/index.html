@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>墨斗</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -129,6 +127,8 @@
         <div class="seg" role="group" aria-label="改哪一套键位"><button type="button" data-who="0" aria-pressed="true">单人</button><button type="button" data-who="1" aria-pressed="false">双人·玩家一</button><button type="button" data-who="2" aria-pressed="false">双人·玩家二</button></div>
         <p class="hint" id="keyWhoHint">单人：人机、联机、训练场用这一套。</p>
         <p class="hint">点一个格子，再按想用的键，或者按鼠标按键（右键、中键、侧键在哪按都行；左键要再点一下这一格）。按 Esc 取消，按退格清空这一格。设置存在这台电脑的浏览器里，换新版本文件也还在。</p>
+        <div class="dashmode"><span>冲刺怎么按</span><div class="seg" role="group" aria-label="冲刺怎么按"><button type="button" data-dm="tap" aria-pressed="true">双击左 / 右</button><button type="button" data-dm="key" aria-pressed="false">按冲刺键</button></div></div>
+        <p class="hint" id="dashHint"></p>
         <table class="keytable"><thead><tr><th>动作</th><th>键位一</th><th>键位二</th></tr></thead><tbody id="keyRows"></tbody></table>
         <p class="err" id="keyMsg" role="alert"></p>
         <p class="hint" id="keyInfo"></p>
@@ -151,6 +151,11 @@
           <b id="volVal">50</b>
         </div>
         <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>
+        <div id="dispBox" hidden>
+          <p class="step">画面</p>
+          <div class="seg" role="group" aria-label="画面"><button type="button" data-disp="fullscreen" aria-pressed="false">全屏</button><button type="button" data-disp="borderless" aria-pressed="false">全屏窗口</button><button type="button" data-disp="window" aria-pressed="false">窗口</button></div>
+          <p class="hint" id="dispHint"></p>
+        </div>
         <div class="row"><button class="ibtn" id="btnSetDone" type="button">确认</button></div>
       </div>
     </div>
@@ -293,7 +298,7 @@
     <div class="acts">
       <button class="tc" data-a="block" type="button">挡</button>
       <button class="tc" data-a="grab" type="button">拿</button>
-      <span></span>
+      <button class="tc" data-a="dash" type="button" aria-label="冲刺">冲</button>
       <button class="tc" data-a="jab" type="button">拳</button>
       <button class="tc" data-a="heavy" type="button">重</button>
       <button class="tc" data-a="kick" type="button">踢</button>
@@ -313,6 +318,7 @@
 </main>
 
 <script src="js/config.js"></script>
+<script src="js/body.js"></script>
 <script src="js/pose.js"></script>
 <script src="js/moves.js"></script>
 <script src="js/input.js"></script>

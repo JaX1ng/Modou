@@ -72,7 +72,11 @@ T('场地比画面宽（1.7.0）；开局两人站在场地正中；人机 / 联
 });
 T('短拳和重拳一眼分得开：短拳第一帧拳头就往前走；重拳先往后蓄（后手拉到身后、身子后仰）', () => {
   const j = evalKeys(MOVES.jab.keys, 1); ok(j.fh[0] > BASE.fh[0] + 8, '短拳第一帧拳头没往前：' + j.fh[0].toFixed(0));
-  const h = evalKeys(MOVES.heavy.keys, MOVES.heavy.S * 0.6); ok(h.bh[0] < -20 && h.tor < 0, '重拳前摇没往后蓄');
+  // 2.4 重拳蓄到头（前摇九成）：拧腰把后手那边的肩膀拉到后面，后手拳在脖子后面；身子往后坐
+  arena(400); const F = F1;
+  copyPose(F.disp, evalKeys(MOVES.heavy.keys, MOVES.heavy.S * 0.9)); F.J = null; F.fk();
+  ok(F.disp.tor < 0, '重拳蓄劲时身子要往后仰：tor ' + F.disp.tor.toFixed(1));
+  const back = (F.J.bh[0] - F.J.neck[0]) * F.facing; ok(back < -6, '后手拳要拉到脖子后面：' + back.toFixed(1));
   ok(MOVES.heavy.heavy && !MOVES.jab.heavy, '重拳出手有粗轨迹，短拳没有');
 });
 
@@ -117,7 +121,7 @@ T('1.9.0 跳到身后打：站着挡的人跟着转身，挡得住（以前「�
     run(70, i => [(i < 30 ? RIGHT : 0) | (i === 0 ? TAP('up') : 0) | (i === w ? TAP('jab') : 0), BLOCK]);
     if (F2.stats.blocks && lost(F2) <= 3) blocked++;
   }
-  ok(blocked >= 4, '越过头顶的空中挥拳挡住了 ' + blocked + ' / 7 次');
+  ok(blocked >= 4, '越过头顶的挥拳挡住了 ' + blocked + ' / 7 次');
 });
 T('冲刺：同一方向双击，前几帧打不中，能拉开距离', () => {
   arena(85); run(40, i => [i === 2 ? TAP('jab') : 0, i === 0 || i === 2 ? RIGHT : 0]);
@@ -403,7 +407,7 @@ T('2.1 飞踢、泰山压顶（Jack：打电脑像「版本答案」）：前摇
   eq([MOVES.airKick.base.S, MOVES.airHeavy.base.S], [9, 10], '基准前摇');
   ok(MOVES.airKick.S >= 11 && MOVES.airHeavy.S >= 12, `前摇 飞踢 ${MOVES.airKick.S} · 泰山压顶 ${MOVES.airHeavy.S}`);
   for (const k of ['airKick', 'airHeavy']) { const d = MOVES[k]; ok(d.S + d.A + d.R >= 35, d.label + ' 整个动作 ' + (d.S + d.A + d.R) + ' 帧'); }
-  ok(MOVES.airJab.S < MOVES.airKick.S && MOVES.airKick.S < MOVES.airHeavy.S, '空中挥拳最快、泰山压顶最慢');
+  ok(MOVES.airJab.S < MOVES.airKick.S && MOVES.airKick.S < MOVES.airHeavy.S, '挥拳最快、泰山压顶最慢');
 });
 T('跳起攻击伤害 ×' + AIR_BONUS, () => {
   arena(95); tick(TAP('up')); tick(0, 0, 12);
@@ -473,7 +477,7 @@ T('核对：除了泼墨，每一招都有能「克」它和「压」它的招',
     ok(ks.some(x => relation(MOVES[x], MOVES[k]) === 1), MOVES[k].label + ' 没有能克它的');
     ok(ks.some(x => relation(MOVES[x], MOVES[k]) === 0.5), MOVES[k].label + ' 没有能压它的');
   }
-  eq(relation(MOVES.kick, MOVES.palm), 1, '腿克对空'); eq(relation(MOVES.airJab, MOVES.airKick), 0.5, '空中挥拳压飞踢');
+  eq(relation(MOVES.kick, MOVES.palm), 1, '腿克对空'); eq(relation(MOVES.airJab, MOVES.airKick), 0.5, '挥拳压飞踢');
 });
 T('核对：破解表覆盖所有系别和技术', () => {
   const keys = COUNTERS.map(c => c[0]).join('|');
@@ -843,19 +847,23 @@ T('1.9.3 音量：0 没声；越往上越响，最多是默认的 2.5 倍；超�
   eq(load({ 'modou.vol3': 33, 'modou.vol2': 90 }), 33, '2.3 存的优先');
   eq(load({ 'modou.vol': 80 }), 36, '1.9.3 存的 80');
 });
-T('1.9.4 站姿：两腿岔开站成「人」字（前脚不再往前戳），两条腿都差不多直；待机时髋几乎不上下动（腿不跟着一弯一直）；出招的底子比站姿低', () => {
-  const st = POSE.stance, leg = BONE.th + BONE.sh;
-  ok(st.ff[0] >= 10 && st.ff[0] <= 18 && st.bf[0] <= -10 && st.bf[0] >= -18, '两脚各往外一点：' + st.ff + ' / ' + st.bf);
-  ok(st.ff[0] - st.bf[0] <= 34, '两脚别岔太开：' + (st.ff[0] - st.bf[0]));
-  for (const f of [st.ff, st.bf]) { const d = Math.hypot(f[0], st.hy); ok(d >= leg - 1.2 && d <= leg, '腿差不多伸直、脚踩得到地：' + d.toFixed(1)); }
+T('2.4 站姿（参考图第三张）：两腿前后岔开（比 1.9.4 开）—— 后腿差不多直、前腿膝盖微屈，两脚踩在地上；待机时髋几乎不上下动；出招的底子比站姿低', () => {
+  const st = POSE.stance, ang = (a, m, b) => Math.acos(((a[0] - m[0]) * (b[0] - m[0]) + (a[1] - m[1]) * (b[1] - m[1])) / Math.hypot(a[0] - m[0], a[1] - m[1]) / Math.hypot(b[0] - m[0], b[1] - m[1])) / D2R;
+  ok(st.ff[0] >= 20 && st.ff[0] <= 32 && st.bf[0] <= -26 && st.bf[0] >= -40, '两脚前后岔开：' + st.ff + ' / ' + st.bf);
+  ok(st.ff[0] - st.bf[0] >= 50 && st.ff[0] - st.bf[0] <= 66, '岔开多少：' + (st.ff[0] - st.bf[0]));
+  arena(400); copyPose(F1.disp, st); F1.J = null; F1.fk();
+  const J = F1.J, kf = ang(J.hipF, J.fk, J.ff), kb = ang(J.hipB, J.bk, J.bf);
+  ok(kf >= 128 && kf <= 165, '前腿膝盖微屈：' + kf.toFixed(0) + '°');
+  ok(kb >= 145 && kb > kf, '后腿比前腿直：' + kb.toFixed(0) + '°');
+  for (const k of ['ff', 'bf']) ok(Math.abs(FLOOR - BODY.bone.ankle - J[k][1]) < 0.6, k + ' 踩在地上');
   // 待机呼吸：看几个相位，髋高最多差 1（以前 ±3，后腿膝盖一弯一直）
   arena(400); let lo = 1e9, hi = -1e9;
   for (let i = 0; i < 80; i++) { tick(); const t = F1.target(); lo = Math.min(lo, t.hy); hi = Math.max(hi, t.hy); }
   ok(hi - lo <= 1, '待机髋上下动了 ' + (hi - lo).toFixed(2));
   ok(BASE.hy > 48 && BASE.hy < st.hy, '出招底子 ' + BASE.hy);
 });
-T('1.9.4 手臂：大臂比小臂长（以前小臂长），整条胳膊长度不变；跑步往前摆时小臂斜着往前上、手不再平平地往前够', () => {
-  ok(BONE.ua > BONE.fa, `大臂 ${BONE.ua} 小臂 ${BONE.fa}`); eq(BONE.ua + BONE.fa, 49, '整条胳膊');
+T('1.9.4 / 2.4 手臂：大臂比小臂长；2.4 整条胳膊 48（比 1.9.4 的 49 短一点，身子粗壮了看着更短，像真人）；跑步往前摆时小臂斜着往前上、手不再平平地往前够', () => {
+  ok(BONE.ua > BONE.fa, `大臂 ${BONE.ua} 小臂 ${BONE.fa}`); eq(BONE.ua + BONE.fa, 48, '整条胳膊');
   // 摆到最前面：同侧腿刚抬起往前带（相位 0.54 左右）
   let best = null;
   for (let u = 0.45; u <= 0.65; u += 0.01) { const hnd = runArm(u, 30, 1); if (!best || hnd[0] > best[0]) best = hnd; }
@@ -1178,7 +1186,7 @@ T('1.9.4 千斤坠：对手就在正下方也踩得中（直着往下踩），�
 T('1.9.4 出招朝向：跳着往前冲、跑着贴脸出招，判定时对手不会跑到背后打空（拳 / 重 / 腿 / 空中招 / 千斤坠都查）', () => {
   const bad = [];
   const jumpFwd = i => (i === 0 ? TAP('up') : 0) | RIGHT, runIn = () => RIGHT;
-  for (const [nm, key, sched] of [['空中挥拳', TAP('jab'), jumpFwd], ['泰山压顶', TAP('heavy'), jumpFwd], ['飞踢', TAP('kick'), jumpFwd], ['千斤坠', DOWN | TAP('kick'), jumpFwd],
+  for (const [nm, key, sched] of [['挥拳', TAP('jab'), jumpFwd], ['泰山压顶', TAP('heavy'), jumpFwd], ['飞踢', TAP('kick'), jumpFwd], ['千斤坠', DOWN | TAP('kick'), jumpFwd],
     ['跑着短拳', TAP('jab'), runIn], ['跑着重（铁山靠）', TAP('heavy'), runIn], ['跑着踢', TAP('kick'), runIn], ['跑着扫堂腿', DOWN | TAP('kick'), runIn]])
     for (let d = 20; d <= 160; d += 20) for (let p = 4; p <= 22; p += 3) if (backWhiff(d, p, key, sched)) bad.push(`${nm}·距离${d}·第${p}帧`);
   eq(bad, [], '打背身打空');
@@ -1310,10 +1318,12 @@ T('2.0 倒地躺平：身子、腿、头都贴着地（最多穿地两三像素�
     ok(F2.state === 'down', '没倒'); F2.lieKind = kind;
     tick(0, 0, 4); eq(F2.downPhase, 'lie', '躺着');
     for (let i = 0; i < 25; i++) F2.animate(false);              // 让姿势跟到位
-    const J = F2.J, up = k => FLOOR - J[k][1];
-    for (const k of ['hip', 'neck', 'ff', 'bf', 'fh', 'bh', 'fe', 'be']) ok(up(k) > -4 && up(k) < 12, `躺姿${kind} ${k} 离地 ${up(k).toFixed(1)}`);
+    // 2.4 人有厚度了：按画出来的外形量 —— 头、身子、两条腿、两只手的最低点都贴着地（最多离地 6、最多穿地 3）
+    const J = F2.J, up = k => FLOOR - J[k][1], parts = bodyParts(J, 0).parts;
+    const low = k => { const q = parts.find(p => p.k === k); let m = -1e9; for (const [, y] of q.pts) m = Math.max(m, y); return FLOOR - m; };
+    for (const k of ['head', 'torso', 'FU', 'FL', 'BU', 'BL', 'aFH', 'aBH']) ok(low(k) > -3 && low(k) < 6, `躺姿${kind} ${k} 最低点离地 ${low(k).toFixed(1)}`);
     for (const k of ['fk', 'bk']) ok(up(k) > -2 && up(k) < 22, `躺姿${kind} 膝盖离地 ${up(k).toFixed(1)}（腿最多稍微弯一点）`);
-    const headLow = up('head') - BONE.head; ok(headLow > -3 && headLow < 3, '后脑勺垫在地上：' + headLow.toFixed(1));
+    ok(low('head') < 2, '后脑勺垫在地上：' + low('head').toFixed(1));
     ok(Math.abs(J.head[0] - J.ff[0]) > 100, '整个人横着躺开');
     for (let i = 0; i < 60; i++) F2.animate(false);
     const tail = F2.ribbons[0][F2.ribbons[0].length - 1]; ok(FLOOR - tail.y < 5, '发带落在地上：' + (FLOOR - tail.y).toFixed(1));
@@ -1593,16 +1603,16 @@ T('2.0.2 头带、发带、腰带：都是自己身体色往亮里提一截（�
   arena(200); eq(F1.ribbons.length, 2, '发带两条（腰后的飘带去掉了）');
   eq(F1.sash, palOf(F1.color).band, '带子用身体色提亮的那一版');
 });
-T('2.0.2 / 2.1 站姿：前手在胸口上、往前举（小臂往前放下来一点），后手在腰带上面一点（护着肚子）', () => {
+T('2.4 站姿（参考图第三张，Jack：前手收短、往里收）：后手拳护在下巴前；前手在胸口前往前举 —— 大臂往下垂、小臂往上立，比参考图收得紧', () => {
   arena(400); tick(0, 0, 90);
-  const J = F1.J, f = F1.facing, torso = J.hip[1] - J.neck[1];
-  const belt = J.hip[1] - 9;                                            // 腰带在髋往上 9（render.js drawBelt）
-  const fy = (J.fh[1] - J.neck[1]) / torso;
+  const J = F1.J, f = F1.facing, torso = J.hip[1] - J.neck[1], chin = J.head[1] + BONE.head;
+  const fy = (J.fh[1] - J.neck[1]) / torso, fwd = (J.fh[0] - J.neck[0]) * f;
   ok(fy >= 0.05 && fy <= 0.4, '前手要在脖子下面、胸口上：' + fy.toFixed(2));
-  ok((J.fh[0] - J.neck[0]) * f > 16, '前手往前举：' + ((J.fh[0] - J.neck[0]) * f).toFixed(1));
-  ok(belt - J.bh[1] >= 2 && belt - J.bh[1] <= 12, '后手在腰带上面一点：' + (belt - J.bh[1]).toFixed(1));
-  ok((J.bh[0] - J.hip[0]) * f > 4, '后手在身前（护着肚子）');
-  ok(J.fh[1] - J.head[1] > 18 && J.bh[1] - J.fh[1] > 12, '两只手一高一低，都不在脸边');
+  ok(fwd >= 18 && fwd <= 34, '前手往前举、又收得紧：' + fwd.toFixed(1));
+  ok(Math.abs(J.bh[1] - chin) <= 8, '后手拳在下巴那么高：' + (J.bh[1] - chin).toFixed(1));
+  const bx = (J.bh[0] - J.neck[0]) * f; ok(bx >= 1 && bx <= 14, '后手拳在下巴前（脖子前面一点）：' + bx.toFixed(1));
+  ok(J.fh[1] - J.bh[1] > 3, '前手比后手低');
+  ok(J.fe[1] > J.fh[1] + 6 && (J.fe[0] - J.shF[0]) * f < (J.fh[0] - J.shF[0]) * f, '前手大臂往下垂（肘在拳下面、靠后）、小臂往上立');
 });
 T('2.1 跳起来（Jack 的参考图）：两条腿并着、膝盖往前提、脚收在身子底下（后腿不往后张开）；两手往下垂、不往外张', () => {
   for (const [nm, p] of [['上升', POSE.jup], ['顶点', POSE.jtop], ['下落', POSE.jdn], ['飞身', POSE.leap], ['飞身下落', POSE.leapDn]]) {
@@ -1620,8 +1630,9 @@ T('2.1 动作衔接：肘、膝换弯向分几帧过去，不一帧整条胳膊�
   arena(300);
   const F = F1, p = F.disp, L = BONE;
   copyPose(p, POSE.stance); F.J = null; F.fk();
-  const exact = (hand, hint) => ik(0, 0, hand[0], hand[1], L.ua, L.fa, -0.3, hint);
+  // 2.4 后手的肩膀不在两肩中间（拧腰往后错开了）：IK 从后手肩膀 shB 算到拳（拳的目标还是相对两肩中间）
   const rel = k => [(F.J[k][0] - F.J.sh[0]) * F.facing, F.J[k][1] - F.J.sh[1]];
+  const root = rel('shB'), exact = (hand, hint) => ik(root[0], root[1], hand[0], hand[1], L.ua, L.fa, -0.3, hint);
   const e0 = exact(p.bh, p.be), r0 = rel('be');
   ok(Math.abs(e0[0] - r0[0]) < 0.01 && Math.abs(e0[1] - r0[1]) < 0.01, '站着不动时肘的位置变了');
   // 换边：提示反过来（后手肘从下面换到上面），分几帧挪过去，每帧挪不到一半，最后到 IK 那一边
@@ -1660,6 +1671,9 @@ function seededRandom(seed, fn) {
   Math.random = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296;
   try { return fn(); } finally { Math.random = r; }
 }
+// 2.4 只看规则、电脑怎么打的长测试（几万帧）：不算画面（和联机回滚重算一样开 game.quiet）——
+// 规则、电脑用的随机数都和画面无关，结果一模一样，快好几倍（新人物模型画面上算得多：拳脚停在对方身上要量外形）
+function quietly(fn) { const q = game.quiet; game.quiet = true; try { return fn(); } finally { game.quiet = q; } }
 /* ---------- 2.1：电脑难度往上挪一档（易 = 2.0.2 的中、中 = 2.0.2 的难、难 = 2.0.2 的地狱），修好「老吃一招」，新做断档的极难 ---------- */
 T('2.2 难度：入门 / 简单 / 中等 / 困难 / 终极（每个两个字）—— 入门是新的、比简单再简单一点；简单、中等没动；困难松了一点；终极的瞬间看穿降下来（2.3 入门、终极又降了一点）', () => {
   eq(LEVEL_IDS, ['novice', 'easy', 'normal', 'hard', 'hell']);
@@ -1697,7 +1711,8 @@ T('终极（2.1 叫极难）：每一招有一定概率被它 1 帧看穿 ——
   ok(pk > LEVELS.hell.inst + 0.15 && pk <= LEVELS.hell.instMax + 1e-9, '老出腿踢：看穿的概率要涨：' + pk);
   eq(pj, LEVELS.hell.inst, '不常出的招还是基础');
 });
-function heavySpam(level, n) {
+function heavySpam(level, n) { return quietly(() => heavySpamRaw(level, n)); }
+function heavySpamRaw(level, n) {
   arena(110); const B = makeBrain(F2, level); game.brains = [null, B];
   let thrown = 0, dodged = 0, landed = 0, elbows = 0, last = -99, kicked = 0, fast = 0;
   for (let i = 0; i < n; i++) {
@@ -1774,7 +1789,8 @@ const AI_PATS = (() => {
   } };
   return P;
 })();
-function aiPattern(level, name, frames) {
+function aiPattern(level, name, frames) { return quietly(() => aiPatternRaw(level, name, frames)); }
+function aiPatternRaw(level, name, frames) {
   startMatch('pvp'); game.phase = 'fight'; game.paused = true; game.endless = true;
   game.brains = [null, makeBrain(F2, level)]; F1.x = 700; F2.x = 900;
   const pat = AI_PATS[name];
@@ -1841,24 +1857,29 @@ T('2.1 接腿：腿快踢到了就不去接（以前晚 5 帧也伸手，常常�
   }
   eq(late, 0, `伸手接腿 ${tries} 次，其中来不及的`);
 }));
-T('电脑对电脑：一档比一档强 —— 终极赢困难、困难赢中等、中等赢简单、简单赢入门', () => seededRandom(3, () => {
+// 2.4：以前只打 4 回合、赢 3 回合算过 —— 动作、画面一改（随机数用的先后变了）就忽过忽不过。现在两个种子各打 8 回合，16 回合赢 10 回合以上
+T('电脑对电脑：一档比一档强 —— 终极赢困难、困难赢中等、中等赢简单、简单赢入门', () => {
   for (const [a, b] of [['hell', 'hard'], ['hard', 'normal'], ['normal', 'easy'], ['easy', 'novice']]) {
-    startMatch('pvp'); game.paused = false; game.endless = true;
-    game.brains = [makeBrain(F1, a), makeBrain(F2, b)];
-    const won = [0, 0]; let r = 0, n = 0;
-    while (r < 4 && n++ < 60000) {
-      step([0, 0]);
-      if (game.phase === 'roundEnd' && game.phaseT === 1) { r++; if (F1.hp > F2.hp) won[0]++; else if (F2.hp > F1.hp) won[1]++; }
-      if (game.phase === 'over') { game.wins = [0, 0]; startRound(); }
-    }
-    game.brains = [null, null];
-    ok(r >= 4 && won[0] >= 3, `${a} 打 ${b}：${won[0]} : ${won[1]}（${r} 回合）`);
+    const won = [0, 0]; let r = 0;
+    for (const seed of [3, 4]) seededRandom(seed, () => quietly(() => {
+      startMatch('pvp'); game.paused = false; game.endless = true;
+      game.brains = [makeBrain(F1, a), makeBrain(F2, b)];
+      let k = 0, n = 0;
+      while (k < 8 && n++ < 120000) {
+        step([0, 0]);
+        if (game.phase === 'roundEnd' && game.phaseT === 1) { k++; r++; if (F1.hp > F2.hp) won[0]++; else if (F2.hp > F1.hp) won[1]++; }
+        if (game.phase === 'over') { game.wins = [0, 0]; startRound(); }
+      }
+      game.brains = [null, null];
+    }));
+    ok(r >= 16 && won[0] >= 10, `${a} 打 ${b}：${won[0]} : ${won[1]}（${r} 回合）`);
   }
-}));
+});
 
 // 2.2 「木头玩家」乱换招：每次交手随便挑一种起手（短拳、重拳、腿、扫堂腿、下盘拳、擒拿、跳进来、冲刺进来、光挡着），打中了照常接；
 // 数他打掉的血占两人一共掉的血的多少 —— 难度越高他占得越少（Jack：做完保证每一档都有比较明显的区别）
-function mixedPlayer(level, frames) {
+function mixedPlayer(level, frames) { return quietly(() => mixedPlayerRaw(level, frames)); }
+function mixedPlayerRaw(level, frames) {
   const P = AI_PATS, Dn = HOLD('down'), tw = (me, op) => HOLD(op.x >= me.x ? 'right' : 'left');
   const ground = (keys, dist, follow) => ({ start: dist, go(st, me) {
     if (st.i === 0) return keys;
@@ -1933,9 +1954,9 @@ T('2.2 教程：网页版每一页、软件版每一章都排得出来；招式�
   eq(DRILL_GROUPS.reduce((n, g) => n + g[2].length, 0), DRILL_TOPICS.length, '分组里的招数');
 });
 
-T('2.3 开场锣鼓：「八 大 仓」—— 回合名随着「仓」砸下来；战鼓越敲越密、越敲越响；「战」那一下大仓；决胜局多一声仓；训练场不敲', () => {
-  const keep = Sound.luogu, got = [];
-  Sound.luogu = (k, p) => got.push([game.phaseT, k, p]);
+T('2.4 开场的鼓（Jack：2.3 的锣鼓太诡异）：两声战鼓，回合名随着「锵」砸下来；战鼓越敲越密、越敲越响；「战」之前古筝一串往上拨，「战」那一下「锵」+ 古筝和弦；决胜局多一声锵；训练场不敲', () => {
+  const keep = Sound.beat, got = [];
+  Sound.beat = (k, p) => got.push([game.phaseT, k, p]);
   try {
     const intro = () => {
       got.length = 0; let nameAt = -1;
@@ -1944,30 +1965,63 @@ T('2.3 开场锣鼓：「八 大 仓」—— 回合名随着「仓」砸下来�
         if (nameAt < 0 && FX.some(e => e.type === 'announce' && /回合|决胜局/.test(e.text))) nameAt = t;
       }
       const at = k => got.filter(g => g[1] === k).map(g => g[0]);
-      return { at, nameAt, pw: got.filter(g => g[1] === '咚').map(g => g[2]) };
+      return { at, nameAt, pw: got.filter(g => g[1] === '咚' && g[0] > 10).map(g => g[2]) };
     };
     FX.length = 0; startMatch('pvp'); game.brains = [null, null];
     let r = intro();
-    eq(r.at('八'), [2]); eq(r.at('大'), [6]); eq(r.at('仓'), [10, 68], '仓：回合名、「战」');
-    eq(r.nameAt, 10, '回合名和「仓」同一帧');
-    const d = r.at('咚');
-    ok(d.length >= 10 && d[0] > 10 && d[d.length - 1] < 68, '战鼓在中间：' + d);
+    eq(r.at('锵'), [10, 68], '锵：回合名、「战」');
+    eq(r.nameAt, 10, '回合名和「锵」同一帧');
+    ok(r.at('铮').length === 1 && r.at('铮')[0] > 50 && r.at('铮')[0] < 68, '古筝在「战」前面往上拨：' + r.at('铮'));
+    eq(r.at('和'), [68], '「战」那一下古筝和弦');
+    const d = r.at('咚').filter(f => f > 10);
+    ok(d.length >= 10 && d[d.length - 1] < 68, '战鼓在中间：' + d);
     for (let i = 2; i < d.length; i++) ok(d[i] - d[i - 1] <= d[i - 1] - d[i - 2], '鼓点要越来越密：' + d);
     for (let i = 1; i < r.pw.length; i++) ok(r.pw[i] >= r.pw[i - 1], '越敲越响：' + r.pw);
     FX.length = 0; game.wins = [2, 2]; startRound(); r = intro();
-    eq(r.at('仓'), [10, 18, 68], '决胜局多一声仓');
+    eq(r.at('锵'), [10, 18, 68], '决胜局多一声锵');
     FX.length = 0; startMatch('train'); got.length = 0; for (let i = 0; i < 90; i++) step([0, 0]);
     eq(got.length, 0, '训练场直接开打，不敲');
-  } finally { Sound.luogu = keep; startMatch('pvp'); game.brains = [null, null]; }
+  } finally { Sound.beat = keep; startMatch('pvp'); game.brains = [null, null]; }
+  // 不再有往下滑、往上挑的锣：开场、胜负已分用到的家伙里没有锣
+  for (const k of Object.values(BEAT_KIT)) ok(typeof Sound[k] === 'function' && !/gong/i.test(k), '开场的家伙：' + k);
+  ok(!Sound.bigGong && !Sound.smallGong && !Sound.luogu, '锣都去掉了');
 });
-T('2.3 训练场面板（Jack：最底下一排字穿出方框、上面的字把印章挡掉）：面板改矮、不压人头；字放不下先缩再截短；印章画在面板上面，落在面板上的挪到面板下沿外面，挪下去会压到头就少挪；「过关」印章盖在面板上、敲一声仓', () => seededRandom(31, () => {
+T('2.4 声音真的出得来：用离线声卡把开场的鼓、胜负已分、按钮声各合成一遍 —— 有声音、不破音（不过 0 dB）、古筝的音高是准的', async () => {
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  if (!OAC) return;
+  const render = async (fn, secs) => {
+    const keep = { ctx: Sound.ctx, master: Sound.master, out: Sound.out, noise: Sound.noise, zbuf: Sound.zbuf, on: Sound.on, mode: game.mode, quiet: game.quiet };
+    const c = new OAC(1, Math.round(44100 * secs), 44100);
+    try {
+      Sound.ctx = c; Sound.zbuf = {}; Sound.on = true; game.mode = 'pvp'; game.quiet = false;
+      Sound.master = c.createGain(); Sound.master.gain.value = 0.62; Sound.master.connect(c.destination);
+      const len = 44100, buf = c.createBuffer(1, len, 44100), dd = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) dd[i] = srnd() * 2 - 1;
+      Sound.noise = buf;
+      fn();
+      return (await c.startRendering()).getChannelData(0);
+    } finally { Object.assign(Sound, { ctx: keep.ctx, master: keep.master, out: keep.out, noise: keep.noise, zbuf: keep.zbuf, on: keep.on }); game.mode = keep.mode; game.quiet = keep.quiet; }
+  };
+  const stats = d => { let pk = 0, e = 0; for (const v of d) { pk = Math.max(pk, Math.abs(v)); e += v * v; } return { pk, rms: Math.sqrt(e / d.length) }; };
+  for (const [nm, fn] of [['战鼓', () => Sound.taiko(1, 0)], ['锵', () => Sound.qiang(1.2, 0)], ['古筝往上', () => Sound.zhengUp(1, 0)], ['和弦', () => Sound.zhengChord(1, 0)], ['胜负已分', () => { Sound.taiko(1, 0); Sound.qiang(1.15, 0.16); Sound.zhengChord(1, 0.16); }]]) {
+    const s = stats(await render(fn, 2));
+    ok(s.rms > 0.004, nm + ' 没声音：' + s.rms.toFixed(4));
+    ok(s.pk < 1, nm + ' 破音了：' + s.pk.toFixed(2));
+  }
+  // 古筝：E5（659 Hz）拨一下，自相关估音高（拨的那一下泛音多，看 0.1 ~ 0.3 秒那一段）
+  const d = await render(() => Sound.zheng(659.26, 0.3, 0, 0.8), 0.5);
+  let best = 0, lag = 0;
+  for (let L = 30; L <= 150; L++) { let s2 = 0; for (let i = 4410; i < 13230; i++) s2 += d[i] * d[i + L]; if (s2 > best) { best = s2; lag = L; } }
+  const hz = 44100 / lag; ok(Math.abs(hz - 659.26) < 15, '古筝的音高不准：' + hz.toFixed(0));
+});
+T('2.3 训练场面板（Jack：最底下一排字穿出方框、上面的字把印章挡掉）：面板改矮、不压人头；字放不下先缩再截短；印章画在面板上面，落在面板上的挪到面板下沿外面，挪下去会压到头就少挪；「过关」印章盖在面板上、敲一声锵', () => seededRandom(31, () => {
   const long = '闪身躲过重拳，回身一肘打在背上：他背对着你踉跄、动不了，你先动';
   for (const mw of [60, 160, 320]) {
     const t = fitLine(long, mw, '500', [15, 13], UIF);
     ok(ctx.measureText(t).width <= mw + 0.5 && t.endsWith('…'), `放不下没截短：${mw} ${t}`);
   }
   eq(fitLine('打中 -12', 300, '500', [15, 13], UIF), '打中 -12', '放得下就不动');
-  const keepSeal = drawSeal, keepPanel = paperPanel, keepLuogu = Sound.luogu, keepCb = Drill.onPass, keepPasses = Drill.passes, order = [], gongs = [];
+  const keepSeal = drawSeal, keepPanel = paperPanel, keepBeat = Sound.beat, keepCb = Drill.onPass, keepPasses = Drill.passes, order = [], gongs = [];
   try {
     drawSeal = function () { order.push('seal'); return keepSeal.apply(this, arguments); };
     paperPanel = function () { order.push('panel'); return keepPanel.apply(this, arguments); };
@@ -2000,18 +2054,18 @@ T('2.3 训练场面板（Jack：最底下一排字穿出方框、上面的字把
     let worst = 0;
     for (const d of DRILLS) { Drill.start(d.id, false); render(); worst = Math.max(worst, hudBox.y + hudBox.h); }
     ok(worst <= 84 + 150 && worst < sy(F1.J.head[1] - 16) - 20, '破招面板太高：' + worst);
-    // 过关：不往场地里盖「过关」（那里正好被面板挡住），改成盖在面板上；敲一声仓
-    Sound.luogu = (k, p) => gongs.push(k);
+    // 过关：不往场地里盖「过关」（那里正好被面板挡住），改成盖在面板上；敲一声「锵」（2.4 以前是锣「仓」）
+    Sound.beat = (k, p) => gongs.push(k);
     Drill.start('jab.armor', false); Drill.onPass = () => {};
     game.brains[0] = new DrillDemo(F1, Drill.cur.def);
     for (let i = 0; i < 3000 && !Drill.cur.passed; i++) step([0, 0]);
     ok(Drill.cur.passed, '没过关');
     ok(!FX.some(x => x.type === 'stamp' && x.text === '过关'), '「过关」不该盖在场地里');
-    ok(gongs.includes('仓'), '过关要敲一声仓：' + gongs);
+    ok(gongs.includes('锵'), '过关要敲一声锵：' + gongs);
     order.length = 0; render();
     ok(order.filter(x => x === 'seal').length >= 1 && order.indexOf('seal') > order.indexOf('panel'), '「过关」印章要盖在面板上：' + order.join(','));
   } finally {
-    drawSeal = keepSeal; paperPanel = keepPanel; Sound.luogu = keepLuogu; Drill.onPass = keepCb; Drill.passes = keepPasses;
+    drawSeal = keepSeal; paperPanel = keepPanel; Sound.beat = keepBeat; Drill.onPass = keepCb; Drill.passes = keepPasses;
     Drill.stop(); Drill.save(); FX.length = 0; startMatch('pvp'); game.brains = [null, null];
   }
 }));
@@ -2090,6 +2144,170 @@ T('2.1 破招练习只在训练场：换模式就结束、战斗事件不再记�
   startMatch('pve'); game.brains = [null, null];
   ok(!Drill.cur && !CEV.on, '换到人机还在练');
   startMatch('pvp'); game.brains = [null, null];
+});
+
+/* ---------- 2.4 小项 ---------- */
+T('2.4 跳起来出的招名字里不带「空中」（Jack）：招名、破招练习的题目、打中时飘的字都没有', () => {
+  for (const n in MOVES) for (const k of ['label', 'stamp', 'tag']) ok(!/空中/.test(MOVES[n][k] || ''), `${n}.${k}：${MOVES[n][k]}`);
+  for (const t of DRILL_TOPICS) ok(!/空中/.test(t[1]), '破招练习：' + t[1]);
+  eq(MOVES.airJab.label, '挥拳');
+  for (const n of ['airJab', 'airHeavy', 'airKick', 'dive']) {
+    const seen = [], push = FX.push;
+    FX.push = function (...a) { for (const o of a) if (o.type === 'tag') seen.push(o.text); return push.apply(this, a); };
+    try { simulateMove(n); } finally { FX.push = push; }
+    ok(seen.some(t => /^-\d/.test(t)), `${n} 打中要飘伤害：${seen}`);
+    ok(!seen.some(t => /空中/.test(t)), `${n} 飘的字：${seen}`);
+  }
+});
+
+/* ---------- 2.4：冲刺可以设成「双击方向」或者「冲刺键」 ---------- */
+T('2.4 冲刺键（Jack：冲刺可以设成双击 A / D，也可以单按一个键）：选了冲刺键 —— 按一下往按着的方向冲、不按方向往前冲，按着挡按 = 闪身；双击方向只是走路', () => {
+  eq([TAP('dash'), DASH_KEY], [1 << 10, 1 << 11], '输入的位');
+  ok((TAP('dash') | DASH_KEY | 0x3ff) <= 0xffff, '联机一帧 16 位放得下');
+  ok((HELD_MASK & DASH_KEY) && !(HELD_MASK & TAP('dash')), '联机猜输入：「用冲刺键」那一位跟着猜，冲刺键本身不猜');
+  const K = DASH_KEY;
+  // 双击方向：选了冲刺键就不冲
+  arena(300); tick(K | RIGHT); tick(K); tick(K | RIGHT); tick(K | RIGHT, 0, 3);
+  ok(!(F1.move && F1.move.name === 'dash'), '选了冲刺键，双击方向不该冲出去');
+  // 冲刺键 + 按着方向：往那边冲
+  arena(300); tick(K | LEFT | TAP('dash')); tick(K | LEFT, 0, 2);
+  ok(F1.move && F1.move.name === 'dash' && F1.facing === -1, '按着左按冲刺键 = 往左冲');
+  // 冲刺键、没按方向：往前（面朝对手）冲
+  arena(300); tick(K | TAP('dash')); tick(K, 0, 2);
+  ok(F1.move && F1.move.name === 'dash' && F1.facing === 1, '不按方向 = 往前冲');
+  // 按着挡 + 冲刺键 = 闪身
+  arena(120); tick(K | BLOCK, 0, 3); tick(K | BLOCK | TAP('dash')); tick(K | BLOCK, 0, 2);
+  ok(F1.move && F1.move.name === 'slip', '按着挡按冲刺键 = 闪身：' + (F1.move && F1.move.name));
+  // 没选冲刺键：双击照样冲；冲刺键（触屏的「冲」）也能用
+  arena(300); tick(RIGHT); tick(0); tick(RIGHT); tick(RIGHT, 0, 3);
+  ok(F1.move && F1.move.name === 'dash', '双击方向照样冲');
+  arena(300); tick(TAP('dash')); tick(0, 0, 2);
+  ok(F1.move && F1.move.name === 'dash', '触屏的「冲」按钮（没选冲刺键）也能冲');
+});
+T('2.4 冲刺键的键位：每套各选各的，默认双击（和以前一样）；选了双击，冲刺键那一行不算缺键、不算冲突；2.3 存的键位读进来补上默认的冲刺键', () => {
+  for (const d of [DEFAULT_KEYS, DEFAULT_KEYS2]) { const k = cloneKeys(d); eq(k.dashMode, 'tap'); ok(k.dash[0], '默认冲刺键'); }
+  eq(DEFAULT_KEYS.dash[0], 'ShiftLeft'); eq(DEFAULT_KEYS2.dash, ['ShiftRight', 'Numpad0']);
+  const k = cloneKeys(DEFAULT_KEYS); k.dash = [null, null];
+  eq(keyProblems(k).missing, [], '选了双击：冲刺键没键也不算缺');
+  k.dashMode = 'key'; eq(keyProblems(k).missing, ['dash'], '选了冲刺键：要有键');
+  const k2 = cloneKeys(DEFAULT_KEYS); k2.dash = ['KeyF', null];
+  eq(keyProblems(k2).dup.length, 0, '双击时冲刺键和拳一个键也不算冲突（冲刺键不用）');
+  k2.dashMode = 'key'; ok(keyProblems(k2).dup.length > 0, '选了冲刺键就算冲突');
+  ok(!keyMapOf(cloneKeys(DEFAULT_KEYS)).ShiftLeft, '双击时冲刺键不进键位表');
+  const kk = cloneKeys(DEFAULT_KEYS); kk.dashMode = 'key'; eq(keyMapOf(kk).ShiftLeft, 'dash');
+  // 2.3 存的：没有冲刺这一行、没有 dashMode
+  const old = {}; for (const [a] of ACTIONS) if (a !== 'dash') old[a] = DEFAULT_KEYS[a].slice();
+  const st = { 'modou.keys': JSON.stringify(old), 'modou.keys2': JSON.stringify(Object.fromEntries(Object.entries(old).map(([a]) => [a, DEFAULT_KEYS2[a]]))) };
+  const keep = { solo: Keys.solo, p1: Keys.p1, p2: Keys.p2 };
+  try {
+    Keys.load(key => st[key] || null);
+    eq(Keys.solo.dash, ['ShiftLeft', null]); eq(Keys.solo.dashMode, 'tap'); eq(Keys.p2.dash, ['ShiftRight', 'Numpad0']);
+    // 这一局用哪套：双人看双人那两套，别的看单人
+    Keys.solo.dashMode = 'key';
+    ok(Keys.keyDash(0, 'pve') && Keys.keyDash(0, 'online') && !Keys.keyDash(0, 'pvp'), '单人那套');
+    Keys.p2.dashMode = 'key'; ok(Keys.keyDash(1, 'pvp') && !Keys.keyDash(0, 'pvp'), '双人那两套');
+    const pd = new Pad(); pd.keyDash = () => true; ok(pd.sample() & DASH_KEY, 'Pad 带上「用冲刺键」');
+  } finally { Object.assign(Keys, keep); Keys.rebuild(); }
+});
+T('2.4 冲刺键：教程、破招练习里「双击 [前]」跟着写成「按 [冲]」（显示你的冲刺键）', () => {
+  const k = cloneKeys(DEFAULT_KEYS);
+  ok(/双击/.test(gText('双击 [前]（或 [后]）', k)), '双击模式照旧');
+  k.dashMode = 'key';
+  const h = gText('双击 [前]（或 [后]）', k);
+  ok(!/双击/.test(h) && /<b>冲<\/b><span>左 Shift<\/span>/.test(h), '冲刺键模式：' + h);
+  ok(!/双击/.test(gText('按住 [挡]，朝对手双击 [前]', k)), '闪身也改');
+  ok(/冲刺键/.test(dashWords('双击方向冲进来，冲刺里出招带冲势', k)), '破招练习的题目也改');
+});
+
+/* ---------- 2.4：新人物模型（body.js）—— 比例、打中时拳脚碰到人、关节不透明、前后分得清 ---------- */
+T('2.4 人物比例像真人：头比以前小（半径 13 → 12），站着 6 ~ 7 个头高；腿占身高一半左右；正面看肩背比胯宽', () => {
+  ok(BONE.head < 13 && BONE.head >= 11, '头半径 ' + BONE.head);
+  arena(400); copyPose(F1.disp, POSE.stance); F1.J = null; F1.fk();
+  let top = 1e9; for (const q of bodyParts(F1.J, 0).parts) for (const [, y] of q.pts) top = Math.min(top, y);
+  const h = FLOOR - top, heads = h / (BONE.head * 2);
+  ok(heads >= 6 && heads <= 7.2, `身高 ${h.toFixed(0)} = ${heads.toFixed(2)} 个头`);
+  const B = BODY.bone, leg = B.th + B.sh + B.ankle;
+  ok(leg / (B.torso + B.neck + B.head * 2 + leg) > 0.47, '腿长占身高的一半左右');
+  ok(Math.max(...BODY.torso.map(r => r[3])) > BODY.torso[0][3] + 4, '正面看：肩背比胯宽');
+  ok(B.th > B.sh && B.ua > B.fa, '大腿比小腿长、大臂比小臂长');
+});
+T('2.4 打中那一刻拳脚真的落在身上：每一招在最远射程打站着的人，判定第一帧拳、脚、肘、肩离对方身子 -12 ~ +1 像素（不隔空打中、也不整只没进去）', () => {
+  const rows = contactAll(), bad = rows.filter(r => !r.ok);
+  ok(rows.length >= 30, '量了 ' + rows.length + ' 招');
+  ok(!bad.length, bad.map(r => `${MOVES[r.n].label}（${r.n}）${r.hit ? (r.gap > 0 ? '还差 ' : '扎进去 ') + Math.abs(r.gap) : '没打中'}`).join('；'));
+});
+T('2.4 离得近也不穿过去：贴身出拳、出腿，拳脚停在对方身上（最多过了他迎面那一层 CONTACT_SINK + 1），头和身子也不扎进对方身子里', () => {
+  const bad = [];
+  for (const [n, d] of [['jab', 50], ['jab2', 50], ['jab3', 50], ['lowJab', 50], ['elbow', 48], ['heavy', 56], ['beng', 60], ['chop', 56], ['upper', 50], ['stepPunch', 60],
+    ['kick', 60], ['whip', 60], ['backKick', 60], ['sweep', 56]]) {
+    const fr = simulateMove(n, { dist: d }), c = contactOf(fr, n);
+    if (!c || !c.hit) { bad.push(n + ' 没打中'); continue; }
+    if (c.pen > CONTACT_SINK + 1) bad.push(`${MOVES[n].label} 离 ${d}：过了 ${c.pen.toFixed(1)}`);
+    const f = fr[c.frame], core = bodyParts(f.J1, 0).parts.filter(q => q.k === 'torso' || q.k === 'head').map(q => q.pts);
+    const bp = bodyPen(core, f.J2, f.J1.facing, true); if (bp > 4) bad.push(`${MOVES[n].label} 离 ${d}：身子扎进去 ${bp.toFixed(1)}`);
+  }
+  ok(!bad.length, bad.join('；'));
+});
+T('2.4 拳脚停在身上只是画面：贴身打和远远打，规则上一模一样（伤害、硬直、打中的帧）', () => {
+  const runIt = fit => {
+    const keep = Fighter.prototype.fitContact; if (!fit) Fighter.prototype.fitContact = () => {};
+    try { arena(52); const log = []; for (let i = 0; i < 40; i++) { step([i === 0 ? TAP('heavy') : 0, 0]); log.push([F2.hp, F2.state, F2.stunT, +F1.x.toFixed(3), +F2.x.toFixed(3)]); } return log; }
+    finally { Fighter.prototype.fitContact = keep; }
+  };
+  eq(runIt(true), runIt(false));
+});
+T('2.4 关节、重叠的地方不半透明：人整块不透明地画（以前一节一节半透明的线叠起来，关节一块深一块浅）', () => {
+  arena(400);
+  const W2 = 260, H2 = 300, cv = document.createElement('canvas'); cv.width = W2; cv.height = H2; const g = cv.getContext('2d');
+  for (const [nm, pose] of [['站姿', POSE.stance], ['短拳', mk(P_JAB)], ['重拳', mk(P_HEAVY)], ['腿踢', mk(P_KICK)], ['扫堂腿', evalKeys(MOVES.sweep.keys, MOVES.sweep.S + 1)], ['蹲', POSE.crouch]]) {
+    for (const col of ['ink', 'indigo']) {
+      F1.setLook(col); copyPose(F1.disp, pose); F1.J = null; F1.ikS = null; F1.fk();
+      const J = F1.J, ox = Math.round(J.hip[0]) - 130, oy = FLOOR - 280;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W2, H2);
+      withCtx(g, () => { ctx.setTransform(1, 0, 0, 1, -ox, -oy); drawBody(J, F1.color, F1.sash); ctx.setTransform(1, 0, 0, 1, 0, 0); });
+      const px = g.getImageData(0, 0, W2, H2).data, A = (x, y) => px[((Math.round(y) - oy) * W2 + Math.round(x) - ox) * 4 + 3];
+      for (const k of ['fe', 'be', 'fk', 'bk', 'hip', 'neck', 'sh', 'fh', 'bh']) eq(A(J[k][0], J[k][1]), 255, `${nm}（${col}）：${k} 那里不透明`);
+      // 身子里面（四周都是人）不能有半透明的点；只有外沿抗锯齿那一圈是半透明的
+      let semi = 0;
+      for (let y = 1; y < H2 - 1; y++) for (let x = 1; x < W2 - 1; x++) {
+        const a = px[(y * W2 + x) * 4 + 3]; if (a === 0 || a === 255) continue;
+        let inner = true; for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]]) if (px[((y + dy) * W2 + x + dx) * 4 + 3] !== 255) { inner = false; break; }
+        if (inner) semi++;
+      }
+      ok(semi === 0, `${nm}（${col}）：身子里面有 ${semi} 个半透明的点`);
+    }
+  }
+  F1.setLook(Looks.pvp[0]);
+});
+T('2.4 前后分得清：远侧的手脚整块换一个色调（墨色淡一点、别的颜色暗一点，都是实心的），和身子、近侧的手脚分得开；近侧的手脚叠在身上描一道浅边', () => {
+  for (const p of PALETTE) {
+    const T2 = bodyTones(p.color);
+    ok(/^#[0-9a-f]{6}$/.test(T2.far), p.name + '：远侧要实心颜色');
+    ok(cdist(T2.far, p.color) >= 14, `${p.name}：远侧和本色只差 ${cdist(T2.far, p.color).toFixed(0)}`);
+    ok(cdist(T2.edge, p.color) >= 30, `${p.name}：近侧描边和本色只差 ${cdist(T2.edge, p.color).toFixed(0)}`);
+  }
+  // 远侧 / 近侧：站着时前手、后腿在远侧，后手、前腿在近侧；转过身来两边对调
+  arena(400); copyPose(F1.disp, POSE.stance); F1.J = null; F1.fk();
+  const far = J => bodyParts(J, 0).parts.filter(q => q.far).map(q => q.k).join(',');
+  eq(far(F1.J), 'aFU,aFL,aFH,BU,BL,BF');
+  F1.disp.spin = 180; F1.fk(); eq(far(F1.J), 'aBU,aBL,aBH,FU,FL,FF');
+});
+T('2.4 膝盖往前弯（像真人）：所有姿势、所有招的关键帧，弯着的膝盖都在髋到脚踝那条线的前面（仆步蹲着的那条腿 fn / bn = -1 往后）', () => {
+  arena(400); const F = F1, bad = [];
+  const check = (nm, pose) => {
+    if (Math.abs(wrapDeg(pose.spin)) > 50 || Math.abs(pose.rot) > 35) return;
+    copyPose(F.disp, pose); F.J = null; F.ikS = null; F.fk();
+    const J = F.J, f = F.facing;
+    for (const [hip, knee, ank, kd, side] of [[J.hipF, J.fk, J.ff, pose.fn, '前'], [J.hipB, J.bk, J.bf, pose.bn, '后']]) {
+      const ax = (ank[0] - hip[0]) * f, ay = ank[1] - hip[1], kx = (knee[0] - hip[0]) * f, ky = knee[1] - hip[1], L = Math.hypot(ax, ay) || 1;
+      const off = -(ax * ky - ay * kx) / L;                 // 膝盖在髋→脚踝那条线的哪边（正 = 往前）
+      if (Math.abs(off) < 1.5) continue;                     // 差不多伸直的不算
+      if ((kd === undefined ? 1 : kd) * off < 0) bad.push(`${nm} ${side}膝往${off > 0 ? '前' : '后'}`);
+    }
+  };
+  for (const k in POSE) check('姿势 ' + k, POSE[k]);
+  for (const n in MOVES) MOVES[n].keys.forEach(([t, pose], i) => check(`${MOVES[n].label}（${n}）第 ${i} 帧`, pose));
+  ok(!bad.length, bad.slice(0, 12).join('；') + (bad.length > 12 ? ` …共 ${bad.length}` : ''));
 });
 
 (async function runAll() {
