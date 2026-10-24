@@ -804,7 +804,7 @@ html.desktop .guide{display:none}
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '2.4.0';
+const VERSION = '2.5.0';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -1000,64 +1000,60 @@ const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced
 <script>
 'use strict';
 /* ============================================================
-   人物模型（2.4，Jack：比例像真人、肌肉线条、阴影体现立体、关节不再半透明、前后分得清）
+   人物模型（2.5 重做，Jack：照参考图第二张 —— 比例、线条、身高、阴影都照它；要一个连贯的、整体的人，不能看出是一块块拼起来的）
    想调人物「长什么样」只改这个文件最上面的 BODY 表；动作（姿势、招式）在 pose.js / moves.js。
-   调完打开 poses.html（动作台）看效果，滑块调好了能直接复制出数值贴回来。
+   调完打开 poses.html（动作台）看效果，「模型」页的滑块调好了能直接复制出数值贴回来。
 
-   · 骨架：髋 → 脊柱 → 脖子根 → 脖子 → 头；两个肩关节（拧腰 tw 时前后错开）；两个大腿根；肘、膝用两节 IK（fighter.js fk()）
-   · 外形：每一节（大臂、小臂、大腿、小腿、脖子）按「轮廓表」长出一圈外形 —— 沿着骨头走，前侧、后侧各给一串半宽，
-     肌肉的鼓包（三角肌、二头、股四头、小腿肚……）就是这串数字里鼓起来的那几格；躯干是倒三角（胸宽、腰细、臀圆）
-   · 画法：一块一块按前后顺序整块不透明地画（远侧手 → 远侧腿 → 躯干 → 近侧腿 → 头 → 近侧手），
-     阴影用「错位填色」：整块先涂亮色，再把同一块往背光那边挪几像素涂本色 —— 剩下的那一道就是受光的亮边（参考图那种），
-     背光那边同样压一道暗边；肌肉的分界画成几道浅线；关节（肘、膝）里侧一道暗折痕、外侧一点亮
-   · 前后：近侧（离镜头近）的手脚描一圈浅边，叠在身子上分得开；远侧的手脚整块用淡一点的墨（不透明，像水墨画里远的东西淡），
-     关节、重叠的地方不会再叠出深一块浅一块
+   · 骨架（看不见，只用来算）：髋 → 脊柱 → 脖子根 → 脖子 → 头；两个肩关节（拧腰 tw 时前后错开）；两个大腿根；
+     肘、膝用两节 IK（fighter.js fk()），膝盖还能往侧面（z，离镜头近 / 远）摆出去（姿势的 fo / bo）
+   · 外形：每一节（大臂、小臂、大腿、小腿、脖子）沿着骨头按「轮廓表」长出一圈外形。关节在哪，靠肢体本身粗细的变化看出来
+     （大腿粗、到膝盖收细、小腿肚鼓、脚踝收；大臂到肘收细），弯起来自然看得出 —— 关节上不画线、不打阴影
+   · 画法：整个人先整块填一遍本色（一整块，关节没有缝、不叠色）；再按前后一层一层画：远侧手 → 远侧腿 → 躯干 → 近侧腿 → 腰带 → 头 → 近侧手。
+     每一层是一整条胳膊（大臂 + 小臂 + 拳）/ 一整条腿（大腿 + 小腿 + 鞋）合在一起，亮边顺着整条胳膊、整条腿走，不在关节断开
+   · 阴影（参考图那种，少、淡、只在侧面）：和本色只差一点点的一道细亮边 —— 躯干前后两侧；腿在外侧（前腿在前沿、后腿在后沿）；
+     胳膊、拳、鞋在上沿。画法是「错位填色」：一层先涂亮色，再把同一层往里挪一点涂回本色，剩下的那一道就是亮边
+   · 前后：远侧的手脚和身子一个颜色（不换色调）；近侧的胳膊、腿叠在身子上的那一段，外沿描一道同样淡的亮线
+     （参考图里护着下巴那只手就是这样），前后分得开，关节里面不出线
    · 参考图的习惯：护在下巴前面的后手、往前伸的前腿在近侧（离镜头近）；前手、后腿在远侧。转过身（spin 过了 90°）两边对调
    ============================================================ */
 const BODY = {
-  // 骨头长度（逻辑像素）。头是半径。肩 = 肩关节在脊柱上离髋多远（比脖子根低一点：斜方肌往下斜）
-  // 2.4 比例（Jack：头比以前小、比参考图第三张略大一点点；手臂比以前短；整体像真人）：
-  //   头半径 13 → 12（站着约 6.3 个头高，以前 5.5）；腿 69 → 81（大腿 39 + 小腿 37 + 脚踝 4.8）；手臂 49 → 48（大臂 25 + 小臂到拳心 23），
-  //   身子比以前粗壮得多，看着手就短了；前手护在肩前收得更紧
-  bone: { torso: 46, shoulder: 41, neck: 4.4, head: 12, ua: 25, fa: 23, th: 39, sh: 37, ankle: 4.8 },
-  shoulderW: 13.5,   // 肩宽的一半：拧腰（tw）时两个肩膀前后错开 ±shoulderW·sin(tw)；转身（spin）时左右分开
-  hipW: 6,           // 两个大腿根离中线多远（转身时左右分开用）
-  hipSplit: 2.4,     // 侧面看两个大腿根前后错开一点（前腿根靠前），两条腿分得开
-  wrist: 4.4,        // 小臂画到拳心往回这么多（这一截被拳头盖住）
-  fist: { len: 13.2, h: 11.6, r: 4.8 },        // 拳头：顺着小臂方向的长、横着的高、圆角
-  foot: { heel: 6.2, toe: 17.4, h: 7.4, toeH: 5.6 },   // 脚（鞋）：脚跟在脚踝后面多远、脚尖在前面多远、鞋高、鞋头高
+  // 骨头长度（逻辑像素）。头是半径。肩 = 肩关节在脊柱上离髋多远（比脖子根低一点）。骨头长短一改，所有姿势都跟着变，轻易别动
+  bone: { torso: 46.5, shoulder: 41, neck: 5.5, head: 12, ua: 25, fa: 23, th: 39, sh: 37, ankle: 4.8 },
+  shoulderW: 11.5,   // 肩宽的一半：拧腰（tw）时两个肩膀前后错开 ±shoulderW·sin(tw)；转身（spin）时左右分开
+  hipW: 5.5,         // 两个大腿根离中线多远（转身、膝盖往侧面摆时用）
+  hipSplit: 2.2,     // 侧面看两个大腿根前后错开一点（前腿根靠前），两条腿分得开
+  wrist: 3.4,        // 小臂画到拳心往回这么多（这一截藏在拳头里）
+  // 2.5 拳头改小（Jack）：13.2 × 11.6 → 10.4 × 9.4，圆一点
+  fist: { len: 10.4, h: 9.4, r: 4.3 },               // 拳头：顺着小臂方向的长、横着的高、圆角
+  foot: { heel: 7.4, toe: 17.4, h: 11.6, w: 9.5 },   // 鞋（参考图那种圆头厚鞋）：脚跟在脚踝后面多远、脚尖在前面多远、鞋多高（盖住脚踝）、多宽（脚尖朝镜头时看到的）
   // 轮廓表：[沿着这一节骨头的位置 0（根）~1（梢）, 前侧半宽, 后侧半宽]。「前侧」：
-  //   大臂 = 二头肌那一侧（胳膊弯起来小臂折过去的那一侧）；小臂 = 掌心那一侧；大腿 = 膝盖顶出去那一侧；小腿 = 小腿骨那一侧（后侧是小腿肚）
-  ua: [[0, 7.0, 7.2], [0.14, 6.6, 7.0], [0.34, 5.7, 5.7], [0.5, 5.6, 5.3], [0.78, 4.5, 4.5], [1, 4.0, 4.1]],
-  fa: [[0, 4.3, 4.2], [0.2, 4.8, 4.5], [0.45, 4.3, 4.0], [0.75, 3.6, 3.4], [1, 3.2, 3.1]],
-  th: [[0, 8.4, 8.8], [0.2, 8.2, 8.1], [0.45, 7.5, 7.1], [0.72, 6.3, 6.0], [0.9, 5.5, 5.4], [1, 5.2, 5.2]],
-  sh: [[0, 5.1, 5.5], [0.16, 4.8, 6.9], [0.34, 4.6, 6.5], [0.58, 4.1, 5.1], [0.82, 3.6, 3.8], [1, 3.4, 3.4]],
-  neck: [[0, 6.0, 6.8], [0.6, 5.2, 5.6], [1, 5.0, 5.4]],
+  //   大臂 = 胳膊弯起来小臂折过去的那一侧；小臂 = 掌心那一侧；大腿 = 膝盖顶出去那一侧；小腿 = 小腿骨那一侧（后侧是小腿肚）
+  // 2.5 照参考图：胳膊细、上下差不多粗（没有鼓出来的三角肌）；腿是顺滑的一条，膝盖收一点、小腿肚鼓一点，脚踝也不细
+  ua: [[0, 5.3, 5.5], [0.3, 4.9, 4.9], [0.7, 4.4, 4.3], [1, 4.1, 4.0]],
+  fa: [[0, 4.1, 4.0], [0.3, 4.3, 4.1], [0.75, 3.8, 3.5], [1, 3.5, 3.3]],
+  th: [[0, 7.6, 7.8], [0.3, 7.4, 7.3], [0.72, 6.3, 6.1], [1, 5.7, 5.7]],
+  thRoot: 9,         // 大腿根往胯里直直地伸进去多长（不画圆头：腿是从胯里长出来的）
+  sh: [[0, 5.7, 5.8], [0.22, 5.5, 7.0], [0.5, 5.2, 6.4], [0.82, 4.9, 5.2], [1, 4.8, 4.8]],
+  neck: [[0, 5.6, 6.0], [0.6, 4.9, 5.1], [1, 4.9, 5.1]],
   // 躯干：[沿脊柱的位置（0 = 髋关节，1 = 脖子根；负的在髋下面）, 胸腹那侧半宽, 后背那侧半宽, 正面对着镜头时的半宽]
-  // 侧着看：胸大肌鼓出来、腰收进去、臀部往后圆；正面看（转身转到一半）：肩宽、腰细
-  torso: [[-0.17, 9.6, 11.4, 12.4], [-0.06, 11.6, 13.0, 13.6], [0.06, 11.4, 12.2, 13.4], [0.2, 10.6, 10.6, 12.2],
-    [0.34, 10.8, 10.4, 12.6], [0.52, 12.6, 11.6, 14.6], [0.68, 15.0, 13.4, 17.0], [0.82, 14.8, 15.2, 18.8],
-    [0.91, 13.4, 14.4, 16.4], [0.97, 9.8, 11.0, 11.4], [1, 6.8, 7.4, 7.6]],
-  belt: { at: 0.11, h: 5.6 },                  // 腰带：在脊柱上的位置（参考图那样系得低，在胯上）、宽
-  // 阴影（单位：逻辑像素）：亮边多宽、暗边多宽；光从哪边来（人自己的方向：-x = 背后，-y = 上面）
-  light: [-0.6, -0.8], rim: 1.9, rimTorso: 2.8, dark: 2.0,
-  // 颜色（从身体色算，k = 往纸色 / 往黑里混多少）：近侧亮边、远侧整块（墨往淡里 far、别的颜色往暗里 farDark）、远侧亮边、背光暗边、肌肉线、近侧描边
-  tone: { rim: 0.34, far: 0.09, farDark: 0.24, farRim: 0.3, dark: 0.32, line: 0.15, edge: 0.26, edgeW: 0.85, lineW: 0.95 },
+  // 2.5 照参考图瘦下来：侧着看是一根稍微有点弧度的柱子 —— 胸口微微挺、腰收一点、臀部圆一点，不再是大胸肌、大屁股；正面看肩比胯宽
+  torso: [[-0.17, 8.2, 9.2, 11.6], [-0.06, 9.0, 10.2, 12.8], [0.06, 8.8, 9.6, 12.4], [0.2, 8.2, 8.4, 11.4], [0.34, 8.4, 8.4, 11.6],
+    [0.52, 9.6, 9.0, 13.4], [0.68, 10.8, 10.0, 15.6], [0.82, 10.8, 11.0, 17.0], [0.91, 9.8, 10.6, 15.4], [0.97, 7.6, 8.6, 10.8], [1, 5.6, 6.0, 7.0]],
+  belt: { at: 0.11, h: 6 },                    // 腰带：在脊柱上的位置（参考图那样系得低，在胯上）、宽
+  // 阴影：亮边的颜色（往纸色混多少 —— 参考图里亮边只比本色亮一点点）、躯干 / 腿 / 鞋的亮边多宽、胳膊和拳的亮边多宽、
+  // 近侧手脚叠在身上那道亮线多宽、亮边往上偏多少（侧面的亮边顺带一点上沿）
+  shade: { tone: 0.11, rim: 1.3, rimArm: 1.05, line: 1.3, up: 0.3 },
 };
 // 以前的名字（别的文件、测试还在用）：头半径、大臂、小臂、大腿、小腿、躯干、脖子
 const BONE = { torso: BODY.bone.torso, neck: BODY.bone.neck, head: BODY.bone.head, ua: BODY.bone.ua, fa: BODY.bone.fa, th: BODY.bone.th, sh: BODY.bone.sh };
 
-/* ---------- 颜色 ---------- */
+/* ---------- 颜色：本色 + 一道淡淡的亮色（亮边、近侧手脚的描线都是它） ---------- */
 const bodyRgb = c => { const n = parseInt(c.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 const bodyMix = (a, b, k) => { const A = bodyRgb(a), B = bodyRgb(b); return '#' + A.map((v, i) => clamp(Math.round(v + (B[i] - v) * k), 0, 255).toString(16).padStart(2, '0')).join(''); };
 const BODY_TONES = {};
 function bodyTones(col) {
   if (BODY_TONES[col]) return BODY_TONES[col];
-  // 远侧：很深的颜色（墨）往纸色提一点点（水墨画里远的淡）；别的颜色往暗里压（背光那一侧）—— 都是实心的
-  const T = BODY.tone, P = C.paper, lum = bodyRgb(col).reduce((a, v, i) => a + v * [0.299, 0.587, 0.114][i], 0) / 255;
-  const far = lum < 0.16 ? bodyMix(col, P, T.far) : bodyMix(col, '#000000', T.farDark);
-  return (BODY_TONES[col] = { base: col, rim: bodyMix(col, P, T.rim), far, farRim: bodyMix(far, P, T.farRim * 0.7), dark: bodyMix(col, '#000000', T.dark),
-    farDark: bodyMix(far, '#000000', T.dark * 0.6), line: bodyMix(col, P, T.line), farLine: bodyMix(far, P, T.line * 0.8), edge: bodyMix(col, P, T.edge) });
+  return (BODY_TONES[col] = { base: col, hl: bodyMix(col, C.paper, BODY.shade.tone) });
 }
 
 /* ---------- 外形 ---------- */
@@ -1077,8 +1073,10 @@ function profAt(P, t, k) {
   return P[P.length - 1][k];
 }
 /* 一节肢体（A → B）的外形：一圈点。as = 前侧在哪边（+1：法线 n = (-uy, ux) 那边是前侧；-1 反过来；中间两边按比例混，
-   肢体伸直、看不出弯向时就是两边的平均）。g = 往外多胖一点（运气的光用）。返回 { pts, n, u, L }，pts 顺时针、逆时针不一定 */
-function limbShape(A, B, prof, as, g) {
+   肢体伸直、看不出弯向时就是两边的平均）。g = 整圈往外胖多少（负的 = 往里收；运气的光、描线用）。
+   ext（大腿用）：根头不画圆头，两条边顺着骨头再往回直直地伸 ext 那么长（伸进胯里、藏在腰带底下）——
+   大腿是从胯里长出来的，根上没有一个圆圆的「接头」。返回 { pts, n, u, L } */
+function limbShape(A, B, prof, as, g, ext) {
   const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1e-3, ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
   const wa = (clamp(as, -1, 1) + 1) / 2, N = 8, left = [], right = [];
   let wl0 = 0, wr0 = 0, wl1 = 0, wr1 = 0;
@@ -1090,16 +1088,21 @@ function limbShape(A, B, prof, as, g) {
     if (i === 0) { wl0 = wl; wr0 = wr; } if (i === N) { wl1 = wl; wr1 = wr; }
   }
   const pts = left.slice(), an = Math.atan2(ny, nx);
-  const cap = (cx, cy, r, a0, a1) => { for (let i = 1; i < 6; i++) { const a = a0 + (a1 - a0) * i / 6; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+  const cap = (cx, cy, r, a0, a1) => { for (let i = 1; i < 10; i++) { const a = a0 + (a1 - a0) * i / 10; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
   // 梢头：从左边绕到右边（经过 +u）；根头：从右边绕回左边（经过 -u）
   cap(B[0] + nx * (wl1 - wr1) / 2, B[1] + ny * (wl1 - wr1) / 2, (wl1 + wr1) / 2, an, an - Math.PI);
   for (let i = N; i >= 0; i--) pts.push(right[i]);
-  cap(A[0] + nx * (wl0 - wr0) / 2, A[1] + ny * (wl0 - wr0) / 2, (wl0 + wr0) / 2, an + Math.PI, an);
+  if (ext > 0) {
+    // 两条边先直直地伸到快到头（磨圆的时候边还是直的），再收一个平头
+    const e = ext + g, e1 = Math.max(0, e - 1.5);
+    pts.push([A[0] - ux * e1 - nx * wr0, A[1] - uy * e1 - ny * wr0], [A[0] - ux * e - nx * wr0, A[1] - uy * e - ny * wr0]);
+    pts.push([A[0] - ux * e + nx * wl0, A[1] - uy * e + ny * wl0], [A[0] - ux * e1 + nx * wl0, A[1] - uy * e1 + ny * wl0]);
+  } else cap(A[0] + nx * (wl0 - wr0) / 2, A[1] + ny * (wl0 - wr0) / 2, (wl0 + wr0) / 2, an + Math.PI, an);
   return { pts, nx, ny, ux, uy, L, wa };
 }
-// 拳头：顺着小臂方向的圆角方块（中心 H，方向 u）
+// 拳头：顺着小臂方向的圆角方块（中心 H，方向 u），g = 整圈往外胖多少
 function fistShape(H, ux, uy, g) {
-  const Fi = BODY.fist, hl = Fi.len / 2 + g * 0.5, hh = Fi.h / 2 + g * 0.5, r = Math.min(Fi.r + g * 0.5, hh - 0.5), nx = -uy, ny = ux, pts = [];
+  const Fi = BODY.fist, hl = Math.max(1, Fi.len / 2 + g), hh = Math.max(1, Fi.h / 2 + g), r = clamp(Fi.r + g, 0.5, hh - 0.2), nx = -uy, ny = ux, pts = [];
   for (const [sx, sy, a0] of [[1, 1, 0], [-1, 1, Math.PI / 2], [-1, -1, Math.PI], [1, -1, Math.PI * 1.5]]) {
     const cx = sx * (hl - r), cy = sy * (hh - r);
     for (let i = 0; i <= 4; i++) {
@@ -1109,37 +1112,51 @@ function fistShape(H, ux, uy, g) {
   }
   return pts;
 }
-// 脚（鞋）：脚踝 K，脚尖方向 d，s = 朝鞋底的方向。参考图那种圆头鞋
+// 鞋：脚踝 K 是原点，x 往脚尖、y 往鞋底。参考图那种圆头厚鞋：脚跟圆、鞋口盖住脚踝、鞋面往脚尖斜下去、鞋头圆
 const FOOT_PTS = (() => {
-  const Fo = BODY.foot, a = BODY.bone.ankle;
-  return [[-2.6, -2.6], [-Fo.heel + 0.6, -0.9], [-Fo.heel, 1.4], [-Fo.heel + 0.8, a - 0.3], [-Fo.heel + 2.4, a + 0.3], [Fo.toe - 4.5, a + 0.35],
-    [Fo.toe - 1.6, a - 0.2], [Fo.toe, a - 1.9], [Fo.toe - 0.5, a - Fo.toeH + 0.6], [Fo.toe - 3, a - Fo.toeH - 0.3], [6.5, -1.9], [2.2, -3.4]];
+  const Fo = BODY.foot, a = BODY.bone.ankle, top = a - Fo.h, H = Fo.heel, T = Fo.toe;
+  return [[-H + 2.6, top], [-H + 0.5, top + 2.6], [-H, a - 4.6], [-H + 0.3, a - 1.6], [-H + 2, a + 0.1], [0, a + 0.4], [T - 6, a + 0.4],
+    [T - 2, a - 0.1], [T - 0.2, a - 2], [T, a - 4.4], [T - 1.3, a - 6.6], [T - 4.6, a - 8], [T - 9.5, a - 8.8], [4.6, top + 0.8], [0.4, top - 0.4]];
 })();
-function footShape(K, dx, dy, sx, sy, g) {
-  return FOOT_PTS.map(([x, y]) => { const k = 1 + g / 8; return [K[0] + (dx * x + sx * y) * k, K[1] + (dy * x + sy * y) * k]; });
+// 每个点往外的方向（两边的边法线平均），胖瘦（g）按这个挪 —— 整圈一样厚地胖 / 收
+const FOOT_NRM = (() => {
+  const P = FOOT_PTS, n = P.length, s = signedArea(P) < 0 ? -1 : 1, out = [];
+  for (let i = 0; i < n; i++) {
+    const a = P[(i + n - 1) % n], b = P[i], c = P[(i + 1) % n];
+    const e1 = [b[0] - a[0], b[1] - a[1]], e2 = [c[0] - b[0], c[1] - b[1]], l1 = Math.hypot(...e1) || 1, l2 = Math.hypot(...e2) || 1;
+    let nx = (e1[1] / l1 + e2[1] / l2) * s, ny = -(e1[0] / l1 + e2[0] / l2) * s;
+    const l = Math.hypot(nx, ny) || 1; out.push([nx / l, ny / l]);
+  }
+  return out;
+})();
+// K 脚踝，(dx, dy) 脚尖方向，(sx, sy) 朝鞋底的方向；k = 侧面看脚有多长（脚尖朝镜头 / 背着镜头时变短，最短是鞋宽那么长）
+function footShape(K, dx, dy, sx, sy, g, k) {
+  k = k === undefined ? 1 : k;
+  return FOOT_PTS.map(([x, y], i) => { const [nx, ny] = FOOT_NRM[i], X = x * k + nx * g, Y = y + ny * g; return [K[0] + dx * X + sx * Y, K[1] + dy * X + sy * Y]; });
 }
 /* 躯干：沿脊柱（髋 → 脖子根）长出来。fx, fy = 身子朝前的方向（垂直于脊柱）；spin = 转身角（转到一半时是正面，宽）。
-   返回外形一圈点 + 一个 at(t, w) 换算（脊柱上 t 处、往前 w 的那个点，画肌肉线、腰带用） */
+   返回外形一圈点 + 一个 at(t, w) 换算（脊柱上 t 处、往前 w 的那个点，腰带用）、half(t, k) 这里有多宽 */
 function torsoShape(H, N, fx, fy, spin, g) {
-  const dx = N[0] - H[0], dy = N[1] - H[1], P = BODY.torso;
+  const dx = N[0] - H[0], dy = N[1] - H[1], P = BODY.torso, sl = Math.hypot(dx, dy) || 1;
   const ss = Math.abs(Math.sin(spin)), cs = Math.abs(Math.cos(spin));
-  const half = (t, k) => profAt(P, t, k) * cs + profAt(P, t, 3) * ss + g;     // k = 1 胸腹、2 后背
+  const half = (t, k) => Math.max(0.6, profAt(P, t, k) * cs + profAt(P, t, 3) * ss + g);     // k = 1 胸腹、2 后背
   const at = (t, w) => [H[0] + dx * t + fx * w, H[1] + dy * t + fy * w];
-  const ts = [], t0 = P[0][0];
+  const ts = [], t0 = P[0][0], eg = g / sl;                // eg：上下两头也跟着胖 / 收
   for (let i = 0; i <= 14; i++) ts.push(t0 + (1 - t0) * i / 14);
   const pts = [];
   for (const t of ts) pts.push(at(t, half(t, 1)));
   // 顶上（斜方肌 → 脖子根），往上拱一点
-  pts.push(at(1.035, half(1, 1) * 0.35)); pts.push(at(1.045, -half(1, 2) * 0.3));
+  pts.push(at(1.035 + eg, half(1, 1) * 0.35)); pts.push(at(1.045 + eg, -half(1, 2) * 0.3));
   for (let i = ts.length - 1; i >= 0; i--) pts.push(at(ts[i], -half(ts[i], 2)));
   // 底下（臀部 → 裆）：往下圆过去
   const b = half(t0, 2), f = half(t0, 1);
-  pts.push(at(t0 - 0.06, -b * 0.72)); pts.push(at(t0 - 0.085, -b * 0.25)); pts.push(at(t0 - 0.08, f * 0.3)); pts.push(at(t0 - 0.05, f * 0.78));
+  pts.push(at(t0 - 0.06 - eg, -b * 0.72)); pts.push(at(t0 - 0.085 - eg, -b * 0.25)); pts.push(at(t0 - 0.08 - eg, f * 0.3)); pts.push(at(t0 - 0.05 - eg, f * 0.78));
   return { pts, at, half };
 }
 
 /* ---------- 骨骼 → 一块一块 ----------
-   J 是 fighter.js fk() 算出来的世界坐标骨骼。返回按画的先后排好的部件：{ k 名字, pts 外形, far 远侧, lines 肌肉线, joint 关节折痕 }
+   J 是 fighter.js fk() 算出来的世界坐标骨骼。返回按画的先后排好的部件：{ k 名字, pts 外形, far 远侧, layer 哪一层 }
+   （层：farArm / farLeg / torso / nearLeg / head / nearArm —— 画的时候一层是一整条胳膊、一整条腿合在一起画）
    only（可选，Set）：只要这几块（量碰没碰到时一帧要算好几回，只算用得着的）。块的名字：
    aFU / aFL / aFH 前手大臂 / 小臂 / 拳，aB* 后手；FU / FL / FF 前腿大腿 / 小腿 / 脚，B* 后腿；torso、neck、head */
 function bodyParts(J, g, only) {
@@ -1151,7 +1168,7 @@ function bodyParts(J, g, only) {
   const fx = f * (-sy / sl), fy = f * (sx / sl);
   const parts = [];
   // 两节肢体：根 R、关节 M、梢 E；hint = 关节该往哪边顶（世界方向）；arm：是不是胳膊
-  const limb = (key, R, M, E, hint, arm, far) => {
+  const limb = (key, R, M, E, hint, arm, far, layer) => {
     const nU = need(key + 'U'), nL = need(key + 'L'), nE = need(key + (arm ? 'H' : 'F'));
     if (!nU && !nL && !nE) return;
     // 「前侧」在哪边：胳膊 —— 小臂折向的那一侧（大臂）/ 朝大臂的那一侧（小臂）；腿 —— 膝盖顶出去的那一侧。伸直了看不出来，就按 hint 定
@@ -1168,9 +1185,9 @@ function bodyParts(J, g, only) {
     if (arm) {
       const ex = E[0] - M[0], ey = E[1] - M[1], el = Math.hypot(ex, ey) || 1e-3, ux = ex / el, uy = ey / el;
       const W = [E[0] - ux * BODY.wrist, E[1] - uy * BODY.wrist];
-      if (nU) { const up = limbShape(R, M, BODY.ua, aUp, g); parts.push({ k: key + 'U', pts: up.pts, far, sh: up, seg: 'ua', A: R }); }
-      if (nL) { const lo = limbShape(M, W, BODY.fa, aLo, g); parts.push({ k: key + 'L', pts: lo.pts, far, sh: lo, seg: 'fa', A: M, joint: { at: M, a: R, b: E } }); }
-      if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, fist: { E, ux, uy } });
+      if (nU) parts.push({ k: key + 'U', pts: limbShape(R, M, BODY.ua, aUp, g).pts, far, layer });
+      if (nL) parts.push({ k: key + 'L', pts: limbShape(M, W, BODY.fa, aLo, g).pts, far, layer });
+      if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）
       const kd = key === 'F' ? J.fkd : J.bkd, sg = f * (kd < 0 ? -1 : 1);
@@ -1182,29 +1199,33 @@ function bodyParts(J, g, only) {
       let dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
       const tilt = (key === 'F' ? J.fft : J.bft) || 0;        // 脚尖往上勾（度）
       if (tilt) { const a = -sg * tilt * D2R, c = Math.cos(a), s2 = Math.sin(a), x2 = dx * c - dy * s2; dy = dx * s2 + dy * c; dx = x2; }
-      if (nU) { const up = limbShape(R, M, BODY.th, aUp, g); parts.push({ k: key + 'U', pts: up.pts, far, sh: up, seg: 'th', A: R }); }
-      if (nL) { const lo = limbShape(M, E, BODY.sh, aLo, g); parts.push({ k: key + 'L', pts: lo.pts, far, sh: lo, seg: 'sh', A: M, joint: { at: M, a: R, b: E } }); }
-      if (nE) parts.push({ k: key + 'F', pts: footShape(E, dx, dy, -sg * dy, sg * dx, g), far, foot: true });
+      // 2.5 膝盖往侧面摆（fo / bo）：脚尖跟着膝盖朝侧面，侧面看脚就短了（最短是鞋宽）；转身时也一样（脚尖朝镜头 / 背着镜头）
+      //     脚尖的方向：身体坐标里往前转 yaw、往这条腿自己那一侧（前腿 z+、后腿 z-）摆，再跟着身子转 spin，投到画面上剩多长
+      const yaw = ((key === 'F' ? J.fyaw : J.byaw) || 0) * D2R, sp = J.spin || 0, zs = key === 'F' ? 1 : -1;
+      const kk = Math.max(BODY.foot.w / (BODY.foot.heel + BODY.foot.toe), Math.abs(Math.cos(yaw) * Math.cos(sp) - zs * Math.sin(yaw) * Math.sin(sp)));
+      if (nU) parts.push({ k: key + 'U', pts: limbShape(R, M, BODY.th, aUp, g, BODY.thRoot).pts, far, layer });
+      if (nL) parts.push({ k: key + 'L', pts: limbShape(M, E, BODY.sh, aLo, g).pts, far, layer });
+      if (nE) parts.push({ k: key + 'F', pts: footShape(E, dx, dy, -sg * dy, sg * dx, g, Math.min(1, kk)), far, layer, foot: true });
     }
   };
   const tor = need('torso') || need('neck') ? torsoShape(J.hip, J.neck, fx, fy, J.spin || 0, g) : null;
   const nk = need('neck') ? limbShape(J.neck, J.neckTop, BODY.neck, 1, g) : null;
   // 头：圆
-  const hr = B.head + g * 0.5, head = [];
-  if (need('head')) for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; head.push([J.head[0] + Math.cos(a) * hr, J.head[1] + Math.sin(a) * hr]); }
+  const hr = B.head + g, head = [];
+  if (need('head')) for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; head.push([J.head[0] + Math.cos(a) * hr, J.head[1] + Math.sin(a) * hr]); }
   // 近侧 / 远侧：护着下巴的后手、往前的前腿在近侧；转过身两边对调
   const t = !!J.turned;
   const farArm = t ? ['B', J.shB, J.be, J.bh, J.hBe] : ['F', J.shF, J.fe, J.fh, J.hFe];
   const nearArm = t ? ['F', J.shF, J.fe, J.fh, J.hFe] : ['B', J.shB, J.be, J.bh, J.hBe];
   const farLeg = t ? ['F', J.hipF, J.fk, J.ff, J.hFk] : ['B', J.hipB, J.bk, J.bf, J.hBk];
   const nearLeg = t ? ['B', J.hipB, J.bk, J.bf, J.hBk] : ['F', J.hipF, J.fk, J.ff, J.hFk];
-  limb('a' + farArm[0], farArm[1], farArm[2], farArm[3], farArm[4], true, true);
-  limb(farLeg[0], farLeg[1], farLeg[2], farLeg[3], farLeg[4], false, true);
-  if (need('torso')) parts.push({ k: 'torso', pts: tor.pts, torso: tor, fx, fy });
-  if (nk) parts.push({ k: 'neck', pts: nk.pts, sh: nk, seg: 'neck' });
-  limb(nearLeg[0], nearLeg[1], nearLeg[2], nearLeg[3], nearLeg[4], false, false);
-  if (head.length) parts.push({ k: 'head', pts: head, head: true });
-  limb('a' + nearArm[0], nearArm[1], nearArm[2], nearArm[3], nearArm[4], true, false);
+  limb('a' + farArm[0], farArm[1], farArm[2], farArm[3], farArm[4], true, true, 'farArm');
+  limb(farLeg[0], farLeg[1], farLeg[2], farLeg[3], farLeg[4], false, true, 'farLeg');
+  if (need('torso')) parts.push({ k: 'torso', pts: tor.pts, layer: 'torso' });
+  if (nk) parts.push({ k: 'neck', pts: nk.pts, layer: 'torso' });
+  limb(nearLeg[0], nearLeg[1], nearLeg[2], nearLeg[3], nearLeg[4], false, false, 'nearLeg');
+  if (head.length) parts.push({ k: 'head', pts: head, layer: 'head', head: true });
+  limb('a' + nearArm[0], nearArm[1], nearArm[2], nearArm[3], nearArm[4], true, false, 'nearArm');
   return { parts, f, fx, fy, tor };
 }
 
@@ -1282,119 +1303,114 @@ function bodyPenT(polys, tgt, dir) {
 }
 
 /* ---------- 画 ---------- */
-function bodyPath(pts, dx, dy) {
-  const p = new Path2D(), o = dx || 0, q = dy || 0;
-  p.moveTo(pts[0][0] + o, pts[0][1] + q);
-  for (let i = 1; i < pts.length; i++) p.lineTo(pts[i][0] + o, pts[i][1] + q);
-  p.closePath();
-  return p;
-}
-// 一圈点的绕向（剪影要把所有块合成一个路径填一次：绕向统一，重叠的地方才不会挖成洞）
+// 一圈点的绕向（几块合成一个路径填一次：绕向统一，重叠的地方才不会挖成洞）
 function signedArea(pts) { let s = 0; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) s += (pts[j][0] - pts[i][0]) * (pts[j][1] + pts[i][1]); return s; }
-// 整个人的剪影（残影、运气的光、挨打白闪、身子外面那圈影子）：一个路径、填一次 —— 关节、重叠的地方不会叠出深色的点
-function bodySilhouette(J, g) {
-  const { parts } = bodyParts(J, g || 0), p = new Path2D();
-  for (const pt of parts) {
-    const pts = signedArea(pt.pts) < 0 ? pt.pts.slice().reverse() : pt.pts;
-    p.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) p.lineTo(pts[i][0], pts[i][1]);
-    p.closePath();
-  }
-  return p;
+// 一圈点加进路径：绕向统一；折线用二次曲线磨圆（经过每两点的中点），线条顺、看不出折角
+function addPoly(path, pts) {
+  const P = signedArea(pts) < 0 ? pts.slice().reverse() : pts, n = P.length;
+  path.moveTo((P[n - 1][0] + P[0][0]) / 2, (P[n - 1][1] + P[0][1]) / 2);
+  for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  path.closePath();
+  return path;
 }
+const polysPath = list => { const p = new Path2D(); for (const q of list) addPoly(p, q.pts || q); return p; };
+// 整个人的剪影（整个人先填一遍本色、残影、运气的光、挨打白闪、身子外面那圈影子）：一个路径、填一次 —— 关节、重叠的地方没有缝、不叠色
+function bodySilhouette(J, g) { return polysPath(bodyParts(J, g || 0).parts); }
 function drawSilhouette(J, col, alpha, grow) {
   if (alpha <= 0) return;
   ctx.globalAlpha = Math.min(1, alpha); ctx.fillStyle = col;
   ctx.fill(bodySilhouette(J, grow));
   ctx.globalAlpha = 1;
 }
-// 一条线（肌肉分界）：pts 一串点，画成平滑的曲线
-function bodyStroke(pts, col, w) {
-  if (pts.length < 2) return;
-  ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
-  if (pts.length === 2) ctx.lineTo(pts[1][0], pts[1][1]);
-  else { for (let i = 1; i < pts.length - 1; i++) { const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; ctx.quadraticCurveTo(pts[i][0], pts[i][1], i === pts.length - 2 ? pts[i + 1][0] : mx, i === pts.length - 2 ? pts[i + 1][1] : my); } }
-  ctx.stroke();
-}
-// 肢体上 t 处、离骨头 w（正 = 前侧）的那个点
-const segAt = (s, A, t, w) => { const sg = s.wa >= 0.5 ? 1 : -1; return [A[0] + s.ux * s.L * t + s.nx * w * sg, A[1] + s.uy * s.L * t + s.ny * w * sg]; };
-/* 整个人：J 骨骼，col 身体色，band 头带 / 腰带色。一块一块画：本色 → 背光暗边 → 受光亮边 → 肌肉线；
-   近侧的块叠在前面画过的块上时，重叠的那一段描一道浅边（只描叠在身上的那段，外轮廓不描：纸上不会出一圈灰边） */
+const BODY_LAYERS = ['farArm', 'farLeg', 'torso', 'nearLeg', 'head', 'nearArm'];
+/* 整个人：J 骨骼，col 身体色，band 头带 / 腰带色。调用前整个人已经填过一遍本色（render.js 先填剪影、带一圈淡影）。
+   一层一层从后往前画（每一层只在自己的外形里画）：先把这一层涂成本色（盖住后面几层的亮边），再画这一层侧面那道淡亮边；
+   近侧的胳膊、腿叠在身子上的那一段，外沿描一道同样淡的亮线（整条合起来的外沿 —— 关节里面不会出线）。
+   都是「先涂亮色、再把不要的地方涂回本色」，每一笔都是整块填满的，不会在剪裁的边上留下一道道浅印子 */
 function drawBody(J, col, band) {
-  const T = bodyTones(col), bp = bodyParts(J, 0), f = bp.f, BT = BODY.tone;
-  const lx = BODY.light[0] * f, ly = BODY.light[1];
-  const under = new Path2D();                         // 已经画过的块合起来（描边只描在这里面）
+  const S = BODY.shade, T = bodyTones(col), bp = bodyParts(J, 0), f = bp.f;
+  const inner = bodyParts(J, -S.line).parts;              // 整圈往里收 line 的外形：近侧手脚只留外沿那一圈亮线
+  const under = new Path2D(), underLimb = new Path2D();   // 已经画过的层（往里收过的）：全部 / 只算远侧的手脚
+  const nrm = (x, y) => { const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
+  // 腿的外侧：两条腿哪条在前（看膝盖 + 脚踝），在前的那条亮边在前沿、在后的那条在后沿；两条腿差不多并着就按前腿在前
+  const ahead = ((J.ff[0] + J.fk[0]) - (J.bf[0] + J.bk[0])) * f, sF = Math.abs(ahead) > 6 ? Math.sign(ahead) : (J.turned ? -1 : 1);
+  // 半个平面：过 c 点、(ux, uy) 反方向那一侧（一个很大的四边形）
+  const halfPlane = (c, ux, uy) => {
+    const vx = -uy, vy = ux, p = new Path2D();
+    p.moveTo(c[0] + vx * 900, c[1] + vy * 900); p.lineTo(c[0] - vx * 900, c[1] - vy * 900);
+    p.lineTo(c[0] - vx * 900 - ux * 900, c[1] - vy * 900 - uy * 900); p.lineTo(c[0] + vx * 900 - ux * 900, c[1] + vy * 900 - uy * 900); p.closePath();
+    return p;
+  };
+  /* 根上那一截不描、不打亮边：腿是从胯里长出来的、胳膊是从肩膀里长出来的，不是一块拼上去的 ——
+     · 腿：腰带底下往上整片不画（大腿根伸进胯里那截藏在这里面），顺着大腿往回超过 4.5 的也不画；
+     · 胳膊：肩关节往身子那边（顺着大臂往回）不描 */
+  const tr = bp.tor, tb = BODY.belt.at - BODY.belt.h / 2 / BODY.bone.torso;
+  const beltCut = tr ? (() => { const a = tr.at(tb, 0), b = tr.at(tb + 1, 0), l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; return halfPlane(a, (a[0] - b[0]) / l, (a[1] - b[1]) / l); })() : null;
+  const rootCut = (key, arm) => {
+    const R0 = arm ? (key === 'F' ? J.shF : J.shB) : (key === 'F' ? J.hipF : J.hipB);
+    const M0 = arm ? (key === 'F' ? J.fe : J.be) : (key === 'F' ? J.fk : J.bk), E0 = arm ? (key === 'F' ? J.fh : J.bh) : (key === 'F' ? J.ff : J.bf);
+    let ux = M0[0] - R0[0], uy = M0[1] - R0[1], ul = Math.hypot(ux, uy);
+    if (ul < 6) { ux = E0[0] - R0[0]; uy = E0[1] - R0[1]; ul = Math.hypot(ux, uy); }   // 膝盖冲着侧面（大腿看着很短）：按整条腿的方向
+    if (ul < 1e-3) return null;
+    ux /= ul; uy /= ul;
+    const back = arm ? 0.5 : -4.5;
+    return halfPlane([R0[0] + ux * back, R0[1] + uy * back], ux, uy);
+  };
+  const paint = (c, ...ps) => { ctx.fillStyle = c; for (const p of ps) if (p) ctx.fill(p); };
   let any = false;
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  for (const pt of bp.parts) {
-    const far = !!pt.far, path = bodyPath(pt.pts);
-    const base = far ? T.far : T.base, rim = far ? T.farRim : T.rim, dark = far ? T.farDark : T.dark, line = far ? T.farLine : T.line;
-    const rw = pt.torso ? BODY.rimTorso : pt.head ? BODY.rim * 0.8 : BODY.rim, dw = BODY.dark;
-    // 先整块涂本色；亮边 = 这一块减去「往背光那边挪 rw 的这一块」剩下的那一道（evenodd 一次填出来，剪在这一块里面）；
-    // 暗边 = 这一块减去「往受光那边挪 dw 的这一块」。只在一道带子上叠色，外沿不会出一圈浅色的毛边
-    ctx.fillStyle = base; ctx.fill(path);
-    ctx.save();
-    ctx.clip(path);
-    const strip = (dx, dy, c) => { const p2 = bodyPath(pt.pts); p2.addPath(bodyPath(pt.pts, dx, dy)); ctx.fillStyle = c; ctx.fill(p2, 'evenodd'); };
-    if (dark !== base) strip(lx * dw, ly * dw, dark);
-    strip(-lx * rw, -ly * rw, rim);
-    bodyDetail(J, pt, line, dark, bp);
-    ctx.restore();
-    if (!far && any) { ctx.save(); ctx.clip(under); ctx.strokeStyle = T.edge; ctx.lineWidth = BT.edgeW; ctx.stroke(path); ctx.restore(); }
-    if (pt.k === 'torso') drawWaistBelt(pt, band, T);
-    if (pt.head) drawHeadGear(J, band);
-    const pts = signedArea(pt.pts) < 0 ? pt.pts.slice().reverse() : pt.pts;
-    under.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) under.lineTo(pts[i][0], pts[i][1]); under.closePath();
-    any = true;
-  }
-}
-// 肌肉线、关节折痕（在这一块里面画，已经剪在这一块的外形里）
-function bodyDetail(J, pt, line, dark, bp) {
-  const W = BODY.tone.lineW;
-  if (pt.torso) {
-    const tr = pt.torso, h1 = t => tr.half(t, 1), h2 = t => tr.half(t, 2);
-    if (Math.abs(Math.cos(J.spin || 0)) > 0.3) {
-      // 胸大肌下沿：从腋下往胸口斜着弯下来（参考图那一道 V）；背阔肌往腰收的那一道，淡淡的
-      bodyStroke([tr.at(0.85, h1(0.85) * 0.98), tr.at(0.75, h1(0.75) * 0.8), tr.at(0.67, h1(0.67) * 0.38)], line, W * 1.15);
-      bodyStroke([tr.at(0.78, -h2(0.78) * 0.7), tr.at(0.6, -h2(0.6) * 0.62)], line, W * 0.8);
+  for (const L of BODY_LAYERS) {
+    const parts = bp.parts.filter(p => p.layer === L);
+    if (!parts.length) continue;
+    const path = polysPath(parts), arm = L === 'farArm' || L === 'nearArm', leg = L === 'farLeg' || L === 'nearLeg';
+    const key = arm ? parts[0].k[1] : leg ? parts[0].k[0] : null, cut = key ? rootCut(key, arm) : null;
+    ctx.save(); ctx.clip(path);
+    paint(T.base, path);
+    // 亮边：这几块合起来涂亮色，再往 n 的反方向挪 w 涂回本色 —— n 那一侧剩下一道 w 宽的亮边
+    const rim = (list, n, w) => {
+      if (!list.length || w <= 0) return;
+      const p = list.length === parts.length ? path : polysPath(list);
+      ctx.save(); ctx.clip(p); paint(T.hl, p);
+      ctx.translate(-n[0] * w, -n[1] * w); paint(T.base, p); ctx.restore();
+    };
+    if (L === 'torso') {
+      // 躯干前沿的亮边只到腰带：腰带底下是胯，和两条大腿长在一起（不然抬腿时胯前面那道弧会从大腿底下露出来）
+      rim(parts, nrm(f, -S.up), S.rim * 0.85);
+      if (tr) { const a = tr.at(tb, 0), b = tr.at(tb + 1, 0), l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; paint(T.base, halfPlane(a, (b[0] - a[0]) / l, (b[1] - a[1]) / l)); }
+      rim(parts, nrm(-f, -S.up), S.rim);
     }
-    return;
-  }
-  const s = pt.sh, A = pt.A, at = (t, w) => segAt(s, A, t, w);
-  if (s && A) {
-    // 肌肉的分界（w 正 = 前侧）：三角肌下沿、二头 / 三头之间的沟；小臂的肱桡肌；股四头肌外沿、腘绳肌；小腿肚的内沿
-    if (pt.seg === 'ua') bodyStroke([at(0.06, 5.2), at(0.22, 2.0), at(0.34, -3.8)], line, W);                 // 三角肌下沿
-    else if (pt.seg === 'fa') bodyStroke([at(0.12, 2.4), at(0.4, 1.4)], line, W * 0.8);                            // 肱桡肌
-    else if (pt.seg === 'th') bodyStroke([at(0.22, 3.4), at(0.48, 1.8), at(0.74, 2.6)], line, W * 0.9);            // 股四头肌外沿
-    else if (pt.seg === 'sh') bodyStroke([at(0.1, -2.6), at(0.3, -3.3), at(0.52, -2.0)], line, W * 0.9);           // 小腿肚
-  }
-  if (pt.joint) {
-    // 关节：里侧（弯进去的那一侧）一道暗折痕，外侧一小点亮 —— 伸直了也看得出肘、膝在哪
-    const { at: M, a: R, b: E } = pt.joint;
-    const ax = R[0] - M[0], ay = R[1] - M[1], bx = E[0] - M[0], by = E[1] - M[1];
-    const al = Math.hypot(ax, ay) || 1, bl = Math.hypot(bx, by) || 1;
-    let ix = ax / al + bx / bl, iy = ay / al + by / bl;            // 指向弯进去那一侧
-    const bend = Math.hypot(ix, iy);                                // 0 = 伸直，越大弯得越多
-    const tx = bx / bl, ty = by / bl;                               // 顺着下面那一节
-    let nx = -ty, ny = tx;
-    if (bend > 0.12) { if (nx * ix + ny * iy < 0) { nx = -nx; ny = -ny; } }
-    else { const sg = s.wa >= 0.5 ? 1 : -1; nx = s.nx * sg; ny = s.ny * sg; if (pt.seg === 'fa') { nx = -nx; ny = -ny; } }   // 伸直：胳膊里侧 = 掌心那侧，腿里侧 = 膝窝（后侧）
-    const r = pt.seg === 'fa' ? 3.4 : 4.3, k = 0.45 + Math.min(1, bend) * 0.55;
-    const c = [M[0] + nx * r * 0.9, M[1] + ny * r * 0.9];
-    bodyStroke([[c[0] - tx * r * 0.9 * k, c[1] - ty * r * 0.9 * k], [M[0] + nx * r * 0.55, M[1] + ny * r * 0.55], [c[0] + tx * r * 0.9 * k, c[1] + ty * r * 0.9 * k]], dark, BODY.tone.lineW * 1.5);
-    // 外侧（肘尖、膝盖骨）一点亮
-    bodyStroke([[M[0] - nx * r * 0.62 - tx * 1.4, M[1] - ny * r * 0.62 - ty * 1.4], [M[0] - nx * r * 0.78 + tx * 1.2, M[1] - ny * r * 0.78 + ty * 1.2]], line, BODY.tone.lineW * 1.25);
+    else if (arm) rim(parts, [0, -1], S.rimArm);
+    else if (leg) {
+      const s = key === 'F' ? sF : -sF;
+      rim(parts.filter(p => !p.foot), nrm(s * f, -S.up), S.rim);
+      rim(parts.filter(p => p.foot), nrm(s * f * 0.3, -1), S.rim);
+      paint(T.base, cut, beltCut);
+    }
+    // 近侧的胳膊、腿叠在身子上：外沿描一道淡亮线（整条胳膊 / 整条腿合起来的外沿 —— 关节里面没有线）
+    if ((L === 'nearArm' || L === 'nearLeg') && any) {
+      paint(T.hl, under);
+      if (leg) {
+        // 腿：叠在远侧那条腿上 —— 从腰带底下就描（两腿之间那道线，参考图那样）；叠在身子上 —— 离大腿根远一点才描（胯那儿不出一圈线）
+        const hp = key === 'F' ? J.hipF : J.hipB, ring = new Path2D();
+        ring.arc(hp[0], hp[1], BODY.th[0][2] + 2.5, 0, Math.PI * 2);
+        paint(T.base, ring); paint(T.hl, underLimb);
+      }
+      paint(T.base, polysPath(inner.filter(p => p.layer === L)), cut, leg ? beltCut : null);
+    }
+    ctx.restore();
+    for (const q of inner) if (q.layer === L) { addPoly(under, q.pts); if (L === 'farArm' || L === 'farLeg') addPoly(underLimb, q.pts); }
+    any = true;
+    if (L === 'nearLeg' && tr) drawWaistBelt(tr, band);       // 腰带箍在腰上：盖住两条大腿根
+    if (L === 'head') drawHeadGear(J, band);
   }
 }
-// 腰带：横着箍在腰上，比身子宽一点点，跟着身子的方向
-function drawWaistBelt(pt, band, T) {
-  const tr = pt.torso, t = BODY.belt.at, h = BODY.belt.h / 2 / BODY.bone.torso;
-  const f1 = tr.half(t + h, 1) + 0.9, b1 = tr.half(t + h, 2) + 0.9, f0 = tr.half(t - h, 1) + 0.9, b0 = tr.half(t - h, 2) + 0.9;
-  const pts = [tr.at(t + h, f1), tr.at(t + h * 1.15, 0), tr.at(t + h, -b1), tr.at(t - h, -b0), tr.at(t - h * 0.85, 0), tr.at(t - h, f0)];
+// 腰带：横着箍在腰上，比身子宽一点点，跟着身子的方向；一整块平涂（参考图那样）
+function drawWaistBelt(tr, band) {
+  const t = BODY.belt.at, h = BODY.belt.h / 2 / BODY.bone.torso;
+  const f1 = tr.half(t + h, 1) + 0.8, b1 = tr.half(t + h, 2) + 0.8, f0 = tr.half(t - h, 1) + 0.9, b0 = tr.half(t - h, 2) + 0.9;
+  const pts = [tr.at(t + h, f1), tr.at(t + h * 1.12, 0), tr.at(t + h, -b1), tr.at(t - h, -b0), tr.at(t - h * 0.88, 0), tr.at(t - h, f0)];
   ctx.fillStyle = band; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = T.dark; ctx.lineWidth = 0.8; ctx.stroke();
 }
 // 头带 + 眼睛（头带结在后脑勺，发带从那里飘出去）
 function drawHeadGear(J, band) {
@@ -1411,18 +1427,19 @@ function drawHeadGear(J, band) {
 /* 姿势系统：关键帧插值 + 两节骨骼 IK。改动作手感看 moves.js 的关键帧，这里一般不用动 */
 
 /* ============================================================
-   姿势：所有角度单位为度；手脚用 IK 目标点（2.4 新人物模型的骨头长短见 body.js BODY.bone：腿 39 + 37、手 25 + 23）
+   姿势：所有角度单位为度；手脚用 IK 目标点（人物模型的骨头长短见 body.js BODY.bone：腿 39 + 37、手 25 + 23）
    tor 上身前倾 / head 头再往前低 / hy 髋离地多高 / dx 髋往前挪 / air 整个人往上抬 / rot 整个人转 / spin 绕竖轴转身
    tw  拧腰（2.4）：正 = 前手那边的肩膀往前送（出前手拳），负 = 后手肩膀往前（出后手拳）
    fh/bh: 前手 / 后手拳心，相对「两肩中间」[往前, 往下]（不跟着上身转，横平竖直）；fe/be 肘往哪边顶（1 往下，-1 往上）
-   ff/bf: 前脚 / 后脚的脚踝 [相对髋往前, 鞋底离地多高]；fn/bn 膝盖往哪边顶（1 往前；-1 往后 —— 仆步那条蹲着的腿）；
-          ft/bt 脚尖再往上勾多少度（扫堂腿伸出去那只脚勾着）
-   画的时候：护着下巴的后手、前腿离镜头近（画在前面），前手、后腿在远侧（淡一点）
+   ff/bf: 前脚 / 后脚的脚踝 [相对髋往前, 鞋底离地多高]；fn/bn 膝盖往哪边顶（1 往前；-1 往后）；
+          ft/bt 脚尖再往上勾多少度（扫堂腿伸出去那只脚勾着）；
+          fo/bo（2.5）膝盖往侧面（z）摆出去多少度，脚尖跟着朝侧面（扫堂腿蹲着的那条腿：膝盖朝外、不朝后）
+   画的时候：护着下巴的后手、前腿离镜头近（画在前面），前手、后腿在远侧
    ============================================================ */
 // 出招时的底子（招式关键帧没写的部分都从这里来）：和站姿差不多、略低一点 —— 前手在肩前、后手护着下巴，两脚前后分开
-const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 70, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0,
-  fh: [26, -2], bh: [7, -6], ff: [27, 0], bf: [-32, 0] };
-const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt'];
+const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 71, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
+  fh: [26, -2], bh: [7, -6], ff: [25, 0], bf: [-30, 0] };
+const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
 function mk(o) {
   const p = Object.assign({}, BASE, o || {});
@@ -1479,9 +1496,9 @@ const P_JDN = { hy: 56, tor: 8, head: -1, tw: 10, ff: [12, 5], bf: [-5, 3], fh: 
 const P_JLEAP = { hy: 56, tor: 22, head: -4, tw: 10, ff: [15, 19], bf: [-6, 10], fh: [16, 37], bh: [-18, 36], fe: 1, be: -1 };
 const P_JLEAP_DN = { hy: 56, tor: 12, head: -3, tw: 10, ff: [14, 7], bf: [-7, 5], fh: [17, 37], bh: [-17, 36], fe: 1, be: -1 };   // 飞身往下落：两腿往下伸着找地
 const POSE = {
-  /* 待机站姿（2.4，Jack 的参考图第三张）：身子正、略往前，头微低；两腿前后岔开 —— 后腿直、前腿膝盖微屈；
+  /* 待机站姿（2.4 照 Jack 的参考图；2.5 照参考图第二张：两脚收近一点、髋高一点、身子微微往前）：头微低；两腿前后岔开 —— 后腿直、前腿膝盖微屈；
      前手：比参考图收短、往里收 —— 大臂往下垂（肘护着肋）、小臂往上立，拳在肩前；后手拳护在下巴前 */
-  stance: mk({ tor: 4, head: 3, hy: 72, tw: 22, ff: [26, 0], bf: [-33, 0], fh: [27, -1], bh: [6, -6] }),
+  stance: mk({ tor: 6, head: 3, hy: 73, tw: 22, ff: [24, 0], bf: [-29, 0], fh: [27, -1], bh: [6, -6] }),
   run: mk({ tor: 26, head: -16, hy: 62, fe: 0.2, be: 0.2, tw: 0 }),   // 跑步只用到这几个，手脚每帧现算（fighter.js runPose）
   crouch: mk({ hy: 50, tor: 24, head: -6, tw: 18, ff: [27, 0], bf: [-25, 0], fh: [24, 3], bh: [8, -3] }),
   // 格挡：两只小臂竖起来挡在脸前（肘往下沉护着肋），身子微微往后坐
@@ -1729,12 +1746,14 @@ const MOVES = {
   //        反制多了：蹲挡后踩腿、抄腿接住、跳过去打它收招（破绽）、近身短拳打失衡
   sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 8, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
     limb: 'ff', fx: 'sweep', lunge: [3, 10, 10], launch: 3, lie: 26, ender: true, noCancel: true,
-    // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前，后手往后伸着保持平衡（不是伸手去够）
+    // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前。
+    // 2.5（Jack：后面那条腿不是往后，是往侧面 —— z 轴）：蹲着的后腿膝盖、脚尖朝外（bo，往离镜头远的那一侧摆出去），
+    // 侧面看就是髋底下缩短的一截，不再往身后支出去
     keys: [[0, J_(P_LOW, {})],
-      [0.45, { hy: 34, tor: 14, head: -2, dx: -4, tw: 18, bn: -1, ff: [22, 4], bf: [-6, 0], fh: [22, -2], bh: [8, -8] }],
-      [1, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bn: -1, ft: 40, ff: [72, 0], bf: [-6, 0], fh: [24, -2], bh: [8, -8] }, 'out'],
-      [2, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bn: -1, ft: 46, ff: [76, 0], bf: [-6, 0], fh: [24, -2], bh: [8, -8] }],
-      [2.5, { hy: 38, tor: 16, head: -4, dx: 0, tw: 18, bn: -0.2, ff: [40, 2], bf: [-12, 0], fh: [24, 0], bh: [8, -6] }], [3, J_(P_LOW, {})]] }),
+      [0.45, { hy: 34, tor: 14, head: -2, dx: -4, tw: 18, bo: 80, ff: [22, 4], bf: [-4, 0], fh: [22, -2], bh: [8, -8] }],
+      [1, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bo: 85, ft: 40, ff: [72, 0], bf: [-4, 0], fh: [24, -2], bh: [8, -8] }, 'out'],
+      [2, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bo: 85, ft: 46, ff: [76, 0], bf: [-4, 0], fh: [24, -2], bh: [8, -8] }],
+      [2.5, { hy: 38, tor: 16, head: -4, dx: 0, tw: 18, bo: 50, ff: [40, 2], bf: [-12, 0], fh: [24, 0], bh: [8, -6] }], [3, J_(P_LOW, {})]] }),
 
   /* ---- 空中（上段：蹲着挡不住；飞踢可以蹲下躲）。都是先往后蓄、再往前打的整套动作 ----
      1.7.0：出手时整个人往前下方倾（rot），拳脚真的够得着对面；判定持续到快落地，同一个距离什么时候出都打得到；
@@ -1743,22 +1762,22 @@ const MOVES = {
   airJab: M({ kind: 'jab', label: '挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
     keys: [[0, JT], [0.55, J_(JT, { rot: 4, tor: -10, head: -6, fh: [-20, -50], fe: -1, bh: [8, -8], ff: [20, 48], bf: [-4, 42], tw: 20 })],
-      [1, { rot: 22, tor: 30, head: -8, fh: [60, 12], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }, 'back'],
-      [2, { rot: 24, tor: 32, head: -8, fh: [58, 16], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }], [3, JD]] }),
+      [1, { rot: 22, tor: 30, head: -8, dx: 5.5, fh: [60, 12], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }, 'back'],
+      [2, { rot: 24, tor: 32, head: -8, dx: 5.5, fh: [58, 16], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }], [3, JD]] }),
   // 泰山压顶：后仰把双拳举过头顶，再整个人往前下方卷下去砸（1.9.0 伤害 12 → 11：打蹲着的人让给千斤坠）
   // 2.1（Jack：打电脑像「版本答案」，前摇、整个动作都太快）：前摇 7 → 10、判定 10 → 11、后摇 8 → 10（举过头顶那一下看得清）
   airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 11, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'hammer', air: true,
     keys: [[0, JT], [0.7, { rot: -8, tor: -28, head: -12, fh: [-12, -60], bh: [-22, -54], fe: -1, be: -1, ff: [18, 56], bf: [2, 50], tw: 0 }],
-      [1, { rot: 26, tor: 50, head: 18, dx: 12, fh: [56, 42], bh: [50, 46], ff: [22, 24], bf: [-24, 36], tw: 0 }, 'out'],
-      [2, { rot: 28, tor: 52, head: 18, dx: 12, fh: [54, 46], bh: [48, 50], ff: [22, 24], bf: [-24, 36], tw: 0 }], [3, JD]] }),
+      [1, { rot: 26, tor: 50, head: 18, dx: 15, fh: [56, 42], bh: [50, 46], ff: [22, 24], bf: [-24, 36], tw: 0 }, 'out'],
+      [2, { rot: 28, tor: 52, head: 18, dx: 15, fh: [54, 46], bh: [48, 50], ff: [22, 24], bf: [-24, 36], tw: 0 }], [3, JD]] }),
   // 飞踢：先把膝盖收到胸口，身体后仰，整个人前倾着一脚往前下方蹬出去
   // 2.1（Jack：和泰山压顶一样太快、太好用）：前摇 6 → 9、判定 12 → 13、后摇 7 → 9（收膝那一下看得清，整个动作慢一点）
   airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 10, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, JT], [0.6, { rot: -6, tor: 12, head: -6, ff: [10, 62], bf: [-6, 48], fh: [24, -30], bh: [6, -8], tw: 10 }],
-      [1, { rot: 14, tor: -38, head: 14, dx: 16, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }, 'back'],
-      [2, { rot: 14, tor: -38, head: 14, dx: 16, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }], [3, JD]] }),
+      [1, { rot: 14, tor: -38, head: 14, dx: 19, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }, 'back'],
+      [2, { rot: 14, tor: -38, head: 14, dx: 19, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }], [3, JD]] }),
   // 千斤坠：空中按住蹲再踢。先往上一腾、团身（从高处起），再整个人斜成一条线，前脚笔直往前下方踩下去（打到会往后翻着弹开）
   // 1.9.0：主系「坠」—— 专破蹲着的防守和反击：踩蹲着 / 蹲挡 / 出下段的 ×1.3，对空招（托天掌、冲天炮）打不到它、反被踩倒 ×1.5；
   //        怕站着的拳：被短拳系 / 重拳系迎着打中 = 倒栽葱 ×1.4、倒地更久；站挡挡得住。前摇更慢（腾得更高）。
@@ -3882,6 +3901,17 @@ class Fighter {
     const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, kb, -0.15);
     // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收
     this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]] };
+    // 2.5 膝盖往侧面摆（姿势的 fo / bo，度；Jack：扫堂腿蹲着的那条腿不是往后，是往侧面 —— z 轴）：
+    // 膝盖绕「大腿根 → 脚踝」那条线往这条腿自己那一侧转出去（前腿 z+ 离镜头近、后腿 z- 离镜头远），脚踝不动。
+    // 转到 90° 膝盖正冲着侧面：侧面看这条腿是缩短的（大腿、小腿冲着镜头 / 背着镜头），脚尖也跟着朝侧面（body.js 画鞋时变短）
+    const kneeOut = (hp, Lg, deg, zs) => {
+      if (!deg) return [Lg[0], Lg[1], 0];
+      const ax = Lg[2] - hp[0], ay = Lg[3] - hp[1], al = Math.hypot(ax, ay) || 1e-3, ux = ax / al, uy = ay / al;
+      const kx = Lg[0] - hp[0], ky = Lg[1] - hp[1], along = kx * ux + ky * uy, px = kx - ux * along, py = ky - uy * along;
+      const a = deg * D2R, c = Math.cos(a);
+      return [hp[0] + ux * along + px * c, hp[1] + uy * along + py * c, zs * Math.hypot(px, py) * Math.sin(a)];
+    };
+    const fKo = kneeOut(hipF, fL, p.fo || 0, 1), bKo = kneeOut(hipB, bL, p.bo || 0, -1);
     // 头带结（后脑勺）、腰带结
     const knot = [head[0] + hy * L.head * 0.95 + hx * L.head * 0.22, head[1] - hx * L.head * 0.95 + hy * L.head * 0.22];
     const belt = [-tx * 2 - 4, ty * 4];
@@ -3889,7 +3919,7 @@ class Fighter {
     const pts = { hip: [0, 0, 0], hipF: [hipF[0], 0, zHF], hipB: [hipB[0], 0, zHB], neck: [neck[0], neck[1], 0], neckTop: [neckTop[0], neckTop[1], 0],
       head: [head[0], head[1], 0], sh: [sh[0], sh[1], 0], shF: [shF[0], shF[1], zF], shB: [shB[0], shB[1], zB], knot: [knot[0], knot[1], 0], belt: [belt[0], belt[1], 0],
       fe: [fA[0], fA[1], zF], fh: [fA[2], fA[3], zF], be: [bA[0], bA[1], zB], bh: [bA[2], bA[3], zB],
-      fk: [fL[0], fL[1], zHF], ff: [fL[2], fL[3], zHF], bk: [bL[0], bL[1], zHB], bf: [bL[2], bL[3], zHB] };
+      fk: [fKo[0], fKo[1], zHF + fKo[2]], ff: [fL[2], fL[3], zHF], bk: [bKo[0], bKo[1], zHB + bKo[2]], bf: [bL[2], bL[3], zHB] };
     const sp = p.spin * D2R, sc = Math.cos(sp), ss = Math.sin(sp), r = p.rot * D2R, cr = Math.cos(r), sr = Math.sin(r);
     let maxY = -1e9;
     for (const k in pts) {
@@ -3913,6 +3943,7 @@ class Fighter {
     const hv = (x, y) => { const X = x * sc; return { 0: (X * cr - y * sr) * f, 1: X * sr + y * cr }; };
     J.hFe = hv(-0.3, p.fe); J.hBe = hv(-0.3, p.be); J.hFk = hv(kf, -0.15); J.hBk = hv(kb, -0.15); J.fkd = kf; J.bkd = kb;
     J.fft = p.ft || 0; J.bft = p.bt || 0;                      // 脚尖勾多少（度）
+    J.fyaw = p.fo || 0; J.byaw = p.bo || 0;                    // 2.5 脚尖跟着膝盖往侧面摆多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }
   updateRibbons() {
@@ -6441,7 +6472,7 @@ function drawFighter(F, V) {
   ctx.strokeStyle = F.sash;
   for (const pts of V.ribbons) {
     for (let i = 1; i < pts.length; i++) {
-      ctx.lineWidth = 4.2 * (1 - i / pts.length * 0.7);
+      ctx.lineWidth = 5.4 * (1 - i / pts.length * 0.45);       // 2.5 照参考图：发带是两条扁扁的宽带子
       ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
     }
   }
@@ -6497,7 +6528,7 @@ function drawFigure(J, col, band, trail) {
   const f = J.facing * (J.turned ? -1 : 1), k = J.knot;
   ctx.strokeStyle = band;
   for (const [dy, len] of [[0, 30], [5, 24]]) {
-    ctx.lineWidth = 3.6; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
+    ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
     ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
   }
   ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;

@@ -997,6 +997,17 @@ class Fighter {
     const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, kb, -0.15);
     // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收
     this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]] };
+    // 2.5 膝盖往侧面摆（姿势的 fo / bo，度；Jack：扫堂腿蹲着的那条腿不是往后，是往侧面 —— z 轴）：
+    // 膝盖绕「大腿根 → 脚踝」那条线往这条腿自己那一侧转出去（前腿 z+ 离镜头近、后腿 z- 离镜头远），脚踝不动。
+    // 转到 90° 膝盖正冲着侧面：侧面看这条腿是缩短的（大腿、小腿冲着镜头 / 背着镜头），脚尖也跟着朝侧面（body.js 画鞋时变短）
+    const kneeOut = (hp, Lg, deg, zs) => {
+      if (!deg) return [Lg[0], Lg[1], 0];
+      const ax = Lg[2] - hp[0], ay = Lg[3] - hp[1], al = Math.hypot(ax, ay) || 1e-3, ux = ax / al, uy = ay / al;
+      const kx = Lg[0] - hp[0], ky = Lg[1] - hp[1], along = kx * ux + ky * uy, px = kx - ux * along, py = ky - uy * along;
+      const a = deg * D2R, c = Math.cos(a);
+      return [hp[0] + ux * along + px * c, hp[1] + uy * along + py * c, zs * Math.hypot(px, py) * Math.sin(a)];
+    };
+    const fKo = kneeOut(hipF, fL, p.fo || 0, 1), bKo = kneeOut(hipB, bL, p.bo || 0, -1);
     // 头带结（后脑勺）、腰带结
     const knot = [head[0] + hy * L.head * 0.95 + hx * L.head * 0.22, head[1] - hx * L.head * 0.95 + hy * L.head * 0.22];
     const belt = [-tx * 2 - 4, ty * 4];
@@ -1004,7 +1015,7 @@ class Fighter {
     const pts = { hip: [0, 0, 0], hipF: [hipF[0], 0, zHF], hipB: [hipB[0], 0, zHB], neck: [neck[0], neck[1], 0], neckTop: [neckTop[0], neckTop[1], 0],
       head: [head[0], head[1], 0], sh: [sh[0], sh[1], 0], shF: [shF[0], shF[1], zF], shB: [shB[0], shB[1], zB], knot: [knot[0], knot[1], 0], belt: [belt[0], belt[1], 0],
       fe: [fA[0], fA[1], zF], fh: [fA[2], fA[3], zF], be: [bA[0], bA[1], zB], bh: [bA[2], bA[3], zB],
-      fk: [fL[0], fL[1], zHF], ff: [fL[2], fL[3], zHF], bk: [bL[0], bL[1], zHB], bf: [bL[2], bL[3], zHB] };
+      fk: [fKo[0], fKo[1], zHF + fKo[2]], ff: [fL[2], fL[3], zHF], bk: [bKo[0], bKo[1], zHB + bKo[2]], bf: [bL[2], bL[3], zHB] };
     const sp = p.spin * D2R, sc = Math.cos(sp), ss = Math.sin(sp), r = p.rot * D2R, cr = Math.cos(r), sr = Math.sin(r);
     let maxY = -1e9;
     for (const k in pts) {
@@ -1028,6 +1039,7 @@ class Fighter {
     const hv = (x, y) => { const X = x * sc; return { 0: (X * cr - y * sr) * f, 1: X * sr + y * cr }; };
     J.hFe = hv(-0.3, p.fe); J.hBe = hv(-0.3, p.be); J.hFk = hv(kf, -0.15); J.hBk = hv(kb, -0.15); J.fkd = kf; J.bkd = kb;
     J.fft = p.ft || 0; J.bft = p.bt || 0;                      // 脚尖勾多少（度）
+    J.fyaw = p.fo || 0; J.byaw = p.bo || 0;                    // 2.5 脚尖跟着膝盖往侧面摆多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }
   updateRibbons() {

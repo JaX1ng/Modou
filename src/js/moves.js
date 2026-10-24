@@ -173,12 +173,14 @@ const MOVES = {
   //        反制多了：蹲挡后踩腿、抄腿接住、跳过去打它收招（破绽）、近身短拳打失衡
   sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 8, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
     limb: 'ff', fx: 'sweep', lunge: [3, 10, 10], launch: 3, lie: 26, ender: true, noCancel: true,
-    // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前，后手往后伸着保持平衡（不是伸手去够）
+    // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前。
+    // 2.5（Jack：后面那条腿不是往后，是往侧面 —— z 轴）：蹲着的后腿膝盖、脚尖朝外（bo，往离镜头远的那一侧摆出去），
+    // 侧面看就是髋底下缩短的一截，不再往身后支出去
     keys: [[0, J_(P_LOW, {})],
-      [0.45, { hy: 34, tor: 14, head: -2, dx: -4, tw: 18, bn: -1, ff: [22, 4], bf: [-6, 0], fh: [22, -2], bh: [8, -8] }],
-      [1, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bn: -1, ft: 40, ff: [72, 0], bf: [-6, 0], fh: [24, -2], bh: [8, -8] }, 'out'],
-      [2, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bn: -1, ft: 46, ff: [76, 0], bf: [-6, 0], fh: [24, -2], bh: [8, -8] }],
-      [2.5, { hy: 38, tor: 16, head: -4, dx: 0, tw: 18, bn: -0.2, ff: [40, 2], bf: [-12, 0], fh: [24, 0], bh: [8, -6] }], [3, J_(P_LOW, {})]] }),
+      [0.45, { hy: 34, tor: 14, head: -2, dx: -4, tw: 18, bo: 80, ff: [22, 4], bf: [-4, 0], fh: [22, -2], bh: [8, -8] }],
+      [1, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bo: 85, ft: 40, ff: [72, 0], bf: [-4, 0], fh: [24, -2], bh: [8, -8] }, 'out'],
+      [2, { hy: 35, tor: 10, head: -4, dx: 4, tw: 22, bo: 85, ft: 46, ff: [76, 0], bf: [-4, 0], fh: [24, -2], bh: [8, -8] }],
+      [2.5, { hy: 38, tor: 16, head: -4, dx: 0, tw: 18, bo: 50, ff: [40, 2], bf: [-12, 0], fh: [24, 0], bh: [8, -6] }], [3, J_(P_LOW, {})]] }),
 
   /* ---- 空中（上段：蹲着挡不住；飞踢可以蹲下躲）。都是先往后蓄、再往前打的整套动作 ----
      1.7.0：出手时整个人往前下方倾（rot），拳脚真的够得着对面；判定持续到快落地，同一个距离什么时候出都打得到；
@@ -187,22 +189,22 @@ const MOVES = {
   airJab: M({ kind: 'jab', label: '挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
     keys: [[0, JT], [0.55, J_(JT, { rot: 4, tor: -10, head: -6, fh: [-20, -50], fe: -1, bh: [8, -8], ff: [20, 48], bf: [-4, 42], tw: 20 })],
-      [1, { rot: 22, tor: 30, head: -8, fh: [60, 12], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }, 'back'],
-      [2, { rot: 24, tor: 32, head: -8, fh: [58, 16], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }], [3, JD]] }),
+      [1, { rot: 22, tor: 30, head: -8, dx: 5.5, fh: [60, 12], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }, 'back'],
+      [2, { rot: 24, tor: 32, head: -8, dx: 5.5, fh: [58, 16], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }], [3, JD]] }),
   // 泰山压顶：后仰把双拳举过头顶，再整个人往前下方卷下去砸（1.9.0 伤害 12 → 11：打蹲着的人让给千斤坠）
   // 2.1（Jack：打电脑像「版本答案」，前摇、整个动作都太快）：前摇 7 → 10、判定 10 → 11、后摇 8 → 10（举过头顶那一下看得清）
   airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 11, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'hammer', air: true,
     keys: [[0, JT], [0.7, { rot: -8, tor: -28, head: -12, fh: [-12, -60], bh: [-22, -54], fe: -1, be: -1, ff: [18, 56], bf: [2, 50], tw: 0 }],
-      [1, { rot: 26, tor: 50, head: 18, dx: 12, fh: [56, 42], bh: [50, 46], ff: [22, 24], bf: [-24, 36], tw: 0 }, 'out'],
-      [2, { rot: 28, tor: 52, head: 18, dx: 12, fh: [54, 46], bh: [48, 50], ff: [22, 24], bf: [-24, 36], tw: 0 }], [3, JD]] }),
+      [1, { rot: 26, tor: 50, head: 18, dx: 15, fh: [56, 42], bh: [50, 46], ff: [22, 24], bf: [-24, 36], tw: 0 }, 'out'],
+      [2, { rot: 28, tor: 52, head: 18, dx: 15, fh: [54, 46], bh: [48, 50], ff: [22, 24], bf: [-24, 36], tw: 0 }], [3, JD]] }),
   // 飞踢：先把膝盖收到胸口，身体后仰，整个人前倾着一脚往前下方蹬出去
   // 2.1（Jack：和泰山压顶一样太快、太好用）：前摇 6 → 9、判定 12 → 13、后摇 7 → 9（收膝那一下看得清，整个动作慢一点）
   airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 10, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, JT], [0.6, { rot: -6, tor: 12, head: -6, ff: [10, 62], bf: [-6, 48], fh: [24, -30], bh: [6, -8], tw: 10 }],
-      [1, { rot: 14, tor: -38, head: 14, dx: 16, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }, 'back'],
-      [2, { rot: 14, tor: -38, head: 14, dx: 16, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }], [3, JD]] }),
+      [1, { rot: 14, tor: -38, head: 14, dx: 19, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }, 'back'],
+      [2, { rot: 14, tor: -38, head: 14, dx: 19, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }], [3, JD]] }),
   // 千斤坠：空中按住蹲再踢。先往上一腾、团身（从高处起），再整个人斜成一条线，前脚笔直往前下方踩下去（打到会往后翻着弹开）
   // 1.9.0：主系「坠」—— 专破蹲着的防守和反击：踩蹲着 / 蹲挡 / 出下段的 ×1.3，对空招（托天掌、冲天炮）打不到它、反被踩倒 ×1.5；
   //        怕站着的拳：被短拳系 / 重拳系迎着打中 = 倒栽葱 ×1.4、倒地更久；站挡挡得住。前摇更慢（腾得更高）。

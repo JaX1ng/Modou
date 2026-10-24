@@ -2279,20 +2279,94 @@ T('2.4 关节、重叠的地方不半透明：人整块不透明地画（以前�
   }
   F1.setLook(Looks.pvp[0]);
 });
-T('2.4 前后分得清：远侧的手脚整块换一个色调（墨色淡一点、别的颜色暗一点，都是实心的），和身子、近侧的手脚分得开；近侧的手脚叠在身上描一道浅边', () => {
+T('2.5 一个连贯的整体的人（Jack：不能看出是一块块拼起来的）：远侧的手脚和身子一个颜色，关节上不画线、不打阴影，亮边淡、少，只在侧面；近侧的胳膊叠在身上外沿有一道淡亮线（前后分得清）', () => {
   for (const p of PALETTE) {
-    const T2 = bodyTones(p.color);
-    ok(/^#[0-9a-f]{6}$/.test(T2.far), p.name + '：远侧要实心颜色');
-    ok(cdist(T2.far, p.color) >= 14, `${p.name}：远侧和本色只差 ${cdist(T2.far, p.color).toFixed(0)}`);
-    ok(cdist(T2.edge, p.color) >= 30, `${p.name}：近侧描边和本色只差 ${cdist(T2.edge, p.color).toFixed(0)}`);
+    const d = cdist(bodyTones(p.color).hl, p.color);
+    ok(d >= 8 && d <= 40, `${p.name}：亮边和本色差 ${d.toFixed(0)}（要看得出、但不扎眼）`);
   }
   // 远侧 / 近侧：站着时前手、后腿在远侧，后手、前腿在近侧；转过身来两边对调
   arena(400); copyPose(F1.disp, POSE.stance); F1.J = null; F1.fk();
   const far = J => bodyParts(J, 0).parts.filter(q => q.far).map(q => q.k).join(',');
   eq(far(F1.J), 'aFU,aFL,aFH,BU,BL,BF');
   F1.disp.spin = 180; F1.fk(); eq(far(F1.J), 'aBU,aBL,aBH,FU,FL,FF');
+  // 画出来量：几个姿势、两种颜色
+  const K = 3, W2 = 300 * K / 2, H2 = 320 * K / 2, cv = document.createElement('canvas'); cv.width = W2; cv.height = H2; const g = cv.getContext('2d');
+  for (const [nm, pose] of [['站姿', POSE.stance], ['短拳', mk(P_JAB)], ['重拳', mk(P_HEAVY)], ['蹲', POSE.crouch]]) {
+    for (const col of ['ink', 'indigo']) {
+      F1.setLook(col); copyPose(F1.disp, pose); F1.J = null; F1.ikS = null; F1.fk();
+      const J = F1.J, T2 = bodyTones(F1.color), ox = J.hip[0] - 50, oy = FLOOR - 160;
+      g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = C.paper; g.fillRect(0, 0, W2, H2);
+      withCtx(g, () => { ctx.setTransform(K, 0, 0, K, -ox * K, -oy * K); ctx.fillStyle = F1.color; ctx.fill(bodySilhouette(J, 0)); drawBody(J, F1.color, F1.sash); ctx.setTransform(1, 0, 0, 1, 0, 0); });
+      const px = g.getImageData(0, 0, W2, H2).data, at = (x, y) => { const i = ((Math.round((y - oy) * K)) * W2 + Math.round((x - ox) * K)) * 4; return '#' + [px[i], px[i + 1], px[i + 2]].map(v => v.toString(16).padStart(2, '0')).join(''); };
+      // 肘、膝（关节）那里、远侧那只手的小臂中间：都是本色 —— 关节不画折痕、不打阴影；远侧不换色调
+      for (const k of ['fe', 'be', 'fk', 'bk']) ok(cdist(at(J[k][0], J[k][1]), F1.color) < 4, `${nm}（${col}）：${k} 关节上有东西 ${at(J[k][0], J[k][1])}`);
+      const fa = J.turned ? ['be', 'bh'] : ['fe', 'fh'], mid = [(J[fa[0]][0] * 0.4 + J[fa[1]][0] * 0.6), (J[fa[0]][1] * 0.4 + J[fa[1]][1] * 0.6)];
+      ok(cdist(at(mid[0], mid[1]), F1.color) < 4, `${nm}（${col}）：远侧的小臂中间不是本色 ${at(mid[0], mid[1])}`);
+      // 亮色只占人身上一小部分（有，但少）：剪影里面（不算头带、腰带、眼睛）亮色的点
+      const base = rgbOf(F1.color), hl = rgbOf(T2.hl);
+      let n = 0, lit = 0;
+      for (let y = 0; y < H2; y += 2) for (let x = 0; x < W2; x += 2) {
+        const i = (y * W2 + x) * 4, c = [px[i], px[i + 1], px[i + 2]];
+        const dB = Math.hypot(c[0] - base[0], c[1] - base[1], c[2] - base[2]), dH = Math.hypot(c[0] - hl[0], c[1] - hl[1], c[2] - hl[2]);
+        if (Math.min(dB, dH) > 6) continue;                 // 不是身子的颜色（纸、头带、腰带、眼睛）
+        n++; if (dH < dB) lit++;
+      }
+      const r = lit / n;
+      ok(r > 0.01 && r < 0.16, `${nm}（${col}）：亮色占 ${(r * 100).toFixed(1)}%（要有一点、但很少）`);
+    }
+  }
+  // 近侧的胳膊叠在胸口上：外沿有一道亮线（参考图里护着下巴那只手）—— 躯干里面（离躯干外沿 3 以上）有亮色的点
+  F1.setLook('ink'); copyPose(F1.disp, POSE.stance); F1.J = null; F1.ikS = null; F1.fk();
+  {
+    const J = F1.J, ox = J.hip[0] - 50, oy = FLOOR - 160;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = C.paper; g.fillRect(0, 0, W2, H2);
+    withCtx(g, () => { ctx.setTransform(K, 0, 0, K, -ox * K, -oy * K); ctx.fillStyle = F1.color; ctx.fill(bodySilhouette(J, 0)); drawBody(J, F1.color, F1.sash); ctx.setTransform(1, 0, 0, 1, 0, 0); });
+    const px = g.getImageData(0, 0, W2, H2).data, hl = rgbOf(bodyTones(F1.color).hl), base = rgbOf(F1.color);
+    const torso = bodyParts(J, -3).parts.find(q => q.k === 'torso').pts, tp = new Path2D(); tp.moveTo(torso[0][0], torso[0][1]); for (const q of torso) tp.lineTo(q[0], q[1]); tp.closePath();
+    let lit = 0;
+    g.setTransform(K, 0, 0, K, -ox * K, -oy * K);
+    for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) {
+      if (!g.isPointInPath(tp, x, y)) continue;
+      const i = (y * W2 + x) * 4, c = [px[i], px[i + 1], px[i + 2]];
+      if (Math.hypot(c[0] - hl[0], c[1] - hl[1], c[2] - hl[2]) < Math.hypot(c[0] - base[0], c[1] - base[1], c[2] - base[2])) lit++;
+    }
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    ok(lit > 40 * K, '护着下巴那只手叠在胸口上要有一道淡亮线：' + lit);
+  }
+  F1.setLook(Looks.pvp[0]);
 });
-T('2.4 膝盖往前弯（像真人）：所有姿势、所有招的关键帧，弯着的膝盖都在髋到脚踝那条线的前面（仆步蹲着的那条腿 fn / bn = -1 往后）', () => {
+T('2.5 关节靠肢体本身的粗细看得出来（Jack）：大腿根粗、到膝盖收细、小腿肚鼓、脚踝再收；大臂到肘收细 —— 关节上不靠画线', () => {
+  const w = (P, t) => profAt(P, t, 1) + profAt(P, t, 2), maxW = (P, a, b) => { let m = 0; for (let t = a; t <= b + 1e-9; t += 0.02) m = Math.max(m, w(P, t)); return m; };
+  const thighTop = w(BODY.th, 0), knee = Math.min(w(BODY.th, 1), w(BODY.sh, 0)), calf = maxW(BODY.sh, 0.1, 0.6), ankle = w(BODY.sh, 1);
+  ok(thighTop > knee + 3, `大腿根 ${thighTop.toFixed(1)} 要比膝盖 ${knee.toFixed(1)} 粗`);
+  ok(calf > knee + 0.8 && calf > ankle + 1.5, `小腿肚 ${calf.toFixed(1)} 要鼓出来（膝盖 ${knee.toFixed(1)}、脚踝 ${ankle.toFixed(1)}）`);
+  ok(w(BODY.ua, 0) > w(BODY.ua, 1) + 1.5, '大臂到肘收细');
+  // 侧面看躯干是一根稍有弧度的柱子（参考图第二张）：最粗的地方不超过腰的 1.35 倍（2.4 的大胸肌、大屁股去掉了）
+  const tw2 = t => profAt(BODY.torso, t, 1) + profAt(BODY.torso, t, 2), waist = tw2(0.27);
+  let chest = 0; for (let t = 0.4; t <= 0.95; t += 0.01) chest = Math.max(chest, tw2(t));
+  ok(chest / waist < 1.35 && chest > waist + 2, `胸 ${chest.toFixed(1)} / 腰 ${waist.toFixed(1)}`);
+});
+T('2.5 拳头改小（Jack）：比 2.4（13.2 × 11.6）小一圈，比头小得多', () => {
+  ok(BODY.fist.len <= 13.2 * 0.85 && BODY.fist.h <= 11.6 * 0.85, `拳头 ${BODY.fist.len} × ${BODY.fist.h}`);
+  ok(BODY.fist.len < BONE.head * 2 * 0.5, '拳头不到头的一半');
+});
+T('2.5 扫堂腿（Jack：后面那条腿不是往后，是往侧面 —— z 轴）：蹲着的后腿膝盖、脚尖朝侧面，侧面看是髋底下缩短的一截，不往身后支出去；前腿照旧贴地伸直扫出去', () => {
+  const d = MOVES.sweep, fr = simulateMove('sweep', { def: 'none' });
+  const act = fr.filter(f => f.mv && f.mv.name === 'sweep' && f.mv.t >= d.S && f.mv.t <= d.S + d.A);
+  ok(act.length > 0, '有判定帧');
+  for (const f of act) {
+    const J = f.J1, fw = J.facing, back = (J.hipB[0] - J.bk[0]) * fw, thigh = Math.hypot(J.bk[0] - J.hipB[0], J.bk[1] - J.hipB[1]);
+    ok(back < 6, `后膝往身后支出去了 ${back.toFixed(1)}`);
+    ok(thigh < BONE.th * 0.6, `后腿大腿侧面看没缩短（${thigh.toFixed(1)} / ${BONE.th}）：膝盖没朝侧面`);
+    ok(J.byaw > 60, '后脚尖要跟着朝侧面');
+    let x0 = 1e9, x1 = -1e9; for (const [x] of bodyParts(J, 0).parts.find(q => q.k === 'BF').pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); }
+    ok(x1 - x0 < (BODY.foot.heel + BODY.foot.toe) * 0.6, `后脚侧面看要变短（脚尖朝侧面）：${(x1 - x0).toFixed(1)}`);
+    ok((J.ff[0] - J.hip[0]) * fw > 50 && FLOOR - J.ff[1] < 14, '前腿贴地伸出去');
+  }
+  // 站着、别的招：膝盖不往侧面摆（只有扫堂腿蹲着那条腿摆）
+  for (const k in POSE) ok(!POSE[k].fo && !POSE[k].bo, '姿势 ' + k + ' 不该摆膝盖');
+});
+T('2.4 膝盖往前弯（像真人）：所有姿势、所有招的关键帧，弯着的膝盖都在髋到脚踝那条线的前面（fn / bn = -1 的往后；2.5 扫堂腿蹲着那条腿改成膝盖朝侧面 bo）', () => {
   arena(400); const F = F1, bad = [];
   const check = (nm, pose) => {
     if (Math.abs(wrapDeg(pose.spin)) > 50 || Math.abs(pose.rot) > 35) return;

@@ -111,7 +111,7 @@ function drawFighter(F, V) {
   ctx.strokeStyle = F.sash;
   for (const pts of V.ribbons) {
     for (let i = 1; i < pts.length; i++) {
-      ctx.lineWidth = 4.2 * (1 - i / pts.length * 0.7);
+      ctx.lineWidth = 5.4 * (1 - i / pts.length * 0.45);       // 2.5 照参考图：发带是两条扁扁的宽带子
       ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
     }
   }
@@ -167,7 +167,7 @@ function drawFigure(J, col, band, trail) {
   const f = J.facing * (J.turned ? -1 : 1), k = J.knot;
   ctx.strokeStyle = band;
   for (const [dy, len] of [[0, 30], [5, 24]]) {
-    ctx.lineWidth = 3.6; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
+    ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
     ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
   }
   ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;

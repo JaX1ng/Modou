@@ -57,7 +57,7 @@ function figBounds(frames, from, to) {
 }
 function drawRibbons(pts, col) {
   ctx.strokeStyle = col; ctx.lineCap = 'round';
-  for (const p of pts) for (let i = 1; i < p.length; i++) { ctx.lineWidth = 3.8 * (1 - i / p.length * 0.7); ctx.beginPath(); ctx.moveTo(p[i - 1].x, p[i - 1].y); ctx.lineTo(p[i].x, p[i].y); ctx.stroke(); }
+  for (const p of pts) for (let i = 1; i < p.length; i++) { ctx.lineWidth = 5.4 * (1 - i / p.length * 0.45); ctx.beginPath(); ctx.moveTo(p[i - 1].x, p[i - 1].y); ctx.lineTo(p[i].x, p[i].y); ctx.stroke(); }
 }
 function drawOne(J, rib, col, band, alt) {
   ctx.fillStyle = 'rgba(23,24,26,.15)'; ctx.beginPath(); ctx.ellipse(J.hip[0], FLOOR + 3, 38 * (1 - Math.min(alt, 200) / 320), 5, 0, 0, Math.PI * 2); ctx.fill();
@@ -200,9 +200,10 @@ const PB_BASE_BODY = JSON.parse(JSON.stringify(BODY));
 const PB_SLIDERS = [
   ['bone.head', '头（半径）', 8, 16, 0.1], ['bone.torso', '躯干', 36, 56, 0.5], ['bone.shoulder', '肩高', 32, 50, 0.5], ['bone.neck', '脖子', 0, 10, 0.2],
   ['bone.ua', '大臂', 18, 32, 0.5], ['bone.fa', '小臂（到拳心）', 16, 30, 0.5], ['bone.th', '大腿', 30, 46, 0.5], ['bone.sh', '小腿', 28, 44, 0.5],
-  ['shoulderW', '肩宽（一半）', 6, 20, 0.5], ['hipSplit', '两腿根错开', 0, 6, 0.2], ['muscle', '肌肉粗细（倍）', 0.7, 1.4, 0.02], ['torsoW', '躯干粗细（倍）', 0.7, 1.4, 0.02],
-  ['rim', '亮边宽', 0, 4, 0.1], ['rimTorso', '躯干亮边宽', 0, 5, 0.1], ['dark', '暗边宽', 0, 4, 0.1],
-  ['tone.rim', '亮边颜色（混纸色）', 0, 0.6, 0.01], ['tone.far', '远侧手脚淡多少', 0, 0.4, 0.01], ['tone.line', '肌肉线颜色', 0, 0.5, 0.01], ['tone.edge', '描边颜色', 0, 0.6, 0.01],
+  ['shoulderW', '肩宽（一半）', 6, 20, 0.5], ['hipSplit', '两腿根错开', 0, 6, 0.2], ['muscle', '四肢粗细（倍）', 0.7, 1.4, 0.02], ['torsoW', '躯干粗细（倍）', 0.7, 1.4, 0.02],
+  ['fist.len', '拳头长', 6, 16, 0.2], ['fist.h', '拳头高', 6, 14, 0.2], ['fist.r', '拳头圆角', 1, 7, 0.1],
+  ['shade.rim', '亮边宽（躯干、腿、鞋）', 0, 3, 0.05], ['shade.rimArm', '亮边宽（胳膊、拳）', 0, 3, 0.05], ['shade.line', '近侧手脚描线宽', 0, 3, 0.05],
+  ['shade.tone', '亮边颜色（往纸色混多少）', 0, 0.4, 0.01], ['shade.up', '侧面亮边往上偏', 0, 1, 0.02],
 ];
 const pbScale = { muscle: 1, torsoW: 1 };
 const pbGet = p => p === 'muscle' || p === 'torsoW' ? pbScale[p] : p.split('.').reduce((o, k) => o[k], BODY);
