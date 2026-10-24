@@ -127,8 +127,10 @@ function step(inputs) {
       if (a.hp <= 0 || b.hp <= 0) { if (++game.phaseT > 130) { resetFighters(); game.phaseT = 0; } }
       break;
     case 'intro':
-      if (game.phaseT === 4) announce(roundName(), null, 62, 96);
-      if (game.phaseT === 68) { announce('战', null, 38, 170); Sound.stamp(); }
+      // 2.3（Jack：开场字幕加锣鼓）：「八 大 仓」—— 回合名随着「仓」砸下来；战鼓越敲越密；「战」的时候大仓（fx.js LUOGU_INTRO）
+      luoguIntro(game.phaseT, roundName() === '决胜局');
+      if (game.phaseT === 10) announce(roundName(), null, 56, 96);
+      if (game.phaseT === 68) announce('战', null, 38, 170);
       if (++game.phaseT >= 100) { game.phase = 'fight'; game.phaseT = 0; }
       break;
     case 'fight':

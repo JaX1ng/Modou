@@ -52,11 +52,7 @@ html,body{margin:0}
 .menu .row{gap:clamp(8px,1.6cqh,20px)}
 .menu .ibtn{font-size:clamp(22px,5.3cqh,58px);padding:1.5cqh 3.4cqh 1.3cqh;min-width:clamp(150px,27cqh,330px)}
 .menu .seg button{font-size:clamp(18px,4.2cqh,44px);padding:1.15cqh 2.2cqh 1cqh}
-.menu .lvl button{font-size:clamp(17px,3.7cqh,40px);padding:1.25cqh 2.1cqh 1.05cqh;gap:clamp(5px,.95cqh,10px)}
-.menu .lvl .pips{gap:clamp(3px,.55cqh,6px)}
-.menu .lvl .pips s{width:clamp(4px,.75cqh,8px);height:clamp(4px,.75cqh,8px)}
-.menu .pve{gap:clamp(5px,1.1cqh,12px)}
-.menu .lvdesc{font-size:clamp(12px,2cqh,20px)}
+.menu .lvl button{font-size:clamp(18px,4.1cqh,44px);padding:1.5cqh 2.3cqh 1.3cqh;min-width:clamp(54px,10.5cqh,118px)}
 .menu .tbtn.dark{font-size:clamp(13px,2.3cqh,24px);padding:1.1cqh 1.9cqh}
 .menu .hint{font-size:clamp(12px,1.9cqh,19px)}
 .overlay.dim{background:rgba(235,234,226,.84)}
@@ -72,26 +68,16 @@ html,body{margin:0}
 .seg{display:inline-flex;box-shadow:inset 0 0 0 1.5px var(--ink);border-radius:2px;overflow:hidden}
 .seg button{font-family:var(--brush);font-size:20px;line-height:1;padding:8px 14px 7px;border:0;background:transparent;color:var(--ink);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-/* 2.2 难度（入门 / 简单 / 中等 / 困难 / 终极）：五格一样宽，两个字 + 一排小点（第几档就亮几个），选中是墨底；
-   终极：点是朱色，选中是纯黑底、字下一道朱线。下面一行是这一档的说明（鼠标停在哪格先写哪格） */
+/* 难度（2.2 入门 / 简单 / 中等 / 困难 / 终极；2.3 Jack：底下不要点、不要介绍）：五格一样宽，就是两个字，和「人机对战」一样高；
+   选中是墨底，终极选中是纯黑底、字下一道朱线 */
+.pve{align-items:stretch}
 .lvl{display:inline-flex;box-shadow:inset 0 0 0 1.5px var(--ink);border-radius:2px;overflow:hidden;background:rgba(235,234,226,.6)}
-.lvl button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font:400 21px/1 var(--brush);color:var(--ink);background:transparent;border:0;padding:10px 15px 9px;cursor:pointer;transition:background .15s,color .15s}
+.lvl button{display:grid;place-items:center;font:400 21px/1 var(--brush);letter-spacing:.06em;color:var(--ink);background:transparent;border:0;padding:10px 15px 9px;min-width:64px;cursor:pointer;transition:background .15s,color .15s}
 .lvl button + button{box-shadow:inset 1px 0 0 rgba(23,24,26,.22)}
 .lvl button:hover{background:rgba(23,24,26,.08)}
 .lvl button:focus-visible{outline:2px solid var(--cinnabar);outline-offset:-4px}
-.lvl b{font-weight:400;letter-spacing:.06em}
-.lvl .pips{display:flex;gap:4px}
-.lvl .pips s{display:block;width:5px;height:5px;border-radius:50%;background:rgba(23,24,26,.18)}
-.lvl .pips s.on{background:currentColor}
 .lvl button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
-.lvl button[aria-pressed="true"] .pips s{background:rgba(235,234,226,.22)}
-.lvl button[aria-pressed="true"] .pips s.on{background:currentColor}
-.lvl button[data-d="hell"] .pips s.on{background:var(--cinnabar)}
-.lvl button[data-d="hell"][aria-pressed="true"]{background:#000}
-.lvl button[data-d="hell"][aria-pressed="true"] b{box-shadow:0 2px 0 var(--cinnabar)}
-.pve{display:flex;flex-direction:column;align-items:center;gap:8px}
-.lvdesc{margin:0;min-height:1.4em;font-size:13px;color:var(--ink-soft);letter-spacing:.02em}
-.lvdesc b{font:400 1.2em/1 var(--brush);color:var(--ink);margin-right:.6em}
+.lvl button[data-d="hell"][aria-pressed="true"]{background:#000;text-decoration:underline 2px var(--cinnabar);text-underline-offset:.28em}
 @media (prefers-reduced-motion:reduce){.lvl button{transition:none}}
 .hint{font-size:12px;color:var(--ink-soft);margin:0}
 .big{font-family:var(--brush);font-size:clamp(46px,7vw,88px);line-height:1;margin:0;color:var(--ink)}
@@ -322,6 +308,7 @@ details.relay summary small{display:block;font-family:var(--ui);font-size:12px;c
 details.relay[open] summary{margin-bottom:6px}
 details.relay textarea{width:100%;resize:vertical;font:12px/1.4 ui-monospace,Consolas,monospace;color:var(--ink);background:rgba(255,255,255,.6);border:1.5px solid var(--ink);border-radius:2px;padding:6px 8px;margin-top:6px}
 details.relay .row.tight{justify-content:flex-start;margin-top:6px;gap:6px}
+details.relay .cbtn{padding:7px 16px 6px}
 .cbtn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
 .cbtn.ghost:hover{background:var(--ink);color:var(--paper)}
 .status.sm{font-size:13px;margin-top:6px;min-height:1.2em}
@@ -509,12 +496,9 @@ html.desktop .guide{display:none}
       <div class="panel">
         <h1 class="title">墨斗<i class="seal">拳</i></h1>
         <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
-        <div class="pve">
-          <div class="row">
-            <button class="ibtn" id="btnPve" type="button">人机对战</button>
-            <div class="lvl" id="lvlSeg" role="group" aria-label="电脑难度"></div>
-          </div>
-          <p class="lvdesc" id="lvlDesc" aria-live="polite"></p>
+        <div class="row pve">
+          <button class="ibtn" id="btnPve" type="button">人机对战</button>
+          <div class="lvl" id="lvlSeg" role="group" aria-label="电脑难度"></div>
         </div>
         <div class="row">
           <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
@@ -529,7 +513,7 @@ html.desktop .guide{display:none}
           <button class="tbtn dark" id="btnLegend" type="button">教程</button>
           <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
         </div>
-        <p class="hint" id="menuMsg">五局三胜 · 人机/联机每回合 300 秒，双人不限时</p>
+        <p class="hint" id="menuMsg" role="status" hidden></p>
       </div>
     </div>
 
@@ -563,8 +547,8 @@ html.desktop .guide{display:none}
           </div>
         </div>
         <details class="relay" id="relayBox">
-          <summary>中继服务器 <span id="relaySum">未设置</span><small>校园网（eduroam）连不上时用</small></summary>
-          <p class="hint">eduroam 这类校园网不让两台电脑直接连。填一个 TURN 中继，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，房间码会带过去。</p>
+          <summary>中继服务器 <span id="relaySum">未设置</span><small>两台设备直连不通时用（网络有防火墙、对称型 NAT 时常见）</small></summary>
+          <p class="hint">有的网络（有防火墙、对称型 NAT）不允许两台设备直接连接。填一个 TURN 中继服务器，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，连接码会带过去。</p>
           <textarea id="relayText" rows="4" spellcheck="false" placeholder="把中继后台复制的 ICE 数组整段粘进来&#10;（也可以粘 Metered 的 API 链接，或每行「turn:地址:端口 用户名 密码」）"></textarea>
           <div class="row tight">
             <button class="cbtn" id="btnRelaySave" type="button">保存并测试</button>
@@ -573,7 +557,7 @@ html.desktop .guide{display:none}
           <p class="status sm" id="relayStatus" role="status"></p>
         </details>
         <details class="relay" id="manualBox">
-          <summary>手动连接<small>用房间码一直连不上（比如公共信令服务器打不开）时用：复制粘贴连接码，连信令都不经过服务器</small></summary>
+          <summary>手动连接 · 局域网<small>两台设备在同一个局域网里（连着同一个 Wi-Fi / 路由器）时用：复制粘贴连接码直接连，不经过任何服务器。不在一个局域网的用上面的房间码</small></summary>
         <div class="row" id="netChoose">
           <button class="ibtn" id="btnHost" type="button">我来建房</button>
           <button class="ibtn ghost" id="btnJoin" type="button">我去加入</button>
@@ -627,9 +611,9 @@ html.desktop .guide{display:none}
         <p class="big sm">设置</p>
         <p class="step">音量</p>
         <div class="volrow">
-          <button class="cbtn ghost" id="volDown" type="button" aria-label="小声一点">−</button>
+          <button class="cbtn ghost" id="volDown" type="button" data-nosnd aria-label="小声一点">−</button>
           <input type="range" id="volRange" min="0" max="100" step="5" value="50" aria-label="音量">
-          <button class="cbtn ghost" id="volUp" type="button" aria-label="大声一点">＋</button>
+          <button class="cbtn ghost" id="volUp" type="button" data-nosnd aria-label="大声一点">＋</button>
           <b id="volVal">50</b>
         </div>
         <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>
@@ -798,7 +782,7 @@ html.desktop .guide{display:none}
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
 
-const VERSION = '2.2.0';
+const VERSION = '2.3.0';
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -824,7 +808,7 @@ const START_GAP = 360;                   // 开局两人站在场地正中、相
 const ZOOM = 1.76;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62）
 const ZOOM_PVP_MIN = 1.24, CAM_MARGIN = 80;   // 双人对战最远时拉到多远；人离画面边至少留多少（场地坐标）
 const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）。画面宽窄怎么变它都不变（是规则）
-const MAX_HP = 500;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500）
+const MAX_HP = 400;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500；2.3 Jack：全部改成 400）
 const DUMMY_HP = 3000, DUMMY_REFILL = 0.3;   // 打桩：木桩血量；掉到三成以下、一套打完就自动回满
 
 // 移动：往哪边按就朝哪边跑，没有后退
@@ -1870,7 +1854,9 @@ function updateFx() {
 /* ============================================================
    声音（WebAudio 合成，首次点击后开启）
    ============================================================ */
-const VOL_SHIFT = 1.6;                 // 2.1：音量刻度整体上挪（现在的 50 = 2.0.2 的 80）。旧存档按这个换算（ui.js boot）
+// 音量刻度：现在的 v 有 2.0.2 的 v × VOL_SHIFT 那么响。2.1 是 1.6（50 = 2.0.2 的 80）；
+// 2.3（Jack：默认要有 2.2 的「70」那么响，前后都跟着挪）：1.6 × 70 / 50 = 2.24 —— 现在的 50 = 2.2 的 70，别的档也都 × 1.4
+const VOL_SHIFT = 2.24, VOL_SHIFT_21 = 1.6;      // VOL_SHIFT_21：2.1 / 2.2 存的音量（modou.vol2）用的刻度，换算用
 // 2.1 声音用自己的随机数（不用 Math.random）：声音出不出得来看浏览器（有没有点过页面、声卡醒没醒），
 // 以前每响一声就从 Math.random 里拿几个数 —— 电脑 AI 也用 Math.random，测试里固定了种子还会因为「这次有没有声音」打得不一样
 let sndSeed = 0x2545f491;
@@ -1881,7 +1867,18 @@ const Sound = {
   // 调的是压缩器后面那一级（out），压缩器照样管着叠在一起的打击声不爆音。
   // 2.1（Jack：默认就要以前「80」那么响，别的档跟着挪）：整条曲线往上挪 —— 现在的 v 就是以前的 v × 1.6（50 = 以前的 80）；
   // 最后再加一级限幅（limiter），开得很大声也不破音
+  // 2.3 再挪一次（VOL_SHIFT 2.24）：现在的 50 = 2.2 的 70
   gainFor(v) { return v <= 0 ? 0 : 1.3 * Math.pow(v * VOL_SHIFT / 50, 1.32); },
+  // 存着的音量换成现在的刻度（听着和以前一样响）。get(键) 读存档（ui.js 传 localStorage，测试传假的）。
+  // 2.1 / 2.2 每次打开游戏都会把音量存一遍（modou.vol2），存着 50 的多半是没动过 —— 用新的默认 50（= 2.2 的 70）；改过的才换算
+  volFromStore(get) {
+    const num = k => { const v = parseInt(get(k), 10); return v >= 0 && v <= 100 ? v : null; };
+    const v3 = num('modou.vol3'), v2 = num('modou.vol2'), v1 = num('modou.vol');
+    if (v3 !== null) return v3;
+    if (v2 !== null) return v2 === 50 ? 50 : clamp(Math.round(v2 * VOL_SHIFT_21 / VOL_SHIFT), 0, 100);
+    if (v1 !== null) return v1 === 50 ? 50 : clamp(Math.round(v1 / VOL_SHIFT), 0, 100);
+    return 50;
+  },
   setVol(v) {
     this.vol = clamp(Math.round(v), 0, 100);
     if (this.out) this.out.gain.setTargetAtTime(this.gainFor(this.vol), this.ctx.currentTime, 0.03);
@@ -1935,6 +1932,7 @@ const Sound = {
   nz(dur, freq, q, gain, type, f2, dist, delay) {
     const c = this.ctx, t = c.currentTime + (delay || 0);
     const s = c.createBufferSource(); s.buffer = this.noise;
+    if (dur > 0.5) s.loop = true;                                      // 2.3 锣、钹的余音比噪声那一秒长：循环着放
     s.playbackRate.value = 0.9 + srnd() * 0.2;                      // 每次听着都差一点，不像复读
     const f = c.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.setValueAtTime(freq, t);
     if (f2) f.frequency.exponentialRampToValueAtTime(f2, t + dur);
@@ -1979,10 +1977,90 @@ const Sound = {
   clash() { if (!this.ok()) return; this.tone(980, 0.16, 0.12, 'square', 520); this.tone(1460, 0.12, 0.08, 'triangle', 900); this.nz(0.12, 2400, 1.2, 0.3, 'bandpass', 900); this.tone(120, 0.2, 0.3, 'sine', 50); },
   parry() { if (!this.ok()) return; this.tone(1760, 0.25, 0.1, 'sine', 1700); this.tone(2640, 0.18, 0.06, 'sine', 2600); this.nz(0.05, 5000, 1, 0.12, 'highpass'); },
   burst() { if (!this.ok()) return; this.tone(70, 0.45, 0.4, 'sine', 30); this.nz(0.4, 300, 0.6, 0.35, 'lowpass', 1200); },
-  gong() { if (!this.ok()) return; [110, 166, 221, 297].forEach((f, i) => this.tone(f, 2.2, 0.22 / (i + 1), 'sine', f * 0.985)); this.nz(0.3, 260, 0.5, 0.1); },
+  // 胜负已分：一声大锣（2.3 换成和开场一样的大锣，敲下去音往下掉一截再拖长）
+  gong() { if (!this.ok()) return; this.bigGong(1.15, 0); this.cymbal(0.45, 0.01); },
+  /* ---------- 2.3 锣鼓（Jack：开场字幕加音效 —— 中式格斗那种敲锣打鼓）----------
+     京剧锣鼓经里的几样家伙，全是现合成的（走 master，跟着音量、压缩器、限幅）：
+     · 板「八」：木头一拍，又干又脆          · 单皮鼓「大」：小而紧的鼓，「嗒」一声
+     · 堂鼓（战鼓）「咚」：大鼓，低音往下沉    · 铙钹「才」：一片高频的「嚓」+ 几声金属响
+     · 大锣「哐」：一组不成倍数的正弦（金属味），敲下去音往下掉一截再拖长（京剧大锣的「下滑」）
+     · 小锣「台」：高的锣，敲下去音往上挑（京剧小锣的「上挑」）
+     · 仓 = 大锣 + 铙钹 + 小锣一齐响
+     game.js 开场按 LUOGU_INTRO 一帧一帧敲：Sound.luogu(家伙, 力度) 走 fxDo（联机回滚不重复响） */
+  luogu(k, p) { if (!this.ok()) return; const f = this[LUOGU_KIT[k]]; if (f) f.call(this, p || 1, 0); },
+  // 一个音：f 在 glide 秒内滑到 f2（之后不动），dur 秒衰减完
+  glide(f, f2, glide, dur, gain, delay, type) {
+    const c = this.ctx, t = c.currentTime + (delay || 0);
+    const o = c.createOscillator(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    if (f2 && f2 !== f) o.frequency.exponentialRampToValueAtTime(f2, t + glide);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
+  },
+  bigGong(p, d) {
+    const f0 = 205 * (0.98 + srnd() * 0.04), L = 0.75 + 0.25 * Math.min(1.4, p);
+    // [倍数, 响度, 多久衰减完]：第二个和第一个差一点点（两个一起「嗡嗡」地起伏，像真锣）
+    for (const [r, a, s] of [[1, 1, 2.7], [1.006, 0.55, 2.5], [1.49, 0.5, 1.9], [1.98, 0.55, 1.6], [2.55, 0.32, 1.1], [3.11, 0.26, 0.9], [3.72, 0.18, 0.7], [4.66, 0.1, 0.5]])
+      this.glide(f0 * r, f0 * r * 0.86, 0.45, s * L, 0.15 * a * p, d);
+    this.nz(0.2, 1300, 0.6, 0.2 * p, 'bandpass', 600, false, d);         // 锣槌砸上去那一下
+    this.nz(0.75 * L, 5200, 0.7, 0.025 * p, 'highpass', null, false, d); // 锣面「沙沙」的余音（淡一点，主要听「哐」）
+  },
+  smallGong(p, d) {
+    const f0 = 740 * (0.98 + srnd() * 0.04);
+    for (const [r, a, s] of [[1, 1, 0.95], [2.13, 0.32, 0.5], [3.3, 0.12, 0.3]]) this.glide(f0 * r, f0 * r * 1.13, 0.16, s, 0.1 * a * p, d);
+    this.nz(0.04, 3000, 1.2, 0.1 * p, 'bandpass', null, false, d);
+  },
+  cymbal(p, d) {
+    this.nz(0.42 + 0.22 * Math.min(1.4, p), 3800, 0.5, 0.17 * p, 'highpass', null, false, d);
+    this.nz(0.3, 7200, 0.9, 0.13 * p, 'bandpass', null, false, d);
+    for (const f of [2870, 3990, 5310]) this.glide(f, f * 0.995, 0.3, 0.26, 0.02 * p, d, 'square');
+  },
+  danpi(p, d) { this.glide(700, 380, 0.05, 0.09, 0.28 * p, d, 'triangle'); this.nz(0.025, 2600, 1.4, 0.24 * p, 'bandpass', null, false, d); },
+  clapper(p, d) {
+    this.nz(0.03, 1900, 5, 0.28 * p, 'bandpass', null, false, d);
+    this.nz(0.022, 3300, 4, 0.2 * p, 'bandpass', null, false, (d || 0) + 0.004);
+    this.glide(1250, 1150, 0.03, 0.045, 0.07 * p, d);
+  },
+  warDrum(p, d) {
+    const k = 0.97 + srnd() * 0.06;
+    this.glide(150 * k, 66 * k, 0.2, 0.42, 0.5 * p, d);
+    this.glide(240 * k, 120 * k, 0.12, 0.18, 0.11 * p, d, 'triangle');
+    this.nz(0.06, 700, 0.8, 0.2 * p, 'lowpass', 250, false, d);
+  },
+  cang(p, d) { this.bigGong(p, d); this.cymbal(p * 0.9, (d || 0) + 0.004); this.smallGong(p * 0.4, (d || 0) + 0.008); if (p > 1.1) this.warDrum(p * 0.75, d); },
+  /* ---------- 2.3 菜单的声音（Jack：鼠标移到按钮上要有声音，按下去是另一声）----------
+     移上去：轻轻一声木鱼「笃」；按下去：单皮鼓「嗒」加一点低音。菜单背景里也响（不走 ok() 的「菜单里不出声」），
+     浏览器还没让出声（没点过页面）就不响；不走 fxDo（不是对局里的事） */
+  uiReady() { return this.on && this.vol > 0 && !!this.ctx && this.ctx.state === 'running'; },
+  uiHover() {
+    if (!this.uiReady()) return;
+    const now = performance.now(); if (now - (this.uiT || 0) < 45) return; this.uiT = now;
+    this.glide(1520, 1380, 0.04, 0.07, 0.055);
+    this.nz(0.016, 2400, 3, 0.035, 'bandpass');
+  },
+  uiPress() {
+    if (!this.uiReady()) return;
+    this.uiT = performance.now();
+    this.glide(520, 260, 0.06, 0.12, 0.11, 0, 'triangle');
+    this.nz(0.022, 2200, 1.6, 0.08, 'bandpass');
+    this.glide(150, 80, 0.08, 0.14, 0.08);
+  },
 };
+// 锣鼓经的字 → 家伙
+const LUOGU_KIT = { 八: 'clapper', 大: 'danpi', 仓: 'cang', 台: 'smallGong', 才: 'cymbal', 咚: 'warDrum' };
+/* 开场锣鼓（帧 → [[字, 力度]…]）：「八 大 仓」—— 回合名在第 10 帧随「仓」砸下来（game.js）；
+   接着战鼓一下比一下密、越敲越响（急急风）；第 68 帧「战」：大仓 + 一声战鼓。决胜局在前面多一声「仓」、鼓点更密 */
+const LUOGU_INTRO = { 2: [['八', 0.85]], 6: [['大', 0.95]], 10: [['仓', 0.9]] };
+[[24, .4], [31, .44], [37, .48], [42, .52], [46, .56], [50, .6], [53, .64], [56, .68], [58, .72], [60, .76], [62, .8], [64, .84], [66, .88]]
+  .forEach(([f, p]) => (LUOGU_INTRO[f] = LUOGU_INTRO[f] || []).push(['咚', p]));
+LUOGU_INTRO[46].push(['台', 0.55]);
+LUOGU_INTRO[68] = [['仓', 1.2]];
+const LUOGU_FINAL = { 18: [['仓', 0.8]], 27: [['咚', 0.42]], 34: [['咚', 0.46]], 40: [['咚', 0.5]], 44: [['才', 0.5]] };
+function luoguIntro(t, final) {
+  for (const [k, p] of LUOGU_INTRO[t] || []) Sound.luogu(k, p);
+  if (final) for (const [k, p] of LUOGU_FINAL[t] || []) Sound.luogu(k, p);
+}
 // 声音也走 fxDo：回滚重算时先攒着，算完只补放新时间线里多出来的（1.9.0）
-for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'gong']) {
+for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'gong', 'luogu']) {
   const play = Sound[k];
   Sound[k] = function (...a) { fxDo('S' + k, () => play.apply(Sound, a)); };
 }
@@ -3923,10 +4001,11 @@ const PLANS = {
 // 2.1：airBlock 看见空中招站着挡（挡对高低）的概率；aaPlan 看见起跳就想好怎么接的概率；habit 记习惯有多准；guard 近身先举手；
 //      punishBlock 挡住以后罚；inst / instMax 极难「瞬间看穿」的概率（基础 / 你的习惯招）
 const LEVELS = {
-  // 2.2 入门（新）：比简单再简单一点 —— 反应 12 帧、挡四成、很少读招和卸力、连招短、常发呆；防跳、挡住就罚、记习惯都只有一点
-  novice: { react: 12, block: .4, lowRead: .48, parry: .07, push: .18, burst: .32, read: .22, catch: .25, duck: .55, aa: .3, step: .2, low: .17, sup: .6,
-    punish: .42, combo: .7, aggr: .75, jump: .65, grabBlock: .33, idle: .33, tech: .12, gc: .12, stomp: .4, scoop: .12, roll: .27,
-    slip: .06, gwalk: .22, oki: .32, catchSlip: .25, airBlock: .8, aaPlan: .5, habit: .38, guard: .28, punishBlock: .45 },
+  // 2.2 入门（新）：比简单再简单一点 —— 反应慢、挡得少、很少读招和卸力、连招短、常发呆；防跳、挡住就罚、记习惯都只有一点。
+  // 2.3（Jack：再降 5~10%）：反应 12 → 13、挡 0.4 → 0.34、读招 0.22 → 0.16、罚 0.42 → 0.35、挡住就罚 0.45 → 0.38、连招接下去 0.7 → 0.62、主动 0.75 → 0.7
+  novice: { react: 13, block: .34, lowRead: .48, parry: .07, push: .18, burst: .32, read: .16, catch: .25, duck: .55, aa: .3, step: .2, low: .17, sup: .6,
+    punish: .35, combo: .62, aggr: .7, jump: .65, grabBlock: .33, idle: .33, tech: .12, gc: .12, stomp: .4, scoop: .12, roll: .27,
+    slip: .06, gwalk: .22, oki: .32, catchSlip: .25, airBlock: .8, aaPlan: .5, habit: .38, guard: .28, punishBlock: .38 },
   // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
   easy: { react: 11, block: .46, lowRead: .55, parry: .12, push: .25, burst: .45, read: .3, catch: .35, duck: .5, aa: .4, step: .25, low: .2, sup: .7,
     punish: .55, combo: .78, aggr: .85, jump: .8, grabBlock: .45, idle: .25, tech: .2, gc: .2, stomp: .55, scoop: .2, roll: .35,
@@ -3943,20 +4022,14 @@ const LEVELS = {
   // 终极（2.1 叫「极难」，id 还是 hell）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
   // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明。
   // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
-  hell: { react: 10, block: .8, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
+  // 2.3（Jack：再降 5~10%）：瞬间看穿基础 0.3 → 0.2（你老出的招最多还是 0.55：别养习惯）、看穿 see 0.55 → 0.48、平时反应 10 → 11 帧、挡 0.8 → 0.74
+  hell: { react: 11, block: .74, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
     punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
-    slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .55, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
-    inst: .3, instMax: .55, instReact: 1 },
+    slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
+    inst: .2, instMax: .55, instReact: 1 },
 };
-// 2.2 难度的名字（两个字）和一句话说明：菜单、电脑血条底下、教程里用
+// 2.2 难度的名字（两个字）：菜单、电脑血条底下用（2.3 Jack：菜单上不要介绍，一句话说明删了）
 const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极' };
-const LEVEL_DESC = {
-  novice: '出手慢、挡得少、连招短 —— 先熟悉按键和招式',
-  easy: '会挡、会还手，反应比人慢一截',
-  normal: '会看招克制、会罚你的空招，像个练过的人',
-  hard: '一半的招会被它看穿，还会记你的习惯',
-  hell: '偶尔一眼看穿你的招，破绽必罚 —— 高手的挑战',
-};
 const LEVEL_IDS = Object.keys(LEVELS);
 function weighted(list) {
   let sum = 0; for (const [, w] of list) sum += w;
@@ -5508,7 +5581,8 @@ const Drill = {
       if (!c.demo) Sound.stamp && Sound.stamp();
       if (!c.demo && c.ok >= c.def.need && !c.passed) {
         c.passed = true; c.passAt = c.frame; this.passes++; this.save();
-        stamp(F1.x, FLOOR - 230, '过关', 40, F1);
+        // 2.3：「过关」印章盖在上面的练习面板上（render.js drawDrillPanel，以前盖在你头顶、被面板挡住），配一声锣
+        if (Sound.luogu) Sound.luogu('仓', 0.75);
         if (this.onPass) this.onPass(c.def);
       }
     }
@@ -6063,14 +6137,38 @@ function drawSeal(x, y, text, size, rot, alpha, sc, specks, col) {
   if (specks) { ctx.fillStyle = C.paper; for (const [sx, sy, sr] of specks) { ctx.beginPath(); ctx.arc(sx * w, sy * h, sr, 0, Math.PI * 2); ctx.fill(); } }
   ctx.restore();
 }
+// 训练场上面那块面板（训练 / 破招练习）在画面上的位置：面板每帧画的时候记下来，印章用（2.3）
+let hudBox = null;
+/* 印章（在镜头的变换里画）。2.3（Jack：训练场上面的字把印章挡掉了）：训练场里印章画在面板上面（render 里画完面板再画一遍印章），
+   落在面板上的往下挪到面板下沿外面 —— 挪下去要压到谁的头就少挪一点（宁可盖住一点面板，也不盖住人） */
 function drawStamps() {
-  const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0)), top = FLOOR + (120 - FY - camLift * zz) / zz;   // 印章别盖到上面的血条
+  const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0));
+  const wy = vy => FLOOR + (vy - FY - camLift * zz) / zz;            // 画面 y → 场地 y
+  const top = wy(120);                                                // 印章别盖到上面的血条
+  const box = game.mode === 'train' ? hudBox : null;
+  const heads = box ? game.p.map(F => F.J && F.J.head).filter(Boolean) : [];
   for (const e of FX) {
     if (e.type !== 'stamp') continue;
     const L = RL(e), age = e.max - L;
     const sc = age < 6 ? 1.7 - 0.7 * EASE.out(Math.max(0, age) / 6) : 1;
     const a = clamp(age / 4, 0, 1) * Math.min(1, L / 18);
-    drawSeal(clamp(e.x, camX - VW / (2 * camZ) + 50, camX + VW / (2 * camZ) - 50), Math.max(top, e.y), e.text, e.size, e.rot, a, sc, e.specks, e.col);
+    const x = clamp(e.x, camX - VW / (2 * camZ) + 50, camX + VW / (2 * camZ) - 50);
+    let y = Math.max(top, e.y);
+    if (box) {
+      if (e.ty == null) {                    // 挪多少只在盖下去那一下算一次，之后不跟着人动（不然人一动印章就跟着跳）
+        const k = e.size * SEAL_K, n = e.text.length, cols = n >= 4 ? 2 : 1, rows = n >= 4 ? Math.ceil(n / 2) : n;
+        const hw = (cols + 0.36) * k / 2 + 6, hh = (rows + 0.36) * k / 2 + 6;   // 印章的半宽、半高（场地坐标；印章是歪着盖的，多留一点）
+        const vx = VW / 2 + (x - camX) * zz;
+        if (vx + hw * zz > box.x && vx - hw * zz < box.x + box.w) {
+          let want = wy(box.y + box.h + 4) + hh;                               // 整个挪到面板下面
+          for (const hd of heads) if (Math.abs(hd[0] - x) < hw + 16) want = Math.min(want, hd[1] - 16 - hh);   // 别压到头
+          y = Math.max(y, want);
+        }
+        e.ty = y;
+      }
+      y = e.ty;
+    }
+    drawSeal(x, y, e.text, e.size, e.rot, a, sc, e.specks, e.col);
   }
   ctx.globalAlpha = 1;
 }
@@ -6157,6 +6255,7 @@ function drawHud() {
   if (game.endless) { ctx.font = `600 34px ${UIF}`; ctx.fillText('∞', VW / 2, 38); }
   else { const sec = String(Math.ceil(game.timer / 60)); ctx.font = `${sec.length > 2 ? 27 : 34}px ${BRUSH}`; ctx.fillText(sec, VW / 2, 42); }
   ctx.font = `16px ${BRUSH}`; ctx.fillStyle = C.ink;
+  hudBox = null;
   if (game.mode === 'train') { if (Drill.cur) drawDrillPanel(); else drawTrainPanel(); }
   else ctx.fillText(roundName(), VW / 2, 88);
 }
@@ -6175,36 +6274,53 @@ function rrect(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-// 破招练习的面板（2.1；2.2 Jack：太小、不好看 —— 放大重排）：左上「破招」/「演示」朱印 + 这一课的名字，右上三个大圈（成功一次涂满一个），
-// 中间一步一步怎么破（按你自己的键位），下面上一遍怎么样（成功 / 没成、为什么），大一号、带颜色，几秒后淡掉
-function drawDrillPanel() {
-  const c = Drill.cur, d = c.def;
-  const w = Math.min(680, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18;
-  ctx.font = `500 15px ${UIF}`;
-  const lines = [];
-  d.how.forEach((t, i) => wrapText(drillText(t, false), w - pad * 2 - 30).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
-  const how = lines.slice(0, 4);
-  const age = c.frame - c.lastT, showLast = c.last && age < 300, la = showLast ? Math.min(1, (300 - age) / 40) : 0;
-  const h = 58 + how.length * 23 + (showLast ? 40 : 0) + 26;
+// 一行字放不下（2.3：面板里的字不出框）：先按 sizes 从大到小缩字号，最小号还放不下就截短加「…」。
+// 返回放得下的那一行；ctx.font 停在用上的字号（接着量宽、画都用它）
+function fitLine(text, maxW, weight, sizes, family) {
+  const font = s => `${weight ? weight + ' ' : ''}${s}px ${family}`;
+  for (const s of sizes) { ctx.font = font(s); if (ctx.measureText(text).width <= maxW) return text; }
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+// 训练场两块面板共用：纸色圆角块 + 淡影 + 细边（accent = 朱红边，演示时用）；顺手记下位置给印章躲（hudBox）
+function paperPanel(x, y, w, h, accent) {
   ctx.save();
   ctx.shadowColor = 'rgba(23,24,26,.18)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
   rrect(x, y, w, h, 8); ctx.fillStyle = 'rgba(240,239,232,.93)'; ctx.fill();
   ctx.restore();
-  rrect(x + 0.5, y + 0.5, w - 1, h - 1, 8); ctx.strokeStyle = c.demo ? C.cin : 'rgba(23,24,26,.22)'; ctx.lineWidth = c.demo ? 2 : 1; ctx.stroke();
-  // 左上：朱印「破招」/「演示」+ 招名 · 破法
-  const tag = c.demo ? '演示' : '破招';
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-  rrect(x + pad, y + 13, 56, 32, 4); ctx.fillStyle = C.cin; ctx.fill();
-  ctx.font = `22px ${BRUSH}`; ctx.fillStyle = C.paper; ctx.fillText(tag, x + pad + 28, y + 30);
-  ctx.textAlign = 'left'; ctx.font = `26px ${BRUSH}`; ctx.fillStyle = C.ink;
-  const title = `${d.topicName} · ${d.name}`;
-  let tw = w - pad * 2 - 66 - (c.demo ? 190 : 130), tt = title;
-  while (ctx.measureText(tt).width > tw && tt.length > 4) tt = tt.slice(0, -2) + '…';
-  ctx.fillText(tt, x + pad + 68, y + 30);
+  rrect(x + 0.5, y + 0.5, w - 1, h - 1, 8); ctx.strokeStyle = accent ? C.cin : 'rgba(23,24,26,.22)'; ctx.lineWidth = accent ? 2 : 1; ctx.stroke();
+  hudBox = { x, y, w, h };
+}
+// 面板左上的朱印小签（「训练」「破招」「演示」）：56 × 32
+function sealTag(x, y, text) {
+  rrect(x, y, 56, 32, 4); ctx.fillStyle = C.cin; ctx.fill();
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = `22px ${BRUSH}`; ctx.fillStyle = C.paper;
+  ctx.fillText(text, x + 28, y + 17);
+}
+// 过关印章的白点（固定的，不用随机数）
+const PASS_SPECKS = [[-0.3, 0.22, 1.3], [0.26, -0.3, 1.7], [0.12, 0.4, 1], [-0.22, -0.12, 1.1], [0.34, 0.16, 1.4], [-0.38, -0.36, 0.9], [0.05, -0.05, 0.8]];
+/* 破招练习的面板（2.1；2.2 Jack：太小、不好看 —— 放大重排；2.3 Jack：最底下一排字穿出方框、面板把印章挡掉了 —— 改矮）：
+   第一行：左上「破招」/「演示」朱印 + 这一课的名字，右上三个圈（成功一次涂满一个）；
+   上一遍怎么样（成功 / 没成、为什么）就写在第一行、盖住课名，带颜色，五秒后淡回课名（以前另起一行，面板一下子变高）；
+   下面一步一步怎么破（按你自己的键位）。最底下那行「下面工具条：……」去掉了 —— 下面的工具条自己就看得见。
+   过关：「过关」印章直接盖在面板右边（以前盖在你头顶上，正好被面板挡住） */
+function drawDrillPanel() {
+  const c = Drill.cur, d = c.def;
+  const w = Math.min(760, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18, tx = x + pad + 68;
+  ctx.font = `500 15px ${UIF}`;
+  const lines = [];
+  d.how.forEach((t, i) => wrapText(drillText(t, false), x + w - pad - tx).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
+  const how = lines.slice(0, 4);
+  const h = 60 + how.length * 22;
+  paperPanel(x, y, w, h, c.demo);
+  sealTag(x + pad, y + 13, c.demo ? '演示' : '破招');
   // 右上：成功几次（三个圈，涂满 = 成功一次）；演示时写「电脑替你按」
+  let rightW;
   if (c.demo) {
     ctx.textAlign = 'right'; ctx.font = `600 13px ${UIF}`; ctx.fillStyle = C.cin;
-    ctx.fillText('电脑替你按 · Esc 跳过', x + w - pad, y + 30);
+    const t = '电脑替你按 · Esc 跳过';
+    ctx.fillText(t, x + w - pad, y + 30); rightW = ctx.measureText(t).width;
   } else {
     for (let i = 0; i < d.need; i++) {
       const cx = x + w - pad - 13 - (d.need - 1 - i) * 34, on = i < c.ok;
@@ -6212,34 +6328,42 @@ function drawDrillPanel() {
       if (on) { ctx.fillStyle = C.cin; ctx.fill(); ctx.fillStyle = C.paper; ctx.font = `600 13px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText('✓', cx, y + 30); }
       else { ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 2; ctx.stroke(); }
     }
+    rightW = d.need * 34 - 8;
   }
-  // 中间：一步一步怎么破
-  let yy = y + 68;
+  // 第一行：课名；刚练完一遍就换成这一遍怎么样（淡进来，五秒后淡回课名）
+  const tw = x + w - pad - rightW - 18 - tx;
+  const age = c.frame - c.lastT, la = c.last && age < 300 ? clamp(Math.min(age / 6, (300 - age) / 30), 0, 1) : 0;
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  if (la < 1) {
+    ctx.globalAlpha = 1 - la; ctx.fillStyle = C.ink;
+    ctx.fillText(fitLine(`${d.topicName} · ${d.name}`, tw, '', [26, 23, 20], BRUSH), tx, y + 30);
+  }
+  if (la > 0) {
+    ctx.globalAlpha = la;
+    const ok = c.last.ok, txt = fitLine((ok ? '✓ ' : '✗ ') + drillText(c.last.text, false), tw - 26, '700', [18, 16, 14], UIF);
+    rrect(tx - 6, y + 14, ctx.measureText(txt).width + 26, 32, 16); ctx.fillStyle = ok ? 'rgba(34,56,90,.13)' : 'rgba(184,50,29,.13)'; ctx.fill();
+    ctx.fillStyle = ok ? C.indigo : C.cin; ctx.fillText(txt, tx + 7, y + 30);
+  }
+  ctx.globalAlpha = 1;
+  // 下面：一步一步怎么破（序号在朱印底下那一列，字和课名对齐）
+  let yy = y + 66;
   for (const L of how) {
     if (L.n) {
-      ctx.beginPath(); ctx.arc(x + pad + 10, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
-      ctx.fillStyle = C.paper; ctx.font = `600 12px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText(String(L.n), x + pad + 10, yy + 1);
+      ctx.beginPath(); ctx.arc(x + pad + 46, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
+      ctx.fillStyle = C.paper; ctx.font = `600 12px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText(String(L.n), x + pad + 46, yy + 1);
     }
     ctx.textAlign = 'left'; ctx.font = `500 15px ${UIF}`; ctx.fillStyle = '#2b2c28';
-    ctx.fillText(L.l, x + pad + 30, yy + 1);
-    yy += 23;
+    ctx.fillText(L.l, tx, yy + 1);
+    yy += 22;
   }
-  // 上一遍：成功 / 没成、为什么
-  if (showLast) {
-    yy += 6;
-    ctx.globalAlpha = la;
-    const ok = c.last.ok, txt = (ok ? '✓ ' : '✗ ') + drillText(c.last.text, false);
-    ctx.font = `700 17px ${UIF}`;
-    const lw = Math.min(w - pad * 2, ctx.measureText(txt).width + 24);
-    rrect(x + pad, yy - 2, lw, 30, 15); ctx.fillStyle = ok ? 'rgba(34,56,90,.12)' : 'rgba(184,50,29,.12)'; ctx.fill();
-    ctx.fillStyle = ok ? C.indigo : C.cin; ctx.textAlign = 'left';
-    let t2 = txt; while (ctx.measureText(t2).width > lw - 24 && t2.length > 6) t2 = t2.slice(0, -2) + '…';
-    ctx.fillText(t2, x + pad + 12, yy + 13);
-    ctx.globalAlpha = 1;
-    yy += 40;
+  // 过关：印章盖在面板右上（压着那三个圈），一秒后弹结算
+  if (c.passed && !c.demo) {
+    const pa = c.frame - c.passAt;
+    if (pa >= 0 && pa < 150) {
+      const sc = pa < 6 ? 1.7 - 0.7 * EASE.out(pa / 6) : 1, a = clamp(pa / 4, 0, 1) * Math.min(1, (150 - pa) / 20);
+      drawSeal(x + w - pad - 47, y + 56, '过关', 40, -0.12, a, sc, PASS_SPECKS, C.cin);
+    }
   }
-  ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#7a7b74'; ctx.textAlign = 'left';
-  ctx.fillText(c.demo ? '演示放两三遍就回到说明' : '下面工具条：说明 · 演示 · 出招提示 · 换一课　|　Esc 暂停', x + pad, yy + 6);
 }
 /* 2.2 出招提示（Jack：弄不清对面啥时候要出招 —— 练习可以有准备）：画在木桩头上（跟着人走，在场景里）
    · 主动课：木桩站好位置后倒数 3 · 2 · 1（一圈朱线转满），出手那一下「出」；他每一招一抬手（前摇里）头上一个「!」
@@ -6305,33 +6429,48 @@ function drawDrillCue() {
     ctx.restore();
   }
 }
-// 训练场（2.0.2 以前叫「打桩练习」）的数值面板
+/* 训练场（2.0.2 以前叫「打桩练习」）的数值面板。2.3（Jack：最底下一排字穿出方框、面板把印章挡掉了）：
+   和破招练习的面板一个样子，改宽改矮 —— 第一行：「训练」朱印 + 这一招（毛笔字）+ 系、帧数（小字），右上木桩的血；
+   下面三行：这下（打中 / 被挡、伤害、为什么）、帧差、连击（这一套 · 上一套 · 最高）。
+   每行放不下先缩字、再截短（fitLine），字不出框 */
 function drawTrainPanel() {
   const P = game.p[0], D = game.p[1], I = P.info;
-  const x = VW / 2 - 215, y = 82, w = 430, h = 146;
-  ctx.fillStyle = 'rgba(235,234,226,.84)'; ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  ctx.font = `18px ${BRUSH}`; ctx.fillStyle = C.cin; ctx.fillText('训练场', x + 12, y + 15);
-  ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.textAlign = 'right';
-  ctx.fillText(`木桩 ${Math.max(0, Math.round(D.hp))} / ${D.maxHp} · 三成以下回满`, x + w - 12, y + 15); ctx.textAlign = 'left';
-  const row = (k, v, yy, col) => {
-    ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(k, x + 14, yy);
-    ctx.font = `500 15px ${UIF}`; ctx.fillStyle = col || C.ink; ctx.fillText(v, x + 62, yy);
-  };
-  if (!I) { row('提示', '随便打，下面能换木桩的动作、开无限气', y + 42); row('', '想一招一招练怎么破对面：点下面红色的「破招练习」', y + 64, C.cin); }
-  else {
-    const fd = I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : '';
-    const sys = I.tier ? `（${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}）` : '';
-    row('招式', `${I.label}${sys}  ${fd}`, y + 40);
-    // why：为什么（谁克谁、对方为什么没挡住、为什么没抓到）—— 讲规则的字只在这里写，不飘在人身上（1.9.2）
-    row('这下', `${I.how}${I.dmg > 0 ? '  -' + I.dmg : ''}${I.why ? '　' + I.why : ''}`, y + 62, I.how === '被挡' ? C.indigo : C.ink);
+  const w = Math.min(760, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18, h = 126, tx = x + pad + 68, right = x + w - pad;
+  paperPanel(x, y, w, h);
+  sealTag(x + pad, y + 13, '训练');
+  // 右上：木桩的血
+  ctx.textAlign = 'right'; ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#6b6c66';
+  const hpT = `木桩 ${Math.max(0, Math.round(D.hp))} / ${D.maxHp} · 三成以下回满`;
+  ctx.fillText(hpT, right, y + 30);
+  const tw = right - ctx.measureText(hpT).width - 18 - tx;
+  // 第一行：这一招 + 系 + 帧数（还没打中过就写「随便打」）
+  ctx.textAlign = 'left';
+  const name = I ? I.label : '随便打';
+  const sub = !I ? '打中木桩，这里写这一招的帧数、帧差、伤害'
+    : [I.tier ? `${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}` : '', I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : ''].filter(Boolean).join('　');
+  const nm = fitLine(name, tw, '', [26, 22], BRUSH);
+  ctx.fillStyle = C.ink; ctx.fillText(nm, tx, y + 30);
+  const nw = ctx.measureText(nm).width + 14;
+  if (sub && tw - nw > 40) { ctx.fillStyle = '#6b6c66'; ctx.fillText(fitLine(sub, tw - nw, '500', [13, 12], UIF), tx + nw, y + 31); }
+  // 下面三行：左边小字是哪一项（在朱印底下那一列，右对齐），右边是数
+  const row = (k, yy) => { ctx.textAlign = 'right'; ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(k, x + pad + 56, yy); ctx.textAlign = 'left'; };
+  const val = (v, yy, col, x0) => { ctx.fillStyle = col || C.ink; const t = fitLine(v, right - (x0 || tx), '500', [15, 14, 13], UIF); ctx.fillText(t, x0 || tx, yy); return ctx.measureText(t).width; };
+  const r1 = y + 66, r2 = y + 88, r3 = y + 110;
+  if (!I) {
+    row('提示', r1); val('下面能换木桩的动作（站、蹲、挡、乱挡、一直跳），还能开无限气', r1);
+    row('破招', r2); val('想一招一招练怎么破对面：点下面红色的「破招练习」', r2, C.cin);
+  } else {
+    // 这下：结果 + 伤害（被挡用靛蓝），后面跟为什么（谁克谁、对方为什么没挡住 —— 讲规则的字只在这里写，不飘在人身上，1.9.2）
+    row('这下', r1);
+    const hw = val(`${I.how}${I.dmg > 0 ? '  -' + I.dmg : ''}`, r1, I.how === '被挡' ? C.indigo : C.ink);
+    if (I.why && right - (tx + hw + 16) > 40) val(I.why, r1, '#55564f', tx + hw + 16);
+    row('帧差', r2);
     const adv = I.down ? '击倒' : I.adv == null ? '—' : (I.adv > 0 ? '+' : '') + I.adv + ' 帧' + (I.adv > 0 ? '（你先动）' : I.adv < 0 ? '（对方先动）' : '（一起动）');
-    row('帧差', adv, y + 84, I.adv > 0 || I.down ? C.cin : C.ink);
+    val(adv, r2, I.adv > 0 || I.down ? C.cin : C.ink);
   }
-  const pc = P.prevCombo && P.prevCombo.hits >= 2 ? `  ｜ 上一套 ${P.prevCombo.hits} 下 · ${P.prevCombo.dmg}` : '';
-  row('连击', `这一套 ${P.combo} 下 · ${P.comboDmg}${pc}`, y + 106);
-  row('最高', `一套最多打掉 ${P.maxComboDmg}`, y + 128, '#55564f');
+  row('连击', r3);
+  const pc = P.prevCombo && P.prevCombo.hits >= 2 ? `　上一套 ${P.prevCombo.hits} 下 · ${P.prevCombo.dmg}` : '';
+  val(`这一套 ${P.combo} 下 · ${P.comboDmg}${pc}　最高 ${P.maxComboDmg}`, r3);
 }
 /* ---------- 镜头（1.8.0） ----------
    双人对战（和菜单背景）：两人都要在画面里 —— 照两人中间，离得远就拉远（最远 ZOOM_PVP_MIN），近了放大到 ZOOM。
@@ -6392,12 +6531,18 @@ function render() {
   const order = (b.state === 'attack' && a.state !== 'attack') ? [[a, va], [b, vb]] : [[b, vb], [a, va]];
   drawFighter(...order[0]); drawFighter(...order[1]);
   drawFx();
-  drawStamps();
-  if (game.mode === 'train' && Drill.cur) drawDrillCue();   // 2.2 破招练习的出招提示（倒数、「!」），画在木桩头上
+  const train = game.mode === 'train';
+  if (!train) drawStamps();
+  if (train && Drill.cur) drawDrillCue();   // 2.2 破招练习的出招提示（倒数、「!」），画在木桩头上
   ctx.restore();
   if (game.flash > 0.01) { ctx.fillStyle = `rgba(245,244,238,${game.flash})`; ctx.fillRect(0, 0, VW, VH); }
-  if (game.mode === 'pve' || game.mode === 'online' || game.mode === 'train') { const li = localIdx(); drawOffscreen(game.p[li], game.p[1 - li]); }
+  if (game.mode === 'pve' || game.mode === 'online' || train) { const li = localIdx(); drawOffscreen(game.p[li], game.p[1 - li]); }
   if (game.mode !== 'attract') drawHud();
+  if (train) {                               // 2.3 训练场：印章画在面板上面（面板不再挡印章），同一套镜头变换
+    ctx.save(); ctx.translate(sx, sy); ctx.translate(VW / 2, FY + camLift * zz); ctx.scale(zz, zz); ctx.translate(-camX, -FLOOR);
+    drawStamps();
+    ctx.restore();
+  }
   if (!game.paused) drawOverlayFx();
   if (game.mode === 'online') drawNetStatus();
   if (game.mode !== 'attract' && Sound.asleep()) drawSoundHint();
@@ -7504,6 +7649,7 @@ const STAGES = {
       g.fillRect(px - 1.5, base - 7 * 30 - 30, 3, 26);
       mist(g, w, fy - 200, 150, 0.7);
       ridge(g, w, fy - 70, 40, 0.12, 37, 0.008);
+      mist(g, w, fy - 120, 120, 0.5);                 // 2.3：远景再淡一点（月亮门里那座塔就在人背后）
     },
     mid(g, L) {
       const { w, fy, R } = L;
@@ -7576,6 +7722,11 @@ const STAGES = {
         g.strokeStyle = 'rgba(23,24,26,.45)'; g.lineWidth = 2;
         g.beginPath(); g.moveTo(fx + 8, fy - 314); g.lineTo(fx + 50, fy - 309); g.quadraticCurveTo(fx + 45, fy - 250, fx + 52, fy - 192); g.lineTo(fx + 8, fy - 196); g.stroke();
       }
+      // 2.3（Jack：训练场背景淡一点，不然看不清人）：整层罩一层纸色 —— 瓦檐那道黑边正好在人的胸口、兵器架和木人桩在人腿后面，
+      // 颜色都往纸色退一半多。source-atop：只罩画了东西的地方（月亮门的洞、墙头上的天还是透的）
+      g.save(); g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = 'rgba(236,233,223,.56)'; g.fillRect(0, 0, w, L.h);
+      g.restore();
     },
     ground(g, L) {
       const { x0, x1, R } = L, GW = x1 - x0;
@@ -7820,8 +7971,10 @@ function step(inputs) {
       if (a.hp <= 0 || b.hp <= 0) { if (++game.phaseT > 130) { resetFighters(); game.phaseT = 0; } }
       break;
     case 'intro':
-      if (game.phaseT === 4) announce(roundName(), null, 62, 96);
-      if (game.phaseT === 68) { announce('战', null, 38, 170); Sound.stamp(); }
+      // 2.3（Jack：开场字幕加锣鼓）：「八 大 仓」—— 回合名随着「仓」砸下来；战鼓越敲越密；「战」的时候大仓（fx.js LUOGU_INTRO）
+      luoguIntro(game.phaseT, roundName() === '决胜局');
+      if (game.phaseT === 10) announce(roundName(), null, 56, 96);
+      if (game.phaseT === 68) announce('战', null, 38, 170);
       if (++game.phaseT >= 100) { game.phase = 'fight'; game.phaseT = 0; }
       break;
     case 'fight':
@@ -7991,7 +8144,7 @@ ${J}`;se.test(Q)&&(H(F),F=setTimeout(ne,Zo))},Ue=()=>{b.iceGatheringState==="com
         （重算时不出特效、不出声）。对方网络卡得太久（超过 MAX_PRED 帧没消息）才停下来等。
    传输：输入走「不保证顺序、不重传」的通道（丢了靠下一包补上），二进制小包：每包带上对方还没确认收到的那几帧（一般 2~6 帧、
         二三十字节；以前是 JSON、每包固定 16 帧、一百多字节）。
-   中继（TURN，可选）：校园网（eduroam）这类网络不让两台电脑直接连，填一个 TURN 中继，连不上直连时数据经中继转发。
+   中继（TURN，可选）：有的网络（防火墙、对称型 NAT）不让两台设备直接连，填一个 TURN 中继，连不上直连时数据经中继转发。
         手动连接时连接码带上房主的中继；用房间码时邀请链接带上房主的中继（对方不用自己填）。 */
 
 /* ---------- 中继设置 ---------- */
@@ -9158,10 +9311,10 @@ function setPaused(p) {
   MouseLock.sync();
   if (!p && game.mode === 'train' && Drill.cur && Drill.cur.passed && !Drill.cur.passShown) setTimeout(showPass, 400);   // 2.2 过关那一下正好暂停了：回来再弹结算
 }
-const MENU_HINT = `五局三胜 · 人机/联机每回合 ${ROUND_FRAMES / 60} 秒，双人不限时 · 键位、招式、连招在「教程」里`;
+// 2.3（Jack：主菜单最底下那句「五局三胜……」删掉）：这一行平时不显示，只在出事的时候写（对方断开、版本不一样……）
 function toMenu(msg) {
   game.paused = false; btnPause.disabled = true;
-  $('menuMsg').textContent = msg || MENU_HINT;
+  $('menuMsg').textContent = msg || ''; $('menuMsg').hidden = !msg;
   $('menuMsg').style.color = msg ? 'var(--cinnabar)' : '';
   if (Drill.cur) Drill.stop();
   showOverlay(menu); startAttract();
@@ -9200,23 +9353,13 @@ Hooks.matchOver = () => {
   Ach.matchOver(wi);
   setTimeout(() => { if (game.phase === 'over') showOverlay(resultEl); }, 900);
 };
-/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字；主界面重新排）：
-   人机对战按钮旁边一排五格，每格两个字 + 底下一排小点（几个点 = 第几档，终极的点是朱色）；下面一行写这一档是什么样的电脑，
-   鼠标停在哪一格就先写那一格的 */
-$('lvlSeg').innerHTML = LEVEL_IDS.map((id, i) => `<button type="button" data-d="${id}" aria-pressed="false" title="${LEVEL_NAME[id]}：${LEVEL_DESC[id]}">` +
-  `<b>${LEVEL_NAME[id]}</b><i class="pips" aria-hidden="true">${LEVEL_IDS.map((_, j) => `<s${j <= i ? ' class="on"' : ''}></s>`).join('')}</i></button>`).join('');
-function showLevelDesc(d) { $('lvlDesc').innerHTML = `<b>${LEVEL_NAME[d]}</b>${LEVEL_DESC[d]}`; }
+/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字）：人机对战按钮旁边一排五格。
+   2.3（Jack：底下不要点，也不要介绍）：每格就是两个字，和人机对战按钮一样高 */
+$('lvlSeg').innerHTML = LEVEL_IDS.map(id => `<button type="button" data-d="${id}" aria-pressed="false">${LEVEL_NAME[id]}</button>`).join('');
 function setDiff(d) {
   game.diff = d;
   for (const b of document.querySelectorAll('[data-d]')) b.setAttribute('aria-pressed', String(b.dataset.d === d));
-  showLevelDesc(d);
   try { localStorage.setItem('modou.diff', d); } catch (e) {}
-}
-for (const b of document.querySelectorAll('[data-d]')) {
-  b.addEventListener('mouseenter', () => showLevelDesc(b.dataset.d));
-  b.addEventListener('focus', () => showLevelDesc(b.dataset.d));
-  b.addEventListener('mouseleave', () => showLevelDesc(game.diff));
-  b.addEventListener('blur', () => showLevelDesc(game.diff));
 }
 function setSound(on) {
   Sound.on = on; btnSound.textContent = on ? '声音：开' : '声音：关';
@@ -9369,31 +9512,24 @@ btnPause.addEventListener('click', () => setPaused(!game.paused));
 btnSound.addEventListener('click', () => { Sound.init(); setSound(!Sound.on); });
 /* ---------- 设置（1.9.3）：音量。不占打斗画面 —— 菜单「设置」、暂停里「设置」进来 ---------- */
 let setBack = null;
-function setVol(v, hear) {
+// save：玩家自己调的才存（2.3 起打开游戏、打开设置不再存一遍 —— 以后再挪刻度时分得清谁动过）
+function setVol(v, hear, save) {
   Sound.setVol(v);
   $('volRange').value = Sound.vol; $('volVal').textContent = Sound.vol;
-  try { localStorage.setItem('modou.vol2', String(Sound.vol)); } catch (e) {}
+  if (save) { try { localStorage.setItem('modou.vol3', String(Sound.vol)); } catch (e) {} }
   if (hear) Sound.preview();
 }
-// 2.1 音量刻度上挪了（现在的 50 = 以前的 80）：以前存过的音量换算成新刻度，听着和以前一样响；没存过的就用新的默认 50
-function savedVol() {
-  try {
-    const v2 = parseInt(localStorage.getItem('modou.vol2'), 10);
-    if (v2 >= 0 && v2 <= 100) return v2;
-    const v1 = parseInt(localStorage.getItem('modou.vol'), 10);
-    if (v1 >= 0 && v1 <= 100) return clamp(Math.round(v1 / VOL_SHIFT), 0, 100);
-  } catch (e) {}
-  return 50;
-}
+// 2.1、2.3 音量刻度上挪过（现在的 50 = 2.2 的 70 = 2.0.2 的 112）：以前存过的换算成新刻度，听着和以前一样响（fx.js Sound.volFromStore）
+function savedVol() { try { return Sound.volFromStore(k => localStorage.getItem(k)); } catch (e) { return 50; } }
 function openSettings(from) { setBack = from; setVol(Sound.vol, false); showOverlay(setEl); }
 function closeSettings() { showOverlay(setBack === 'pause' ? pauseEl : menu); }
 $('btnSettings').addEventListener('click', () => openSettings('menu'));
 $('btnPauseSet').addEventListener('click', () => openSettings('pause'));
 $('btnSetDone').addEventListener('click', closeSettings);
-$('volRange').addEventListener('input', e => setVol(+e.target.value, false));
-$('volRange').addEventListener('change', e => setVol(+e.target.value, true));       // 松手时响一声
-$('volDown').addEventListener('click', () => setVol(Sound.vol - 10, true));
-$('volUp').addEventListener('click', () => setVol(Sound.vol + 10, true));
+$('volRange').addEventListener('input', e => setVol(+e.target.value, false, true));
+$('volRange').addEventListener('change', e => setVol(+e.target.value, true, true));       // 松手时响一声
+$('volDown').addEventListener('click', () => setVol(Sound.vol - 10, true, true));
+$('volUp').addEventListener('click', () => setVol(Sound.vol + 10, true, true));
 document.addEventListener('visibilitychange', () => { if (document.hidden && game.phase === 'fight' && !game.paused) setPaused(true); });
 
 /* ---------- 联机面板 ----------
@@ -9447,8 +9583,8 @@ function roomUi(state) {
     roomHintT = setTimeout(() => {
       if (!Net.room || Net.open || onlineEl.hidden) return;
       st.textContent += hasTurn(Net.relayUsed)
-        ? '\n等了半分钟还没连上。如果对方已经输入同一个房间码了：两边刷新一下再试，或者用下面的「手动连接」。'
-        : '\n等了半分钟还没连上。如果对方已经输入同一个房间码了，多半是网络不让两台电脑直连（校园网常见）：在下面「中继服务器」里填一个中继（有一边填了就行），或者两边连同一个手机热点。';
+        ? '\n等了半分钟还没连上。如果对方已经输入同一个房间码了：两边刷新一下再试；两台设备在同一个局域网里的话，也可以用下面的「手动连接」。'
+        : '\n等了半分钟还没连上。如果对方已经输入同一个房间码了，多半是网络挡住了设备之间的直连（防火墙、对称型 NAT）：在下面「中继服务器」里填一个 TURN 中继（有一边填了就行），或者换个网络再试。';
     }, 30000);
   }
   else if (state === 'rejoining') st.textContent = '对方回来了，正在重新连…';
@@ -9503,7 +9639,7 @@ $('btnRelaySave').addEventListener('click', async () => {
       Relay.save(list); relaySummary();
       $('relayText').value = JSON.stringify(list, null, 1);
       if (r.ok) relayStatus(`中继可用（${r.ms} 毫秒拿到中继地址）。现在去建房就会带上它。`, 'ok');
-      else relayStatus('已保存，但在这个网络上没测通：' + r.why + '。换个网络（比如手机热点）再点一次试试。', 'bad');
+      else relayStatus('已保存，但在这个网络上没测通：' + r.why + '。换个网络再点一次试试。', 'bad');
     }
   } catch (e) { relayStatus(e.message || String(e), 'bad'); }
   btn.disabled = false;
@@ -9536,7 +9672,7 @@ Net.onClose = (wasOpen, stay) => {
     if (wasOpen) netErr('对方断开了连接');
     else if (Net.lastDiag && /房主一直没点/.test(Net.lastDiag)) netErr(Net.lastDiag);
     else if (hasTurn(Net.relayUsed)) netErr('连不上。' + (Net.lastDiag || '点开上面「中继服务器」，按「保存并测试」看中继能不能用。'));
-    else { netErr('连不上。校园网（eduroam）不让两台电脑直接连：点开上面「中继服务器」填一个中继再试，或者两边连同一个手机热点。'); $('relayBox').open = true; }
+    else { netErr('连不上：网络可能不允许两台设备直接连接（防火墙、对称型 NAT）。点开上面「中继服务器」填一个 TURN 中继再试；两台设备在同一个局域网里的话，也可以用下面的「手动连接」。'); $('relayBox').open = true; }
   }
 };
 $('btnOnline').addEventListener('click', () => openOnline());
@@ -9801,7 +9937,6 @@ if (Desk) {
   document.documentElement.classList.add('desktop');
   playEl.classList.add('fs');
   for (const id of ['btnExit']) $(id).hidden = false;
-  $('menuMsg').textContent = MENU_HINT;
   const showFs = on => { btnFull.textContent = on ? '退出全屏' : '⛶ 全屏'; $('btnPauseFull').hidden = !on; setTimeout(resize, 60); };
   showFs(Desk.isFullscreen());
   Desk.onFullscreenChange(showFs);
@@ -9931,6 +10066,28 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => {
   if (e.code === 'Space' && game.mode !== 'attract' && !game.paused && e.target && e.target.tagName === 'BUTTON') e.preventDefault();
 }, { capture: true });
+
+/* ---------- 2.3 菜单的声音（Jack：鼠标移到按钮上要有声音反馈，按下去是另一个声音） ----------
+   菜单、暂停、结算、各种面板（都在 .overlay 里）和教程面板里的按钮：鼠标移上去「笃」一声（fx.js Sound.uiHover），按下去「嗒」一声（uiPress）。
+   键盘换焦点（Tab、方向键）也「笃」一声。浏览器要先点过一下页面才让出声（软件版一开就有） */
+const UI_SND = '.overlay button, .overlay summary, #manual button';
+let uiHoverEl = null, uiKeyAt = -1e9;
+document.addEventListener('pointerover', e => {
+  if (e.pointerType && e.pointerType !== 'mouse') return;
+  const b = e.target.closest ? e.target.closest(UI_SND) : null;
+  if (b === uiHoverEl) return;
+  uiHoverEl = b;
+  if (b && !b.disabled) Sound.uiHover();
+});
+document.addEventListener('keydown', () => { uiKeyAt = performance.now(); }, true);
+document.addEventListener('focusin', e => {
+  const b = e.target.closest ? e.target.closest(UI_SND) : null;
+  if (b && !b.disabled && performance.now() - uiKeyAt < 300) Sound.uiHover();
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest ? e.target.closest(UI_SND) : null;
+  if (b && !b.disabled && !b.hasAttribute('data-nosnd')) Sound.uiPress();      // 音量 −/＋ 自己会响一声试听，不再叠一声
+});
 
 /* ---------- 声音：任何按键 / 点击 / 回到页面都把声音叫醒（浏览器有时会把它挂起，联机时尤其容易） ---------- */
 for (const ev of ['keydown', 'mousedown', 'pointerdown', 'touchend']) window.addEventListener(ev, () => Sound.wake(), { capture: true, passive: true });

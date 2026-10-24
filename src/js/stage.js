@@ -993,6 +993,7 @@ const STAGES = {
       g.fillRect(px - 1.5, base - 7 * 30 - 30, 3, 26);
       mist(g, w, fy - 200, 150, 0.7);
       ridge(g, w, fy - 70, 40, 0.12, 37, 0.008);
+      mist(g, w, fy - 120, 120, 0.5);                 // 2.3：远景再淡一点（月亮门里那座塔就在人背后）
     },
     mid(g, L) {
       const { w, fy, R } = L;
@@ -1065,6 +1066,11 @@ const STAGES = {
         g.strokeStyle = 'rgba(23,24,26,.45)'; g.lineWidth = 2;
         g.beginPath(); g.moveTo(fx + 8, fy - 314); g.lineTo(fx + 50, fy - 309); g.quadraticCurveTo(fx + 45, fy - 250, fx + 52, fy - 192); g.lineTo(fx + 8, fy - 196); g.stroke();
       }
+      // 2.3（Jack：训练场背景淡一点，不然看不清人）：整层罩一层纸色 —— 瓦檐那道黑边正好在人的胸口、兵器架和木人桩在人腿后面，
+      // 颜色都往纸色退一半多。source-atop：只罩画了东西的地方（月亮门的洞、墙头上的天还是透的）
+      g.save(); g.globalCompositeOperation = 'source-atop';
+      g.fillStyle = 'rgba(236,233,223,.56)'; g.fillRect(0, 0, w, L.h);
+      g.restore();
     },
     ground(g, L) {
       const { x0, x1, R } = L, GW = x1 - x0;

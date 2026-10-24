@@ -52,10 +52,11 @@ const PLANS = {
 // 2.1：airBlock 看见空中招站着挡（挡对高低）的概率；aaPlan 看见起跳就想好怎么接的概率；habit 记习惯有多准；guard 近身先举手；
 //      punishBlock 挡住以后罚；inst / instMax 极难「瞬间看穿」的概率（基础 / 你的习惯招）
 const LEVELS = {
-  // 2.2 入门（新）：比简单再简单一点 —— 反应 12 帧、挡四成、很少读招和卸力、连招短、常发呆；防跳、挡住就罚、记习惯都只有一点
-  novice: { react: 12, block: .4, lowRead: .48, parry: .07, push: .18, burst: .32, read: .22, catch: .25, duck: .55, aa: .3, step: .2, low: .17, sup: .6,
-    punish: .42, combo: .7, aggr: .75, jump: .65, grabBlock: .33, idle: .33, tech: .12, gc: .12, stomp: .4, scoop: .12, roll: .27,
-    slip: .06, gwalk: .22, oki: .32, catchSlip: .25, airBlock: .8, aaPlan: .5, habit: .38, guard: .28, punishBlock: .45 },
+  // 2.2 入门（新）：比简单再简单一点 —— 反应慢、挡得少、很少读招和卸力、连招短、常发呆；防跳、挡住就罚、记习惯都只有一点。
+  // 2.3（Jack：再降 5~10%）：反应 12 → 13、挡 0.4 → 0.34、读招 0.22 → 0.16、罚 0.42 → 0.35、挡住就罚 0.45 → 0.38、连招接下去 0.7 → 0.62、主动 0.75 → 0.7
+  novice: { react: 13, block: .34, lowRead: .48, parry: .07, push: .18, burst: .32, read: .16, catch: .25, duck: .55, aa: .3, step: .2, low: .17, sup: .6,
+    punish: .35, combo: .62, aggr: .7, jump: .65, grabBlock: .33, idle: .33, tech: .12, gc: .12, stomp: .4, scoop: .12, roll: .27,
+    slip: .06, gwalk: .22, oki: .32, catchSlip: .25, airBlock: .8, aaPlan: .5, habit: .38, guard: .28, punishBlock: .38 },
   // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
   easy: { react: 11, block: .46, lowRead: .55, parry: .12, push: .25, burst: .45, read: .3, catch: .35, duck: .5, aa: .4, step: .25, low: .2, sup: .7,
     punish: .55, combo: .78, aggr: .85, jump: .8, grabBlock: .45, idle: .25, tech: .2, gc: .2, stomp: .55, scoop: .2, roll: .35,
@@ -72,20 +73,14 @@ const LEVELS = {
   // 终极（2.1 叫「极难」，id 还是 hell）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
   // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明。
   // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
-  hell: { react: 10, block: .8, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
+  // 2.3（Jack：再降 5~10%）：瞬间看穿基础 0.3 → 0.2（你老出的招最多还是 0.55：别养习惯）、看穿 see 0.55 → 0.48、平时反应 10 → 11 帧、挡 0.8 → 0.74
+  hell: { react: 11, block: .74, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
     punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
-    slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .55, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
-    inst: .3, instMax: .55, instReact: 1 },
+    slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
+    inst: .2, instMax: .55, instReact: 1 },
 };
-// 2.2 难度的名字（两个字）和一句话说明：菜单、电脑血条底下、教程里用
+// 2.2 难度的名字（两个字）：菜单、电脑血条底下用（2.3 Jack：菜单上不要介绍，一句话说明删了）
 const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极' };
-const LEVEL_DESC = {
-  novice: '出手慢、挡得少、连招短 —— 先熟悉按键和招式',
-  easy: '会挡、会还手，反应比人慢一截',
-  normal: '会看招克制、会罚你的空招，像个练过的人',
-  hard: '一半的招会被它看穿，还会记你的习惯',
-  hell: '偶尔一眼看穿你的招，破绽必罚 —— 高手的挑战',
-};
 const LEVEL_IDS = Object.keys(LEVELS);
 function weighted(list) {
   let sum = 0; for (const [, w] of list) sum += w;

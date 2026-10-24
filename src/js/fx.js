@@ -183,7 +183,9 @@ function updateFx() {
 /* ============================================================
    声音（WebAudio 合成，首次点击后开启）
    ============================================================ */
-const VOL_SHIFT = 1.6;                 // 2.1：音量刻度整体上挪（现在的 50 = 2.0.2 的 80）。旧存档按这个换算（ui.js boot）
+// 音量刻度：现在的 v 有 2.0.2 的 v × VOL_SHIFT 那么响。2.1 是 1.6（50 = 2.0.2 的 80）；
+// 2.3（Jack：默认要有 2.2 的「70」那么响，前后都跟着挪）：1.6 × 70 / 50 = 2.24 —— 现在的 50 = 2.2 的 70，别的档也都 × 1.4
+const VOL_SHIFT = 2.24, VOL_SHIFT_21 = 1.6;      // VOL_SHIFT_21：2.1 / 2.2 存的音量（modou.vol2）用的刻度，换算用
 // 2.1 声音用自己的随机数（不用 Math.random）：声音出不出得来看浏览器（有没有点过页面、声卡醒没醒），
 // 以前每响一声就从 Math.random 里拿几个数 —— 电脑 AI 也用 Math.random，测试里固定了种子还会因为「这次有没有声音」打得不一样
 let sndSeed = 0x2545f491;
@@ -194,7 +196,18 @@ const Sound = {
   // 调的是压缩器后面那一级（out），压缩器照样管着叠在一起的打击声不爆音。
   // 2.1（Jack：默认就要以前「80」那么响，别的档跟着挪）：整条曲线往上挪 —— 现在的 v 就是以前的 v × 1.6（50 = 以前的 80）；
   // 最后再加一级限幅（limiter），开得很大声也不破音
+  // 2.3 再挪一次（VOL_SHIFT 2.24）：现在的 50 = 2.2 的 70
   gainFor(v) { return v <= 0 ? 0 : 1.3 * Math.pow(v * VOL_SHIFT / 50, 1.32); },
+  // 存着的音量换成现在的刻度（听着和以前一样响）。get(键) 读存档（ui.js 传 localStorage，测试传假的）。
+  // 2.1 / 2.2 每次打开游戏都会把音量存一遍（modou.vol2），存着 50 的多半是没动过 —— 用新的默认 50（= 2.2 的 70）；改过的才换算
+  volFromStore(get) {
+    const num = k => { const v = parseInt(get(k), 10); return v >= 0 && v <= 100 ? v : null; };
+    const v3 = num('modou.vol3'), v2 = num('modou.vol2'), v1 = num('modou.vol');
+    if (v3 !== null) return v3;
+    if (v2 !== null) return v2 === 50 ? 50 : clamp(Math.round(v2 * VOL_SHIFT_21 / VOL_SHIFT), 0, 100);
+    if (v1 !== null) return v1 === 50 ? 50 : clamp(Math.round(v1 / VOL_SHIFT), 0, 100);
+    return 50;
+  },
   setVol(v) {
     this.vol = clamp(Math.round(v), 0, 100);
     if (this.out) this.out.gain.setTargetAtTime(this.gainFor(this.vol), this.ctx.currentTime, 0.03);
@@ -248,6 +261,7 @@ const Sound = {
   nz(dur, freq, q, gain, type, f2, dist, delay) {
     const c = this.ctx, t = c.currentTime + (delay || 0);
     const s = c.createBufferSource(); s.buffer = this.noise;
+    if (dur > 0.5) s.loop = true;                                      // 2.3 锣、钹的余音比噪声那一秒长：循环着放
     s.playbackRate.value = 0.9 + srnd() * 0.2;                      // 每次听着都差一点，不像复读
     const f = c.createBiquadFilter(); f.type = type || 'bandpass'; f.frequency.setValueAtTime(freq, t);
     if (f2) f.frequency.exponentialRampToValueAtTime(f2, t + dur);
@@ -292,10 +306,90 @@ const Sound = {
   clash() { if (!this.ok()) return; this.tone(980, 0.16, 0.12, 'square', 520); this.tone(1460, 0.12, 0.08, 'triangle', 900); this.nz(0.12, 2400, 1.2, 0.3, 'bandpass', 900); this.tone(120, 0.2, 0.3, 'sine', 50); },
   parry() { if (!this.ok()) return; this.tone(1760, 0.25, 0.1, 'sine', 1700); this.tone(2640, 0.18, 0.06, 'sine', 2600); this.nz(0.05, 5000, 1, 0.12, 'highpass'); },
   burst() { if (!this.ok()) return; this.tone(70, 0.45, 0.4, 'sine', 30); this.nz(0.4, 300, 0.6, 0.35, 'lowpass', 1200); },
-  gong() { if (!this.ok()) return; [110, 166, 221, 297].forEach((f, i) => this.tone(f, 2.2, 0.22 / (i + 1), 'sine', f * 0.985)); this.nz(0.3, 260, 0.5, 0.1); },
+  // 胜负已分：一声大锣（2.3 换成和开场一样的大锣，敲下去音往下掉一截再拖长）
+  gong() { if (!this.ok()) return; this.bigGong(1.15, 0); this.cymbal(0.45, 0.01); },
+  /* ---------- 2.3 锣鼓（Jack：开场字幕加音效 —— 中式格斗那种敲锣打鼓）----------
+     京剧锣鼓经里的几样家伙，全是现合成的（走 master，跟着音量、压缩器、限幅）：
+     · 板「八」：木头一拍，又干又脆          · 单皮鼓「大」：小而紧的鼓，「嗒」一声
+     · 堂鼓（战鼓）「咚」：大鼓，低音往下沉    · 铙钹「才」：一片高频的「嚓」+ 几声金属响
+     · 大锣「哐」：一组不成倍数的正弦（金属味），敲下去音往下掉一截再拖长（京剧大锣的「下滑」）
+     · 小锣「台」：高的锣，敲下去音往上挑（京剧小锣的「上挑」）
+     · 仓 = 大锣 + 铙钹 + 小锣一齐响
+     game.js 开场按 LUOGU_INTRO 一帧一帧敲：Sound.luogu(家伙, 力度) 走 fxDo（联机回滚不重复响） */
+  luogu(k, p) { if (!this.ok()) return; const f = this[LUOGU_KIT[k]]; if (f) f.call(this, p || 1, 0); },
+  // 一个音：f 在 glide 秒内滑到 f2（之后不动），dur 秒衰减完
+  glide(f, f2, glide, dur, gain, delay, type) {
+    const c = this.ctx, t = c.currentTime + (delay || 0);
+    const o = c.createOscillator(); o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    if (f2 && f2 !== f) o.frequency.exponentialRampToValueAtTime(f2, t + glide);
+    const g = c.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
+  },
+  bigGong(p, d) {
+    const f0 = 205 * (0.98 + srnd() * 0.04), L = 0.75 + 0.25 * Math.min(1.4, p);
+    // [倍数, 响度, 多久衰减完]：第二个和第一个差一点点（两个一起「嗡嗡」地起伏，像真锣）
+    for (const [r, a, s] of [[1, 1, 2.7], [1.006, 0.55, 2.5], [1.49, 0.5, 1.9], [1.98, 0.55, 1.6], [2.55, 0.32, 1.1], [3.11, 0.26, 0.9], [3.72, 0.18, 0.7], [4.66, 0.1, 0.5]])
+      this.glide(f0 * r, f0 * r * 0.86, 0.45, s * L, 0.15 * a * p, d);
+    this.nz(0.2, 1300, 0.6, 0.2 * p, 'bandpass', 600, false, d);         // 锣槌砸上去那一下
+    this.nz(0.75 * L, 5200, 0.7, 0.025 * p, 'highpass', null, false, d); // 锣面「沙沙」的余音（淡一点，主要听「哐」）
+  },
+  smallGong(p, d) {
+    const f0 = 740 * (0.98 + srnd() * 0.04);
+    for (const [r, a, s] of [[1, 1, 0.95], [2.13, 0.32, 0.5], [3.3, 0.12, 0.3]]) this.glide(f0 * r, f0 * r * 1.13, 0.16, s, 0.1 * a * p, d);
+    this.nz(0.04, 3000, 1.2, 0.1 * p, 'bandpass', null, false, d);
+  },
+  cymbal(p, d) {
+    this.nz(0.42 + 0.22 * Math.min(1.4, p), 3800, 0.5, 0.17 * p, 'highpass', null, false, d);
+    this.nz(0.3, 7200, 0.9, 0.13 * p, 'bandpass', null, false, d);
+    for (const f of [2870, 3990, 5310]) this.glide(f, f * 0.995, 0.3, 0.26, 0.02 * p, d, 'square');
+  },
+  danpi(p, d) { this.glide(700, 380, 0.05, 0.09, 0.28 * p, d, 'triangle'); this.nz(0.025, 2600, 1.4, 0.24 * p, 'bandpass', null, false, d); },
+  clapper(p, d) {
+    this.nz(0.03, 1900, 5, 0.28 * p, 'bandpass', null, false, d);
+    this.nz(0.022, 3300, 4, 0.2 * p, 'bandpass', null, false, (d || 0) + 0.004);
+    this.glide(1250, 1150, 0.03, 0.045, 0.07 * p, d);
+  },
+  warDrum(p, d) {
+    const k = 0.97 + srnd() * 0.06;
+    this.glide(150 * k, 66 * k, 0.2, 0.42, 0.5 * p, d);
+    this.glide(240 * k, 120 * k, 0.12, 0.18, 0.11 * p, d, 'triangle');
+    this.nz(0.06, 700, 0.8, 0.2 * p, 'lowpass', 250, false, d);
+  },
+  cang(p, d) { this.bigGong(p, d); this.cymbal(p * 0.9, (d || 0) + 0.004); this.smallGong(p * 0.4, (d || 0) + 0.008); if (p > 1.1) this.warDrum(p * 0.75, d); },
+  /* ---------- 2.3 菜单的声音（Jack：鼠标移到按钮上要有声音，按下去是另一声）----------
+     移上去：轻轻一声木鱼「笃」；按下去：单皮鼓「嗒」加一点低音。菜单背景里也响（不走 ok() 的「菜单里不出声」），
+     浏览器还没让出声（没点过页面）就不响；不走 fxDo（不是对局里的事） */
+  uiReady() { return this.on && this.vol > 0 && !!this.ctx && this.ctx.state === 'running'; },
+  uiHover() {
+    if (!this.uiReady()) return;
+    const now = performance.now(); if (now - (this.uiT || 0) < 45) return; this.uiT = now;
+    this.glide(1520, 1380, 0.04, 0.07, 0.055);
+    this.nz(0.016, 2400, 3, 0.035, 'bandpass');
+  },
+  uiPress() {
+    if (!this.uiReady()) return;
+    this.uiT = performance.now();
+    this.glide(520, 260, 0.06, 0.12, 0.11, 0, 'triangle');
+    this.nz(0.022, 2200, 1.6, 0.08, 'bandpass');
+    this.glide(150, 80, 0.08, 0.14, 0.08);
+  },
 };
+// 锣鼓经的字 → 家伙
+const LUOGU_KIT = { 八: 'clapper', 大: 'danpi', 仓: 'cang', 台: 'smallGong', 才: 'cymbal', 咚: 'warDrum' };
+/* 开场锣鼓（帧 → [[字, 力度]…]）：「八 大 仓」—— 回合名在第 10 帧随「仓」砸下来（game.js）；
+   接着战鼓一下比一下密、越敲越响（急急风）；第 68 帧「战」：大仓 + 一声战鼓。决胜局在前面多一声「仓」、鼓点更密 */
+const LUOGU_INTRO = { 2: [['八', 0.85]], 6: [['大', 0.95]], 10: [['仓', 0.9]] };
+[[24, .4], [31, .44], [37, .48], [42, .52], [46, .56], [50, .6], [53, .64], [56, .68], [58, .72], [60, .76], [62, .8], [64, .84], [66, .88]]
+  .forEach(([f, p]) => (LUOGU_INTRO[f] = LUOGU_INTRO[f] || []).push(['咚', p]));
+LUOGU_INTRO[46].push(['台', 0.55]);
+LUOGU_INTRO[68] = [['仓', 1.2]];
+const LUOGU_FINAL = { 18: [['仓', 0.8]], 27: [['咚', 0.42]], 34: [['咚', 0.46]], 40: [['咚', 0.5]], 44: [['才', 0.5]] };
+function luoguIntro(t, final) {
+  for (const [k, p] of LUOGU_INTRO[t] || []) Sound.luogu(k, p);
+  if (final) for (const [k, p] of LUOGU_FINAL[t] || []) Sound.luogu(k, p);
+}
 // 声音也走 fxDo：回滚重算时先攒着，算完只补放新时间线里多出来的（1.9.0）
-for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'gong']) {
+for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'gong', 'luogu']) {
   const play = Sound[k];
   Sound[k] = function (...a) { fxDo('S' + k, () => play.apply(Sound, a)); };
 }

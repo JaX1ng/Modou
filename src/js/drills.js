@@ -753,7 +753,8 @@ const Drill = {
       if (!c.demo) Sound.stamp && Sound.stamp();
       if (!c.demo && c.ok >= c.def.need && !c.passed) {
         c.passed = true; c.passAt = c.frame; this.passes++; this.save();
-        stamp(F1.x, FLOOR - 230, '过关', 40, F1);
+        // 2.3：「过关」印章盖在上面的练习面板上（render.js drawDrillPanel，以前盖在你头顶、被面板挡住），配一声锣
+        if (Sound.luogu) Sound.luogu('仓', 0.75);
         if (this.onPass) this.onPass(c.def);
       }
     }

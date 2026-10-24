@@ -30,12 +30,9 @@
       <div class="panel">
         <h1 class="title">墨斗<i class="seal">拳</i></h1>
         <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
-        <div class="pve">
-          <div class="row">
-            <button class="ibtn" id="btnPve" type="button">人机对战</button>
-            <div class="lvl" id="lvlSeg" role="group" aria-label="电脑难度"></div>
-          </div>
-          <p class="lvdesc" id="lvlDesc" aria-live="polite"></p>
+        <div class="row pve">
+          <button class="ibtn" id="btnPve" type="button">人机对战</button>
+          <div class="lvl" id="lvlSeg" role="group" aria-label="电脑难度"></div>
         </div>
         <div class="row">
           <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
@@ -50,7 +47,7 @@
           <button class="tbtn dark" id="btnLegend" type="button">教程</button>
           <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
         </div>
-        <p class="hint" id="menuMsg">五局三胜 · 人机/联机每回合 300 秒，双人不限时</p>
+        <p class="hint" id="menuMsg" role="status" hidden></p>
       </div>
     </div>
 
@@ -84,8 +81,8 @@
           </div>
         </div>
         <details class="relay" id="relayBox">
-          <summary>中继服务器 <span id="relaySum">未设置</span><small>校园网（eduroam）连不上时用</small></summary>
-          <p class="hint">eduroam 这类校园网不让两台电脑直接连。填一个 TURN 中继，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，房间码会带过去。</p>
+          <summary>中继服务器 <span id="relaySum">未设置</span><small>两台设备直连不通时用（网络有防火墙、对称型 NAT 时常见）</small></summary>
+          <p class="hint">有的网络（有防火墙、对称型 NAT）不允许两台设备直接连接。填一个 TURN 中继服务器，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，连接码会带过去。</p>
           <textarea id="relayText" rows="4" spellcheck="false" placeholder="把中继后台复制的 ICE 数组整段粘进来&#10;（也可以粘 Metered 的 API 链接，或每行「turn:地址:端口 用户名 密码」）"></textarea>
           <div class="row tight">
             <button class="cbtn" id="btnRelaySave" type="button">保存并测试</button>
@@ -94,7 +91,7 @@
           <p class="status sm" id="relayStatus" role="status"></p>
         </details>
         <details class="relay" id="manualBox">
-          <summary>手动连接<small>用房间码一直连不上（比如公共信令服务器打不开）时用：复制粘贴连接码，连信令都不经过服务器</small></summary>
+          <summary>手动连接 · 局域网<small>两台设备在同一个局域网里（连着同一个 Wi-Fi / 路由器）时用：复制粘贴连接码直接连，不经过任何服务器。不在一个局域网的用上面的房间码</small></summary>
         <div class="row" id="netChoose">
           <button class="ibtn" id="btnHost" type="button">我来建房</button>
           <button class="ibtn ghost" id="btnJoin" type="button">我去加入</button>
@@ -148,9 +145,9 @@
         <p class="big sm">设置</p>
         <p class="step">音量</p>
         <div class="volrow">
-          <button class="cbtn ghost" id="volDown" type="button" aria-label="小声一点">−</button>
+          <button class="cbtn ghost" id="volDown" type="button" data-nosnd aria-label="小声一点">−</button>
           <input type="range" id="volRange" min="0" max="100" step="5" value="50" aria-label="音量">
-          <button class="cbtn ghost" id="volUp" type="button" aria-label="大声一点">＋</button>
+          <button class="cbtn ghost" id="volUp" type="button" data-nosnd aria-label="大声一点">＋</button>
           <b id="volVal">50</b>
         </div>
         <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>

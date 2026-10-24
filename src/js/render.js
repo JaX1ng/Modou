@@ -398,14 +398,38 @@ function drawSeal(x, y, text, size, rot, alpha, sc, specks, col) {
   if (specks) { ctx.fillStyle = C.paper; for (const [sx, sy, sr] of specks) { ctx.beginPath(); ctx.arc(sx * w, sy * h, sr, 0, Math.PI * 2); ctx.fill(); } }
   ctx.restore();
 }
+// 训练场上面那块面板（训练 / 破招练习）在画面上的位置：面板每帧画的时候记下来，印章用（2.3）
+let hudBox = null;
+/* 印章（在镜头的变换里画）。2.3（Jack：训练场上面的字把印章挡掉了）：训练场里印章画在面板上面（render 里画完面板再画一遍印章），
+   落在面板上的往下挪到面板下沿外面 —— 挪下去要压到谁的头就少挪一点（宁可盖住一点面板，也不盖住人） */
 function drawStamps() {
-  const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0)), top = FLOOR + (120 - FY - camLift * zz) / zz;   // 印章别盖到上面的血条
+  const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0));
+  const wy = vy => FLOOR + (vy - FY - camLift * zz) / zz;            // 画面 y → 场地 y
+  const top = wy(120);                                                // 印章别盖到上面的血条
+  const box = game.mode === 'train' ? hudBox : null;
+  const heads = box ? game.p.map(F => F.J && F.J.head).filter(Boolean) : [];
   for (const e of FX) {
     if (e.type !== 'stamp') continue;
     const L = RL(e), age = e.max - L;
     const sc = age < 6 ? 1.7 - 0.7 * EASE.out(Math.max(0, age) / 6) : 1;
     const a = clamp(age / 4, 0, 1) * Math.min(1, L / 18);
-    drawSeal(clamp(e.x, camX - VW / (2 * camZ) + 50, camX + VW / (2 * camZ) - 50), Math.max(top, e.y), e.text, e.size, e.rot, a, sc, e.specks, e.col);
+    const x = clamp(e.x, camX - VW / (2 * camZ) + 50, camX + VW / (2 * camZ) - 50);
+    let y = Math.max(top, e.y);
+    if (box) {
+      if (e.ty == null) {                    // 挪多少只在盖下去那一下算一次，之后不跟着人动（不然人一动印章就跟着跳）
+        const k = e.size * SEAL_K, n = e.text.length, cols = n >= 4 ? 2 : 1, rows = n >= 4 ? Math.ceil(n / 2) : n;
+        const hw = (cols + 0.36) * k / 2 + 6, hh = (rows + 0.36) * k / 2 + 6;   // 印章的半宽、半高（场地坐标；印章是歪着盖的，多留一点）
+        const vx = VW / 2 + (x - camX) * zz;
+        if (vx + hw * zz > box.x && vx - hw * zz < box.x + box.w) {
+          let want = wy(box.y + box.h + 4) + hh;                               // 整个挪到面板下面
+          for (const hd of heads) if (Math.abs(hd[0] - x) < hw + 16) want = Math.min(want, hd[1] - 16 - hh);   // 别压到头
+          y = Math.max(y, want);
+        }
+        e.ty = y;
+      }
+      y = e.ty;
+    }
+    drawSeal(x, y, e.text, e.size, e.rot, a, sc, e.specks, e.col);
   }
   ctx.globalAlpha = 1;
 }
@@ -492,6 +516,7 @@ function drawHud() {
   if (game.endless) { ctx.font = `600 34px ${UIF}`; ctx.fillText('∞', VW / 2, 38); }
   else { const sec = String(Math.ceil(game.timer / 60)); ctx.font = `${sec.length > 2 ? 27 : 34}px ${BRUSH}`; ctx.fillText(sec, VW / 2, 42); }
   ctx.font = `16px ${BRUSH}`; ctx.fillStyle = C.ink;
+  hudBox = null;
   if (game.mode === 'train') { if (Drill.cur) drawDrillPanel(); else drawTrainPanel(); }
   else ctx.fillText(roundName(), VW / 2, 88);
 }
@@ -510,36 +535,53 @@ function rrect(x, y, w, h, r) {
   ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-// 破招练习的面板（2.1；2.2 Jack：太小、不好看 —— 放大重排）：左上「破招」/「演示」朱印 + 这一课的名字，右上三个大圈（成功一次涂满一个），
-// 中间一步一步怎么破（按你自己的键位），下面上一遍怎么样（成功 / 没成、为什么），大一号、带颜色，几秒后淡掉
-function drawDrillPanel() {
-  const c = Drill.cur, d = c.def;
-  const w = Math.min(680, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18;
-  ctx.font = `500 15px ${UIF}`;
-  const lines = [];
-  d.how.forEach((t, i) => wrapText(drillText(t, false), w - pad * 2 - 30).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
-  const how = lines.slice(0, 4);
-  const age = c.frame - c.lastT, showLast = c.last && age < 300, la = showLast ? Math.min(1, (300 - age) / 40) : 0;
-  const h = 58 + how.length * 23 + (showLast ? 40 : 0) + 26;
+// 一行字放不下（2.3：面板里的字不出框）：先按 sizes 从大到小缩字号，最小号还放不下就截短加「…」。
+// 返回放得下的那一行；ctx.font 停在用上的字号（接着量宽、画都用它）
+function fitLine(text, maxW, weight, sizes, family) {
+  const font = s => `${weight ? weight + ' ' : ''}${s}px ${family}`;
+  for (const s of sizes) { ctx.font = font(s); if (ctx.measureText(text).width <= maxW) return text; }
+  let t = text;
+  while (t.length > 1 && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1);
+  return t + '…';
+}
+// 训练场两块面板共用：纸色圆角块 + 淡影 + 细边（accent = 朱红边，演示时用）；顺手记下位置给印章躲（hudBox）
+function paperPanel(x, y, w, h, accent) {
   ctx.save();
   ctx.shadowColor = 'rgba(23,24,26,.18)'; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
   rrect(x, y, w, h, 8); ctx.fillStyle = 'rgba(240,239,232,.93)'; ctx.fill();
   ctx.restore();
-  rrect(x + 0.5, y + 0.5, w - 1, h - 1, 8); ctx.strokeStyle = c.demo ? C.cin : 'rgba(23,24,26,.22)'; ctx.lineWidth = c.demo ? 2 : 1; ctx.stroke();
-  // 左上：朱印「破招」/「演示」+ 招名 · 破法
-  const tag = c.demo ? '演示' : '破招';
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-  rrect(x + pad, y + 13, 56, 32, 4); ctx.fillStyle = C.cin; ctx.fill();
-  ctx.font = `22px ${BRUSH}`; ctx.fillStyle = C.paper; ctx.fillText(tag, x + pad + 28, y + 30);
-  ctx.textAlign = 'left'; ctx.font = `26px ${BRUSH}`; ctx.fillStyle = C.ink;
-  const title = `${d.topicName} · ${d.name}`;
-  let tw = w - pad * 2 - 66 - (c.demo ? 190 : 130), tt = title;
-  while (ctx.measureText(tt).width > tw && tt.length > 4) tt = tt.slice(0, -2) + '…';
-  ctx.fillText(tt, x + pad + 68, y + 30);
+  rrect(x + 0.5, y + 0.5, w - 1, h - 1, 8); ctx.strokeStyle = accent ? C.cin : 'rgba(23,24,26,.22)'; ctx.lineWidth = accent ? 2 : 1; ctx.stroke();
+  hudBox = { x, y, w, h };
+}
+// 面板左上的朱印小签（「训练」「破招」「演示」）：56 × 32
+function sealTag(x, y, text) {
+  rrect(x, y, 56, 32, 4); ctx.fillStyle = C.cin; ctx.fill();
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = `22px ${BRUSH}`; ctx.fillStyle = C.paper;
+  ctx.fillText(text, x + 28, y + 17);
+}
+// 过关印章的白点（固定的，不用随机数）
+const PASS_SPECKS = [[-0.3, 0.22, 1.3], [0.26, -0.3, 1.7], [0.12, 0.4, 1], [-0.22, -0.12, 1.1], [0.34, 0.16, 1.4], [-0.38, -0.36, 0.9], [0.05, -0.05, 0.8]];
+/* 破招练习的面板（2.1；2.2 Jack：太小、不好看 —— 放大重排；2.3 Jack：最底下一排字穿出方框、面板把印章挡掉了 —— 改矮）：
+   第一行：左上「破招」/「演示」朱印 + 这一课的名字，右上三个圈（成功一次涂满一个）；
+   上一遍怎么样（成功 / 没成、为什么）就写在第一行、盖住课名，带颜色，五秒后淡回课名（以前另起一行，面板一下子变高）；
+   下面一步一步怎么破（按你自己的键位）。最底下那行「下面工具条：……」去掉了 —— 下面的工具条自己就看得见。
+   过关：「过关」印章直接盖在面板右边（以前盖在你头顶上，正好被面板挡住） */
+function drawDrillPanel() {
+  const c = Drill.cur, d = c.def;
+  const w = Math.min(760, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18, tx = x + pad + 68;
+  ctx.font = `500 15px ${UIF}`;
+  const lines = [];
+  d.how.forEach((t, i) => wrapText(drillText(t, false), x + w - pad - tx).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
+  const how = lines.slice(0, 4);
+  const h = 60 + how.length * 22;
+  paperPanel(x, y, w, h, c.demo);
+  sealTag(x + pad, y + 13, c.demo ? '演示' : '破招');
   // 右上：成功几次（三个圈，涂满 = 成功一次）；演示时写「电脑替你按」
+  let rightW;
   if (c.demo) {
     ctx.textAlign = 'right'; ctx.font = `600 13px ${UIF}`; ctx.fillStyle = C.cin;
-    ctx.fillText('电脑替你按 · Esc 跳过', x + w - pad, y + 30);
+    const t = '电脑替你按 · Esc 跳过';
+    ctx.fillText(t, x + w - pad, y + 30); rightW = ctx.measureText(t).width;
   } else {
     for (let i = 0; i < d.need; i++) {
       const cx = x + w - pad - 13 - (d.need - 1 - i) * 34, on = i < c.ok;
@@ -547,34 +589,42 @@ function drawDrillPanel() {
       if (on) { ctx.fillStyle = C.cin; ctx.fill(); ctx.fillStyle = C.paper; ctx.font = `600 13px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText('✓', cx, y + 30); }
       else { ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 2; ctx.stroke(); }
     }
+    rightW = d.need * 34 - 8;
   }
-  // 中间：一步一步怎么破
-  let yy = y + 68;
+  // 第一行：课名；刚练完一遍就换成这一遍怎么样（淡进来，五秒后淡回课名）
+  const tw = x + w - pad - rightW - 18 - tx;
+  const age = c.frame - c.lastT, la = c.last && age < 300 ? clamp(Math.min(age / 6, (300 - age) / 30), 0, 1) : 0;
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  if (la < 1) {
+    ctx.globalAlpha = 1 - la; ctx.fillStyle = C.ink;
+    ctx.fillText(fitLine(`${d.topicName} · ${d.name}`, tw, '', [26, 23, 20], BRUSH), tx, y + 30);
+  }
+  if (la > 0) {
+    ctx.globalAlpha = la;
+    const ok = c.last.ok, txt = fitLine((ok ? '✓ ' : '✗ ') + drillText(c.last.text, false), tw - 26, '700', [18, 16, 14], UIF);
+    rrect(tx - 6, y + 14, ctx.measureText(txt).width + 26, 32, 16); ctx.fillStyle = ok ? 'rgba(34,56,90,.13)' : 'rgba(184,50,29,.13)'; ctx.fill();
+    ctx.fillStyle = ok ? C.indigo : C.cin; ctx.fillText(txt, tx + 7, y + 30);
+  }
+  ctx.globalAlpha = 1;
+  // 下面：一步一步怎么破（序号在朱印底下那一列，字和课名对齐）
+  let yy = y + 66;
   for (const L of how) {
     if (L.n) {
-      ctx.beginPath(); ctx.arc(x + pad + 10, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
-      ctx.fillStyle = C.paper; ctx.font = `600 12px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText(String(L.n), x + pad + 10, yy + 1);
+      ctx.beginPath(); ctx.arc(x + pad + 46, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
+      ctx.fillStyle = C.paper; ctx.font = `600 12px ${UIF}`; ctx.textAlign = 'center'; ctx.fillText(String(L.n), x + pad + 46, yy + 1);
     }
     ctx.textAlign = 'left'; ctx.font = `500 15px ${UIF}`; ctx.fillStyle = '#2b2c28';
-    ctx.fillText(L.l, x + pad + 30, yy + 1);
-    yy += 23;
+    ctx.fillText(L.l, tx, yy + 1);
+    yy += 22;
   }
-  // 上一遍：成功 / 没成、为什么
-  if (showLast) {
-    yy += 6;
-    ctx.globalAlpha = la;
-    const ok = c.last.ok, txt = (ok ? '✓ ' : '✗ ') + drillText(c.last.text, false);
-    ctx.font = `700 17px ${UIF}`;
-    const lw = Math.min(w - pad * 2, ctx.measureText(txt).width + 24);
-    rrect(x + pad, yy - 2, lw, 30, 15); ctx.fillStyle = ok ? 'rgba(34,56,90,.12)' : 'rgba(184,50,29,.12)'; ctx.fill();
-    ctx.fillStyle = ok ? C.indigo : C.cin; ctx.textAlign = 'left';
-    let t2 = txt; while (ctx.measureText(t2).width > lw - 24 && t2.length > 6) t2 = t2.slice(0, -2) + '…';
-    ctx.fillText(t2, x + pad + 12, yy + 13);
-    ctx.globalAlpha = 1;
-    yy += 40;
+  // 过关：印章盖在面板右上（压着那三个圈），一秒后弹结算
+  if (c.passed && !c.demo) {
+    const pa = c.frame - c.passAt;
+    if (pa >= 0 && pa < 150) {
+      const sc = pa < 6 ? 1.7 - 0.7 * EASE.out(pa / 6) : 1, a = clamp(pa / 4, 0, 1) * Math.min(1, (150 - pa) / 20);
+      drawSeal(x + w - pad - 47, y + 56, '过关', 40, -0.12, a, sc, PASS_SPECKS, C.cin);
+    }
   }
-  ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#7a7b74'; ctx.textAlign = 'left';
-  ctx.fillText(c.demo ? '演示放两三遍就回到说明' : '下面工具条：说明 · 演示 · 出招提示 · 换一课　|　Esc 暂停', x + pad, yy + 6);
 }
 /* 2.2 出招提示（Jack：弄不清对面啥时候要出招 —— 练习可以有准备）：画在木桩头上（跟着人走，在场景里）
    · 主动课：木桩站好位置后倒数 3 · 2 · 1（一圈朱线转满），出手那一下「出」；他每一招一抬手（前摇里）头上一个「!」
@@ -640,33 +690,48 @@ function drawDrillCue() {
     ctx.restore();
   }
 }
-// 训练场（2.0.2 以前叫「打桩练习」）的数值面板
+/* 训练场（2.0.2 以前叫「打桩练习」）的数值面板。2.3（Jack：最底下一排字穿出方框、面板把印章挡掉了）：
+   和破招练习的面板一个样子，改宽改矮 —— 第一行：「训练」朱印 + 这一招（毛笔字）+ 系、帧数（小字），右上木桩的血；
+   下面三行：这下（打中 / 被挡、伤害、为什么）、帧差、连击（这一套 · 上一套 · 最高）。
+   每行放不下先缩字、再截短（fitLine），字不出框 */
 function drawTrainPanel() {
   const P = game.p[0], D = game.p[1], I = P.info;
-  const x = VW / 2 - 215, y = 82, w = 430, h = 146;
-  ctx.fillStyle = 'rgba(235,234,226,.84)'; ctx.fillRect(x, y, w, h);
-  ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  ctx.font = `18px ${BRUSH}`; ctx.fillStyle = C.cin; ctx.fillText('训练场', x + 12, y + 15);
-  ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.textAlign = 'right';
-  ctx.fillText(`木桩 ${Math.max(0, Math.round(D.hp))} / ${D.maxHp} · 三成以下回满`, x + w - 12, y + 15); ctx.textAlign = 'left';
-  const row = (k, v, yy, col) => {
-    ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(k, x + 14, yy);
-    ctx.font = `500 15px ${UIF}`; ctx.fillStyle = col || C.ink; ctx.fillText(v, x + 62, yy);
-  };
-  if (!I) { row('提示', '随便打，下面能换木桩的动作、开无限气', y + 42); row('', '想一招一招练怎么破对面：点下面红色的「破招练习」', y + 64, C.cin); }
-  else {
-    const fd = I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : '';
-    const sys = I.tier ? `（${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}）` : '';
-    row('招式', `${I.label}${sys}  ${fd}`, y + 40);
-    // why：为什么（谁克谁、对方为什么没挡住、为什么没抓到）—— 讲规则的字只在这里写，不飘在人身上（1.9.2）
-    row('这下', `${I.how}${I.dmg > 0 ? '  -' + I.dmg : ''}${I.why ? '　' + I.why : ''}`, y + 62, I.how === '被挡' ? C.indigo : C.ink);
+  const w = Math.min(760, VW - 40), x = VW / 2 - w / 2, y = 84, pad = 18, h = 126, tx = x + pad + 68, right = x + w - pad;
+  paperPanel(x, y, w, h);
+  sealTag(x + pad, y + 13, '训练');
+  // 右上：木桩的血
+  ctx.textAlign = 'right'; ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#6b6c66';
+  const hpT = `木桩 ${Math.max(0, Math.round(D.hp))} / ${D.maxHp} · 三成以下回满`;
+  ctx.fillText(hpT, right, y + 30);
+  const tw = right - ctx.measureText(hpT).width - 18 - tx;
+  // 第一行：这一招 + 系 + 帧数（还没打中过就写「随便打」）
+  ctx.textAlign = 'left';
+  const name = I ? I.label : '随便打';
+  const sub = !I ? '打中木桩，这里写这一招的帧数、帧差、伤害'
+    : [I.tier ? `${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}` : '', I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : ''].filter(Boolean).join('　');
+  const nm = fitLine(name, tw, '', [26, 22], BRUSH);
+  ctx.fillStyle = C.ink; ctx.fillText(nm, tx, y + 30);
+  const nw = ctx.measureText(nm).width + 14;
+  if (sub && tw - nw > 40) { ctx.fillStyle = '#6b6c66'; ctx.fillText(fitLine(sub, tw - nw, '500', [13, 12], UIF), tx + nw, y + 31); }
+  // 下面三行：左边小字是哪一项（在朱印底下那一列，右对齐），右边是数
+  const row = (k, yy) => { ctx.textAlign = 'right'; ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(k, x + pad + 56, yy); ctx.textAlign = 'left'; };
+  const val = (v, yy, col, x0) => { ctx.fillStyle = col || C.ink; const t = fitLine(v, right - (x0 || tx), '500', [15, 14, 13], UIF); ctx.fillText(t, x0 || tx, yy); return ctx.measureText(t).width; };
+  const r1 = y + 66, r2 = y + 88, r3 = y + 110;
+  if (!I) {
+    row('提示', r1); val('下面能换木桩的动作（站、蹲、挡、乱挡、一直跳），还能开无限气', r1);
+    row('破招', r2); val('想一招一招练怎么破对面：点下面红色的「破招练习」', r2, C.cin);
+  } else {
+    // 这下：结果 + 伤害（被挡用靛蓝），后面跟为什么（谁克谁、对方为什么没挡住 —— 讲规则的字只在这里写，不飘在人身上，1.9.2）
+    row('这下', r1);
+    const hw = val(`${I.how}${I.dmg > 0 ? '  -' + I.dmg : ''}`, r1, I.how === '被挡' ? C.indigo : C.ink);
+    if (I.why && right - (tx + hw + 16) > 40) val(I.why, r1, '#55564f', tx + hw + 16);
+    row('帧差', r2);
     const adv = I.down ? '击倒' : I.adv == null ? '—' : (I.adv > 0 ? '+' : '') + I.adv + ' 帧' + (I.adv > 0 ? '（你先动）' : I.adv < 0 ? '（对方先动）' : '（一起动）');
-    row('帧差', adv, y + 84, I.adv > 0 || I.down ? C.cin : C.ink);
+    val(adv, r2, I.adv > 0 || I.down ? C.cin : C.ink);
   }
-  const pc = P.prevCombo && P.prevCombo.hits >= 2 ? `  ｜ 上一套 ${P.prevCombo.hits} 下 · ${P.prevCombo.dmg}` : '';
-  row('连击', `这一套 ${P.combo} 下 · ${P.comboDmg}${pc}`, y + 106);
-  row('最高', `一套最多打掉 ${P.maxComboDmg}`, y + 128, '#55564f');
+  row('连击', r3);
+  const pc = P.prevCombo && P.prevCombo.hits >= 2 ? `　上一套 ${P.prevCombo.hits} 下 · ${P.prevCombo.dmg}` : '';
+  val(`这一套 ${P.combo} 下 · ${P.comboDmg}${pc}　最高 ${P.maxComboDmg}`, r3);
 }
 /* ---------- 镜头（1.8.0） ----------
    双人对战（和菜单背景）：两人都要在画面里 —— 照两人中间，离得远就拉远（最远 ZOOM_PVP_MIN），近了放大到 ZOOM。
@@ -727,12 +792,18 @@ function render() {
   const order = (b.state === 'attack' && a.state !== 'attack') ? [[a, va], [b, vb]] : [[b, vb], [a, va]];
   drawFighter(...order[0]); drawFighter(...order[1]);
   drawFx();
-  drawStamps();
-  if (game.mode === 'train' && Drill.cur) drawDrillCue();   // 2.2 破招练习的出招提示（倒数、「!」），画在木桩头上
+  const train = game.mode === 'train';
+  if (!train) drawStamps();
+  if (train && Drill.cur) drawDrillCue();   // 2.2 破招练习的出招提示（倒数、「!」），画在木桩头上
   ctx.restore();
   if (game.flash > 0.01) { ctx.fillStyle = `rgba(245,244,238,${game.flash})`; ctx.fillRect(0, 0, VW, VH); }
-  if (game.mode === 'pve' || game.mode === 'online' || game.mode === 'train') { const li = localIdx(); drawOffscreen(game.p[li], game.p[1 - li]); }
+  if (game.mode === 'pve' || game.mode === 'online' || train) { const li = localIdx(); drawOffscreen(game.p[li], game.p[1 - li]); }
   if (game.mode !== 'attract') drawHud();
+  if (train) {                               // 2.3 训练场：印章画在面板上面（面板不再挡印章），同一套镜头变换
+    ctx.save(); ctx.translate(sx, sy); ctx.translate(VW / 2, FY + camLift * zz); ctx.scale(zz, zz); ctx.translate(-camX, -FLOOR);
+    drawStamps();
+    ctx.restore();
+  }
   if (!game.paused) drawOverlayFx();
   if (game.mode === 'online') drawNetStatus();
   if (game.mode !== 'attract' && Sound.asleep()) drawSoundHint();

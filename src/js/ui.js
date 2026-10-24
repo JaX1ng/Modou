@@ -24,10 +24,10 @@ function setPaused(p) {
   MouseLock.sync();
   if (!p && game.mode === 'train' && Drill.cur && Drill.cur.passed && !Drill.cur.passShown) setTimeout(showPass, 400);   // 2.2 过关那一下正好暂停了：回来再弹结算
 }
-const MENU_HINT = `五局三胜 · 人机/联机每回合 ${ROUND_FRAMES / 60} 秒，双人不限时 · 键位、招式、连招在「教程」里`;
+// 2.3（Jack：主菜单最底下那句「五局三胜……」删掉）：这一行平时不显示，只在出事的时候写（对方断开、版本不一样……）
 function toMenu(msg) {
   game.paused = false; btnPause.disabled = true;
-  $('menuMsg').textContent = msg || MENU_HINT;
+  $('menuMsg').textContent = msg || ''; $('menuMsg').hidden = !msg;
   $('menuMsg').style.color = msg ? 'var(--cinnabar)' : '';
   if (Drill.cur) Drill.stop();
   showOverlay(menu); startAttract();
@@ -66,23 +66,13 @@ Hooks.matchOver = () => {
   Ach.matchOver(wi);
   setTimeout(() => { if (game.phase === 'over') showOverlay(resultEl); }, 900);
 };
-/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字；主界面重新排）：
-   人机对战按钮旁边一排五格，每格两个字 + 底下一排小点（几个点 = 第几档，终极的点是朱色）；下面一行写这一档是什么样的电脑，
-   鼠标停在哪一格就先写那一格的 */
-$('lvlSeg').innerHTML = LEVEL_IDS.map((id, i) => `<button type="button" data-d="${id}" aria-pressed="false" title="${LEVEL_NAME[id]}：${LEVEL_DESC[id]}">` +
-  `<b>${LEVEL_NAME[id]}</b><i class="pips" aria-hidden="true">${LEVEL_IDS.map((_, j) => `<s${j <= i ? ' class="on"' : ''}></s>`).join('')}</i></button>`).join('');
-function showLevelDesc(d) { $('lvlDesc').innerHTML = `<b>${LEVEL_NAME[d]}</b>${LEVEL_DESC[d]}`; }
+/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字）：人机对战按钮旁边一排五格。
+   2.3（Jack：底下不要点，也不要介绍）：每格就是两个字，和人机对战按钮一样高 */
+$('lvlSeg').innerHTML = LEVEL_IDS.map(id => `<button type="button" data-d="${id}" aria-pressed="false">${LEVEL_NAME[id]}</button>`).join('');
 function setDiff(d) {
   game.diff = d;
   for (const b of document.querySelectorAll('[data-d]')) b.setAttribute('aria-pressed', String(b.dataset.d === d));
-  showLevelDesc(d);
   try { localStorage.setItem('modou.diff', d); } catch (e) {}
-}
-for (const b of document.querySelectorAll('[data-d]')) {
-  b.addEventListener('mouseenter', () => showLevelDesc(b.dataset.d));
-  b.addEventListener('focus', () => showLevelDesc(b.dataset.d));
-  b.addEventListener('mouseleave', () => showLevelDesc(game.diff));
-  b.addEventListener('blur', () => showLevelDesc(game.diff));
 }
 function setSound(on) {
   Sound.on = on; btnSound.textContent = on ? '声音：开' : '声音：关';
@@ -235,31 +225,24 @@ btnPause.addEventListener('click', () => setPaused(!game.paused));
 btnSound.addEventListener('click', () => { Sound.init(); setSound(!Sound.on); });
 /* ---------- 设置（1.9.3）：音量。不占打斗画面 —— 菜单「设置」、暂停里「设置」进来 ---------- */
 let setBack = null;
-function setVol(v, hear) {
+// save：玩家自己调的才存（2.3 起打开游戏、打开设置不再存一遍 —— 以后再挪刻度时分得清谁动过）
+function setVol(v, hear, save) {
   Sound.setVol(v);
   $('volRange').value = Sound.vol; $('volVal').textContent = Sound.vol;
-  try { localStorage.setItem('modou.vol2', String(Sound.vol)); } catch (e) {}
+  if (save) { try { localStorage.setItem('modou.vol3', String(Sound.vol)); } catch (e) {} }
   if (hear) Sound.preview();
 }
-// 2.1 音量刻度上挪了（现在的 50 = 以前的 80）：以前存过的音量换算成新刻度，听着和以前一样响；没存过的就用新的默认 50
-function savedVol() {
-  try {
-    const v2 = parseInt(localStorage.getItem('modou.vol2'), 10);
-    if (v2 >= 0 && v2 <= 100) return v2;
-    const v1 = parseInt(localStorage.getItem('modou.vol'), 10);
-    if (v1 >= 0 && v1 <= 100) return clamp(Math.round(v1 / VOL_SHIFT), 0, 100);
-  } catch (e) {}
-  return 50;
-}
+// 2.1、2.3 音量刻度上挪过（现在的 50 = 2.2 的 70 = 2.0.2 的 112）：以前存过的换算成新刻度，听着和以前一样响（fx.js Sound.volFromStore）
+function savedVol() { try { return Sound.volFromStore(k => localStorage.getItem(k)); } catch (e) { return 50; } }
 function openSettings(from) { setBack = from; setVol(Sound.vol, false); showOverlay(setEl); }
 function closeSettings() { showOverlay(setBack === 'pause' ? pauseEl : menu); }
 $('btnSettings').addEventListener('click', () => openSettings('menu'));
 $('btnPauseSet').addEventListener('click', () => openSettings('pause'));
 $('btnSetDone').addEventListener('click', closeSettings);
-$('volRange').addEventListener('input', e => setVol(+e.target.value, false));
-$('volRange').addEventListener('change', e => setVol(+e.target.value, true));       // 松手时响一声
-$('volDown').addEventListener('click', () => setVol(Sound.vol - 10, true));
-$('volUp').addEventListener('click', () => setVol(Sound.vol + 10, true));
+$('volRange').addEventListener('input', e => setVol(+e.target.value, false, true));
+$('volRange').addEventListener('change', e => setVol(+e.target.value, true, true));       // 松手时响一声
+$('volDown').addEventListener('click', () => setVol(Sound.vol - 10, true, true));
+$('volUp').addEventListener('click', () => setVol(Sound.vol + 10, true, true));
 document.addEventListener('visibilitychange', () => { if (document.hidden && game.phase === 'fight' && !game.paused) setPaused(true); });
 
 /* ---------- 联机面板 ----------
@@ -313,8 +296,8 @@ function roomUi(state) {
     roomHintT = setTimeout(() => {
       if (!Net.room || Net.open || onlineEl.hidden) return;
       st.textContent += hasTurn(Net.relayUsed)
-        ? '\n等了半分钟还没连上。如果对方已经输入同一个房间码了：两边刷新一下再试，或者用下面的「手动连接」。'
-        : '\n等了半分钟还没连上。如果对方已经输入同一个房间码了，多半是网络不让两台电脑直连（校园网常见）：在下面「中继服务器」里填一个中继（有一边填了就行），或者两边连同一个手机热点。';
+        ? '\n等了半分钟还没连上。如果对方已经输入同一个房间码了：两边刷新一下再试；两台设备在同一个局域网里的话，也可以用下面的「手动连接」。'
+        : '\n等了半分钟还没连上。如果对方已经输入同一个房间码了，多半是网络挡住了设备之间的直连（防火墙、对称型 NAT）：在下面「中继服务器」里填一个 TURN 中继（有一边填了就行），或者换个网络再试。';
     }, 30000);
   }
   else if (state === 'rejoining') st.textContent = '对方回来了，正在重新连…';
@@ -369,7 +352,7 @@ $('btnRelaySave').addEventListener('click', async () => {
       Relay.save(list); relaySummary();
       $('relayText').value = JSON.stringify(list, null, 1);
       if (r.ok) relayStatus(`中继可用（${r.ms} 毫秒拿到中继地址）。现在去建房就会带上它。`, 'ok');
-      else relayStatus('已保存，但在这个网络上没测通：' + r.why + '。换个网络（比如手机热点）再点一次试试。', 'bad');
+      else relayStatus('已保存，但在这个网络上没测通：' + r.why + '。换个网络再点一次试试。', 'bad');
     }
   } catch (e) { relayStatus(e.message || String(e), 'bad'); }
   btn.disabled = false;
@@ -402,7 +385,7 @@ Net.onClose = (wasOpen, stay) => {
     if (wasOpen) netErr('对方断开了连接');
     else if (Net.lastDiag && /房主一直没点/.test(Net.lastDiag)) netErr(Net.lastDiag);
     else if (hasTurn(Net.relayUsed)) netErr('连不上。' + (Net.lastDiag || '点开上面「中继服务器」，按「保存并测试」看中继能不能用。'));
-    else { netErr('连不上。校园网（eduroam）不让两台电脑直接连：点开上面「中继服务器」填一个中继再试，或者两边连同一个手机热点。'); $('relayBox').open = true; }
+    else { netErr('连不上：网络可能不允许两台设备直接连接（防火墙、对称型 NAT）。点开上面「中继服务器」填一个 TURN 中继再试；两台设备在同一个局域网里的话，也可以用下面的「手动连接」。'); $('relayBox').open = true; }
   }
 };
 $('btnOnline').addEventListener('click', () => openOnline());
@@ -667,7 +650,6 @@ if (Desk) {
   document.documentElement.classList.add('desktop');
   playEl.classList.add('fs');
   for (const id of ['btnExit']) $(id).hidden = false;
-  $('menuMsg').textContent = MENU_HINT;
   const showFs = on => { btnFull.textContent = on ? '退出全屏' : '⛶ 全屏'; $('btnPauseFull').hidden = !on; setTimeout(resize, 60); };
   showFs(Desk.isFullscreen());
   Desk.onFullscreenChange(showFs);
@@ -797,6 +779,28 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => {
   if (e.code === 'Space' && game.mode !== 'attract' && !game.paused && e.target && e.target.tagName === 'BUTTON') e.preventDefault();
 }, { capture: true });
+
+/* ---------- 2.3 菜单的声音（Jack：鼠标移到按钮上要有声音反馈，按下去是另一个声音） ----------
+   菜单、暂停、结算、各种面板（都在 .overlay 里）和教程面板里的按钮：鼠标移上去「笃」一声（fx.js Sound.uiHover），按下去「嗒」一声（uiPress）。
+   键盘换焦点（Tab、方向键）也「笃」一声。浏览器要先点过一下页面才让出声（软件版一开就有） */
+const UI_SND = '.overlay button, .overlay summary, #manual button';
+let uiHoverEl = null, uiKeyAt = -1e9;
+document.addEventListener('pointerover', e => {
+  if (e.pointerType && e.pointerType !== 'mouse') return;
+  const b = e.target.closest ? e.target.closest(UI_SND) : null;
+  if (b === uiHoverEl) return;
+  uiHoverEl = b;
+  if (b && !b.disabled) Sound.uiHover();
+});
+document.addEventListener('keydown', () => { uiKeyAt = performance.now(); }, true);
+document.addEventListener('focusin', e => {
+  const b = e.target.closest ? e.target.closest(UI_SND) : null;
+  if (b && !b.disabled && performance.now() - uiKeyAt < 300) Sound.uiHover();
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest ? e.target.closest(UI_SND) : null;
+  if (b && !b.disabled && !b.hasAttribute('data-nosnd')) Sound.uiPress();      // 音量 −/＋ 自己会响一声试听，不再叠一声
+});
 
 /* ---------- 声音：任何按键 / 点击 / 回到页面都把声音叫醒（浏览器有时会把它挂起，联机时尤其容易） ---------- */
 for (const ev of ['keydown', 'mousedown', 'pointerdown', 'touchend']) window.addEventListener(ev, () => Sound.wake(), { capture: true, passive: true });
