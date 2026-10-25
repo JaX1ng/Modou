@@ -412,15 +412,11 @@ const DRILLS = [
     why: '千斤坠怕站着的拳；对空招打不到它、反被踩倒',
     demo: (st, me, op) => isMove(op, 'dive') && !st.j && Drill.diveReady(me, op) ? (st.j = 1, TAP('jab')) : 0,
     win: R => R.my('hit', e => /倒栽葱/.test(e.how)), miss: R => R.op('hit') ? '拳出晚了（或者你蹲着）—— 他快踩到你头顶就出拳' : null },
-  { id: 'dive.block', topic: 'dive', name: '站着挡，再打', at: 200, act: jumpAtk('d:kick'),
-    how: ['他腾起来要踩，按住 [挡]（站着挡，千斤坠是上段）', '挡住了他往后弹开，落地后你先动：冲过去打他'],
-    why: '千斤坠被站挡住，往后翻着弹开',
-    demo: (st, me, op) => {
-      if (me.state === 'blockstun') { st.b = 1; return BLK; }
-      if (st.b && me.actionable() && !op.airborne) { if (gap(me, op) > MOVES.jab.reach) return TW(me, op); if (!st.c) st.c = chain(['jab', 'jab', 'heavy']); }
-      return st.c ? st.c(st, me, op) : st.b ? 0 : BLK;
-    },
-    win: R => R.my('block', e => e.name === 'dive') && R.my('hit'), miss: R => R.my('block') ? '挡住了 —— 他落地你过去打' : null },
+  { id: 'dive.block', topic: 'dive', name: '站着挡', at: 200, act: jumpAtk('d:kick'),
+    how: ['他腾起来要踩，按住 [挡]（站着挡，千斤坠是上段）', '挡住了他往后翻回去五六个身位（2.8 起和被腿顶回去一样远）：你先动，但追不上，挡住就算破了'],
+    why: '千斤坠被站挡住，往后翻着飞回去',
+    demo: (st, me, op) => BLK,
+    win: R => R.my('block', e => e.name === 'dive'), miss: R => R.op('hit') ? '没挡住 —— 他腾起来就按住 [挡]，别蹲' : null },
   { id: 'dive.kick', topic: 'dive', name: '地上出腿顶回去', at: 210, act: jumpAtk('d:kick'),
     how: ['他先往上腾一下（要踩了）—— 一看见他腾起来就按 [踢]（腿前摇长，要提前）', '地上的腿迎上空中的腿：他翻滚回去'],
     why: '地上出腿迎上千斤坠 = 顶得它翻滚回去（他悬着的那一下就要起腿）',

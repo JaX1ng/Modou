@@ -301,7 +301,17 @@ function guard(A, B, c) {
   note(A, B, chip, '被挡');
   cev('guard', A, B, { name: m.name, height: d.height, low: !!B.lowBlock });
   if (m.dashIn) tag(A.x, A.J.head[1] - 60, '冲势压制', A, 18);
-  if (d.dive) { A.vz = 5.2; A.vx = -dir * 3.6; }      // 千斤坠被站挡住：往后翻着弹开一段（落地对方稍微先动，但够不着白打）
+  if (d.dive) {
+    // 千斤坠被站挡住：往后翻着弹开（落地对方稍微先动，但够不着白打）。
+    // 2.8（Jack：别的翻回去都要和被腿顶回去一样远）：照翻滚回去的速度飞（TUMBLE_VX / VZ，同一个高度撞上飞得一样远、一样高），
+    // 以前只弹开 80 左右。招拉到落地才完（m.pen：落地后摇照旧），挡的人的挡住硬直跟着拉长，还是比它早 DIVE_BLOCK_ADV 帧能动
+    if (A.alt <= 0) A.alt = 0.01;
+    A.vz = TUMBLE_VZ; A.vx = -dir * TUMBLE_VX; A.kvx = 0;
+    const fly = tumbleFly(A.alt, TUMBLE_VZ);
+    m.bFly = fly;
+    m.pen = grid(Math.max(0, m.t + fly + 2 - (m.S + d.A + d.R)));
+    B.stunT = Math.max(B.stunT, grid(fly + TA(7) - DIVE_BLOCK_ADV));
+  }
   m.blocked = true; B.stats.blocks++;
   B.guardOn = m.serial;                                               // 挡住的是哪一招：打它收招算「挡后反击」
   B.stompFor = d.height === 'low' && d.kind === 'kick' && !m.air && B.lowBlock ? m.serial : -1;   // 蹲挡住下段腿：能踩腿

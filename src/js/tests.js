@@ -2707,7 +2707,7 @@ T('2.7.1 翻滚回去（Jack）：翻回去五六个身位（一个身位 = 身�
     n++;
     const d = (r.x0 - r.x1) / BODY_SPAN, lo = r.alt0 >= 45 ? 5 : 4.5;      // 快落地了才撞上的，飞得短一点
     ok(d >= lo && d <= 6, `撞上时离地 ${r.alt0.toFixed(0)}：飞了 ${d.toFixed(1)} 个身位（要 ${lo} ~ 6）`);
-    ok(r.top - r.alt0 >= 55, '翻得不够高：比撞上那一下高 ' + (r.top - r.alt0).toFixed(0));
+    ok(r.top - r.alt0 >= 78, '翻得不够高（2.8 要比撞上那一下高 80 左右）：' + (r.top - r.alt0).toFixed(0));
     ok(r.freeA >= 0 && r.freeB >= 0 && Math.abs(r.freeA - r.freeB) <= 1, `两边能动的时候差 ${r.freeA - r.freeB} 帧（应该同时）`);
     ok(r.gapFree >= 5 * BODY_SPAN, '能动的时候只隔着 ' + r.gapFree.toFixed(0));
   }
@@ -2718,6 +2718,44 @@ T('2.7.1 翻滚回去（Jack）：翻回去五六个身位（一个身位 = 身�
   ok(Math.abs(w.freeA - w.freeB) <= 1, `靠墙翻：两边能动的时候差 ${w.freeA - w.freeB} 帧`);
   // 地上那一腿收招里接不了别的招（不然先收完招跑过去等着打）
   const r2 = tumbleRun(1000, 170, 12, 4, 30); ok(F2.move && F2.move.tumbled && !F2.canCancel('jab') && !F2.canCancel('kick'), '顶回去那一腿还能接招');
+});
+// 千斤坠被站挡住：玩家二在 x1 + dist 一直站挡；玩家一跳过去第 p 帧千斤坠。chase：挡的人能动以后追过去第几帧按什么（看打不打得到它落地前）
+function diveBlockRun(x1, dist, p, chase) {
+  arena(dist); F1.x = x1; F2.x = x1 + dist;
+  const r = { at: -1, alt0: 0, x0: 0, x1: null, top: 0, freeA: -1, freeB: -1, punished: false };
+  for (let i = 0; i < 170; i++) {
+    let v2 = BLOCK;
+    if (chase && r.freeB >= 0) { const k = i - r.freeB, to = F1.x < F2.x ? LEFT : RIGHT; v2 = to | (k === chase[1] ? TAP(chase[0]) : 0); }
+    const hp = F1.hp;
+    step([(i === 0 ? TAP('up') | RIGHT : i < 4 ? RIGHT : 0) | (i === p ? DOWN | TAP('kick') : 0), v2]);
+    if (r.at < 0 && F1.move && F1.move.name === 'dive' && F1.move.blocked) { r.at = i; r.alt0 = F1.alt; r.x0 = F1.x; }
+    if (r.at < 0) continue;
+    r.top = Math.max(r.top, F1.alt);
+    if (r.x1 === null && !F1.airborne) r.x1 = F1.x;
+    if (r.freeA < 0 && F1.actionable()) r.freeA = i;
+    if (r.freeB < 0 && F2.actionable()) r.freeB = i;
+    if (F1.hp < hp && r.freeA < 0) r.punished = true;
+    if (!chase && r.freeA >= 0 && r.freeB >= 0) break;
+  }
+  return r;
+}
+T('2.8 千斤坠被站挡住翻回去（Jack：别的翻回去都和被腿顶回去一样远，再翻高一点）：和同样高度被顶回去飞得一样远（五六个身位）、一样高；挡的人照旧早 ' + DIVE_BLOCK_ADV + ' 帧能动，可是追过去打不到它', () => {
+  let n = 0;
+  for (const [d, p] of [[150, 10], [120, 10], [180, 12], [150, 14], [200, 16]]) {
+    const r = diveBlockRun(900, d, p);
+    if (r.at < 0) continue;
+    n++;
+    // 同样高度撞上被顶回去会飞多远（照 update 一步一步算）
+    const want = TUMBLE_VX * tumbleFly(r.alt0, TUMBLE_VZ), got = r.x0 - r.x1;
+    ok(Math.abs(got - want) <= 6, `离地 ${r.alt0.toFixed(0)} 被挡：飞了 ${got.toFixed(0)}，被顶回去是 ${want.toFixed(0)}`);
+    ok(got / BODY_SPAN >= 5 && got / BODY_SPAN <= 6, `被挡飞了 ${(got / BODY_SPAN).toFixed(1)} 个身位`);
+    ok(r.top - r.alt0 >= 78, '被挡翻得不够高：' + (r.top - r.alt0).toFixed(0));
+    ok(Math.abs(r.freeA - r.freeB - DIVE_BLOCK_ADV) <= 1, `挡的人早 ${r.freeA - r.freeB} 帧能动（要 ${DIVE_BLOCK_ADV}）`);
+  }
+  ok(n >= 4, '没挡住几次：' + n);
+  for (const [d, p] of [[120, 10], [150, 10], [180, 12]])
+    for (const a of ['jab', 'heavy', 'kick']) for (const k of [0, 3, 6, 10])
+      ok(!diveBlockRun(900, d, p, [a, k]).punished, `挡住后跑过去第 ${k} 帧出 ${a}，在它落地能动以前打中了`);
 });
 T('2.7 躺在地上的时间缩短 10% 左右：普通击倒、接腿摔、倒栽葱、摔、爆气、扫堂腿、踩腿都 ×0.9', () => {
   const was = { LIE_HIT: TFH(28), LIE_GROUND: TFH(40), LIE_AIR: TFH(76), LIE_CRASH: TFH(52), BURST_LIE: TFH(28), sweep: TFH(26), stomp: TFH(30) };
@@ -2839,7 +2877,7 @@ T('2.7 腿不扭（Jack：二起脚的腿扭着，不同距离下手臂、腿怪
   const kk = at(1.05).J1, shin = [kk.ff[0] - kk.fk[0], kk.ff[1] - kk.fk[1]];
   ok(shin[1] > 0 && Math.abs(shin[0]) < Math.abs(shin[1]) * 0.7, '收着的那条腿小腿要往下垂：' + shin.map(v => v.toFixed(1)));
 });
-T('2.7.1 铁山靠（Jack：腿别交叉、手也别交叉，就是半蹲着靠过去）：不转身；最远、80、50 打中前后两条腿不交叉、两只手不交叉；打中时半蹲（髋比站着低一截）', () => {
+T('2.7.1 → 2.8 铁山靠（Jack：腿别交叉、手也别交叉，就是半蹲着靠过去；2.8 肩膀撞过去、人侧着一点，不是头撞过去）：只侧过来一点、头在肩膀后面；最远、80、50 打中前后两条腿不交叉、两只手不交叉；打中时半蹲（髋比站着低一截）', () => {
   const segX = (a, b, c, d) => {                         // 两条线段真的交叉（端点挨着不算）
     const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
     return o(c, d, a) * o(c, d, b) < -1e-6 && o(a, b, c) * o(a, b, d) < -1e-6;
@@ -2851,7 +2889,17 @@ T('2.7.1 铁山靠（Jack：腿别交叉、手也别交叉，就是半蹲着靠�
     return Math.hypot(p[0] - a[0], p[1] - a[1]) > 6 && Math.hypot(p[0] - c[0], p[1] - c[1]) > 6;
   };
   const d = MOVES.shoulder, bad = []; let low = 99, n = 0;
-  ok(d.keys.every(k => !k[1].spin), '铁山靠不转身（转过去两条腿就从对面的大腿根出来，交叉成 X）');
+  ok(d.keys.every(k => !(Math.abs(k[1].spin || 0) > 30)), '铁山靠只侧过来一点（转过 30° 两条腿就从对面的大腿根出来，交叉成 X）');
+  // 2.8（Jack：是肩膀撞过去，不是头撞过去）：打中那几帧头在前肩后面，肩膀先到
+  let headOut = 0;
+  for (const f of simulateMove('shoulder', {})) {
+    if (!f.mv || f.mv.name !== 'shoulder' || !f.mv.hit) continue;
+    const ph = phaseOf(d, f.mv.t); if (ph < 1 || ph > 2) continue;
+    const J = f.J1, fc = J.facing, head = (J.head[0] - f.x1) * fc + BODY.bone.head, sh = Math.max((J.shF[0] - f.x1) * fc, (J.shB[0] - f.x1) * fc);
+    headOut = Math.max(headOut, head - sh);
+  }
+  // 前肩外沿 = 肩关节往前一个大臂根的粗细（BODY.ua 第一节）：头的前沿至少比它靠后 3
+  ok(headOut <= BODY.ua[0][1] - 3, '打中时头没在前肩后面：头前沿 - 肩关节 = ' + headOut.toFixed(1));
   for (const dist of [null, 80, 50]) {
     const fr = simulateMove('shoulder', dist == null ? {} : { dist });
     for (const f of fr) {

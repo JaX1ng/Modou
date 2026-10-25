@@ -850,7 +850,10 @@ class Fighter {
         // 千斤坠踩中：顺着这一脚蹲着落下来；被挡：往后翻一个跟头弹开
         if (m.def.dive && m.bounce) {
           if (m.hit) { copyPose(t, POSE.land); t.rot = -10; t.ff[0] = 40; t.ff[1] = 8; }
-          else { const u = clamp(m.bounce / 16, 0, 1); copyPose(t, u < 1 ? POSE.tuck : POSE.jdn); t.rot = -42 - 318 * EASE.io(u); }
+          else {   // 2.8 翻得远、飞得久：跟头跟着飞的时间翻（和翻滚回去一样，快落地时翻完、伸腿找地）
+            const u = clamp(m.bounce / Math.max(16, (m.bFly || 16) * 0.8), 0, 1);
+            copyPose(t, u < 0.85 ? POSE.tuck : POSE.jdn); t.rot = -42 - 318 * EASE.io(u);
+          }
         }
         if (m.slowed && m.t < m.S) { t.dx -= 3; t.fh[0] -= 4 + Math.sin(ck * 1.7) * 2; }
         if (this.armored(null)) t.dx += Math.sin(ck * 2.3) * 1.4;   // 霸体中微微发抖
