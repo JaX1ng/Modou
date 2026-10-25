@@ -19,7 +19,11 @@ const PULL_K = lerpK(0.3);          // 擒住时每帧把对手往怀里带三�
 const LK_CACHE = {};
 const lk = k => LK_CACHE[k] || (LK_CACHE[k] = lerpK(k));
 // 发带（2.6 Jack：短一点点、细一点点）：8 个点、每节 6.5 → 5.7（长 45 → 40）；画的宽度在 render.js
-const RIB_N = 8, RIB_SEG = 5.7, RIB_DAMP = rootDT(0.86);
+// 2.7（Jack：飘得太快，和待机、打斗的动作都对不上；再短一点点）：每节 5.7 → 5.1（长 40 → 36）；
+//     风变小、变慢（自己一阵一阵晃的那点：一秒多一下、上下甩 20 多像素 → 两三秒一下、几像素），阻尼大一点（每帧剩 86% → 80%）：
+//     站着时跟着呼吸轻轻摆，动起来是身子带着它甩，不自己乱扑腾
+const RIB_N = 8, RIB_SEG = 5.1, RIB_DAMP = rootDT(0.8);
+const RIB_WIND = 0.15, RIB_GUST = [0.024, 0.03];   // 风往身后吹多大；一阵一阵晃的两层（慢的那层两三秒一下）
 // 对手正起跳下蹲：马上要跳出去的水平速度（和 update 里 jumpsquat 那段一样算）
 function takeoffVx(o) {
   const dir = dirOf(o.inp.held);
@@ -92,7 +96,7 @@ class Fighter {
     this.hp = this.maxHp; this.lagHp = this.maxHp; this.state = 'idle'; this.t = 0; this.move = null;
     this.dashEnd = -999; this.info = null; this.comboDmg = 0; this.maxComboDmg = 0; this.prevCombo = null; this.freeAt = -999;
     this.chain = []; this.chainIdle = 99; this.slowJab = 0; this.airUsed = false; this.lowBlock = false;
-    this.stunT = 0; this.hurtHeavy = false; this.grabbed = false; this.downPhase = null; this.lieT = LIE_GROUND; this.landT = 4;
+    this.stunT = 0; this.hurtHeavy = false; this.grabbed = false; this.downPhase = null; this.lieT = LIE_GROUND; this.landT = 4; this.riseT = RISE;
     this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.rushStamped = false;
     this.clock = 0; this.serial = 0; this.walkPhase = 0; this.runT = 0; this.airT = 0; this.leapJump = false;
     this.carried = false; this.carry0 = 0; this.carryRot = 0; this.slam = false; this.qiGlow = 0; this.heat = 0; this.hitFlash = 0; this.hitShake = 0;
@@ -121,6 +125,7 @@ class Fighter {
   }
   get airborne() { return this.alt > 0 || this.vz > 0; }
   actionable() { return ACTIONABLE.has(this.state); }
+  rollLen(dir) { return dir === this.facing ? ROLL_DIST : ROLL_BACK; }   // 2.7 滚身起滚多远：往前（面朝的方向）96、往后 64
   // 第 r[0] ~ r[1] 帧（含）：2.6 起时间带小数，按「第 k 帧 = [k, k+1)」比
   inFrames(key) {
     const m = this.move, r = m && this.state === 'attack' ? m.def[key] : null;
@@ -336,7 +341,7 @@ class Fighter {
   }
   canCancel(kind) {
     const m = this.move;
-    if (!m || m.air || m.def.script || m.def.noCancel) return false;
+    if (!m || m.air || m.def.script || m.def.noCancel || m.tumbled) return false;   // 2.7 把空中的腿顶回去的那一腿：收完才能动（平等）
     if (!(m.hit || m.blocked || m.absorbed)) return false;          // 2.1 被霸体吃了也能接（不然「连打破霸体」打不出来）
     // 判定开始以后的第 1 ~ A+12 帧能接（按下这一步之后招式走到 m.t + DT，以前是走完一帧）
     const after = m.t + DT - 1 - m.S;
@@ -548,16 +553,17 @@ class Fighter {
             this.rollDir = this.state === 'down' && !locked ? dirOf(h) : 0;     // 起身时按住方向 = 往那边滚身起
           }
         } else if (this.downPhase === 'getup') {
-          if (this.rollDir) this.x += this.rollDir * ROLL_DIST / GETUP * DT;
+          if (this.rollDir) this.x += this.rollDir * this.rollLen(this.rollDir) / GETUP * DT;
           if ((this.t += DT) >= GETUP) {
             // 2.0：起身完了先是「起身硬直」RISE 帧：站起来那几帧，打得中、还动不了（给对面先出手）
             this.state = 'rise'; this.downPhase = null; this.t = 0;
+            this.riseT = this.rollDir ? RISE_ROLL : RISE;          // 2.7 滚身起：滚完站起来那几帧长一点（对面要追过去 / 转身才打得到）
             if (this.rollDir) { this.facing = this.opp.x >= this.x ? 1 : -1; this.rollDir = 0; }
           }
         }
         break;
       case 'rise':
-        if ((this.t += DT) >= RISE) this.state = 'idle';
+        if ((this.t += DT) >= (this.riseT || RISE)) this.state = 'idle';
         break;
       case 'ko': case 'win': break;
     }
@@ -630,6 +636,7 @@ class Fighter {
       if (k > 0 && k < 10 && k % 2 === 0) dashLines(this);
       if (k === 10) { dust(this.x + this.facing * 24, FLOOR, 6); Sound.land(); }
     }
+    if (m.name === 'super') superStep(this, m, k);              // 2.7 泼墨：蓄力时墨往掌心收、出掌那一下掌前面炸开墨花（只是画面）
     const held = o.grabbed && o.state === 'hit';
     // 擒住 / 提膝 / 别腿摔 / 抱腿摔：把对手往怀里带（贴身好接后续）
     if (held && (m.name === 'hold' || m.name === 'knee' || m.name === 'trip' || m.name === 'tackle')) {
@@ -692,7 +699,7 @@ class Fighter {
     let nx = this.x - this.facing * THROW_LAND;
     if (nx < WALL_L || nx > WALL_R) { nx = clamp(nx, WALL_L, WALL_R); this.x = clamp(nx + this.facing * THROW_LAND, WALL_L, WALL_R); }
     o.x = nx; o.alt = Math.max(o.alt, 0.01);
-    o.knockDown(-3, -this.facing * 2, TFH(31), o.hp <= 0); o.slam = true; if (o.hp <= 0) o.hp = 0;
+    o.knockDown(-3, -this.facing * 2, TFH(28), o.hp <= 0); o.slam = true; if (o.hp <= 0) o.hp = 0;   // 2.7 躺 ×0.9（TFH(31) → TFH(28)）
     this.stats.hits++; this.stats.specials++; this.gainQi(dmg * 0.4 * QI_PER_HP); o.gainQi(dmg * 0.9 * QI_PER_HP);
     bumpCombo(this, o); noteGrab(this, dmg, pt ? '借力摔' : '过肩摔');
     game.freeze = 7; game.shake = Math.max(game.shake, 8);
@@ -815,7 +822,7 @@ class Fighter {
       }
       case 'rise': {
         // 2.0 起身硬直：从蹲着站起来，两手还垂着没护住（POSE.rise），最后几帧顺到站姿
-        const u = clamp(this.t / RISE, 0, 1);
+        const u = clamp(this.t / (this.riseT || RISE), 0, 1);
         return lerpPose(POSE.rise, POSE.stance, EASE.io(u), t, false);
       }
       case 'blockstun': copyPose(t, this.lowBlock ? POSE.cblock : POSE.block); t.dx -= 8; t.tor -= 8; t.head += 6; return t;
@@ -823,9 +830,9 @@ class Fighter {
       case 'jumpsquat': return copyPose(t, POSE.squat);
       case 'land': return copyPose(t, POSE.land);
       case 'tumble': {
-        // 被顶回去：团身往后翻一个跟头（面朝对手往后飞）
-        const u = clamp(this.t / 17, 0, 1);
-        copyPose(t, u < 0.85 ? POSE.tuck : POSE.jdn); t.rot = -360 * EASE.out(u); return t;
+        // 被顶回去：团身往后翻一个跟头（面朝对手往后飞）。2.7 飞得高、飞得久：跟头跟着飞的时间翻（快落地时翻完、伸腿找地）
+        const u = clamp(this.t / Math.max(17, (this.tumFly || 17) * 0.8), 0, 1);
+        copyPose(t, u < 0.85 ? POSE.tuck : POSE.jdn); t.rot = -360 * EASE.io(u); return t;
       }
       case 'air': {
         // 跑着跳：上升和顶点用「飞身」（两臂展开），往下落两腿找地；站着跳：上升 → 团身 → 伸腿
@@ -953,6 +960,33 @@ class Fighter {
       const L = this.fkL; p.dx -= d;
       if (Math.abs(ax) >= 0.6) for (const k of ['ff', 'bf']) if (Math.abs(L[k][1] - (p.hy - A)) < 6) footTo(k, L[k][0] + d / ax, L[k][1]);
     };
+    // 2.7（Jack：二起脚的腿扭着、不同距离下腿怪）：出腿离得近、脚要往回收的时候，以前把脚踝平着往回拽 —— 往上踢的腿（鞭腿、二起脚）
+    // 膝盖跟着往下顶、小腿往上翘，拧成一个往上开的 V；转身蹬这种平着蹬的，膝盖往下塌、人像蹲着。现在一律「收腿」的样子，膝盖在上面：
+    //   · 先让膝盖留在原处，小腿绕着膝盖往下折回来（像出腿前提着膝的样子），脚最多折到髋下面 8（踢腿的脚不垂到髋以下）；
+    //   · 还不够再平着往回收，膝盖往上提（不往下顶）。贴着地出的腿（脚离地不到 24，扫堂腿这种）不往下折，只平着收
+    const foldLeg = (k, L, e, dl) => {
+      const kn = L[k === 'ff' ? 'fk' : 'bk'], gy = p.hy - A, hj = k === 'ff' ? BODY.hipSplit : -BODY.hipSplit;
+      const kd = dl > 0 ? 1 : -1;                                                                    // 这条腿往哪边踢（姿势坐标：往前 1，转身蹬往后 -1）
+      let nx = e[0] - dl, ny = e[1];
+      if (e[1] < gy - 24) {
+        const r = Math.hypot(e[0] - kn[0], e[1] - kn[1]) || 1e-3, s = kd;
+        const a0 = Math.atan2(e[1] - kn[1], s * (e[0] - kn[0]));                                    // 小腿的角度（照往踢的方向算，往下是正，过了 90° 是往回斜）
+        const yLow = Math.max(e[1], 8);                                                              // 脚最多折到这么低（本来就更低的不往下折）
+        let a = Math.acos(clamp(s * (nx - kn[0]) / r, -1, 1));                                       // 折到脚踝正好往回收 dl
+        const aMax = Math.min(Math.PI / 2 + 0.7, kn[1] + r <= yLow ? 9 : Math.asin(clamp((yLow - kn[1]) / r, -1, 1)));
+        a = clamp(a, a0, Math.max(a0, aMax));
+        const fx = kn[0] + s * r * Math.cos(a), fy = kn[1] + r * Math.sin(a);
+        nx = s * (fx - nx) > 0 ? nx : fx; ny = fy;                                                  // 折到头还不够：剩下的平着往回收
+        p[k === 'ff' ? 'fkh' : 'bkh'] = [kn[0] - hj, kn[1] - 8];                                     // 膝盖留在原处、偏上（IK 挑那个解，不往下顶）
+      }
+      // 脚踝收到髋前面就收不动了（再收腿就折到身后去）：剩下的整个人往后让（back，和身子扎进去时一样）
+      const lim = hj + kd * 6;
+      if (kd * (nx - lim) < 0) { const rest = kd * (lim - nx); nx = lim; if (Math.abs(ax) >= 0.6) back(rest * Math.abs(ax)); }
+      p[k][0] = nx; p[k][1] = p.hy - A - ny;
+      // 膝盖弯在哪边直接定下来（不走 fk 里「几帧慢慢换边」：那几帧膝盖夹在两边中间，腿像一根缩短的直棍、或者往下塌）
+      const h = p[k === 'ff' ? 'fkh' : 'bkh'];
+      if (h && ik0) ik0[k === 'ff' ? 2 : 3] = ik(hj, 0, nx, ny, BODY.bone.th, BODY.bone.sh, h[0], h[1])[4];
+    };
     let moved = 0;
     for (let it = 0; it < 2; it++) {
       const core = bodyParts(this.J, 0, CORE).parts.map(q => q.pts);
@@ -982,12 +1016,13 @@ class Fighter {
         if (pen <= 0.4 || cut >= 120) break;
         const d = Math.min(pen + 0.6, 120 - cut), dl = d / ax, L = this.fkL, e = L[limb]; cut += d;
         if (arm) { p[limb][0] = e[0] - L.sh[0] - dl; p[limb][1] = e[1] - L.sh[1]; }
-        else if (leg) { p[limb][0] = e[0] - dl; p[limb][1] = p.hy - A - e[1]; }
+        else if (leg) foldLeg(limb, L, e, dl);
         else back(d);
         refit();
       }
     }
     p.dx = keep.dx; for (const k of ['fh', 'bh', 'ff', 'bf']) { p[k][0] = keep[k][0]; p[k][1] = keep[k][1]; }
+    delete p.fkh; delete p.bkh;
   }
   /* 骨骼（2.4 新人物模型，比例、肩宽这些在 body.js 的 BODY 表）：
      髋（原点）→ 脊柱（tor 前倾）→ 脖子根 → 脖子 → 头；肩关节在脊柱上，拧腰 tw（度）时前手肩膀往前、后手肩膀往后错开；
@@ -1020,10 +1055,11 @@ class Fighter {
     const kf = p.fn === undefined ? 1 : p.fn, kb = p.bn === undefined ? 1 : p.bn;   // 膝盖往哪边顶（1 往前；-1 往后：仆步那条蹲着的腿脚尖外摆）
     const fA = limb(0, shF[0], shF[1], sh[0] + p.fh[0], sh[1] + p.fh[1], L.ua, L.fa, -0.3, p.fe);
     const bA = limb(1, shB[0], shB[1], sh[0] + p.bh[0], sh[1] + p.bh[1], L.ua, L.fa, -0.3, p.be);
-    const fL = limb(2, hipF[0], hipF[1], p.ff[0], p.hy - L.ankle - p.ff[1], L.th, L.sh, kf, -0.15);
-    const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, kb, -0.15);
+    // 2.7 fkh / bkh：膝盖往哪边顶的提示直接给一个方向（只有 fitContact 收腿时临时放，让膝盖留在原处；脚尖朝向、亮边还是看 fn / bn）
+    const fL = limb(2, hipF[0], hipF[1], p.ff[0], p.hy - L.ankle - p.ff[1], L.th, L.sh, p.fkh ? p.fkh[0] : kf, p.fkh ? p.fkh[1] : -0.15);
+    const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, p.bkh ? p.bkh[0] : kb, p.bkh ? p.bkh[1] : -0.15);
     // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收
-    this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]] };
+    this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]], fk: [fL[0], fL[1]], bk: [bL[0], bL[1]] };
     // 2.5 膝盖往侧面摆（姿势的 fo / bo，度；Jack：扫堂腿蹲着的那条腿不是往后，是往侧面 —— z 轴）：
     // 膝盖绕「大腿根 → 脚踝」那条线往这条腿自己那一侧转出去（前腿 z+ 离镜头近、后腿 z- 离镜头远），脚踝不动。
     // 转到 90° 膝盖正冲着侧面：侧面看这条腿是缩短的（大腿、小腿冲着镜头 / 背着镜头），脚尖也跟着朝侧面（body.js 画鞋时变短）
@@ -1080,7 +1116,7 @@ class Fighter {
         const p = pts[i];
         const vx = (p.x - p.px) * dd, vy = (p.y - p.py) * dd;
         p.px = p.x; p.py = p.y;
-        const wind = -f * 0.18 + Math.sin(this.clock * 0.09 + i * 0.7 + k * 1.3) * 0.12;
+        const wind = -f * RIB_WIND + Math.sin(this.clock * 0.036 - i * 0.32 + k * 1.3) * RIB_GUST[0] + Math.sin(this.clock * 0.014 + k * 2.1) * RIB_GUST[1];
         p.x += vx + wind * d2; p.y += vy + 0.24 * d2;
       }
       for (let it = 0; it < 3; it++) {

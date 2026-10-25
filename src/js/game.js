@@ -153,6 +153,7 @@ function simTick(inputs) {
           const Wf = game.p[game.winner];
           if (Wf.actionable() || Wf.state === 'land') Wf.state = 'win';
           announce(`${Wf.name} 胜`, game.wins[game.winner] >= WIN_ROUNDS ? '' : `${game.wins[0]} : ${game.wins[1]}`, 100, 120, Wf);   // 赢的人的颜色
+          if (game.wins[game.winner] >= WIN_ROUNDS) Sound.victory(localWin(game.winner));   // 2.7 整场打完：赢了一段鼓 + 古筝，输了一串往下走的古筝
         } else announce('平局', '本回合重打', 100, 120);
       }
       break;
@@ -189,6 +190,12 @@ function trainTick(fr) {
   if (a.hp < a.maxHp && a.actionable()) a.hp = a.lagHp = a.maxHp;
   if (game.trainQi) a.qi = QI_MAX;
   if (fr) Drill.tick();             // 2.1 破招练习：这一遍的计时、判成没成功（一帧一次）
+}
+// 2.7 整场是不是「我」赢了（放哪段声音）：人机看玩家一；联机看自己是哪一边（房主是玩家一）；双人对战两个人都在这台电脑上，总有人赢
+function localWin(w) {
+  if (game.mode === 'pve') return w === 0;
+  if (game.mode === 'online') return w === (typeof Net !== 'undefined' && Net.role === 'host' ? 0 : 1);
+  return true;
 }
 // 五局三胜：两边都差一局就赢 = 决胜局
 function roundName() {

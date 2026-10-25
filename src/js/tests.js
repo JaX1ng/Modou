@@ -502,7 +502,9 @@ T('破泼墨：擒拿在它出手前抓住它', () => {
   eq(F2.hp, MAX_HP); ok(F1.hp < MAX_HP, '应该被抓');
 });
 T('破泼墨：卸力、格挡、跳起', () => {
-  arena(110); F1.qi = QI_MAX; run(30, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, i >= 5 ? BLOCK : 0]);
+  // 2.7 前摇长了两帧（蓄力）：快打到的时候才按挡（以前第 5 帧按，现在按前摇算）
+  const pAt = Math.round(MOVES.super.S) - 5;
+  arena(110); F1.qi = QI_MAX; run(30, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, i >= pAt ? BLOCK : 0]);
   eq(F2.stats.parries, 1, '卸力'); eq(F2.hp, MAX_HP);
   arena(110); tick(0, BLOCK, 30); F1.qi = QI_MAX; run(30, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, BLOCK]);
   eq(lost(F2), Math.round(MOVES.super.dmg * BLOCK_KEEP), '格挡');
@@ -649,7 +651,7 @@ T('滚身起：倒地时按住方向，起身时往那边滚开，滚完面朝�
       if (x0 !== null && x1 === null && F2.state !== 'down') x1 = F2.x;
     }
     ok(x0 !== null && x1 !== null, '没倒地 / 没起来');
-    if (roll) { ok(Math.abs(x1 - x0 - ROLL_DIST) < 6, '滚了 ' + Math.round(x1 - x0)); eq(F2.facing, -1, '滚完面朝对手'); }
+    if (roll) { ok(Math.abs(x1 - x0 - ROLL_BACK) < 6, '往后滚了 ' + Math.round(x1 - x0) + '（2.7 往后滚 ' + ROLL_BACK + '）'); eq(F2.facing, -1, '滚完面朝对手'); }
     else ok(Math.abs(x1 - x0) < 6, '没按方向也滚了');
   }
 });
@@ -1374,7 +1376,7 @@ T('2.0 滚身起：滚开以后也有起身硬直；站在原地等着压的人�
   while (k++ < 120 && F2.downPhase !== 'lie') tick();
   const xDown = F2.x, hp = F2.hp;
   while (k++ < 200 && F2.state !== 'rise') tick(0, F2.state === 'down' ? RIGHT : 0);
-  eq(F2.state, 'rise', '滚完也是起身硬直'); ok(F2.x - xDown > ROLL_DIST - 6, '滚了 ' + Math.round(F2.x - xDown));
+  eq(F2.state, 'rise', '滚完也是起身硬直'); ok(F2.x - xDown > ROLL_BACK - 6, '滚了 ' + Math.round(F2.x - xDown));
   // 守在他倒地处跟前的人，在他起身硬直刚开始出拳：够不着
   F1.x = xDown - 70; F1.facing = 1; run(20, i => [i === 0 ? TAP('jab') : 0, 0]);
   eq(F2.hp, hp, '原地压的人打到了滚开的人');
@@ -1686,7 +1688,7 @@ T('2.2 难度：入门 / 简单 / 中等 / 困难 / 终极（每个两个字）�
   eq(LEVEL_IDS, ['novice', 'easy', 'normal', 'hard', 'hell']);
   eq(LEVEL_IDS.map(id => LEVEL_NAME[id]), ['入门', '简单', '中等', '困难', '终极']);
   for (const id of LEVEL_IDS) { ok(LEVEL_NAME[id].length === 2, id + ' 名字要两个字'); eq(LABEL[id], '电脑 · ' + LEVEL_NAME[id]); }
-  eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [13, 11, 8, 8, 11], '反应帧');
+  eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [22, 14, 9, 8, 11], '反应帧（2.7 入门、简单、中等慢了）');
   ok(LEVELS.novice.block < LEVELS.easy.block && LEVELS.novice.read < LEVELS.easy.read && LEVELS.novice.punishBlock < LEVELS.easy.punishBlock, '入门比简单挡得少、读招少、罚得少');
   ok(PLANS.novice.every(([p]) => p.length <= 3) && PLANS.novice.filter(([p]) => p.length <= 2).length >= PLANS.novice.length - 1, '入门的连招短（多是一两下）');
   ok(LEVELS.hard.smart && LEVELS.hard.see === 0.45 && !LEVELS.hard.inst, '困难：2.1 的难松一点（看穿 0.5 → 0.45）');
@@ -1694,7 +1696,9 @@ T('2.2 难度：入门 / 简单 / 中等 / 困难 / 终极（每个两个字）�
   ok(LEVELS.hell.react >= LEVELS.hard.react, '终极平时的反应不比人快（看穿靠概率）');
   for (const id of LEVEL_IDS) {
     const L = LEVELS[id];
-    ok(L.airBlock >= 0.7 && L.aaPlan >= 0.45 && L.habit > 0 && L.guard > 0 && L.punishBlock >= 0.35, id + '：防跳、空中招站着挡、记习惯、近身护手、挡住就罚，每档都要有');
+    // 2.7（Jack：入门、简单别搞那么多破招）：这两档防跳、挡住就罚、记习惯都只剩一点（还是有，不是完全不会）；中等往上照旧
+    const easyish = id === 'novice' || id === 'easy';
+    ok(L.airBlock >= (easyish ? 0.3 : 0.7) && L.aaPlan >= (easyish ? 0.15 : 0.45) && L.habit > 0 && L.guard > 0 && L.punishBlock >= (easyish ? 0.1 : 0.35), id + '：防跳、空中招站着挡、记习惯、近身护手、挡住就罚，每档都要有');
   }
   for (let i = 1; i < LEVEL_IDS.length; i++) {
     const a = LEVELS[LEVEL_IDS[i - 1]], b = LEVELS[LEVEL_IDS[i]];
@@ -1826,23 +1830,31 @@ function aiPatternRaw(level, name, frames) {
   close(); game.brains = [null, null];
   return { att, rate: won / Math.max(1, att), net: net / Math.max(1, att) };
 }
-T('2.1 所有难度：泰山压顶、飞踢跳进来不会白吃（以前要么蹲着挡、要么等看见空中招才动，泰山压顶常常打中）', () => seededRandom(11, () => {
-  const cap = { novice: 0.6, easy: 0.32, normal: 0.25, hard: 0.2, hell: 0.15 };   // 2.2 入门最松（看反应慢、常蹲不对）
-  for (const lv of LEVEL_IDS) for (const pn of ['jumpHeavy', 'jumpKick']) {
-    const r = aiPattern(lv, pn, 4800);
-    ok(r.att >= 8, `${lv} ${pn} 次数太少：${r.att}`);
-    ok(r.rate <= cap[lv], `${lv}：${pn} 赚了 ${(r.rate * 100).toFixed(0)}%（不能超过 ${cap[lv] * 100}%）`);
+T('2.1 所有难度：泰山压顶、飞踢跳进来不会白吃（以前要么蹲着挡、要么等看见空中招才动，泰山压顶常常打中）', () => {
+  // 2.2 入门最松（看反应慢、常蹲不对）；2.7（Jack：入门要让乱打的打掉八成血、入门简单别那么多破招）：入门不查，简单放宽
+  // 2.7 每一种跑四个种子取平均（以前一个种子从头跑到尾：终极被泰山压顶 12 个种子平均 2.6 是 10%、2.7 是 11%，单跑一次 0 ~ 26% 都有）
+  const cap = { easy: 0.8, normal: 0.25, hard: 0.2, hell: 0.15 }, seeds = [11, 12, 13, 14];
+  for (const lv of LEVEL_IDS.filter(l => l !== 'novice')) for (const pn of ['jumpHeavy', 'jumpKick']) {
+    let rate = 0, att = 99;
+    for (const sd of seeds) { const r = seededRandom(sd, () => aiPattern(lv, pn, 4800)); rate += r.rate / seeds.length; att = Math.min(att, r.att); }
+    ok(att >= 8, `${lv} ${pn} 次数太少：${att}`);
+    ok(rate <= cap[lv], `${lv}：${pn} 赚了 ${(rate * 100).toFixed(0)}%（不能超过 ${cap[lv] * 100}%）`);
   }
-}));
-T('2.1 所有难度：没有「永远吃」的招 —— 一种招反复出，电脑会看反应、记住你的习惯调整防法；困难、终极反复出同一招还要亏', () => seededRandom(12, () => {
-  const cap = { novice: 0.7, easy: 0.62, normal: 0.52, hard: 0.42, hell: 0.36 }, bad = [];   // 2.2 终极的看穿降了：0.3 → 0.36（多种子平均只有一成上下，单跑一次起伏大）
-  for (const lv of LEVEL_IDS) for (const pn of ['kick', 'sweep', 'lowJabSweep', 'heavy', 'grabStand', 'dashJab', 'crossup', 'jumpDive']) {
-    const r = aiPattern(lv, pn, 3600);
-    if (r.rate > cap[lv]) bad.push(`${lv} ${pn} 赚 ${(r.rate * 100).toFixed(0)}%`);
-    if ((lv === 'hard' || lv === 'hell') && r.net > 1) bad.push(`${lv} ${pn} 每次净赚 ${r.net.toFixed(1)}`);
+});
+T('2.1 所有难度：没有「永远吃」的招 —— 一种招反复出，电脑会看反应、记住你的习惯调整防法；困难、终极反复出同一招还要亏', () => {
+  // 2.2 终极的看穿降了：0.3 → 0.36（多种子平均只有一成上下，单跑一次起伏大）。
+  // 2.7（Jack：入门再简单很多、入门简单别那么多破招）：入门不查（乱打就要能赢）；简单 0.62 → 0.78（不破招了，靠记习惯慢慢挡对）
+  // 2.7 每一种招跑四个种子取平均（以前一个种子从头跑到尾，前面哪一招多一帧少一帧，后面的全变：同一档同一招能差 ±6~9%，
+  //     2.6 的代码换个种子也会超 —— 困难被闪身跳过去，12 个种子平均 2.6 是 36%、2.7 是 34%，单跑一次能到 46%）
+  const cap = { easy: 0.78, normal: 0.52, hard: 0.42, hell: 0.36 }, bad = [], seeds = [12, 13, 14, 15];
+  for (const lv of LEVEL_IDS.filter(l => l !== 'novice')) for (const pn of ['kick', 'sweep', 'lowJabSweep', 'heavy', 'grabStand', 'dashJab', 'crossup', 'jumpDive']) {
+    let rate = 0, net = 0;
+    for (const sd of seeds) { const r = seededRandom(sd, () => aiPattern(lv, pn, 3600)); rate += r.rate / seeds.length; net += r.net / seeds.length; }
+    if (rate > cap[lv]) bad.push(`${lv} ${pn} 赚 ${(rate * 100).toFixed(0)}%`);
+    if ((lv === 'hard' || lv === 'hell') && net > 1) bad.push(`${lv} ${pn} 每次净赚 ${net.toFixed(1)}`);
   }
   ok(!bad.length, bad.join('；'));
-}));
+});
 T('2.1 接腿：腿快踢到了就不去接（以前晚 5 帧也伸手，常常接空挨踢）', () => seededRandom(5, () => {
   let late = 0, tries = 0;
   for (const lv of ['easy', 'normal']) {
@@ -1922,12 +1934,14 @@ function mixedPlayerRaw(level, frames) {
   game.brains = [null, null];
   return dealt / Math.max(1, dealt + taken);
 }
-T('2.2 五档拉得开：乱换招的木头玩家打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，每一档至少差 4%；终极不再是「完全打不着」（2.3：入门 ≥ 64%、终极 ≥ 20%）', () => {
+T('2.2 五档拉得开：乱换招的木头玩家打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，每一档至少差 4%；终极不再是「完全打不着」（2.7 Jack：入门 ≥ 80%、简单 ≥ 65%、中等 ≥ 40%；终极 ≥ 20%）', () => {
   const sh = {}, seeds = [5, 6, 7, 8, 9, 10];
   for (const lv of LEVEL_IDS) { let t = 0; for (const sd of seeds) t += seededRandom(sd, () => mixedPlayer(lv, 30000)); sh[lv] = t / seeds.length; }
   const txt = LEVEL_IDS.map(l => `${LEVEL_NAME[l]} ${(sh[l] * 100).toFixed(1)}%`).join(' · ');
   for (let i = 1; i < LEVEL_IDS.length; i++) ok(sh[LEVEL_IDS[i - 1]] - sh[LEVEL_IDS[i]] >= 0.04, '有两档挨得太近：' + txt);
-  ok(sh.novice >= 0.64, '入门要让木头玩家明显占上风：' + txt);
+  ok(sh.novice >= 0.8, '入门：乱打的要能打掉八成以上：' + txt);
+  ok(sh.easy >= 0.65, '简单：乱打的要能打掉 65% 以上：' + txt);
+  ok(sh.normal >= 0.4, '中等：乱打的要能打掉四成以上：' + txt);
   ok(sh.hell >= 0.2, '终极还是太难（木头玩家几乎打不着）：' + txt);
   console.log('五档：' + txt);
 });
@@ -2562,8 +2576,8 @@ T('2.6 画面（Jack）：跑步手臂别甩那么大；待机后手往前一点
   ok(RUN_ARM_F < 70 * 0.8 && RUN_ARM_B < 66 * 0.8, '跑步手臂摆幅（2.5：往前 70°、往后 66°）');
   ok(POSE.stance.bh[0] > 6 && POSE.stance.bh[0] <= 13, '待机后手（2.5 在 6）：' + POSE.stance.bh[0]);
   const len = (RIB_N - 1) * RIB_SEG;
-  ok(len < 45.5 * 0.95 && len > 45.5 * 0.75, '飘带长（2.5 是 45.5）：' + len.toFixed(1));
-  ok(RIB_W < 5.4 * 0.95 && RIB_W > 5.4 * 0.75, '飘带宽（2.5 是 5.4）：' + RIB_W);
+  ok(len < 45.5 * 0.95 && len > 45.5 * 0.65, '飘带长（2.5 是 45.5）：' + len.toFixed(1));   // 2.7 又短了一点（下限 0.75 → 0.65）
+  ok(RIB_W < 5.4 * 0.95 && RIB_W > 5.4 * 0.65, '飘带宽（2.5 是 5.4）：' + RIB_W);
   ok(ZOOM > 1.76 && ZOOM <= 1.95, '镜头放大（2.5 是 1.76）：' + ZOOM);
   // 跑起来手臂真的摆得小：大臂从最后甩到最前的角度（2.5 是 130°）
   arena(400); let lo = 1e9, hi = -1e9;
@@ -2571,8 +2585,8 @@ T('2.6 画面（Jack）：跑步手臂别甩那么大；待机后手往前一点
   ok(hi - lo < 130 * 0.85 && hi - lo > 60, '跑步时大臂从最后到最前摆了 ' + (hi - lo).toFixed(0) + '°');
 });
 
-T('2.5.1 动起来的背景（Jack）：每张图都有会动的东西、各不一样；都从左往右飘（不来回）；只用自己的随机数（不碰 Math.random、vrnd）；只在人身后，不进战斗逻辑（2.6：燕子在中景、竹叶换掉萤火虫）', () => {
-  const want = { sun: ['far'], falls: ['mid'], bamboo: ['mid'], peach: ['mid'], desert: ['far', 'mid'], yard: ['mid'] };
+T('2.5.1 动起来的背景（Jack）：每张图都有会动的东西、各不一样；都从左往右飘（不来回）；只用自己的随机数（不碰 Math.random、vrnd）；只在人身后，不进战斗逻辑（2.6：竹叶换掉萤火虫；2.7：燕子换成远景里的一排大雁）', () => {
+  const want = { sun: ['far'], falls: ['mid'], bamboo: ['mid'], peach: ['far', 'mid'], desert: ['far', 'mid'], yard: ['mid'] };
   const cv = document.createElement('canvas'); cv.width = 2400; cv.height = 900; const g = cv.getContext('2d');
   const mr = Math.random, seed0 = vrSeed; let rcalls = 0;
   Math.random = function () { rcalls++; return mr(); };
@@ -2587,15 +2601,15 @@ T('2.5.1 动起来的背景（Jack）：每张图都有会动的东西、各不�
       const vx = [];
       for (let i = 1; i <= 2400; i++) {
         st.t += 1 / 60; g.setTransform(1, 0, 0, 1, 0, 0); for (const k of want[id]) S.live[k](g, L, st, 1 / 60);
-        for (const f of st.birds || []) for (const m of f.m) vx.push(m.vx);               // 燕子每一步都看（俯冲、拉起来也不能往回飞）
+        for (const f of st.geese || []) vx.push(f.v);                                     // 大雁每一步都看
         if (i % 300) continue;
         const cur = shot(); for (let j = 3; j < cur.length; j += 4 * 3) if (Math.abs(cur[j] - prev[j]) > 8) diff++; prev = cur;
       }
       ok(diff > 60, id + ' 跑了 40 秒画面没怎么变：' + diff);
       for (const k of ['clouds', 'petals', 'leaves', 'wisps', 'spray']) for (const o of st[k] || []) vx.push(o.sp !== undefined ? o.sp : o.vx);
       ok(vx.every(v => v > 0), id + ' 有往左飘的：' + vx.filter(v => v <= 0).slice(0, 5));
-      // 只在人身后：会动的东西都在地线以上、人头顶上面或者远处（燕子、云、花瓣、竹叶在天上；沙在中景）
-      for (const f of st.birds || []) for (const m of f.m) ok(m.y < L.fy - 300, '燕子飞得太低：' + (L.fy - m.y).toFixed(0));
+      // 只在人身后：会动的东西都在地线以上、人头顶上面或者远处（大雁、云、花瓣、竹叶在天上；沙在中景）
+      for (const f of st.geese || []) for (const m of f.m) ok(f.y + m.dy < L.fy - 300, '大雁飞得太低：' + (L.fy - f.y - m.dy).toFixed(0));
       for (const o of st.petals || []) ok(o.y < L.fy - 120, '花瓣落到人跟前了');
       for (const o of st.leaves || []) ok(o.y < L.fy - 140, '竹叶落到人跟前了');
       ok(!st.flies, id + ' 还有萤火虫');
@@ -2603,23 +2617,34 @@ T('2.5.1 动起来的背景（Jack）：每张图都有会动的东西、各不�
   } finally { Math.random = mr; }
   eq(rcalls, 0, '动态背景用了 Math.random');
   eq(vrSeed, seed0, '动态背景用了 vrnd（特效的随机数）');
-  // 2.6 燕子（桃花园）：40 秒里至少飞来几群；飞得快（平均一秒 170 像素以上）；扇翅膀、张着翅膀飘、俯冲都有；在中景那一层（跟着桃林一起挪，不跟着人）
-  const st = { id: 'peach', t: 0 }, L = { w: 1400, h: 700, fy: 560, vis: [100, 1300] }, ks = new Set(), modes = new Set();
-  let seen = 0, groups = 0, lastG = null, vsum = 0, vn = 0;
-  for (let i = 0; i < 2400; i++) {
-    st.t += 1 / 60; STAGES.peach.live.mid(g, L, st, 1 / 60);
-    if (st.birds.length) { seen++; const m = st.birds[0].m[0]; ks.add(m.k.toFixed(1)); modes.add(m.mode); vsum += m.vx; vn++; if (st.birds[0] !== lastG) { groups++; lastG = st.birds[0]; } }
+  // 2.7 大雁（桃花园，Jack：燕子变成一排大雁，从左往右，全是扇翅膀飞、不用飘，在远处飞、飞慢一点，飞的地方和人在哪无关）：
+  // 在远景那一层（不在中景）；一排五只以上；一直扇（每只的翅膀扇上扇下都到）、不飘不俯冲；一秒 20~45 像素；
+  // 从哪飞进来只看这一层（镜头、人在哪都不管）：头一排一进来就在半空，后面的从这一层最左边飞进来，不从「看得见的左边」进来
+  ok(typeof STAGES.peach.live.far === 'function', '大雁在远景那一层');
+  const st = { id: 'peach', t: 0 }, L = { w: 1400, h: 700, fy: 560, vis: [100, 1300] };
+  let seen = 0, minN = 99, vmin = 1e9, vmax = 0, kmin = 9, kmax = -9;
+  const starts = [];
+  for (let i = 0; i < 60 * 150; i++) {
+    st.t += 1 / 60;
+    L.vis = i < 60 * 40 ? [100, 1300] : [500, 1700];                  // 镜头挪了（人跑到右边去了）：大雁从哪飞进来不变
+    STAGES.peach.live.far(g, L, st, 1 / 60); STAGES.peach.live.mid(g, L, st, 1 / 60);
+    for (const f of st.geese) {
+      if (!f.seen) { f.seen = 1; starts.push(f.x); }
+      seen++; minN = Math.min(minN, f.m.length); vmin = Math.min(vmin, f.v); vmax = Math.max(vmax, f.v);
+      const k = Math.sin(f.t * Math.PI * 2 / f.per + f.m[0].ph); kmin = Math.min(kmin, k); kmax = Math.max(kmax, k);
+    }
   }
-  ok(groups >= 3 && seen > 600 && ks.size > 6, `燕子：${groups} 群、${seen} 帧看得见、翅膀 ${ks.size} 种样子`);
-  ok(modes.has('flap') && modes.has('glide') && modes.has('dive'), '燕子要一会儿扇、一会儿飘、偶尔俯冲：' + [...modes]);
-  ok(vsum / vn > 170, '燕子飞得太慢：' + (vsum / vn).toFixed(0));
-  ok(!STAGES.peach.live.far, '燕子不在远景（远景跟镜头几乎不动，看着像跟着人走）');
+  ok(starts.length >= 3 && seen > 60 * 60, `大雁：飞来 ${starts.length} 排、${(seen / 60).toFixed(0)} 秒看得见`);
+  ok(minN >= 5, '一排至少五只：' + minN);
+  ok(vmin >= 20 && vmax <= 45, `大雁飞得慢（一秒 ${vmin.toFixed(0)} ~ ${vmax.toFixed(0)} 像素）`);
+  ok(kmin < -0.95 && kmax > 0.95, '翅膀一直在扇（扇上扇下都到）');
+  ok(starts[0] > L.w * 0.3 && starts.slice(1).every(x => x < 0), '头一排在半空、后面的都从这一层最左边飞进来（不跟着镜头）：' + starts.map(x => x.toFixed(0)));
   // 「减少动态效果」、暂停：dt = 0 —— 不出新的、不动
-  const s2 = { id: 'peach', t: 0 }; for (let i = 0; i < 300; i++) STAGES.peach.live.mid(g, L, s2, 0);
-  eq(s2.birds.length, 0, 'dt = 0 不该飞出燕子来');
-  const pos = () => JSON.stringify(st.birds.map(f => f.m.map(m => [m.x, m.y, m.k])).concat(st.petals.map(p => [p.x, p.y])));
-  const p0 = pos(); for (let i = 0; i < 120; i++) STAGES.peach.live.mid(g, L, st, 0);
-  eq(pos(), p0, 'dt = 0 燕子、花瓣都该停住');
+  const s2 = { id: 'peach', t: 0 }; for (let i = 0; i < 300; i++) { STAGES.peach.live.far(g, L, s2, 0); STAGES.peach.live.mid(g, L, s2, 0); }
+  eq(s2.geese.length, 0, 'dt = 0 不该飞出大雁来');
+  const pos = () => JSON.stringify(st.geese.map(f => [f.x, f.t]).concat(st.petals.map(p => [p.x, p.y])));
+  const p0 = pos(); for (let i = 0; i < 120; i++) { STAGES.peach.live.far(g, L, st, 0); STAGES.peach.live.mid(g, L, st, 0); }
+  eq(pos(), p0, 'dt = 0 大雁、花瓣都该停住');
   // 2.6 竹叶不发光、不闪（萤火虫晃眼睛）：画出来的都是暗的墨灰；40 秒里吹下来好几片
   const s3 = { id: 'bamboo', t: 0 }; let leaves = 0, bright = 0;
   for (let i = 0; i < 2400; i++) { s3.t += 1 / 60; const n0 = (s3.leaves || []).length; g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, 1400, 700); STAGES.bamboo.live.mid(g, L, s3, 1 / 60); leaves += Math.max(0, s3.leaves.length - n0);
@@ -2641,6 +2666,176 @@ T('2.5.1 动起来的背景（Jack）：每张图都有会动的东西、各不�
   const runIt = draw => { arena(200); const log = []; for (let i = 0; i < 90; i++) { step([i === 5 ? TAP('kick') : 0, 0]); if (draw) render(); log.push(stateHash()); } return log; };
   const keepId = Stage.pref; Stage.setPref('peach');
   try { eq(runIt(true), runIt(false)); } finally { Stage.setPref(keepId); }
+});
+
+/* ---------- 2.7（Jack 提的 10 条） ---------- */
+T('2.7 脚再薄一点点，薄下来的那部分给了小腿：鞋高 9.4 → 8.4、鞋底 4 → 3.3，小腿 39 → 39.7；髋到鞋底一样长、人一样高', () => {
+  const B = BODY.bone, Fo = BODY.foot;
+  ok(Fo.h < 9.4 && Fo.h >= 9.4 * 0.85, '鞋高（2.6 是 9.4）：' + Fo.h);
+  ok(B.ankle < 4 && B.sh > 39, `鞋底 ${B.ankle}（2.6 是 4）、小腿 ${B.sh}（2.6 是 39）`);
+  ok(Math.abs((B.sh - 39) - (4 - B.ankle)) < 1e-9, '鞋底薄下来多少，小腿就长多少');
+  ok(Math.abs(B.th + B.sh + B.ankle - 81) < 1e-9, '髋到鞋底一样长（81）');
+  const J = poseJ(POSE.stance); let top = 1e9; for (const q of bodyParts(J, 0).parts) for (const [, y] of q.pts) top = Math.min(top, y);
+  ok(Math.abs(FLOOR - top - 146.45) < 0.6, '人一样高：' + (FLOOR - top).toFixed(2));
+  for (const k of ['ff', 'bf']) ok(Math.abs(FLOOR - B.ankle - J[k][1]) < 0.6, k + ' 踩在地上');
+});
+// 翻滚回去：玩家一在场地右边一点跑跳过去出飞踢，玩家二出腿迎上去（离墙远，翻多远不被墙挡）
+function tumbleRun(x1, dist, p, q, n = 200) {
+  arena(dist); F1.x = x1; F2.x = x1 + dist;
+  const r = { x0: null, x1: null, alt0: 0, top: 0, freeA: -1, freeB: -1, gapFree: 0, at: -1 };
+  for (let i = 0; i < n; i++) {
+    step([(i < 6 ? RIGHT : 0) | (i === 0 ? TAP('up') : 0) | (i === p ? TAP('kick') : 0), i === q ? TAP('kick') : 0]);
+    if (F1.state === 'tumble' && r.x0 === null) { r.x0 = F1.x; r.alt0 = F1.alt; r.at = i; }
+    if (r.x0 !== null) {
+      r.top = Math.max(r.top, F1.alt);
+      if (r.x1 === null && F1.state !== 'tumble') r.x1 = F1.x;
+      if (r.freeA < 0 && r.x1 !== null && F1.actionable()) { r.freeA = i; r.gapFree = Math.abs(F2.x - F1.x); }
+      if (r.freeB < 0 && F2.actionable()) r.freeB = i;
+      if (r.freeA >= 0 && r.freeB >= 0) break;
+    }
+  }
+  return r;
+}
+T('2.7 翻滚回去（Jack）：飞回去的距离起码是 2.6 的三倍、翻得更高；翻回去平等 —— 落地能动的那一刻对方也刚能动（对方收腿时也接不了别的招），隔着大半个场地，谁也抓不到谁的受击时间', () => {
+  const old = alt => (8.4 / TEMPO) * tumbleFly(alt, 6 / TEMPO);     // 2.6 同样的高度飞多远
+  let n = 0;
+  for (const [p, q] of [[12, 4], [13, 5], [14, 6], [12, 8]]) {
+    const r = tumbleRun(1000, 170, p, q);
+    if (r.x0 === null) continue;
+    n++;
+    const d = r.x0 - r.x1;
+    ok(d >= 3 * old(r.alt0) - 1, `撞上时离地 ${r.alt0.toFixed(0)}：飞了 ${d.toFixed(0)}，2.6 是 ${old(r.alt0).toFixed(0)}`);
+    ok(r.top - r.alt0 >= 55, '翻得不够高：比撞上那一下高 ' + (r.top - r.alt0).toFixed(0));
+    ok(r.freeA >= 0 && r.freeB >= 0 && Math.abs(r.freeA - r.freeB) <= 1, `两边能动的时候差 ${r.freeA - r.freeB} 帧（应该同时）`);
+    ok(r.gapFree > 400, '能动的时候还隔着 ' + r.gapFree.toFixed(0));
+  }
+  ok(n >= 2, '没翻起来几次：' + n);
+  // 靠着墙翻：撞到墙就停在墙边（飞不远），照样两边一起能动
+  const w = tumbleRun(300, 170, 12, 4);
+  ok(w.x0 !== null && w.x1 <= WALL_L + 1, '靠墙翻：停在墙边');
+  ok(Math.abs(w.freeA - w.freeB) <= 1, `靠墙翻：两边能动的时候差 ${w.freeA - w.freeB} 帧`);
+  // 地上那一腿收招里接不了别的招（不然先收完招跑过去等着打）
+  const r2 = tumbleRun(1000, 170, 12, 4, 30); ok(F2.move && F2.move.tumbled && !F2.canCancel('jab') && !F2.canCancel('kick'), '顶回去那一腿还能接招');
+});
+T('2.7 躺在地上的时间缩短 10% 左右：普通击倒、接腿摔、倒栽葱、摔、爆气、扫堂腿、踩腿都 ×0.9', () => {
+  const was = { LIE_HIT: TFH(28), LIE_GROUND: TFH(40), LIE_AIR: TFH(76), LIE_CRASH: TFH(52), BURST_LIE: TFH(28), sweep: TFH(26), stomp: TFH(30) };
+  const now = { LIE_HIT, LIE_GROUND, LIE_AIR, LIE_CRASH, BURST_LIE, sweep: MOVES.sweep.lie, stomp: MOVES.stomp.lie };
+  for (const k in was) { const r = now[k] / was[k]; ok(r >= 0.86 && r <= 0.94, `${k}：${was[k]} → ${now[k]}（×${r.toFixed(2)}）`); }
+  // 真打一下：扫堂腿打倒以后躺的帧数
+  arena(100); tick(DOWN | TAP('kick')); let k = 0; while (k++ < 60 && F2.state !== 'down') tick();
+  while (k++ < 120 && F2.downPhase !== 'lie') tick();
+  let lie = 0; while (k++ < 200 && F2.downPhase === 'lie') { tick(); lie++; }
+  ok(Math.abs(lie - MOVES.sweep.lie) <= 1, '扫堂腿躺了 ' + lie);
+});
+// 滚身起：玩家二被打倒、起身时往后滚（背着玩家一）/ 往玩家一脚下滚；玩家一看见他滚以后 r 帧按 act。打中算不算「打在他还动不了的时候」
+function rollPunish(way, r, act, d0 = 80) {
+  return quietly(() => {
+    arena(d0); F1.x = 700; F2.x = 700 + d0; F1.facing = 1; F2.facing = -1;
+    F2.knockDown(0.01, 0, LIE_HIT, false); F2.alt = 0;
+    const v2 = way === 'away' ? RIGHT : LEFT;
+    let seen = -1, st = 0;
+    for (let f = 0; f < 200; f++) {
+      let v1 = 0;
+      if (seen < 0 && F2.state === 'down' && F2.downPhase === 'getup') seen = f;
+      if (seen >= 0) {
+        const k = f - seen - r, dir = HOLD(F2.x >= F1.x ? 'right' : 'left');
+        if (k === 0 && (act === 'jab' || act === 'kick')) v1 = TAP(act);
+        if (act === 'dashJab' || act === 'dashKick') { if (k === 0 || k === 2) v1 = dir; if (k === 2 + DASH_CANCEL + 1) v1 = TAP(act === 'dashJab' ? 'jab' : 'kick'); }
+      }
+      const before = F2.state, hp = F2.hp;
+      step([v1, F2.state === 'down' ? v2 : 0]);
+      if (F2.hp < hp) return before === 'rise' || before === 'down';
+      if (F2.actionable() && f > seen + 40) return false;
+    }
+    return false;
+  });
+}
+T('2.7 滚身起（Jack：倒地后直接翻滚很无解）：照样能滚，但滚完站起来那几帧挨得了打（RISE_ROLL）—— 和起身硬直一样按「短拳打得到、腿踢打不到」定', () => {
+  ok(RISE_ROLL > RISE && ROLL_BACK < ROLL_DIST, `滚完站起来 ${RISE_ROLL} 帧（原地起 ${RISE}）；往后滚 ${ROLL_BACK}（往前 ${ROLL_DIST}）`);
+  // 往后滚：看见了（一刻钟左右）冲刺过去出短拳打得到，冲刺出腿踢打不到；以前往后滚谁都够不着
+  for (const d0 of [60, 80, 100]) {
+    ok(rollPunish('away', 14, 'dashJab', d0), `往后滚（离 ${d0}）：看见了冲刺短拳要打得到`);
+    ok(!rollPunish('away', 14, 'dashKick', d0), `往后滚（离 ${d0}）：冲刺出腿踢不该打得到`);
+    // 往脚下滚：转身出短拳打得到，腿踢打不到
+    ok(rollPunish('toward', 15, 'jab', d0), `往脚下滚（离 ${d0}）：转身短拳要打得到`);
+    ok(!rollPunish('toward', 15, 'kick', d0), `往脚下滚（离 ${d0}）：腿踢不该打得到`);
+  }
+  // 原地压起身的照旧打空（滚身起还是躲压起身的办法）：见「2.0 滚身起」那条
+});
+T('2.7 泼墨（Jack）：伤害 50；霸体蓄力一小下（算前摇），单手出掌，掌前面炸开一朵墨花；对面的反制手段不变（擒拿、卸力、格挡、跳、冲刺）', () => {
+  const d = MOVES.super;
+  eq(d.dmg, 50, '伤害');
+  ok(d.limb === 'bh' && !d.sinv && d.armor && d.armor.from === 0 && d.armor.n >= 10, '后手单手出、整个前摇霸体（不再是打击无敌）');
+  ok(d.S > 9.75, '前摇比 2.6（9.75）长一点（蓄力）：' + d.S);
+  // 蓄力时挨了短拳：硬吃（只掉一半），招不停，照样打中 50
+  arena(90); F1.qi = QI_MAX;
+  run(40, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, i === 0 ? TAP('jab') : 0]);      // 短拳打在蓄力里（离出掌还早）
+  ok(lost(F1) > 0 && lost(F1) <= Math.ceil(MOVES.jab.dmg * ARMOR_KEEP), '霸体硬吃短拳只掉一半：' + lost(F1));
+  eq(lost(F2), d.dmg, '吃了一拳照样打出去');
+  eq(F1.stats.supers, 1);
+  // 推挡也推不动（以前打击无敌，推挡打不着它）
+  arena(100); tick(0, BLOCK, 5); F1.qi = QI_MAX;
+  run(40, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, i < 5 ? BLOCK : i === 5 ? BLOCK | TAP('jab') : 0]);
+  ok(F2.hp <= MAX_HP - d.dmg * BLOCK_KEEP, '推挡推不动蓄力的泼墨');
+  // 出掌那一下：掌前面一朵墨花（特效）
+  arena(120); F1.qi = QI_MAX; game.quiet = false; let bloom = false;
+  for (let i = 0; i < 30; i++) { step([i === 0 ? TAP('heavy') | TAP('kick') : 0, 0]); if (FX.some(e => e.type === 'bloom')) { bloom = true; ok(F1.move && F1.move.name === 'super' && F1.move.t >= F1.move.S, '墨花在出掌的时候炸开'); break; } }
+  ok(bloom, '没有墨花');
+});
+T('2.7 场景、人物颜色的「好了」改成「确认」（以后所有的「好了」都写「确认」）', () => {
+  const x = new XMLHttpRequest(); x.open('GET', 'index.html', false); x.send();
+  const html = x.responseText;
+  ok(!/>\s*好了\s*</.test(html), '页面上还有「好了」按钮');
+  for (const id of ['btnLooksDone', 'btnStageDone', 'btnSetDone']) ok(new RegExp('id="' + id + '"[^>]*>确认<').test(html), id + ' 要写「确认」');
+});
+T('2.7 整场赢了放一段声音（输了另一段）：人机看玩家一，双人对战总有人赢', () => {
+  const calls = [], keep = Sound.victory; Sound.victory = w => calls.push(w);
+  try {
+    for (const [mode, winner] of [['pve', 0], ['pve', 1], ['pvp', 1]]) {
+      startMatch(mode); game.brains = [null, null]; game.phase = 'fight';
+      game.wins = winner === 0 ? [WIN_ROUNDS - 1, 0] : [0, WIN_ROUNDS - 1];
+      game.p[1 - winner].hp = 0;
+      let k = 0; while (k++ < 400 && game.phase !== 'over') step([0, 0]);
+      eq(game.phase, 'over', mode + ' 打完了');
+    }
+    startMatch('pvp'); game.brains = [null, null]; game.phase = 'fight'; F2.hp = 0;    // 只赢一回合：不放
+    let k = 0; while (k++ < 300 && game.phase !== 'intro') step([0, 0]);
+  } finally { Sound.victory = keep; }
+  eq(calls, [true, false, true]);
+  ok(typeof Sound.victory === 'function' && VICTORY_RUN.length >= 8, '赢了：一串往上拨的古筝');
+});
+T('2.7 发带（Jack：飘得太快，和待机、打斗动作都对不上；头带再细一点点、短一点点）：短了、细了；站着时跟着呼吸慢慢轻轻摆，不自己乱扑腾', () => {
+  ok((RIB_N - 1) * RIB_SEG < 39.9 && RIB_W < 4.6, `发带长 ${((RIB_N - 1) * RIB_SEG).toFixed(1)}（2.6 是 39.9）、宽 ${RIB_W}（2.6 是 4.6）`);
+  arena(300); game.quiet = false;
+  const ys = []; let sp = 0, last = null;
+  for (let i = 0; i < 260; i++) {
+    step([0, 0]); if (i < 60) continue;
+    const pts = F1.ribbons[0], k = F1.J.knot, tip = pts[pts.length - 1], v = [tip.x - k[0], tip.y - k[1]];
+    ys.push(v[1]); if (last) sp += Math.hypot(v[0] - last[0], v[1] - last[1]); last = v;
+  }
+  const range = Math.max(...ys) - Math.min(...ys);
+  ok(range < 10, '站着时发带梢上下甩了 ' + range.toFixed(1) + '（2.6 是 22 多）');
+  ok(sp / ys.length < 0.35, '站着时发带梢一帧动 ' + (sp / ys.length).toFixed(2) + '（2.6 是 0.7）');
+});
+T('2.7 腿不扭（Jack：二起脚的腿扭着，不同距离下手臂、腿怪的都改）：离得近出腿，膝盖在上面收着（不往下顶成往上开的 V）；二起脚腾空时两腿不交叉、踢出去时收着的那条腿小腿垂着', () => {
+  const kneeUp = (J, k) => {
+    const H = k === 'ff' ? J.hipF : J.hipB, K = k === 'ff' ? J.fk : J.bk, E = J[k];
+    let nx = -(E[1] - H[1]), ny = E[0] - H[0]; const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l; if (ny > 0) { nx = -nx; ny = -ny; }
+    return (K[0] - H[0]) * nx + (K[1] - H[1]) * ny;            // > 0：膝盖在髋 → 脚踝那条线上面
+  };
+  const bad = [];
+  for (const n of ['kick', 'whip', 'twinKick', 'backKick', 'whirl']) for (const dist of [56, 70, 85]) {
+    const fr = simulateMove(n, { dist }), c = contactOf(fr, n); if (!c) continue;
+    const f = fr[c.frame], v = kneeUp(f.J1, MOVES[n].limb);
+    if (v < -1.5) bad.push(`${MOVES[n].label} 离 ${dist}：膝盖往下顶了 ${(-v).toFixed(1)}`);
+  }
+  ok(!bad.length, bad.join('；'));
+  // 二起脚：腾空那一下两腿不交叉（后腿膝盖在前腿膝盖后面）；踢出去时前腿（收着的）小腿差不多垂直
+  const fr = simulateMove('twinKick', {}), d = MOVES.twinKick, at = ph => fr.find(f => f.mv && f.mv.name === 'twinKick' && phaseOf(d, f.mv.t) >= ph);
+  const up = at(0.5).J1, fw = up.facing;
+  ok((up.bk[0] - up.fk[0]) * fw < 0, '腾空时后腿膝盖跑到前腿膝盖前面去了（两腿交叉）');
+  const kk = at(1.05).J1, shin = [kk.ff[0] - kk.fk[0], kk.ff[1] - kk.fk[1]];
+  ok(shin[1] > 0 && Math.abs(shin[0]) < Math.abs(shin[1]) * 0.7, '收着的那条腿小腿要往下垂：' + shin.map(v => v.toFixed(1)));
 });
 
 (async function runAll() {

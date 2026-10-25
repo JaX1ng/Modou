@@ -114,7 +114,7 @@ const G_MOVES = [
   { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '跳起来一脚蹬过去，射程远。蹲下躲得开。' },
   { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '先往上一腾，再朝人踩下去。专踩蹲着的、踩断托天掌；怕站着的拳。' },
   { id: 'burst', how: '挨打时 [重] + [踢]', icon: { move: 'burst', ph: 0.25 }, tier: '—', height: '—', desc: `花半格气从身上炸开：对面倒地、掉 ${BURST_DMG} 血。只在挨打时能用。` },
-  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: `必杀，${MOVES.super.dmg} 血；挡住了只掉三成。` },
+  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: `必杀，${MOVES.super.dmg} 血；先沉身蓄力（这一下霸体，打它没用、拿得住），再单手一掌推出去；挡住了只掉三成。` },
 ];
 const moveTier = g => g.tier || TIER_NAME[MOVES[g.id].tier] || '—';
 const moveHeight = g => g.height || HN[MOVES[g.id].height] || '中';
@@ -171,12 +171,12 @@ const G_TECH = [
   ] },
   { group: '倒地', list: [
     { name: '起身', how: '倒地后自己起来', icon: { pose: 'rise' }, desc: '躺一会儿 → 起身（打不中）→ 起身硬直（站起来那几帧打得中、动不了）→ 能动。' },
-    { name: '滚身起', how: '倒地时按住方向', icon: { pose: 'tuck' }, desc: '起身时往那边滚开，躲开守在你起身处的人。' },
+    { name: '滚身起', how: '倒地时按住方向', icon: { pose: 'tuck' }, desc: '起身时往那边滚开（往前滚得远、往后滚得近），躲开守在你起身处的人；滚完站起来那几帧比原地起身久，对面看见了追上来出短拳打得到。' },
     { name: '压起身', how: '他站起来那一下按 [拳]', icon: { move: 'jab' }, desc: '短拳算好时机打在起身硬直里必中；重拳、腿太慢，要提前出。' },
   ] },
   { group: '空中交手', list: [
     { name: '倒栽葱', how: '空中出招被克它的招打中', icon: { pose: 'fall', alt: 30 }, desc: `摔下来倒地更久。托天掌打空中招、站着的拳迎千斤坠（×${DIVE_PUNCH_MUL}）都是。` },
-    { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，往后翻开一大段。' },
+    { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，高高地往后翻出大半个场地；落地时两边一起能动，重新来过。' },
   ] },
 ];
 const G_MULS = [

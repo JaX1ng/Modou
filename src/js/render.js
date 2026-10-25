@@ -42,7 +42,7 @@ const viewInfo = () => ({ vw: VW, vh: VH, fy: FY, scale, pxr, zmax: ZOOM * zoomB
    现在：RA = 这一刻在上一帧和这一帧之间走到哪了（0~1，ui.js 主循环按时间算），人（骨骼、发带）、特效、气都在两帧之间插着画，
    镜头的平滑也按真实时间算（不按画了几次算）。60Hz 的屏幕 RA 一直是 1：不插值，也就不多一点延迟。只是画面，不影响胜负 */
 let RA = 1;
-const RIB_W = 4.6;                                   // 发带画多宽（2.6：5.4 → 4.6）
+const RIB_W = 4.0;                                   // 发带画多宽（2.6：5.4 → 4.6；2.7 Jack：再细一点点 → 4）
 const lerp = (a, b, k) => a + (b - a) * k;
 const RL = e => e.life + (1 - RA) * DT;              // 插值后的剩余寿命（特效的淡出、放大跟着插；2.6 一步 DT 帧）
 const RX = e => e.px === undefined ? e.x : lerp(e.px, e.x, RA), RY = e => e.py === undefined ? e.y : lerp(e.py, e.y, RA);
@@ -112,7 +112,7 @@ function drawFighter(F, V) {
   ctx.strokeStyle = F.sash;
   for (const pts of V.ribbons) {
     for (let i = 1; i < pts.length; i++) {
-      ctx.lineWidth = RIB_W * (1 - i / pts.length * 0.45);     // 2.5 照参考图：发带是两条扁扁的宽带子；2.6（Jack：细一点点）5.4 → 4.6
+      ctx.lineWidth = RIB_W * (1 - i / pts.length * 0.45);     // 2.5 照参考图：发带是两条扁扁的宽带子；2.6（Jack：细一点点）5.4 → 4.6；2.7 → 4
       ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
     }
   }
@@ -167,7 +167,7 @@ function drawFigure(J, col, band, trail) {
   }
   const f = J.facing * (J.turned ? -1 : 1), k = J.knot;
   ctx.strokeStyle = band;
-  for (const [dy, len] of [[0, 26], [5, 21]]) {                     // 2.6 发带短一点、细一点（和对战里一样）
+  for (const [dy, len] of [[0, 23], [5, 19]]) {                     // 2.6 发带短一点、细一点（和对战里一样）；2.7 再短一点
     ctx.lineWidth = RIB_W * 0.93; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
     ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
   }
@@ -279,6 +279,23 @@ function drawFx() {
         const g = EASE.out(Math.min(1, u * 2.5));
         ctx.globalAlpha = 1 - u; ctx.strokeStyle = e.color; ctx.lineWidth = e.w * (1 - u * 0.7);
         ctx.beginPath(); ctx.moveTo(e.x1, e.y1); ctx.lineTo(e.x1 + (e.x2 - e.x1) * g, e.y1 + (e.y2 - e.y1) * g); ctx.stroke(); break;
+      }
+      case 'bloom': {
+        // 2.7 泼墨的墨花：几瓣两头尖的浓墨从掌前往前张开（一下炸出去、再慢慢淡），外面一圈淡的气，中间一团墨
+        const g = EASE.out(Math.min(1, u * 3)), base = e.dir > 0 ? 0 : Math.PI;
+        ctx.globalAlpha = (1 - u) * 0.5; ctx.fillStyle = e.color2;
+        ctx.beginPath(); ctx.arc(x, y, e.size * 0.42 * (0.4 + g * 0.8), 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = (1 - u * u) * 0.95; ctx.fillStyle = e.color;
+        for (const p of e.petals) {
+          const a = base + p.a * e.dir, L2 = e.size * p.len * (0.25 + 0.75 * g), w = e.size * p.w * (1 - u * 0.6);
+          const ca = Math.cos(a), sa = Math.sin(a), bx = Math.cos(a + p.cur * e.dir), by = Math.sin(a + p.cur * e.dir);
+          const mx = x + ca * L2 * 0.45, my = y + sa * L2 * 0.45;
+          ctx.beginPath(); ctx.moveTo(x, y);
+          ctx.quadraticCurveTo(mx - sa * w, my + ca * w, x + bx * L2, y + by * L2);
+          ctx.quadraticCurveTo(mx + sa * w, my - ca * w, x, y); ctx.fill();
+        }
+        ctx.beginPath(); ctx.arc(x, y, e.size * 0.13 * (1 - u * 0.5), 0, Math.PI * 2); ctx.fill();
+        break;
       }
       case 'swirl': {
         ctx.strokeStyle = e.color;

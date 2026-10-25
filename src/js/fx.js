@@ -312,6 +312,24 @@ const Sound = {
   burst() { if (!this.ok()) return; this.tone(70, 0.45, 0.4, 'sine', 30); this.nz(0.4, 300, 0.6, 0.35, 'lowpass', 1200); },
   // 胜负已分（2.4 不敲锣了）：一声战鼓，紧跟着「锵」（大鼓 + 战鼓 + 镲）和古筝一个和弦
   finale() { if (!this.ok()) return; this.taiko(1, 0); this.qiang(1.15, 0.16); this.zhengChord(1, 0.16); },
+  // 2.7（Jack：整场赢了也要有个声音）：一整场打完（「某某 胜」那一下）——
+  //   赢了：战鼓一阵越敲越密 → 「锵」→ 古筝从低到高一串拨上去（两个八度）→ 一声大「锵」+ 满把的和弦 + 镲慢慢散开，两秒多；
+  //   输了（人机输给电脑、联机输了）：一声闷的大鼓，古筝一串往下走，最后轻轻一个低和弦
+  victory(win) {
+    if (!this.ok()) return;
+    if (win) {
+      [[0, 0.55], [0.15, 0.62], [0.27, 0.7], [0.36, 0.78], [0.43, 0.86], [0.49, 0.94]].forEach(([d, p]) => this.taiko(p, d));
+      this.qiang(1.05, 0.58);
+      VICTORY_RUN.forEach((f, i) => this.zheng(f, 0.11 * (0.85 + i * 0.03), 0.72 + i * 0.055, 1.2));
+      this.qiang(1.3, 0.72 + VICTORY_RUN.length * 0.055 + 0.06);
+      VICTORY_CHORD.forEach((f, i) => this.zheng(f, 0.15 * [1, 0.85, 0.8, 0.7, 0.6, 0.5][i], 0.72 + VICTORY_RUN.length * 0.055 + 0.07 + i * 0.018, 2.2));
+      this.cha(1.1, 0.72 + VICTORY_RUN.length * 0.055 + 0.08);
+    } else {
+      this.taikoLo(0.8, 0);
+      DEFEAT_RUN.forEach((f, i) => this.zheng(f, 0.1 * (1 - i * 0.06), 0.25 + i * 0.16, 1.4));
+      ZHENG_LOW.forEach((f, i) => this.zheng(f, 0.1 * [1, 0.8, 0.6][i], 0.25 + DEFEAT_RUN.length * 0.16 + 0.1 + i * 0.03, 2));
+    }
+  },
   // 一个音：f 在 glide 秒内滑到 f2（之后不动），dur 秒衰减完
   glide(f, f2, glide, dur, gain, delay, type) {
     const c = this.ctx, t = c.currentTime + (delay || 0);
@@ -396,6 +414,11 @@ const Sound = {
 const BEAT_KIT = { 咚: 'taiko', 嗵: 'taikoLo', 嗒: 'rim', 嚓: 'cha', 锵: 'qiang', 铮: 'zhengUp', 和: 'zhengChord' };
 const ZHENG_UP = [587.33, 659.26, 739.99, 880, 987.77, 1174.66];      // D5 E5 F♯5 A5 B5 D6
 const ZHENG_CHORD = [293.66, 440, 587.33, 880];                       // D4 A4 D5 A5
+// 2.7 整场打完：赢了一串往上拨两个八度（D 宫五声：D E F♯ A B …），最后满把的和弦；输了一串往下走，落在低音的 D、A 上
+const VICTORY_RUN = [293.66, 329.63, 369.99, 440, 493.88, 587.33, 659.26, 739.99, 880, 987.77, 1174.66];
+const VICTORY_CHORD = [146.83, 293.66, 440, 587.33, 739.99, 880];      // D3 D4 A4 D5 F♯5 A5
+const DEFEAT_RUN = [880, 739.99, 659.26, 587.33, 493.88, 440];          // A5 F♯5 E5 D5 B4 A4
+const ZHENG_LOW = [146.83, 220, 293.66];                                // D3 A3 D4
 /* 开场的鼓（帧 → [[字, 力度]…]）：两声战鼓，回合名在第 10 帧随「锵」砸下来（game.js）；接着战鼓一下比一下密、越敲越响；
    快到「战」古筝一串往上拨，第 68 帧「战」：「锵」+ 古筝一个和弦。决胜局在前面多一声「锵」、鼓点更密、多一声镲 */
 const INTRO_BEATS = { 2: [['咚', 0.8]], 6: [['咚', 0.62]], 10: [['锵', 0.9]] };
@@ -410,7 +433,7 @@ function introBeats(t, final) {
   if (final) for (const [k, p] of FINAL_BEATS[t] || []) Sound.beat(k, p);
 }
 // 声音也走 fxDo：回滚重算时先攒着，算完只补放新时间线里多出来的（1.9.0）
-for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'finale', 'beat']) {
+for (const k of ['hit', 'block', 'whoosh', 'crash', 'tumble', 'stamp', 'land', 'clash', 'parry', 'burst', 'finale', 'victory', 'beat']) {
   const play = Sound[k];
   Sound[k] = function (...a) { fxDo('S' + k, () => play.apply(Sound, a)); };
 }
@@ -558,6 +581,27 @@ function superFx(F) {
   tag(F.x - F.facing * 20, y - 70, '墨', F, 48);
   Sound.stamp();
   flashTo(0.25);
+}
+// 2.7 泼墨蓄力（霸体那一下）：墨往后手掌心里收 —— 细集中线收到掌心、一圈往里缩的环；k 是这一招第几帧（attackStep 的 k）
+function superStep(F, m, k) {
+  const J = F.J; if (!J) return;
+  const h = J[m.def.limb] || J.bh, P = pal(F);
+  if (k >= 1 && k < m.S - 1 && k % 3 === 0) {
+    focusLines(h[0], h[1], 8, 16, 64 + k * 3, P.qi, 8);
+    ring(h[0], h[1], 40, 7, 3.2, P.qi, 10);
+  }
+  if (k === m.S) superStrikeFx(F, m);                       // 出掌那一下（判定第一帧）
+}
+// 2.7 泼墨出掌：掌前面往前炸开一朵墨花（几瓣两头尖的浓墨往前张成扇面，外圈淡的气，中间一团墨），墨点往前泼出去
+function superStrikeFx(F, m) {
+  const J = F.J, h = J ? J[m.def.limb] || J.bh : [F.x, FLOOR - 90], dir = F.facing, P = pal(F);
+  const x = h[0] + dir * 12, y = h[1];
+  const petals = []; for (let i = 0; i < 9; i++) petals.push({ a: rnd(-0.8, 0.8), len: rnd(0.55, 1.1), w: rnd(0.15, 0.26), cur: rnd(-0.25, 0.25) });
+  addFx({ type: 'bloom', x, y, dir, size: 78, color: P.ink, color2: P.qi, petals, rot: rnd(0, 6.3), life: 22 });
+  ring(x, y, 10, 54, 4, P.qi, 14);
+  streak(h[0] - dir * 70, y + 2, x + dir * 40, y, 7, P.qi, 12);
+  inkDrops(12, x, y, dir, 11, P.ink, 0.7, 0.15);
+  flashTo(0.2);
 }
 // 倒栽葱：空中被打下来 —— 往下拖的线、火花往下掉（打的人 A 的颜色；字由 combat.js 的「倒栽葱 ×1.3」出）
 function crashFx(B, dir, A) {

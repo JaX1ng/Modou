@@ -57,7 +57,7 @@ function figBounds(frames, from, to) {
 }
 function drawRibbons(pts, col) {
   ctx.strokeStyle = col; ctx.lineCap = 'round';
-  for (const p of pts) for (let i = 1; i < p.length; i++) { ctx.lineWidth = 5.4 * (1 - i / p.length * 0.45); ctx.beginPath(); ctx.moveTo(p[i - 1].x, p[i - 1].y); ctx.lineTo(p[i].x, p[i].y); ctx.stroke(); }
+  for (const p of pts) for (let i = 1; i < p.length; i++) { ctx.lineWidth = RIB_W * (1 - i / p.length * 0.45); ctx.beginPath(); ctx.moveTo(p[i - 1].x, p[i - 1].y); ctx.lineTo(p[i].x, p[i].y); ctx.stroke(); }
 }
 function drawOne(J, rib, col, band, alt) {
   ctx.fillStyle = 'rgba(23,24,26,.15)'; ctx.beginPath(); ctx.ellipse(J.hip[0], FLOOR + 3, 38 * (1 - Math.min(alt, 200) / 320), 5, 0, 0, Math.PI * 2); ctx.fill();

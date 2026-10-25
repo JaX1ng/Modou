@@ -155,7 +155,7 @@ function exchange(A, B) {
   else clash(A, B);
 }
 function strikeOn(A, B) {
-  if (A.move.def.push) return shoveHit(A, B);
+  if (A.move.def.push) return B.armored('push') ? absorb(A, B, contactPoint(A, B)) : shoveHit(A, B);   // 2.7 泼墨蓄力的霸体连推挡也吃（以前打击无敌，推挡也推不动）
   if (groundKick(A) && airKick(B)) return tumble(B, A);       // 地上出腿迎上空中的腿：顶回去
   if (committed(B, A, TRADE_LEAD)) return exchange(A, B);
   if (readBeat(B, A)) return evade(A, B);
@@ -337,17 +337,17 @@ function parry(A, B, c) {
 function absorb(A, B, c) {
   const m = A.move, d = m.def, dir = A.facing;
   m.done = true; m.absorbed = true;        // 2.1 被霸体吃了的拳也能马上接下一拳（连打破霸体）
-  const dmg = Math.max(1, Math.round(d.dmg * (m.air ? AIR_BONUS : 1) * ARMOR_KEEP));
+  const dmg = d.dmg > 0 ? Math.max(1, Math.round(d.dmg * (m.air ? AIR_BONUS : 1) * ARMOR_KEEP)) : 0;   // 推挡没伤害
   B.hp -= dmg; B.move.armorLeft--; B.gainQi(dmg * QI_PER_HP);
   cev('absorb', A, B, { name: m.name, by: B.move.name });
-  B.move.beatVs = d.tier;                 // 硬吃之后这一拳打出去算「重克拳」
+  if (B.move.def.tier !== 'super') B.move.beatVs = d.tier;   // 硬吃之后这一拳打出去算「重克拳」（2.7 泼墨本来就克一切，硬吃了也不再多加成）
   A.info = { label: d.label, dmg: 0, how: '被霸体吃了', adv: null, t: A.clock };
   A.kvx = -dir * 1.5;
   if (B.hp <= 0) { B.hp = 0; B.knockDown(4, dir * 3, 999, true); }
   game.freeze = stop(4);
   impact(c.x, c.y, -dir, 30, pal(B).ink, 6, 1.0); sparks(c.x, c.y, -dir, 6, 6, pal(B).fx, 0.8);
   tag(B.x, B.J.head[1] - 40, '霸体', B, 22);
-  tag(c.x, c.y - 14, '-' + dmg, A, 16);
+  if (dmg) tag(c.x, c.y - 14, '-' + dmg, A, 16);
   Sound.hit(0.3);
 }
 // 震退：打中 / 被打中之后把人推回去（拼招、压招共用）
@@ -405,6 +405,8 @@ function overpower(W, L) {
 }
 // 翻滚回去（1.9.0）：空中的腿（飞踢、千斤坠）撞上地上的腿 —— 不算被克死，空中那个人吃一半伤害、往后翻着飞回去（飞得远，
 // 途中打不中他）；地上那个人不掉血，只被撞退一点。落地后差不多一起动，等于把距离拉开重来，地上那方小赚
+// 2.7（Jack：要翻回去平等，对方抓不到受击时间）：飞得远、翻得高（TUMBLE_VX / VZ）；地上那个人这一腿收招拉长到
+// 翻回去的人落地、能动的那一刻（tumbleFly 算出要飞多久），收招里也不能接别的招 —— 两个人同时能动，隔着大半个场地重来
 function tumble(A, B) {            // A = 空中出腿的，B = 地上出腿的
   const ma = A.move, mb = B.move, away = A.x >= B.x ? 1 : -1;
   ma.done = mb.done = true; mb.hit = true;
@@ -415,7 +417,13 @@ function tumble(A, B) {            // A = 空中出腿的，B = 地上出腿的
   A.move = null; A.chain = []; A.chainIdle = 99; A.comboLive = false; A.comboTaken = 0; A.reel = false; A.clashed = false; A.stagger = false; A.grabbed = false; A.runT = 0;
   A.facing = -away;                                         // 面朝对手往后翻
   if (A.hp <= 0) { A.hp = 0; A.knockDown(4, away * 4, 999, true); }
-  else { A.state = 'tumble'; A.t = 0; A.vz = TUMBLE_VZ; A.vx = away * TUMBLE_VX; A.kvx = 0; A.airUsed = true; if (A.alt <= 0) A.alt = 0.01; }
+  else {
+    A.state = 'tumble'; A.t = 0; A.vz = TUMBLE_VZ; A.vx = away * TUMBLE_VX; A.kvx = 0; A.airUsed = true; if (A.alt <= 0) A.alt = 0.01;
+    A.tumFly = tumbleFly(A.alt, TUMBLE_VZ);
+    const left = mb.S + mb.def.A + mb.def.R + (mb.pen || 0) - mb.t, want = A.tumFly + TUMBLE_LAND;
+    if (want > left) mb.pen = (mb.pen || 0) + grid(want - left);
+    mb.tumbled = true;
+  }
   B.kvx = -away * 3;
   A.info = { label: ma.def.label, dmg: 0, how: '被顶回去', adv: null, t: A.clock };
   B.info = { label: mb.def.label, dmg, how: '顶回去', adv: null, t: B.clock };
@@ -425,6 +433,12 @@ function tumble(A, B) {            // A = 空中出腿的，B = 地上出腿的
   tag(A.x, A.J.head[1] - 34, '翻', B, 34);
   tag(c.x, c.y - 14, '-' + dmg, B, 17);
   Sound.clash(); Sound.hit(0.5);
+}
+// 2.7 翻回去要飞多久（帧）：照 update 里的重力一步一步算（落地那一步为止），和墙、横着飞多远无关
+function tumbleFly(alt, vz) {
+  let a = alt, v = vz, n = 0;
+  while (a > 0 && n < 4000) { a += v * DT + GRAV * GH; v -= GRAV * DT; n++; }
+  return n * DT;
 }
 // 推挡：没伤害，把对方推开并打断
 function shoveHit(A, B) {
@@ -558,7 +572,7 @@ function kneeHit(A, B, second, left) {
 function slamDown(A, B, name) {
   const trip = name === 'trip', dmg = trip ? TRIP_DMG : TACKLE_DMG;
   grabDamage(A, B, dmg, trip ? '别腿摔' : '抱腿摔', true);
-  B.knockDown(trip ? -1.5 : -2.5, A.facing * (trip ? 2.5 : 4), TFH(trip ? 40 : 38), B.hp <= 0); B.slam = true;
+  B.knockDown(trip ? -1.5 : -2.5, A.facing * (trip ? 2.5 : 4), TFH(trip ? 36 : 34), B.hp <= 0); B.slam = true;   // 2.7 躺 ×0.9（40 / 38 → 36 / 34）
   if (B.hp <= 0) B.hp = 0;
   game.freeze = stop(8); game.shake = Math.max(game.shake, 7);
   dust(B.x, FLOOR, 9, true);

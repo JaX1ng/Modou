@@ -605,7 +605,7 @@ const DRILLS = [
     demo: (st, me, op) => {
       if (me.state !== 'down') return 0;
       const away = me.x >= op.x ? 1 : -1, room = away > 0 ? WALL_R - me.x : me.x - WALL_L;   // 背后没地方滚了就往他脚下滚
-      return room > ROLL_DIST + 30 ? AW(me, op) : TW(me, op);
+      return room > me.rollLen(away) + 30 ? AW(me, op) : TW(me, op);
     },
     win: R => R.rolled && !R.op('hit'), miss: R => !R.rolled ? '倒地时按住方向键再起来' : R.op('hit') ? '滚了还是挨打：往另一边滚试试' : null },
   { id: 'wake.cross', topic: 'wake', name: '他往你脚下滚：转身出拳', react: true, scene: 'opDownRoll', at: 70,

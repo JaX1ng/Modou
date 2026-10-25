@@ -20,7 +20,9 @@ const BODY = {
   // 骨头长度（逻辑像素）。头是半径。肩 = 肩关节在脊柱上离髋多远（比脖子根低一点）。骨头长短一改，所有姿势都跟着变，轻易别动
   // 2.5.1（Jack：大腿短一点、小腿长一点；鞋小了、薄了，人照样高 —— 高在别处一点点）：大腿 39 → 38、小腿 37 → 39、脚踝离鞋底 4.8 → 4。
   //     髋高是姿势定的（hy），鞋底薄下来的那 0.8 落到了腿上：人一样高，腿长了一点、鞋矮了一截
-  bone: { torso: 46.5, shoulder: 41, neck: 5.5, head: 12, ua: 25, fa: 23, th: 38, sh: 39, ankle: 4 },
+  // 2.7（Jack：脚再薄一点点，薄下来的那部分变成小腿长度）：鞋底（脚踝离鞋底）4 → 3.3、小腿 39 → 39.7 —— 髋到鞋底一样长，人一样高；
+  //     鞋口也矮 0.3（鞋高 9.4 → 8.4），露出来的小腿一共长了 1
+  bone: { torso: 46.5, shoulder: 41, neck: 5.5, head: 12, ua: 25, fa: 23, th: 38, sh: 39.7, ankle: 3.3 },
   shoulderW: 11.5,   // 肩宽的一半：拧腰（tw）时两个肩膀前后错开 ±shoulderW·sin(tw)；转身（spin）时左右分开
   hipW: 5.5,         // 两个大腿根离中线多远（转身、膝盖往侧面摆时用）
   hipSplit: 2.2,     // 侧面看两个大腿根前后错开一点（前腿根靠前），两条腿分得开
@@ -29,7 +31,8 @@ const BODY = {
   fist: { len: 10.4, h: 9.4, r: 4.3 },               // 拳头：顺着小臂方向的长、横着的高、圆角
   // 鞋（参考图那种圆头鞋）：脚跟在脚踝后面多远、脚尖在前面多远、鞋口多高（盖住脚踝）、多宽（脚尖朝镜头时看到的）、鞋头多高。
   // 2.5.1（Jack：脚有点大和厚）：24.8 × 11.6 → 21.4 × 9.4，鞋头也矮一点（8.8 → 7.2）
-  foot: { heel: 6.2, toe: 15.2, h: 9.4, w: 8.4, toeH: 7.2 },
+  // 2.7（Jack：再薄一点点）：鞋高 9.4 → 8.4、鞋头 7.2 → 6.4（长短不变）；薄下来的给了小腿（见上面 bone）
+  foot: { heel: 6.2, toe: 15.2, h: 8.4, w: 8.4, toeH: 6.4 },
   // 轮廓表：[沿着这一节骨头的位置 0（根）~1（梢）, 前侧半宽, 后侧半宽]。「前侧」：
   //   大臂 = 胳膊弯起来小臂折过去的那一侧；小臂 = 掌心那一侧；大腿 = 膝盖顶出去那一侧；小腿 = 小腿骨那一侧（后侧是小腿肚）
   // 2.5 照参考图：胳膊细、上下差不多粗（没有鼓出来的三角肌）；腿是顺滑的一条，膝盖收一点、小腿肚鼓一点，脚踝也不细
@@ -470,7 +473,8 @@ function drawHeadGear(J, band) {
   const R = BODY.bone.head, ht = J.headTilt, fdir = J.facing;
   ctx.save(); ctx.translate(J.head[0], J.head[1]); ctx.rotate(fdir * (J.rot + ht)); ctx.scale(fdir, 1);
   ctx.fillStyle = band;
-  ctx.beginPath(); ctx.moveTo(-R * 1.05, -R * 0.6); ctx.lineTo(R * 1.06, -R * 0.52); ctx.lineTo(R * 1.04, -R * 0.13); ctx.lineTo(-R * 1.02, -R * 0.2); ctx.closePath(); ctx.fill();
+  // 2.7（Jack：头带再细一点点）：宽 0.4 个头半径 → 0.32（后脑勺 4.8 → 3.8 像素）
+  ctx.beginPath(); ctx.moveTo(-R * 1.05, -R * 0.58); ctx.lineTo(R * 1.06, -R * 0.5); ctx.lineTo(R * 1.04, -R * 0.18); ctx.lineTo(-R * 1.02, -R * 0.26); ctx.closePath(); ctx.fill();
   if (!J.turned) { ctx.fillStyle = C.paper; ctx.beginPath(); ctx.ellipse(R * 0.53, R * 0.14, R * 0.22, R * 0.112, -0.15, 0, Math.PI * 2); ctx.fill(); }
   ctx.restore();
 }
