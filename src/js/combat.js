@@ -147,7 +147,7 @@ function exchange(A, B) {
   A.holdPose = B.holdPose = true;
   if (airKick(A) && groundKick(B)) return tumble(A, B);
   if (airKick(B) && groundKick(A)) return tumble(B, A);
-  const r = relation(A.move.def, B.move.def);
+  const r = clashRelation(A, B);             // 2.7.1 拳派：同一派照这一派的克制；不同派要专门算（moves.js MATCHUPS）
   if (r === 1) applyHit(A, B, 'beat');
   else if (r === -1) applyHit(B, A, 'beat');
   else if (r > 0) overpower(A, B);
@@ -406,7 +406,7 @@ function overpower(W, L) {
 // 翻滚回去（1.9.0）：空中的腿（飞踢、千斤坠）撞上地上的腿 —— 不算被克死，空中那个人吃一半伤害、往后翻着飞回去（飞得远，
 // 途中打不中他）；地上那个人不掉血，只被撞退一点。落地后差不多一起动，等于把距离拉开重来，地上那方小赚
 // 2.7（Jack：要翻回去平等，对方抓不到受击时间）：飞得远、翻得高（TUMBLE_VX / VZ）；地上那个人这一腿收招拉长到
-// 翻回去的人落地、能动的那一刻（tumbleFly 算出要飞多久），收招里也不能接别的招 —— 两个人同时能动，隔着大半个场地重来
+// 翻回去的人落地、能动的那一刻（tumbleFly 算出要飞多久），收招里也不能接别的招 —— 两个人同时能动，隔着几个身位重来（2.7.1 飞五六个身位）
 function tumble(A, B) {            // A = 空中出腿的，B = 地上出腿的
   const ma = A.move, mb = B.move, away = A.x >= B.x ? 1 : -1;
   ma.done = mb.done = true; mb.hit = true;
@@ -550,7 +550,7 @@ function grabDamage(A, B, dmg, label, big) {
 }
 // 推开（擒住后什么都不按）：把人推出去，自己先动一点
 function grabPush(A, B, left) {
-  grabDamage(A, B, MOVES.grab.dmg, '擒拿 · 推开', false);
+  grabDamage(A, B, A.moves.grab.dmg, '擒拿 · 推开', false);
   B.grabbed = false; B.stunT = left + TA(4); B.kvx = A.facing * 8; B.hurtHeavy = false;
   game.freeze = stop(4); dust(B.x, FLOOR, 3); burst(B.x, FLOOR - 70, A.facing, 6, 24, 3, pal(A).fx);
   Sound.hit(0.4);

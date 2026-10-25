@@ -1540,11 +1540,13 @@ T('2.0.2 气：站着、气满了站着、出头一下（拳 / 重 / 踢）、�
   arena(80); QI.length = 0; combo(['jab', 'jab']); mx = 0;
   run(12, () => { mx = Math.max(mx, qiOf(0)); return [0, 0]; });
   eq(F1.stats.hits, 2); eq(mx, 0, '连两下就冒气了');
-  // 3 连、5 连：打完那一下后 8 帧里火有多旺、身上冒了多少
+  // 3 连、5 连：打完那一下后 16 帧里火有多旺、身上冒了多少
+  // 2.7.1：火苗是随机冒的（画面随机数 vrnd）：每次从同一个种子开始量，看打完那一下以后 16 帧里火最旺、火苗最多的时候 ——
+  //   以前接着前面所有测试剩下的随机数、只看 8 帧（前 4 帧还在顿帧里，火刚起），3 连那几条火苗冒没冒出来全看运气
   const after = n => {
-    arena(80); QI.length = 0; combo(Array(n).fill('jab')); let h = 0;
-    run(8, () => { h = Math.max(h, F1.heat); return [0, 0]; });
-    eq(F1.combo, n, n + ' 连没连上'); return { h, q: qiOf(0) };
+    arena(80); QI.length = 0; vrSeed = 0x9e3779b9; combo(Array(n).fill('jab')); let h = 0, q = 0;
+    run(16, () => { h = Math.max(h, F1.heat); q = Math.max(q, qiOf(0)); return [0, 0]; });
+    eq(F1.combo, n, n + ' 连没连上'); return { h, q };
   };
   const c3 = after(3), c5 = after(5);
   ok(c3.h > 0.2 && c3.q > 0, '3 连该起火了：' + c3.h.toFixed(2) + ' / ' + c3.q);
@@ -1935,7 +1937,8 @@ function mixedPlayerRaw(level, frames) {
   return dealt / Math.max(1, dealt + taken);
 }
 T('2.2 五档拉得开：乱换招的木头玩家打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，每一档至少差 4%；终极不再是「完全打不着」（2.7 Jack：入门 ≥ 80%、简单 ≥ 65%、中等 ≥ 40%；终极 ≥ 20%）', () => {
-  const sh = {}, seeds = [5, 6, 7, 8, 9, 10];
+  // 2.7.1 六个种子 → 十二个（和 NOTES 里量难度的做法一样）：困难、终极对木头玩家本来就只差三四个点，六个种子起伏就有两三个点
+  const sh = {}, seeds = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
   for (const lv of LEVEL_IDS) { let t = 0; for (const sd of seeds) t += seededRandom(sd, () => mixedPlayer(lv, 30000)); sh[lv] = t / seeds.length; }
   const txt = LEVEL_IDS.map(l => `${LEVEL_NAME[l]} ${(sh[l] * 100).toFixed(1)}%`).join(' · ');
   for (let i = 1; i < LEVEL_IDS.length; i++) ok(sh[LEVEL_IDS[i - 1]] - sh[LEVEL_IDS[i]] >= 0.04, '有两档挨得太近：' + txt);
@@ -2696,22 +2699,21 @@ function tumbleRun(x1, dist, p, q, n = 200) {
   }
   return r;
 }
-T('2.7 翻滚回去（Jack）：飞回去的距离起码是 2.6 的三倍、翻得更高；翻回去平等 —— 落地能动的那一刻对方也刚能动（对方收腿时也接不了别的招），隔着大半个场地，谁也抓不到谁的受击时间', () => {
-  const old = alt => (8.4 / TEMPO) * tumbleFly(alt, 6 / TEMPO);     // 2.6 同样的高度飞多远
+T('2.7.1 翻滚回去（Jack）：翻回去五六个身位（一个身位 = 身体宽 2 × PUSH = 50；2.7 翻得太远，整个画面那么宽）、翻得比 2.6 高；翻回去平等 —— 落地能动的那一刻对方也刚能动（对方收腿时也接不了别的招），谁也抓不到谁的受击时间', () => {
   let n = 0;
-  for (const [p, q] of [[12, 4], [13, 5], [14, 6], [12, 8]]) {
+  for (const [p, q] of [[12, 4], [13, 5], [14, 6], [12, 8], [16, 10], [18, 14]]) {
     const r = tumbleRun(1000, 170, p, q);
     if (r.x0 === null) continue;
     n++;
-    const d = r.x0 - r.x1;
-    ok(d >= 3 * old(r.alt0) - 1, `撞上时离地 ${r.alt0.toFixed(0)}：飞了 ${d.toFixed(0)}，2.6 是 ${old(r.alt0).toFixed(0)}`);
+    const d = (r.x0 - r.x1) / BODY_SPAN, lo = r.alt0 >= 45 ? 5 : 4.5;      // 快落地了才撞上的，飞得短一点
+    ok(d >= lo && d <= 6, `撞上时离地 ${r.alt0.toFixed(0)}：飞了 ${d.toFixed(1)} 个身位（要 ${lo} ~ 6）`);
     ok(r.top - r.alt0 >= 55, '翻得不够高：比撞上那一下高 ' + (r.top - r.alt0).toFixed(0));
     ok(r.freeA >= 0 && r.freeB >= 0 && Math.abs(r.freeA - r.freeB) <= 1, `两边能动的时候差 ${r.freeA - r.freeB} 帧（应该同时）`);
-    ok(r.gapFree > 400, '能动的时候还隔着 ' + r.gapFree.toFixed(0));
+    ok(r.gapFree >= 5 * BODY_SPAN, '能动的时候只隔着 ' + r.gapFree.toFixed(0));
   }
-  ok(n >= 2, '没翻起来几次：' + n);
+  ok(n >= 4, '没翻起来几次：' + n);
   // 靠着墙翻：撞到墙就停在墙边（飞不远），照样两边一起能动
-  const w = tumbleRun(300, 170, 12, 4);
+  const w = tumbleRun(200, 170, 12, 4);
   ok(w.x0 !== null && w.x1 <= WALL_L + 1, '靠墙翻：停在墙边');
   ok(Math.abs(w.freeA - w.freeB) <= 1, `靠墙翻：两边能动的时候差 ${w.freeA - w.freeB} 帧`);
   // 地上那一腿收招里接不了别的招（不然先收完招跑过去等着打）
@@ -2836,6 +2838,58 @@ T('2.7 腿不扭（Jack：二起脚的腿扭着，不同距离下手臂、腿怪
   ok((up.bk[0] - up.fk[0]) * fw < 0, '腾空时后腿膝盖跑到前腿膝盖前面去了（两腿交叉）');
   const kk = at(1.05).J1, shin = [kk.ff[0] - kk.fk[0], kk.ff[1] - kk.fk[1]];
   ok(shin[1] > 0 && Math.abs(shin[0]) < Math.abs(shin[1]) * 0.7, '收着的那条腿小腿要往下垂：' + shin.map(v => v.toFixed(1)));
+});
+T('2.7.1 铁山靠（Jack：腿别交叉、手也别交叉，就是半蹲着靠过去）：不转身；最远、80、50 打中前后两条腿不交叉、两只手不交叉；打中时半蹲（髋比站着低一截）', () => {
+  const segX = (a, b, c, d) => {                         // 两条线段真的交叉（端点挨着不算）
+    const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+    return o(c, d, a) * o(c, d, b) < -1e-6 && o(a, b, c) * o(a, b, d) < -1e-6;
+  };
+  const thighX = J => {                                  // 两条大腿交叉（交点离两个大腿根都远，不算大腿根挨着）
+    const a = J.hipF, b = J.fk, c = J.hipB, e = J.bk; if (!segX(a, b, c, e)) return false;
+    const t = ((c[0] - a[0]) * (e[1] - c[1]) - (c[1] - a[1]) * (e[0] - c[0])) / ((b[0] - a[0]) * (e[1] - c[1]) - (b[1] - a[1]) * (e[0] - c[0]));
+    const p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+    return Math.hypot(p[0] - a[0], p[1] - a[1]) > 6 && Math.hypot(p[0] - c[0], p[1] - c[1]) > 6;
+  };
+  const d = MOVES.shoulder, bad = []; let low = 99, n = 0;
+  ok(d.keys.every(k => !k[1].spin), '铁山靠不转身（转过去两条腿就从对面的大腿根出来，交叉成 X）');
+  for (const dist of [null, 80, 50]) {
+    const fr = simulateMove('shoulder', dist == null ? {} : { dist });
+    for (const f of fr) {
+      if (!f.mv || f.mv.name !== 'shoulder') continue;
+      const ph = phaseOf(d, f.mv.t); if (ph < 0.45 || ph > 2.45) continue;     // 从缩身到收招（再往后是回到架势，后手回去护下巴）
+      const J = f.J1, at = `${dist == null ? '最远' : '相距 ' + dist} 阶段 ${ph.toFixed(2)}`; n++;
+      if (thighX(J) || segX(J.fk, J.ff, J.hipB, J.bk) || segX(J.fk, J.ff, J.bk, J.bf) || segX(J.hipF, J.fk, J.bk, J.bf)) bad.push(at + ' 腿交叉');
+      if (segX(J.shF, J.fe, J.shB, J.be) || segX(J.shF, J.fe, J.be, J.bh) || segX(J.fe, J.fh, J.shB, J.be) || segX(J.fe, J.fh, J.be, J.bh)) bad.push(at + ' 手交叉');
+      if (f.mv.hit && ph >= 1 && ph <= 2) low = Math.min(low, FLOOR - J.hip[1]);
+    }
+  }
+  ok(n > 30, '没量到几帧：' + n);
+  ok(!bad.length, bad.slice(0, 6).join('；'));
+  ok(low <= 64, '打中时没蹲下去（髋离地 ' + low.toFixed(0) + '，站着 73）');
+});
+T('2.7.1 拳派铺垫（Jack：以后还会做更多和这个一样完整的拳派，这一套是「传统格斗」，到时候跨派的克制、反应都要重新算）：每个人身上记着自己是哪一派，出招查自己这一派的表；不同派之间没专门算过谁克谁就不许交手', () => {
+  startMatch('pvp'); game.brains = [null, null];
+  eq(STYLES.trad.name, '传统格斗', '现在这一派'); ok(STYLES.trad.moves === MOVES, '传统格斗的招式表就是 MOVES');
+  eq([F1.style, F2.style], ['trad', 'trad'], '两个人都是传统格斗');
+  ok(F1.moves === MOVES && styleOf(F2) === STYLES.trad, '出招查自己这一派的表');
+  // 临时造一派「测试派」：短拳伤害改成 77，别的照抄传统格斗 —— 用这一派的人打出来的就是这一派自己的短拳
+  const jab = Object.assign({}, MOVES.jab, { dmg: 77 });
+  STYLES.test = Object.assign({}, STYLES.trad, { id: 'test', name: '测试派', moves: Object.assign({}, MOVES, { jab }) });
+  try {
+    arena(80); F2.style = 'test';
+    F1.beginMove('jab', 'jab'); F2.beginMove('jab', 'jab');
+    let why = '';
+    try { clashRelation(F1, F2); } catch (e) { why = e.message; }
+    ok(/还没算/.test(why), '不同派、没写 MATCHUPS 也能交手（会悄悄套用传统格斗的规矩）');
+    MATCHUPS['trad|test'] = { relation: () => -1 };      // 算过了（随便定）：这一对测试派克传统格斗
+    eq(clashRelation(F1, F2), -1, '照 MATCHUPS 算'); eq(clashRelation(F2, F1), 1, '反过来那一对取负号');
+    arena(80); F1.style = 'trad'; F2.style = 'test';
+    const hp = F1.hp;
+    for (let i = 0; i < 40 && F1.hp === hp; i++) step([0, i === 0 ? TAP('jab') : 0]);
+    eq(hp - F1.hp, 77, '测试派的人出短拳，打中掉的是测试派短拳的血');
+    const snap = saveState(); F2.style = 'trad'; loadState(snap);
+    eq(F2.style, 'test', '存档、读档（联机回滚）带着拳派');
+  } finally { delete STYLES.test; delete MATCHUPS['trad|test']; F1.style = F2.style = 'trad'; }
 });
 
 (async function runAll() {

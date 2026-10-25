@@ -150,9 +150,13 @@ const MOVES = {
   shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 14, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
     // 2.4：先缩身蓄一下，再侧过身、压低重心，肩背撞进去（低头、两手收在身前，前脚一大步落地）
-    keys: [[0, { tor: 24 }], [0.5, { tor: 10, spin: 30, dx: -8, hy: 62, head: 6, fh: [10, -6], bh: [-2, 0], ff: [26, 0], bf: [-34, 0], tw: 0 }],
-      [1, { tor: 40, spin: 56, dx: 44, hy: 54, head: 12, fh: [4, 14], bh: [-12, 6], ff: [62, 0], bf: [-40, 0], tw: 0 }, 'out'],
-      [2, { tor: 40, spin: 56, dx: 44, hy: 54, head: 12, fh: [4, 14], bh: [-12, 6], ff: [62, 0], bf: [-40, 0], tw: 0 }], [3, { spin: 0 }]] }),
+    // 2.7.1（Jack：铁山靠腿别交叉、手也别交叉，就是半蹲着靠过去）：不再转身（spin 56 转过去，两条腿从对面的大腿根出来，交叉成 X；
+    //     两只手收在身前也搅在一起）。现在一直侧着：先缩身往下沉一下，再上一步半蹲着（髋 73 → 60，两腿都弯）、身子往前倾、
+    //     拧腰把前肩送出去靠上去；前手垂在身前（拳在前大腿那儿）、后手垂在身后，两只手一前一后不交叉。
+    //     前脚落在身子底下偏前（不踩进对方两脚中间），后腿斜着撑在后面
+    keys: [[0, { tor: 12, hy: 66 }], [0.5, { tor: 4, dx: -8, hy: 62, head: 4, tw: 10, fh: [12, 28], bh: [-8, 30], ff: [26, 0], bf: [-40, 0] }],
+      [1, { tor: 28, dx: 44, hy: 60, head: 8, tw: 40, fh: [18, 40], bh: [-6, 40], ff: [14, 0], bf: [-46, 0] }, 'out'],
+      [2, { tor: 28, dx: 44, hy: 60, head: 8, tw: 40, fh: [18, 40], bh: [-6, 40], ff: [14, 0], bf: [-46, 0] }], [3, {}]] }),
 
   /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ----
      2.0（Jack：腿踢还是超标，尤其距离）：腿踢射程 134 → 126，腿系连招、飞踢也一起短 4~10 */
@@ -465,3 +469,34 @@ function pickVariant(kind, chain, air, mod) {
   return 'grab';
 }
 const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, 'd:kick': 120, 'd:heavy': 100, 'd:grab': 96 })[k] || 90;
+
+/* ============================================================
+   拳派（2.7.1 铺垫；Jack：以后还会做更多和这个一样完整的拳派，现在这一套只是「传统格斗」，
+   到时候各种克制关系、发生的反应都要重新算）
+   一个拳派 = 一整套：招式表 moves（上面的 MOVES）、交手关系 relation（主系克制 TIER_WIN + 起手压）、
+   取消规则 cancel（CANCEL）、连招变招 variant（pickVariant）。
+   · 每个人身上记着自己是哪一派（Fighter 的 style 字段，存档、联机回滚都带着），出招、取消、连招变招都查自己这一派的表
+     （fighter.js 的 this.moves / styleOf(this)）。
+   · 两个人同一派：交手照这一派自己的 relation（clashRelation，combat.js 交手时调）。
+   · 两个人不同派：不套用任何一派的表 —— 在 MATCHUPS['甲|乙'] 里专门写这一对谁克谁（relation(dA, dB)：1 甲赢 / -1 乙赢 / 0 平，
+     ±0.5 压），没写就报错（tests.js 查），不会悄悄用某一派自己的规矩。
+   · 现在只有 trad 一派，电脑 AI、破招练习、教程、平衡报告都直接读 MOVES（都是传统格斗专用的）；各种「反应」
+     （接腿、卸力、翻滚回去、倒栽葱、踩蹲、拳迎千斤坠、闪身躲重拳……）写在 combat.js，按招名、系别认 ——
+     加新派的时候这些都要按新的一派重新算，清单见 NOTES「拳派」
+   ============================================================ */
+const STYLES = {
+  trad: { id: 'trad', name: '传统格斗', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant },
+};
+const STYLE_DEFAULT = 'trad';
+const MATCHUPS = {};                     // 跨派的规矩（以后加）：'trad|taiji': { relation(dA, dB) { … } }
+const styleOf = F => STYLES[(F && F.style) || STYLE_DEFAULT];
+// 两个人的招撞在一起谁克谁（combat.js 交手）：同一派照这一派的 relation；不同派查 MATCHUPS（反过来写的那一对取负号）
+function clashRelation(A, B) {
+  const a = A.style || STYLE_DEFAULT, b = B.style || STYLE_DEFAULT;
+  if (a === b) return STYLES[a].relation(A.move.def, B.move.def);
+  const mu = MATCHUPS[a + '|' + b];
+  if (mu) return mu.relation(A.move.def, B.move.def);
+  const mr = MATCHUPS[b + '|' + a];
+  if (mr) return -mr.relation(B.move.def, A.move.def);
+  throw new Error(`拳派「${STYLES[a].name}」和「${STYLES[b].name}」之间谁克谁还没算（MATCHUPS 里没写 ${a}|${b}）`);
+}

@@ -86,6 +86,7 @@ const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
 class Fighter {
   constructor(idx, cfg) {
     this.idx = idx; this.setLook(cfg.look);
+    this.style = cfg.style || STYLE_DEFAULT;   // 2.7.1 拳派（现在只有「传统格斗」trad，见 moves.js 的 STYLES）：出招、取消、连招变招都查这一派的表
     this.inp = new Input(); this.opp = null;
     this.disp = mk(); this.tgt = mk();
     this.maxHp = MAX_HP;
@@ -124,6 +125,7 @@ class Fighter {
     this.look = p.id; this.color = p.color; this.sash = palOf(p.color).band; this.text = p.text; this.name = p.name;
   }
   get airborne() { return this.alt > 0 || this.vz > 0; }
+  get moves() { return styleOf(this).moves; }        // 2.7.1 自己这一派的招式表（现在就是 MOVES）
   actionable() { return ACTIONABLE.has(this.state); }
   rollLen(dir) { return dir === this.facing ? ROLL_DIST : ROLL_BACK; }   // 2.7 滚身起滚多远：往前（面朝的方向）96、往后 64
   // 第 r[0] ~ r[1] 帧（含）：2.6 起时间带小数，按「第 k 帧 = [k, k+1)」比
@@ -347,7 +349,7 @@ class Fighter {
     const after = m.t + DT - 1 - m.S;
     if (after < 1 || after >= m.def.A + 13) return false;
     if (kind === 'jab' && this.jabRun() >= JAB_CHAIN_MAX) return false;
-    return (CANCEL[m.def.kind] || []).includes(kind);
+    return (styleOf(this).cancel[m.def.kind] || []).includes(kind);
   }
   startAttack(kind, cancel) {
     const air = this.airborne;
@@ -357,11 +359,12 @@ class Fighter {
     // 1.9.0 朝向吸附：先估这一招判定时对手在哪边（toward，1.9.4 起按 aimSide 推：自己的前冲、跳的惯性、对手跳到哪都算进去）。
     // 对手在 ASSIST_R 以内、或者没按方向 → 朝对手打（近身乱按方向也不打空）；远了才照按的方向打
     const runMod = !air && this.state === 'run' && this.runT >= RUN_CHARGE;
-    const guess = pickVariant(kind, air ? [] : this.chain, air, h.down ? 'down' : runMod ? 'run' : '');
-    const toward = guess ? this.aimSide(MOVES[guess]) : this.facing;
+    const ST = styleOf(this), MV = ST.moves;
+    const guess = ST.variant(kind, air ? [] : this.chain, air, h.down ? 'down' : runMod ? 'run' : '');
+    const toward = guess ? this.aimSide(MV[guess]) : this.facing;
     const dist = Math.abs(o.x - this.x);
     // 按住「后」（离开对手的方向）+ 拿，对手就在面前 → 面朝对手，抓住直接过肩摔（1.8.0）
-    const backThrow = kind === 'grab' && !air && !h.down && dir !== 0 && dir === -toward && dist <= MOVES.grab.reach + 16;
+    const backThrow = kind === 'grab' && !air && !h.down && dir !== 0 && dir === -toward && dist <= MV.grab.reach + 16;
     const face = backThrow || dist <= ASSIST_R || !dir ? toward : dir;
     if (face !== this.facing) {
       // 跑着转身出招：原来往哪跑的惯性留着（往后滑着出手），也不算「跑起来」（不会变铁山靠）
@@ -371,7 +374,7 @@ class Fighter {
       this.facing = face;
     }
     const mod = h.down ? 'down' : (!air && this.state === 'run' && this.runT >= RUN_CHARGE) ? 'run' : '';
-    let name = pickVariant(kind, air ? [] : this.chain, air, mod);
+    let name = ST.variant(kind, air ? [] : this.chain, air, mod);
     if (!air && kind === 'kick' && h.down && this.stompReady()) name = 'stomp';   // 蹲挡住扫堂腿，紧接着蹲+踢 = 踩腿
     if (!name) return false;
     if (!this.beginMove(name, kind)) return false;
@@ -380,7 +383,7 @@ class Fighter {
   }
   // kind = 按的是哪个键（记进连段）；特殊动作传 null
   beginMove(name, kind) {
-    const d = MOVES[name], air = this.airborne;
+    const d = this.moves[name], air = this.airborne;
     let S = d.S, slowed = false;
     if (kind === 'jab' && this.slowJab > 0) { S += SLOW_JAB_ADD; this.slowJab = 0; slowed = true; }
     if (this.state === 'run') this.kvx += this.facing * this.runSpeed() * 0.5;   // 跑动中出招带惯性
@@ -407,7 +410,7 @@ class Fighter {
     return true;
   }
   startScript(name) {
-    this.move = { def: MOVES[name], name, t: 0, S: 0, hit: true, blocked: false, done: true, air: false, serial: ++this.serial, armorLeft: 0, press: null };
+    this.move = { def: this.moves[name], name, t: 0, S: 0, hit: true, blocked: false, done: true, air: false, serial: ++this.serial, armorLeft: 0, press: null };
     this.state = 'attack'; this.trail.length = 0; this.runT = 0;
   }
   // 爆气：挨打的时候（受击硬直里，被擒住不行）按「重+踢」。2.1 起格挡硬直里不能爆
@@ -430,7 +433,7 @@ class Fighter {
   // 借力摔（1.8.0）：卸力成功后按「拿」，抓住失衡的对手顺势过肩摔（挣不脱）
   parryThrow() {
     const o = this.opp;
-    o.grabbed = true; o.reel = false; o.move = null; o.stunT = Math.max(o.stunT, MOVES.throwBack.evSlam + 12);
+    o.grabbed = true; o.reel = false; o.move = null; o.stunT = Math.max(o.stunT, this.moves.throwBack.evSlam + 12);
     this.facing = o.x >= this.x ? 1 : -1;
     this.startScript('throwBack'); this.move.parryThrow = true;
     Sound.whoosh(0.8);
@@ -439,7 +442,7 @@ class Fighter {
     const h = this.inp.held, dir = dirOf(h);
     this.gwalk = 0;
     if (locked) { if (this.state !== 'win') this.state = 'idle'; this.runT = 0; return; }
-    if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.aimSide(MOVES.super); this.beginMove('super', null); return; }
+    if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.aimSide(this.moves.super); this.beginMove('super', null); return; }
     if (this.clock - this.dashT < 4) {
       this.dashT = -999;
       // 2.0：按着挡（不蹲）朝对手双击 = 闪身（从他身边钻过去）；不按挡、或者按着挡往后双击，还是普通冲刺
@@ -681,7 +684,7 @@ class Fighter {
     if (o.state !== 'hit' || !o.grabbed) return;
     if (!o.carried) {
       o.carried = true; o.carry0 = (o.x - this.x) * this.facing; o.kvx = 0; o.vz = 0; o.vx = 0;
-      o.stunT = Math.max(o.stunT, MOVES.throwBack.evSlam + 8);
+      o.stunT = Math.max(o.stunT, this.moves.throwBack.evSlam + 8);
     }
     // 背后快到墙了：一边摔一边往前挪，给对手留出落地的地方（以前是摔完瞬移）
     const land = this.x - this.facing * THROW_LAND;
@@ -956,9 +959,12 @@ class Fighter {
       p[k][0] = x; p[k][1] = p.hy - A - y;
     };
     // 整个人往回让 d：踩在地上的脚尽量踩着原地（够不着就跟着往回滑一点；转身转得多了就跟着挪，不然腿要拧成麻花）
+    // 2.7.1（Jack：铁山靠腿别交叉）：铁山靠这种整个人撞过去的（limb 'sh'），离得近就整个人连脚一起往回让 —— 只是这一步上得少；
+    // 脚钉在原地的话，身子往回缩 40 像素，两只脚都跑到髋底下、膝盖往前拱，两条腿交叉成 X
+    const whole = limb === 'sh';
     const back = d => {
       const L = this.fkL; p.dx -= d;
-      if (Math.abs(ax) >= 0.6) for (const k of ['ff', 'bf']) if (Math.abs(L[k][1] - (p.hy - A)) < 6) footTo(k, L[k][0] + d / ax, L[k][1]);
+      if (!whole && Math.abs(ax) >= 0.6) for (const k of ['ff', 'bf']) if (Math.abs(L[k][1] - (p.hy - A)) < 6) footTo(k, L[k][0] + d / ax, L[k][1]);
     };
     // 2.7（Jack：二起脚的腿扭着、不同距离下腿怪）：出腿离得近、脚要往回收的时候，以前把脚踝平着往回拽 —— 往上踢的腿（鞭腿、二起脚）
     // 膝盖跟着往下顶、小腿往上翘，拧成一个往上开的 V；转身蹬这种平着蹬的，膝盖往下塌、人像蹲着。现在一律「收腿」的样子，膝盖在上面：

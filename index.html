@@ -809,7 +809,7 @@ html.desktop .guide{display:none}
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.7.0';
+const VERSION = '2.7.1';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -915,9 +915,12 @@ const DIVE_AIM = 20;                     // 脚往下够得着对手那一帧，
 const DIVE_LAND_GAP = 56;                // 踩中后落在对手面前多远（近身直着踩下来的，顺势往后带一点，不落在对手身上）
 // 空中的腿（飞踢、千斤坠）撞上地上的腿：空中那个人往后翻滚飞回去（1.9.0）
 // 2.7（Jack：翻回去的距离起码三倍、翻得再高一点；对方太好直接起手了 —— 要翻回去平等，对方抓不到受击时间）：
-//   横向 8.4 → 19.4、往上弹 6 → 10.6（翻起来比撞上那一下高 22 → 66，飞 130~200 → 480~600（都在三倍以上），碰到墙就停在墙边）；
+//   横向 8.4 → 19.4、往上弹 6 → 10.6（翻起来比撞上那一下高 22 → 66，飞 130~200 → 480~600，碰到墙就停在墙边）；
 //   落地硬直 7 → 3（和普通落地一样）；地上那个人这一腿收得慢一点，正好和翻回去的人落地能动时一起能动（combat.js tumble）
-const TUMBLE_VX = 19.4 / TEMPO, TUMBLE_VZ = 10.6 / TEMPO;   // 翻回去的横向速度（飞得远）、往上弹
+// 2.7.1（Jack：翻得太远了，五六个身位就够）：一个身位 = 身体宽 2 × PUSH = 50，横向 19.4 → 9.5：
+//   一般在半空撞上（离地 50~100）飞 265~295（5.3~5.9 个身位），快落地才撞上的飞 235~250；高度、两边一起能动都没变
+const TUMBLE_VX = 9.5 / TEMPO, TUMBLE_VZ = 10.6 / TEMPO;   // 翻回去的横向速度（飞多远）、往上弹（翻多高）
+const BODY_SPAN = PUSH * 2;              // 一个「身位」：身体宽（两人贴着站时中心离多远）
 const TUMBLE_KEEP = 0.5, TUMBLE_LAND = 3;               // 吃地上那一腿几成伤害；落地硬直
 const KICK_AA_ALT = 100;                 // 地上的腿能迎着打到多高的空中出腿的人（别的情况地上的招只打到 AIR_SAFE）
 
@@ -1829,9 +1832,13 @@ const MOVES = {
   shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 14, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
     // 2.4：先缩身蓄一下，再侧过身、压低重心，肩背撞进去（低头、两手收在身前，前脚一大步落地）
-    keys: [[0, { tor: 24 }], [0.5, { tor: 10, spin: 30, dx: -8, hy: 62, head: 6, fh: [10, -6], bh: [-2, 0], ff: [26, 0], bf: [-34, 0], tw: 0 }],
-      [1, { tor: 40, spin: 56, dx: 44, hy: 54, head: 12, fh: [4, 14], bh: [-12, 6], ff: [62, 0], bf: [-40, 0], tw: 0 }, 'out'],
-      [2, { tor: 40, spin: 56, dx: 44, hy: 54, head: 12, fh: [4, 14], bh: [-12, 6], ff: [62, 0], bf: [-40, 0], tw: 0 }], [3, { spin: 0 }]] }),
+    // 2.7.1（Jack：铁山靠腿别交叉、手也别交叉，就是半蹲着靠过去）：不再转身（spin 56 转过去，两条腿从对面的大腿根出来，交叉成 X；
+    //     两只手收在身前也搅在一起）。现在一直侧着：先缩身往下沉一下，再上一步半蹲着（髋 73 → 60，两腿都弯）、身子往前倾、
+    //     拧腰把前肩送出去靠上去；前手垂在身前（拳在前大腿那儿）、后手垂在身后，两只手一前一后不交叉。
+    //     前脚落在身子底下偏前（不踩进对方两脚中间），后腿斜着撑在后面
+    keys: [[0, { tor: 12, hy: 66 }], [0.5, { tor: 4, dx: -8, hy: 62, head: 4, tw: 10, fh: [12, 28], bh: [-8, 30], ff: [26, 0], bf: [-40, 0] }],
+      [1, { tor: 28, dx: 44, hy: 60, head: 8, tw: 40, fh: [18, 40], bh: [-6, 40], ff: [14, 0], bf: [-46, 0] }, 'out'],
+      [2, { tor: 28, dx: 44, hy: 60, head: 8, tw: 40, fh: [18, 40], bh: [-6, 40], ff: [14, 0], bf: [-46, 0] }], [3, {}]] }),
 
   /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ----
      2.0（Jack：腿踢还是超标，尤其距离）：腿踢射程 134 → 126，腿系连招、飞踢也一起短 4~10 */
@@ -2144,6 +2151,37 @@ function pickVariant(kind, chain, air, mod) {
   return 'grab';
 }
 const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, 'd:kick': 120, 'd:heavy': 100, 'd:grab': 96 })[k] || 90;
+
+/* ============================================================
+   拳派（2.7.1 铺垫；Jack：以后还会做更多和这个一样完整的拳派，现在这一套只是「传统格斗」，
+   到时候各种克制关系、发生的反应都要重新算）
+   一个拳派 = 一整套：招式表 moves（上面的 MOVES）、交手关系 relation（主系克制 TIER_WIN + 起手压）、
+   取消规则 cancel（CANCEL）、连招变招 variant（pickVariant）。
+   · 每个人身上记着自己是哪一派（Fighter 的 style 字段，存档、联机回滚都带着），出招、取消、连招变招都查自己这一派的表
+     （fighter.js 的 this.moves / styleOf(this)）。
+   · 两个人同一派：交手照这一派自己的 relation（clashRelation，combat.js 交手时调）。
+   · 两个人不同派：不套用任何一派的表 —— 在 MATCHUPS['甲|乙'] 里专门写这一对谁克谁（relation(dA, dB)：1 甲赢 / -1 乙赢 / 0 平，
+     ±0.5 压），没写就报错（tests.js 查），不会悄悄用某一派自己的规矩。
+   · 现在只有 trad 一派，电脑 AI、破招练习、教程、平衡报告都直接读 MOVES（都是传统格斗专用的）；各种「反应」
+     （接腿、卸力、翻滚回去、倒栽葱、踩蹲、拳迎千斤坠、闪身躲重拳……）写在 combat.js，按招名、系别认 ——
+     加新派的时候这些都要按新的一派重新算，清单见 NOTES「拳派」
+   ============================================================ */
+const STYLES = {
+  trad: { id: 'trad', name: '传统格斗', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant },
+};
+const STYLE_DEFAULT = 'trad';
+const MATCHUPS = {};                     // 跨派的规矩（以后加）：'trad|taiji': { relation(dA, dB) { … } }
+const styleOf = F => STYLES[(F && F.style) || STYLE_DEFAULT];
+// 两个人的招撞在一起谁克谁（combat.js 交手）：同一派照这一派的 relation；不同派查 MATCHUPS（反过来写的那一对取负号）
+function clashRelation(A, B) {
+  const a = A.style || STYLE_DEFAULT, b = B.style || STYLE_DEFAULT;
+  if (a === b) return STYLES[a].relation(A.move.def, B.move.def);
+  const mu = MATCHUPS[a + '|' + b];
+  if (mu) return mu.relation(A.move.def, B.move.def);
+  const mr = MATCHUPS[b + '|' + a];
+  if (mr) return -mr.relation(B.move.def, A.move.def);
+  throw new Error(`拳派「${STYLES[a].name}」和「${STYLES[b].name}」之间谁克谁还没算（MATCHUPS 里没写 ${a}|${b}）`);
+}
 </script>
 <script>
 'use strict';
@@ -3184,6 +3222,7 @@ const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
 class Fighter {
   constructor(idx, cfg) {
     this.idx = idx; this.setLook(cfg.look);
+    this.style = cfg.style || STYLE_DEFAULT;   // 2.7.1 拳派（现在只有「传统格斗」trad，见 moves.js 的 STYLES）：出招、取消、连招变招都查这一派的表
     this.inp = new Input(); this.opp = null;
     this.disp = mk(); this.tgt = mk();
     this.maxHp = MAX_HP;
@@ -3222,6 +3261,7 @@ class Fighter {
     this.look = p.id; this.color = p.color; this.sash = palOf(p.color).band; this.text = p.text; this.name = p.name;
   }
   get airborne() { return this.alt > 0 || this.vz > 0; }
+  get moves() { return styleOf(this).moves; }        // 2.7.1 自己这一派的招式表（现在就是 MOVES）
   actionable() { return ACTIONABLE.has(this.state); }
   rollLen(dir) { return dir === this.facing ? ROLL_DIST : ROLL_BACK; }   // 2.7 滚身起滚多远：往前（面朝的方向）96、往后 64
   // 第 r[0] ~ r[1] 帧（含）：2.6 起时间带小数，按「第 k 帧 = [k, k+1)」比
@@ -3445,7 +3485,7 @@ class Fighter {
     const after = m.t + DT - 1 - m.S;
     if (after < 1 || after >= m.def.A + 13) return false;
     if (kind === 'jab' && this.jabRun() >= JAB_CHAIN_MAX) return false;
-    return (CANCEL[m.def.kind] || []).includes(kind);
+    return (styleOf(this).cancel[m.def.kind] || []).includes(kind);
   }
   startAttack(kind, cancel) {
     const air = this.airborne;
@@ -3455,11 +3495,12 @@ class Fighter {
     // 1.9.0 朝向吸附：先估这一招判定时对手在哪边（toward，1.9.4 起按 aimSide 推：自己的前冲、跳的惯性、对手跳到哪都算进去）。
     // 对手在 ASSIST_R 以内、或者没按方向 → 朝对手打（近身乱按方向也不打空）；远了才照按的方向打
     const runMod = !air && this.state === 'run' && this.runT >= RUN_CHARGE;
-    const guess = pickVariant(kind, air ? [] : this.chain, air, h.down ? 'down' : runMod ? 'run' : '');
-    const toward = guess ? this.aimSide(MOVES[guess]) : this.facing;
+    const ST = styleOf(this), MV = ST.moves;
+    const guess = ST.variant(kind, air ? [] : this.chain, air, h.down ? 'down' : runMod ? 'run' : '');
+    const toward = guess ? this.aimSide(MV[guess]) : this.facing;
     const dist = Math.abs(o.x - this.x);
     // 按住「后」（离开对手的方向）+ 拿，对手就在面前 → 面朝对手，抓住直接过肩摔（1.8.0）
-    const backThrow = kind === 'grab' && !air && !h.down && dir !== 0 && dir === -toward && dist <= MOVES.grab.reach + 16;
+    const backThrow = kind === 'grab' && !air && !h.down && dir !== 0 && dir === -toward && dist <= MV.grab.reach + 16;
     const face = backThrow || dist <= ASSIST_R || !dir ? toward : dir;
     if (face !== this.facing) {
       // 跑着转身出招：原来往哪跑的惯性留着（往后滑着出手），也不算「跑起来」（不会变铁山靠）
@@ -3469,7 +3510,7 @@ class Fighter {
       this.facing = face;
     }
     const mod = h.down ? 'down' : (!air && this.state === 'run' && this.runT >= RUN_CHARGE) ? 'run' : '';
-    let name = pickVariant(kind, air ? [] : this.chain, air, mod);
+    let name = ST.variant(kind, air ? [] : this.chain, air, mod);
     if (!air && kind === 'kick' && h.down && this.stompReady()) name = 'stomp';   // 蹲挡住扫堂腿，紧接着蹲+踢 = 踩腿
     if (!name) return false;
     if (!this.beginMove(name, kind)) return false;
@@ -3478,7 +3519,7 @@ class Fighter {
   }
   // kind = 按的是哪个键（记进连段）；特殊动作传 null
   beginMove(name, kind) {
-    const d = MOVES[name], air = this.airborne;
+    const d = this.moves[name], air = this.airborne;
     let S = d.S, slowed = false;
     if (kind === 'jab' && this.slowJab > 0) { S += SLOW_JAB_ADD; this.slowJab = 0; slowed = true; }
     if (this.state === 'run') this.kvx += this.facing * this.runSpeed() * 0.5;   // 跑动中出招带惯性
@@ -3505,7 +3546,7 @@ class Fighter {
     return true;
   }
   startScript(name) {
-    this.move = { def: MOVES[name], name, t: 0, S: 0, hit: true, blocked: false, done: true, air: false, serial: ++this.serial, armorLeft: 0, press: null };
+    this.move = { def: this.moves[name], name, t: 0, S: 0, hit: true, blocked: false, done: true, air: false, serial: ++this.serial, armorLeft: 0, press: null };
     this.state = 'attack'; this.trail.length = 0; this.runT = 0;
   }
   // 爆气：挨打的时候（受击硬直里，被擒住不行）按「重+踢」。2.1 起格挡硬直里不能爆
@@ -3528,7 +3569,7 @@ class Fighter {
   // 借力摔（1.8.0）：卸力成功后按「拿」，抓住失衡的对手顺势过肩摔（挣不脱）
   parryThrow() {
     const o = this.opp;
-    o.grabbed = true; o.reel = false; o.move = null; o.stunT = Math.max(o.stunT, MOVES.throwBack.evSlam + 12);
+    o.grabbed = true; o.reel = false; o.move = null; o.stunT = Math.max(o.stunT, this.moves.throwBack.evSlam + 12);
     this.facing = o.x >= this.x ? 1 : -1;
     this.startScript('throwBack'); this.move.parryThrow = true;
     Sound.whoosh(0.8);
@@ -3537,7 +3578,7 @@ class Fighter {
     const h = this.inp.held, dir = dirOf(h);
     this.gwalk = 0;
     if (locked) { if (this.state !== 'win') this.state = 'idle'; this.runT = 0; return; }
-    if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.aimSide(MOVES.super); this.beginMove('super', null); return; }
+    if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.aimSide(this.moves.super); this.beginMove('super', null); return; }
     if (this.clock - this.dashT < 4) {
       this.dashT = -999;
       // 2.0：按着挡（不蹲）朝对手双击 = 闪身（从他身边钻过去）；不按挡、或者按着挡往后双击，还是普通冲刺
@@ -3779,7 +3820,7 @@ class Fighter {
     if (o.state !== 'hit' || !o.grabbed) return;
     if (!o.carried) {
       o.carried = true; o.carry0 = (o.x - this.x) * this.facing; o.kvx = 0; o.vz = 0; o.vx = 0;
-      o.stunT = Math.max(o.stunT, MOVES.throwBack.evSlam + 8);
+      o.stunT = Math.max(o.stunT, this.moves.throwBack.evSlam + 8);
     }
     // 背后快到墙了：一边摔一边往前挪，给对手留出落地的地方（以前是摔完瞬移）
     const land = this.x - this.facing * THROW_LAND;
@@ -4054,9 +4095,12 @@ class Fighter {
       p[k][0] = x; p[k][1] = p.hy - A - y;
     };
     // 整个人往回让 d：踩在地上的脚尽量踩着原地（够不着就跟着往回滑一点；转身转得多了就跟着挪，不然腿要拧成麻花）
+    // 2.7.1（Jack：铁山靠腿别交叉）：铁山靠这种整个人撞过去的（limb 'sh'），离得近就整个人连脚一起往回让 —— 只是这一步上得少；
+    // 脚钉在原地的话，身子往回缩 40 像素，两只脚都跑到髋底下、膝盖往前拱，两条腿交叉成 X
+    const whole = limb === 'sh';
     const back = d => {
       const L = this.fkL; p.dx -= d;
-      if (Math.abs(ax) >= 0.6) for (const k of ['ff', 'bf']) if (Math.abs(L[k][1] - (p.hy - A)) < 6) footTo(k, L[k][0] + d / ax, L[k][1]);
+      if (!whole && Math.abs(ax) >= 0.6) for (const k of ['ff', 'bf']) if (Math.abs(L[k][1] - (p.hy - A)) < 6) footTo(k, L[k][0] + d / ax, L[k][1]);
     };
     // 2.7（Jack：二起脚的腿扭着、不同距离下腿怪）：出腿离得近、脚要往回收的时候，以前把脚踝平着往回拽 —— 往上踢的腿（鞭腿、二起脚）
     // 膝盖跟着往下顶、小腿往上翘，拧成一个往上开的 V；转身蹬这种平着蹬的，膝盖往下塌、人像蹲着。现在一律「收腿」的样子，膝盖在上面：
@@ -4384,7 +4428,7 @@ function exchange(A, B) {
   A.holdPose = B.holdPose = true;
   if (airKick(A) && groundKick(B)) return tumble(A, B);
   if (airKick(B) && groundKick(A)) return tumble(B, A);
-  const r = relation(A.move.def, B.move.def);
+  const r = clashRelation(A, B);             // 2.7.1 拳派：同一派照这一派的克制；不同派要专门算（moves.js MATCHUPS）
   if (r === 1) applyHit(A, B, 'beat');
   else if (r === -1) applyHit(B, A, 'beat');
   else if (r > 0) overpower(A, B);
@@ -4643,7 +4687,7 @@ function overpower(W, L) {
 // 翻滚回去（1.9.0）：空中的腿（飞踢、千斤坠）撞上地上的腿 —— 不算被克死，空中那个人吃一半伤害、往后翻着飞回去（飞得远，
 // 途中打不中他）；地上那个人不掉血，只被撞退一点。落地后差不多一起动，等于把距离拉开重来，地上那方小赚
 // 2.7（Jack：要翻回去平等，对方抓不到受击时间）：飞得远、翻得高（TUMBLE_VX / VZ）；地上那个人这一腿收招拉长到
-// 翻回去的人落地、能动的那一刻（tumbleFly 算出要飞多久），收招里也不能接别的招 —— 两个人同时能动，隔着大半个场地重来
+// 翻回去的人落地、能动的那一刻（tumbleFly 算出要飞多久），收招里也不能接别的招 —— 两个人同时能动，隔着几个身位重来（2.7.1 飞五六个身位）
 function tumble(A, B) {            // A = 空中出腿的，B = 地上出腿的
   const ma = A.move, mb = B.move, away = A.x >= B.x ? 1 : -1;
   ma.done = mb.done = true; mb.hit = true;
@@ -4787,7 +4831,7 @@ function grabDamage(A, B, dmg, label, big) {
 }
 // 推开（擒住后什么都不按）：把人推出去，自己先动一点
 function grabPush(A, B, left) {
-  grabDamage(A, B, MOVES.grab.dmg, '擒拿 · 推开', false);
+  grabDamage(A, B, A.moves.grab.dmg, '擒拿 · 推开', false);
   B.grabbed = false; B.stunT = left + TA(4); B.kvx = A.facing * 8; B.hurtHeavy = false;
   game.freeze = stop(4); dust(B.x, FLOOR, 3); burst(B.x, FLOOR - 70, A.facing, 6, 24, 3, pal(A).fx);
   Sound.hit(0.4);
@@ -10213,7 +10257,7 @@ const G_TECH = [
   ] },
   { group: '空中交手', list: [
     { name: '倒栽葱', how: '空中出招被克它的招打中', icon: { pose: 'fall', alt: 30 }, desc: `摔下来倒地更久。托天掌打空中招、站着的拳迎千斤坠（×${DIVE_PUNCH_MUL}）都是。` },
-    { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，高高地往后翻出大半个场地；落地时两边一起能动，重新来过。' },
+    { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，高高地往后翻出五六个身位；落地时两边一起能动，重新来过。' },
   ] },
 ];
 const G_MULS = [

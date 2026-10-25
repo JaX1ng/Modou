@@ -176,7 +176,7 @@ const G_TECH = [
   ] },
   { group: '空中交手', list: [
     { name: '倒栽葱', how: '空中出招被克它的招打中', icon: { pose: 'fall', alt: 30 }, desc: `摔下来倒地更久。托天掌打空中招、站着的拳迎千斤坠（×${DIVE_PUNCH_MUL}）都是。` },
-    { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，高高地往后翻出大半个场地；落地时两边一起能动，重新来过。' },
+    { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，高高地往后翻出五六个身位；落地时两边一起能动，重新来过。' },
   ] },
 ];
 const G_MULS = [
