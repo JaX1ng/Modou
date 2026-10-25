@@ -266,7 +266,7 @@ let pbLast = performance.now();
   const dt = now - pbLast; pbLast = now;
   if (PB.playing && PB.frames.length) {
     PB.acc += dt * +$b('speed').value;
-    while (PB.acc >= STEP_MS) { PB.acc -= STEP_MS; PB.idx = PB.idx >= PB.frames.length - 1 ? 0 : PB.idx + 1; }
+    while (PB.acc >= FRAME_MS) { PB.acc -= FRAME_MS; PB.idx = PB.idx >= PB.frames.length - 1 ? 0 : PB.idx + 1; }   // 一帧一张（2.6 逻辑一步是 1/4 帧，录的是每一帧）
     $b('frame').value = PB.idx; redraw();
   }
   requestAnimationFrame(tick);

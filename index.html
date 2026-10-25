@@ -809,7 +809,28 @@ html.desktop .guide{display:none}
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.5.1';
+const VERSION = '2.6.0';
+
+/* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
+   以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
+   · 逻辑一秒算 SIM_HZ（240）步（tick），和屏幕刷新率无关（60Hz 屏幕一次画面算 4 步，240Hz 屏幕一步一画，144Hz 插值着画）；
+   · 时长照旧用「帧」（1 帧 = 1/60 秒）写，但可以带小数，最细 DT = 0.25 帧（约 4 毫秒）；计时器每步加 DT；
+   · 速度、加速度照旧是「每帧多少像素」，每步只走 DT 那么多；每帧乘一次的衰减（击退、空气阻力）每步乘 rootDT(f)
+     （用开方算，不用 Math.pow —— 联机两边的浏览器算出来要一模一样）。整帧的时候位置、轨迹和以前 60 帧/秒一样。
+   · 时间怎么比（第 k 帧 = 从 k 到 k+1 那一段）：以前「t > X」（第 X 帧以后）写成 t >= X + 1，「t <= X」写成 t < X + 1；
+     「t >= X」「t < X」「倒数到 0」照旧。招式里 attackStep 先查再加的，用 k = m.t + DT - 1 代替以前的 m.t 来比（见 fighter.js）。
+   · step(inputs) 还是「一帧」（4 步：按住的键每一步都按着，新按的招在最后一步）—— 测试、平衡报告、动作台照旧按帧推；主循环、联机一步一步推（simTick） */
+const SIM_HZ = 240, SUB = SIM_HZ / 60, DT = 1 / SUB, FE = 1 - DT;
+const STEP_MS = 1000 / SIM_HZ, FRAME_MS = 1000 / 60;
+const grid = n => Math.round(n * SUB) / SUB;                     // 取到 DT 的整数倍（帧数用）
+function rootDT(f) { let r = f; for (let n = SUB; n > 1; n >>= 1) r = Math.sqrt(r); return r; }   // f 的 DT 次方（SUB 是 2 的幂）
+// 每帧「先走 v、再 v *= f」→ 每步「走 v·c、再 v *= r」：SUB 步加起来正好是以前一帧走的那么多
+// cp：先乘衰减再走（「v *= f; x += v」那种写法）时每步位移乘多少
+function damp(f) { const r = rootDT(f), c = f === 1 ? DT : (1 - r) / (1 - f); return { r, c, cp: c * f / r }; }
+const lerpK = k => 1 - rootDT(1 - k);                            // 每帧往目标挪 k → 每步挪多少
+// 重力：每帧「先 alt += vz、再 vz -= g」→ 每步 alt += vz·DT + g·GH、vz -= g·DT（整帧时轨迹一模一样）
+const GH = (DT - DT * DT) / 2;
+const KB_DAMP = damp(0.82);                                      // 击退（kvx）每帧剩 82%
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -824,6 +845,11 @@ const TEMPO = 1.07, TEMPO2 = TEMPO * TEMPO, HIT_TEMPO = 1.05, OPEN_TEMPO = 1.12,
 const TF = n => Math.round(n * TEMPO * HIT_TEMPO);
 const TFO = n => Math.round(n * TEMPO * HIT_TEMPO * OPEN_TEMPO);
 const TFH = n => Math.round(n * TEMPO * REACT_TEMPO);
+// 2.6 前后摇再长一点（Jack：所有动作前摇再长 5~10%；后摇主要是拳头在对方身上多停一会儿）：
+//   招式的前摇 S、后摇 R，连同挨打硬直 stun、格挡硬直 bstun（不然连招接不上、挡后反击的帧差变了）都在 2.5 的帧数上再 ×ATK_TEMPO，
+//   取到 0.25 帧（以前只能取整帧：前摇 5 帧最少也得加到 6 帧，+20%）。判定帧 A 不变。拳头停在身上见 HITSTOP（顿帧）
+const ATK_TEMPO = 1.075;
+const TA = n => grid(n * ATK_TEMPO);
 
 // 场地（逻辑坐标，画布按比例缩放）。W 是画面宽；场地 STAGE_W 比画面宽，镜头跟着两人左右移
 const W = 1200, H = 600, FLOOR = 520, PUSH = 25;                    // PUSH = 身体半宽
@@ -832,7 +858,7 @@ const START_GAP = 360;                   // 开局两人站在场地正中、相
 // 镜头（1.8.0）：人物放大。人机 / 联机 / 打桩：镜头跟着自己，对手可以在画面外（画面边上有箭头）；
 // 双人对战：两人都要在画面里 —— 镜头随距离缩放（近了放大、远了拉远），两人最远 MAXD_PVP
 // 2.0（Jack：人物再大一点，大小粗细一起放大）：1.62 → 1.76。全屏时屏幕比 2:1 高（16:9、16:10），多出来的高度再放大一点（render.js zoomBoost）
-const ZOOM = 1.76;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62）
+const ZOOM = 1.86;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62，2.0 ~ 2.5 是 1.76；2.6 Jack：人物屏幕占比再大一点点）
 const ZOOM_PVP_MIN = 1.24, CAM_MARGIN = 80;   // 双人对战最远时拉到多远；人离画面边至少留多少（场地坐标）
 const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）。画面宽窄怎么变它都不变（是规则）
 const MAX_HP = 400;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500；2.3 Jack：全部改成 400）
@@ -858,7 +884,7 @@ const BLOCK_WALK = 1.8 / TEMPO;          // 边挡边走的速度（跑步起步
 const SLIP_PAST = 62, SLIP_MIN = 70, SLIP_MAX = 150;   // 钻到对手身后多远（两人中心）；最少 / 最多冲多远
 const SLIP_CANCEL = TF(9);               // 闪身钻空了（没躲着重拳）：第几帧起能直接出招
 const SLIP_ELBOW_AT = 30;                // 躲过重拳以后，钻到他身后多远（两人中心，按他面朝的方向算）就回身出肘；钻完了还没到也出
-const SLIP_CAUGHT_MUL = 1.3, SLIP_CAUGHT_STUN = TF(5);   // 截住闪身的伤害倍率；截住时多几帧硬直
+const SLIP_CAUGHT_MUL = 1.3, SLIP_CAUGHT_STUN = TA(TF(5));   // 截住闪身的伤害倍率；截住时多几帧硬直
 const STAGGER = TF(32), STAGGER_KB = 3;  // 被回身肘打中：背对着踉跄多久（帧）、往前踉跄的力度
 // 1.9.0 朝向吸附加强（防打背身）：
 //   · 不按左右（站着、蹲着）、格挡、挡住的硬直里：一律自动面向对手（不管远近），对手跑到身后马上转过来；
@@ -873,6 +899,7 @@ const RUN_CARRY = 1.15;                  // 跑着起跳：水平速度 = 跑速
 const LEAP_VX = 6.6 / TEMPO;                     // 水平速度超过这个，空中用「飞身」姿势（1.7.0 起不再翻跟头）
 const AIR_ACC = 0.35 / TEMPO2, AIR_DRIFT = 3.0 / TEMPO;   // 空中按方向：加速度、能自己控制到的最高水平速度（比地面慢）
 const AIR_DRAG = 0.9719;                 // 空中松开方向，水平速度每帧剩几成（1.8.0：0.97 按节奏换算）
+const AIR_DRAG_DT = damp(AIR_DRAG);       // 2.6 每步剩几成（r）、这一步的位移乘多少（c）
 const AIR_BONUS = 1.35;                  // 跳起出招伤害倍率
 const AIR_SAFE = 60;                     // 跳到比这还高，普通地面招打不到（对空招另算，见招式的 antiAir）
 const AIR_VREACH = 105;                  // 空中招往下够多深：人斜着往前下打，整个跳跃过程都够得着地上的人（1.6.0 是 72~80，时机不对就打不到）
@@ -895,9 +922,11 @@ const KICK_AA_ALT = 100;                 // 地上的腿能迎着打到多高的
 const CHAIN_WIN = TF(22);                    // 上一招结束后多少帧内再出招算连招变招
 const BUF_WIN = 8;                       // 按键缓冲帧数
 const PAIR_WIN = 3;                      // 「重+踢」两键间隔几帧内算同时按
-const HITSTOP = 0.85;                    // 打中时的停顿（顿帧）倍率，越小节奏越快（1.8.0 从 0.8 加一点，看得清打中了没）
+// 打中时的停顿（顿帧）倍率，越小节奏越快（1.8.0 从 0.8 加一点，看得清打中了没）。
+// 2.6（Jack：拳头在对方身上停留的时间长一点）：0.85 → 1.15，顿帧里两人都不动、拳脚落在身上（帧差不变，只是这一下停得久一点、看得清）
+const HITSTOP = 1.15;
 const BLOCK_KEEP = 0.3;                  // 格挡后承受的伤害比例
-const SLOW_JAB_FRAMES = TF(90), SLOW_JAB_ADD = 4;   // 被挡后「势破」持续帧数、下一记短拳前摇增加帧数
+const SLOW_JAB_FRAMES = TF(90), SLOW_JAB_ADD = TA(4);   // 被挡后「势破」持续帧数、下一记短拳前摇增加帧数（2.6 跟着前摇 ×ATK_TEMPO）
 // 倒地（2.0，Jack：倒地起身的后摇太长；起身后要有几帧「挨打又动不了」，给对面先出手）：
 //   躺着 LIE_* → 起身 GETUP（打不中、动不了，从躺着撑到蹲着）→ 起身硬直 RISE（站起来那几帧：打得中、还动不了）→ 能动。
 //   RISE 的长短：对面在你刚能挨打那一帧出短拳（前摇 5）来得及打中；出腿踢（前摇 16）来不及 —— 你先能挡。
@@ -906,8 +935,7 @@ const LIE_HIT = TFH(28);                 // 普通击倒躺多久（1.9.4 是 40
 const LIE_GROUND = TFH(40), LIE_AIR = TFH(76); // 接腿摔倒地帧数（地面/空中）
 const GETUP = TFH(13), RISE = TFH(9);    // 起身（打不中）、起身硬直（打得中、动不了）。1.9.4：起身 20 帧，起来马上能动
 const LIE_CRASH = TFH(52);               // 倒栽葱（空中出招被克制打下来）倒地更久（1.9.0）
-const ROUND_FRAMES = 300 * 60, WIN_ROUNDS = 3;   // 人机/联机每回合 300 秒；双人不限时；五局三胜（1.8.0，以前三局两胜）
-const STEP_MS = 1000 / 60;
+const ROUND_FRAMES = 300 * 60, WIN_ROUNDS = 3;   // 人机/联机每回合 300 秒（按帧数，1 秒 60 帧）；双人不限时；五局三胜（1.8.0，以前三局两胜）
 
 // 交手（两边同时出招）。每个招有「主系」tier 和「起手」lead，先比主系、再比起手
 const TRADE_LEAD = 3;      // 被打中时自己的招还差 ≤3 帧就出来 = 已经出手，算「交手」而不是被破招
@@ -915,13 +943,14 @@ const BEAT_LEAD = 8;       // 自己的招主系克制对方、且 ≤8 帧内�
 const CLASH_KEEP = 0.5;    // 平（拼招）：各吃对方伤害的五成
 const CLASH_STUN = TFH(11), CLASH_KB = 7.5;   // 拼招后双方硬直、互相震退的力度
 const PRESS_KEEP = 0.3;    // 压：主系相同、起手克制。被压的吃全额，压人的只吃三成
-const PRESS_STUN = TFH(8);     // 压人的一方小硬直（被压的吃正常硬直，所以压人的能接着打）
+const PRESS_STUN = TA(TFH(8));     // 压人的一方小硬直（被压的吃正常硬直，所以压人的能接着打）。2.6 起硬直、前后摇都 ×ATK_TEMPO，帧差照旧
 const COUNTER_MUL = 1.2;   // 破招：打在对方前摇里；迎击：打在全速跑过来、或冲刺收尾的人身上
 const BEAT_MUL = 1.3;      // 克：主系克制，克制方单方面打中
 const ARMOR_KEEP = 0.5;    // 霸体硬吃短拳时吃的伤害比例
 
 // 连击衰减（防止一套连到死）：同一套连击里每多挨一下
-const STUN_DECAY = 3, STUN_FLOOR = 3;    // 硬直少 3 帧，最少 3 帧
+const STUN_DECAY = TA(3), STUN_FLOOR = TA(3);    // 硬直少 3 帧，最少 3 帧（2.6 ×ATK_TEMPO：3.25）
+const AIR_STUN = TA(4);                  // 跳起来打中多几帧硬直（2.6 以前写在 combat.js 里：4）
 const KB_GROW = 0.3;                     // 击退 +30%，连着打会把人越推越远
 const DMG_DECAY = 0.08, DMG_FLOOR = 0.5; // 伤害 -8%，最低五成
 const JAB_CHAIN_MAX = 6;                 // 一串最多 6 拳，第 6 拳是收势「寸劲」
@@ -929,26 +958,28 @@ const JAB_CHAIN_MAX = 6;                 // 一串最多 6 拳，第 6 拳是收
 // 防守反击
 const PARRY_WIN = 6;       // 刚按下格挡的 6 帧内被打中 = 卸力（背对着挡不了，也卸不了）
 const PARRY_LOCK = 24;     // 两次按格挡间隔不足 24 帧，第二次没有卸力判定（防乱按）
-const PARRY_STUN = TFH(22);  // 被卸力的一方失衡帧数
+const PARRY_STUN = TFH(22);  // 被卸力的一方失衡帧数（挨了打的后摇，2.0 起按 TFH；2.6 不跟着 ×ATK_TEMPO —— 失衡够长，反打的招前摇长一点照样接得上）
 const PARRY_POSE = 6;      // 卸力成功后的收势帧（期间可以直接出招反打）
-const PUSH_KB = 12, PUSH_STUN = TFH(9);      // 推挡：把对方推开的力度、打断对方的硬直
+const PUSH_KB = 12, PUSH_STUN = TA(TFH(9));      // 推挡：把对方推开的力度、打断对方的硬直
 // 1.8.0 防守反击的收益（打得越险的招，被反击时吃得越重）
 const PUNISH_MUL = 1.3, PUNISH_KD_MUL = 1.5;   // 挡后反击：打在自己刚挡住的那一招的收招里 ×1.3；那一招是击倒招 ×1.5
 // 2.1 被挡住的招收招更长（拳不算、空中招看落地硬直）：重系、腿系、对空 +BLOCK_PEN，击倒招 +BLOCK_PEN_KD。
 // 以前被挡住的重拳、腿、击倒招，挡的人一能动就够不着、来不及（实测几乎打不出「挡后反击」，规则里写的破法练不出来）
-const BLOCK_PEN = TF(5), BLOCK_PEN_KD = TF(7);
-const PUNISH_STUN = TF(5);               // 挡后反击、卸力反击打中多 5 帧硬直（好接连招）
+const BLOCK_PEN = TA(TF(5)), BLOCK_PEN_KD = TA(TF(7));
+const PUNISH_STUN = TA(TF(5));           // 挡后反击、卸力反击打中多 5 帧硬直（好接连招）
 const WHIFF_KD_MUL = 1.25;               // 破绽：击倒招打空 / 被躲开，打它的收招
 const PARRY_MUL = 1.35;                  // 卸力反击：卸力后趁对方失衡打中；卸掉的是击倒招按 PUNISH_KD_MUL
 const GC_COST = 25;                      // 截拳（挡住后按重）耗气
 const HOLD_ESC = TF(7);                  // 擒住开始后几帧内被抓的人按「拿」能挣脱（打中停顿那几帧也算）
-const THROW_DMG = 10, KNEE_DMG = [4, 5], KNEE_ADV = TF(6), TRIP_DMG = 8, TACKLE_DMG = 9, SCOOP_DMG = 10, PARRY_THROW_DMG = 13;
+// 2.6（Jack：所有招伤害略微提高，高级招和普通招拉开）：摔、提膝这些「抓住以后的招」都 +20% 左右（过肩摔 10 → 12、借力摔 13 → 16 ……）
+const THROW_DMG = 12, KNEE_DMG = [5, 6], KNEE_ADV = TA(TF(6)), TRIP_DMG = 10, TACKLE_DMG = 11, SCOOP_DMG = 12, PARRY_THROW_DMG = 16;
+const CATCH_DMG = 7, CATCH_AIR_DMG = 11;   // 接腿摔（站着接住地上的腿 / 跳起来的腿）。2.5 以前写在 combat.js 里：6 / 9
 const HOLD_GAP = 54;                     // 擒住时把对手带到身前多近
 const ROLL_DIST = 96;                    // 倒地起身时按住方向：滚身起，往那边滚这么远
 const QI_MAX = 100, QI_BURST = 50;       // 气：满格 100；爆气消耗 50，泼墨消耗 100
 const QI_PER_HP = 1 / 6;                 // 掉 / 打掉多少血换多少气（血量 6 倍，气按比例折算，涨气速度和以前一样）
 // 2.1（Jack：爆气没啥用 → 挨打的时候爆开，把对方炸倒、打掉 18）：只在挨打（受击硬直）里能爆，格挡硬直里不行
-const BURST_RANGE = 180, BURST_DMG = 18, BURST_KB = 7, BURST_LIE = TFH(28);   // 爆气炸到多远、伤害、把人炸飞的力度、对方躺多久
+const BURST_RANGE = 180, BURST_DMG = 21, BURST_KB = 7, BURST_LIE = TFH(28);   // 爆气炸到多远、伤害（2.6：18 → 21）、把人炸飞的力度、对方躺多久
 const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着格挡：只吃三成、被推开一点、几乎不硬直，爆气方的后摇就能被打
 
 // 联机（P2P）
@@ -1556,7 +1587,8 @@ const P_JLEAP_DN = { hy: 56, tor: 12, head: -3, tw: 10, ff: [14, 7], bf: [-7, 5]
 const POSE = {
   /* 待机站姿（2.4 照 Jack 的参考图；2.5 照参考图第二张：两脚收近一点、髋高一点、身子微微往前）：头微低；两腿前后岔开 —— 后腿直、前腿膝盖微屈；
      前手：比参考图收短、往里收 —— 大臂往下垂（肘护着肋）、小臂往上立，拳在肩前；后手拳护在下巴前 */
-  stance: mk({ tor: 6, head: 3, hy: 73, tw: 22, ff: [24, 0], bf: [-29, 0], fh: [27, -1], bh: [6, -6] }),
+  //   2.6（Jack：待机后面那只手往前放一点点）：后手拳 [6, -6] → [11, -6]，还在下巴前，只是往前探出去一点
+  stance: mk({ tor: 6, head: 3, hy: 73, tw: 22, ff: [24, 0], bf: [-29, 0], fh: [27, -1], bh: [11, -6] }),
   run: mk({ tor: 26, head: -16, hy: 62, fe: 0.2, be: 0.2, tw: 0 }),   // 跑步只用到这几个，手脚每帧现算（fighter.js runPose）
   crouch: mk({ hy: 50, tor: 24, head: -6, tw: 18, ff: [27, 0], bf: [-25, 0], fh: [24, 3], bh: [8, -3] }),
   // 格挡：两只小臂竖起来挡在脸前（肘往下沉护着肋），身子微微往后坐
@@ -1649,6 +1681,11 @@ function ik(px, py, tx, ty, a, b, hx, hy, side) {
    ============================================================ */
 const TIER_OF_KIND = { jab: 'light', heavy: 'heavy', kick: 'kick' };
 const TIME_KEYS = ['S', 'A', 'R', 'stun', 'bstun', 'evThrow', 'evPush', 'evSlam', 'evWave', 'evHit', 'evHit2'];
+// 2.6 前后摇（Jack）：这几样在 2.5 的帧数上再 ×ATK_TEMPO（config.js），取到 0.25 帧；判定 A 不变。擒拿后续、冲刺这些 script 动作不变
+const ATK_KEYS = ['S', 'R', 'stun', 'bstun'];
+// 2.6（Jack：拳头在对方身上停留的时间长一点，算在后摇里）：收招的头 HOLD_R（两成）拳脚还停在打出去的地方，之后才往回收
+// （打中时顿帧里本来就停着，顿完了再多停一会儿；打空了就是打出去以后顿一下再收）。空中招的判定一直持续到落地，不用
+const HOLD_R = 0.2;
 function M(o) {
   o.base = { S: o.S, A: o.A, R: o.R };          // 换算前的基准帧数（测试核对节奏用）
   for (const k of TIME_KEYS) if (typeof o[k] === 'number' && o[k] > 0) o[k] = (o.open && (k === 'S' || k === 'R') ? TFO : TF)(o[k]);
@@ -1656,6 +1693,21 @@ function M(o) {
   for (const k of ['inv', 'sinv', 'airInv', 'slipInv']) if (o[k]) o[k] = o[k].map(TF);
   if (o.lunge) o.lunge = [TF(o.lunge[0]), TF(o.lunge[1]), o.lunge[2]];
   if (o.armor) o.armor = Object.assign({}, o.armor, { from: TF(o.armor.from) });
+  if (!o.script) {
+    o.pre26 = { S: o.S, R: o.R, stun: o.stun, bstun: o.bstun };      // 2.5 的帧数（测试核对「前摇再长 5~10%」用）
+    for (const k of ATK_KEYS) if (typeof o[k] === 'number' && o[k] > 0) o[k] = TA(o[k]);
+    // 前冲、无敌、霸体这些按招式自己的时间轴算的，跟着一起拉长（不然前冲提前冲完、无敌提前没了）
+    for (const k of ['inv', 'sinv', 'airInv', 'slipInv']) if (o[k]) o[k] = o[k].map(TA);
+    if (o.lunge) o.lunge = [TA(o.lunge[0]), TA(o.lunge[1]), o.lunge[2]];
+    if (o.armor) o.armor.from = TA(o.armor.from);
+    if (!o.air) {
+      const i2 = o.keys.findIndex(k => k[0] === 2);
+      if (i2 >= 0) {
+        for (const k of o.keys) if (k[0] > 2 && k[0] < 3) k[0] = 2 + HOLD_R + (k[0] - 2) * (1 - HOLD_R);
+        o.keys.splice(i2 + 1, 0, [2 + HOLD_R, o.keys[i2][1], 'io']);
+      }
+    }
+  }
   o.tier = o.tier || TIER_OF_KIND[o.kind] || o.kind;
   o.lead = o.lead || o.tier;
   o.height = o.height || 'mid';
@@ -1684,82 +1736,82 @@ const P_LOW = { hy: 50, tor: 28, head: -6, tw: 18, ff: [28, 0], bf: [-26, 0], fh
 const MOVES = {
   /* ---- 拳系（light）：快，近身抢先；被重拳霸体吃掉，但能打断腿 ---- */
   // 短拳：前手从胸口直接往前弹出去，第一帧就往前走、不往回收（1.7.0：以前也先往回收一下，和重拳的起手分不清）
-  jab: M({ kind: 'jab', label: '短拳', open: true, S: 4, A: 3, R: 7, dmg: 5, reach: 92, stun: 13, bstun: 7, kb: 2.2, stop: 4, power: .3,
+  jab: M({ kind: 'jab', label: '短拳', open: true, S: 4, A: 3, R: 7, dmg: 6, reach: 92, stun: 13, bstun: 7, kb: 2.2, stop: 4, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 4, 5],
     keys: [[0, {}], [1, P_JAB, 'back'], [2, P_JAB], [2.45, J_(P_JAB, { tor: 10, dx: 6, tw: 32, fh: [38, -3], ff: [34, 0] })], [3, {}]] }),
-  jab2: M({ kind: 'jab', label: '后手直拳', tag: '后手直拳', S: 4, A: 3, R: 7, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
+  jab2: M({ kind: 'jab', label: '后手直拳', tag: '后手直拳', S: 4, A: 3, R: 7, dmg: 7, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
     limb: 'bh', fx: 'jab2', lunge: [1, 4, 6],
     keys: [[0, {}], [0.4, { tw: 30, fh: [22, -4], tor: 4 }], [1, P_CROSS, 'back'], [2, P_CROSS], [2.45, J_(P_CROSS, { tor: 12, dx: 8, tw: -24, bh: [38, -3] })], [3, {}]] }),
-  jab3: M({ kind: 'jab', label: '摆拳', tag: '摆拳', S: 5, A: 3, R: 8, dmg: 6, reach: 90, stun: 14, bstun: 8, kb: 2.8, stop: 5, power: .4,
+  jab3: M({ kind: 'jab', label: '摆拳', tag: '摆拳', S: 5, A: 3, R: 8, dmg: 8, reach: 90, stun: 14, bstun: 8, kb: 2.8, stop: 5, power: .4,
     limb: 'fh', fx: 'hook', lunge: [1, 5, 5],
     keys: [[0, {}], [0.5, { fh: [4, -8], fe: -1, tor: 0, dx: -3, head: 4, tw: 0 }],
       [1, { fh: [46, -14], fe: -1, tor: 24, dx: 10, head: -4, tw: 54, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }, 'back'],
       [2, { fh: [48, -11], fe: -1, tor: 28, dx: 10, head: -4, tw: 58, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }], [3, {}]] }),
-  rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 4, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
+  rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] })], [3, { tor: 14 }]] }),
-  rushR: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 4, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
+  rushR: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'bh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_CROSS, { tor: 22, dx: 12 }), 'back'], [2, J_(P_CROSS, { tor: 22, dx: 12 })], [3, { tor: 14 }]] }),
-  rushEnd: M({ kind: 'jab', label: '寸劲', tag: '寸劲', S: 5, A: 3, R: 12, dmg: 7, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
+  rushEnd: M({ kind: 'jab', label: '寸劲', tag: '寸劲', S: 5, A: 3, R: 12, dmg: 10, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'rushEnd', ghost: true, lunge: [1, 5, 8], ender: true, noCancel: true,
     keys: [[0, { tor: 6, dx: -6, fh: [10, -4], tw: 0 }], [1, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }, 'back'],
       [2, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
-  lowJab: M({ kind: 'jab', label: '下盘拳', open: true, S: 5, A: 3, R: 8, dmg: 4, reach: 88, stun: 12, bstun: 7, kb: 2, stop: 4, power: .3, height: 'low',
+  lowJab: M({ kind: 'jab', label: '下盘拳', open: true, S: 5, A: 3, R: 8, dmg: 5, reach: 88, stun: 12, bstun: 7, kb: 2, stop: 4, power: .3, height: 'low',
     limb: 'fh', fx: 'low', lunge: [1, 5, 4],
     keys: [[0, J_(P_LOW, { fh: [24, -6] })], [1, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] }), 'back'],
       [2, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] })], [3, J_(P_LOW, { fh: [24, -6] })]] }),
   // 重→拳：贴身顶肘
-  elbow: M({ kind: 'jab', label: '顶肘', tag: '顶肘', lead: 'heavy', S: 4, A: 3, R: 9, dmg: 7, reach: 84, stun: 14, bstun: 8, kb: 4, stop: 5, shake: 2, power: .5,
+  elbow: M({ kind: 'jab', label: '顶肘', tag: '顶肘', lead: 'heavy', S: 4, A: 3, R: 9, dmg: 9, reach: 84, stun: 14, bstun: 8, kb: 4, stop: 5, shake: 2, power: .5,
     limb: 'fe', fx: 'elbow', lunge: [1, 4, 10],
     keys: [[0, { tor: 14 }], [0.5, { tor: 2, dx: -4, tw: -10, fh: [8, -12] }],
       [1, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }, 'back'],
       [2, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }], [3, {}]] }),
   // 腿→拳：踢完落步往前冲拳
-  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 6, reach: 100, stun: 14, bstun: 8, kb: 3.5, stop: 5, power: .5,
+  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 8, reach: 100, stun: 14, bstun: 8, kb: 3.5, stop: 5, power: .5,
     limb: 'bh', fx: 'jab2', lunge: [1, 5, 24],
     keys: [[0, { tor: -4, ff: [32, 30] }], [1, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }, 'back'],
       [2, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }], [3, {}]] }),
 
   /* ---- 重系（heavy）：前摇里带霸体，能硬吃一记短拳；怕腿 ---- */
   // 重拳：先往后蓄 —— 身子后坐、后手拉到耳朵后面、前手伸出去瞄（拳头上聚墨气），再拧腰把后手砸出去。和短拳反着来，一眼分得开
-  heavy: M({ kind: 'heavy', label: '重拳', open: true, S: 11, A: 4, R: 13, dmg: 12, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
+  heavy: M({ kind: 'heavy', label: '重拳', open: true, S: 11, A: 4, R: 13, dmg: 13, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [6, 11, 14], armor: { n: 1, from: 2, vs: ['light'] },
     keys: [[0, {}], [0.3, { tor: 2, dx: -6, hy: 68, head: 4, tw: 34, fh: [32, -4], bh: [-4, -8], ff: [30, 0], bf: [-36, 0] }, 'out'],
       [0.9, { tor: -6, dx: -10, hy: 67, head: 6, tw: 48, fh: [36, -6], bh: [-12, -10], ff: [30, 0], bf: [-40, 0] }],
       [1, P_HEAVY, 'back'], [2, P_HEAVY], [2.5, J_(P_HEAVY, { tor: 16, dx: 14, tw: -30, bh: [44, -2] })], [3, {}]] }),
   // 拳→重
-  beng: M({ kind: 'heavy', label: '崩拳', stamp: '崩拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 15, reach: 112, stun: 19, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
+  beng: M({ kind: 'heavy', label: '崩拳', stamp: '崩拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 19, reach: 112, stun: 19, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [4, 9, 18],
     keys: [[0, {}], [0.5, { fh: [2, 4], tor: 2, hy: 64, dx: -6, tw: -10, bh: [6, -6] }],
       [1, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }, 'back'],
       [2, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }], [3, {}]] }),
   // 重→重：劈挂，上段（蹲着挡不住）
-  chop: M({ kind: 'heavy', label: '劈挂掌', stamp: '劈挂', lead: 'heavy', height: 'high', S: 9, A: 4, R: 14, dmg: 13, reach: 104, stun: 18, bstun: 12, kb: 6, stop: 9, shake: 6, power: .9, heavy: true,
+  chop: M({ kind: 'heavy', label: '劈挂掌', stamp: '劈挂', lead: 'heavy', height: 'high', S: 9, A: 4, R: 14, dmg: 17, reach: 104, stun: 18, bstun: 12, kb: 6, stop: 9, shake: 6, power: .9, heavy: true,
     limb: 'bh', fx: 'chop', ghost: true, lunge: [4, 9, 12], ender: true, noCancel: true,
     keys: [[0, { tor: 12 }], [0.6, { tor: -16, head: -8, dx: -6, hy: 72, tw: 40, bh: [-6, -60], be: -1, fh: [26, -8], ff: [30, 0], bf: [-32, 0] }],
       [1, { tor: 40, dx: 22, hy: 60, head: -2, tw: -40, bh: [56, 22], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }, 'out'],
       [2, { tor: 42, dx: 22, hy: 60, head: -2, tw: -42, bh: [54, 28], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
   // 腿→重：盖步砸拳，击倒
-  hammer: M({ kind: 'heavy', label: '盖步砸拳', stamp: '盖步砸拳', lead: 'kick', S: 9, A: 5, R: 15, dmg: 14, reach: 108, stun: 20, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
+  hammer: M({ kind: 'heavy', label: '盖步砸拳', stamp: '盖步砸拳', lead: 'kick', S: 9, A: 5, R: 15, dmg: 20, reach: 108, stun: 20, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'bh', fx: 'hammerFist', ghost: true, lunge: [2, 9, 26], launch: 5, ender: true, noCancel: true,
     keys: [[0, { tor: 0 }], [0.6, { spin: 30, tor: -10, head: -12, hy: 72, tw: 30, bh: [-20, -58], be: -1, fh: [18, -26], ff: [12, 0], bf: [-38, 0] }],
       [1, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }, 'out'],
       [2, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }], [3, { spin: 0 }]] }),
   // 拳拳重：冲天炮（对空，击倒）
-  upper: M({ kind: 'heavy', label: '冲天炮', stamp: '冲天炮', tier: 'aa', lead: 'light', S: 8, A: 4, R: 16, dmg: 16, reach: 98, stun: 19, bstun: 12, kb: 3, stop: 10, shake: 7, power: 1, heavy: true,
+  upper: M({ kind: 'heavy', label: '冲天炮', stamp: '冲天炮', tier: 'aa', lead: 'light', S: 8, A: 4, R: 16, dmg: 22, reach: 98, stun: 19, bstun: 12, kb: 3, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'bh', fx: 'upper', ghost: true, lunge: [4, 8, 9], launch: 9, noCancel: true, ender: true, antiAir: 120,
     keys: [[0, {}], [0.5, { bh: [14, 30], hy: 50, tor: 26, fh: [16, -10], dx: 4, tw: 34 }],
       [1, { bh: [60, -30], hy: 78, tor: 6, dx: 29, bf: [-20, 10], head: -10, fh: [10, -8], air: 6, tw: -44, ff: [42, 0] }, 'out'],
       [2, { bh: [30, -62], hy: 82, tor: -10, dx: 22, bf: [-14, 14], head: -18, fh: [8, -8], air: 8, tw: -40, ff: [38, 0] }], [3, {}]] }),
   // 蹲+重：托天掌（对空）
-  palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', open: true, S: 7, A: 5, R: 15, dmg: 10, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
+  palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', open: true, S: 7, A: 5, R: 15, dmg: 11, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
     limb: 'fh', fx: 'palm', ghost: true, lunge: [2, 7, 6], launchAir: 9, antiAir: 160, airInv: [1, 12], ender: true, noCancel: true,
     keys: [[0, J_(P_LOW, { fh: [20, 10], bh: [10, 14] })], [0.5, J_(P_LOW, { hy: 40, fh: [24, 22], bh: [14, 24], tor: 34 })],
       [1, { hy: 76, tor: 8, head: -12, fh: [54, -34], bh: [48, -30], ff: [42, 0], bf: [-24, 6], air: 4, dx: 28, tw: 14 }, 'out'],
       [2, { hy: 80, tor: -6, head: -20, fh: [34, -60], bh: [24, -56], ff: [36, 0], bf: [-20, 8], air: 6, dx: 18, tw: 10 }], [3, {}]] }),
   // 跑+重：铁山靠
-  shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 13, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
+  shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 14, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
     // 2.4：先缩身蓄一下，再侧过身、压低重心，肩背撞进去（低头、两手收在身前，前脚一大步落地）
     keys: [[0, { tor: 24 }], [0.5, { tor: 10, spin: 30, dx: -8, hy: 62, head: 6, fh: [10, -6], bh: [-2, 0], ff: [26, 0], bf: [-34, 0], tw: 0 }],
@@ -1768,12 +1820,12 @@ const MOVES = {
 
   /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ----
      2.0（Jack：腿踢还是超标，尤其距离）：腿踢射程 134 → 126，腿系连招、飞踢也一起短 4~10 */
-  kick: M({ kind: 'kick', label: '腿踢', open: true, S: 13, A: 5, R: 14, dmg: 10, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
+  kick: M({ kind: 'kick', label: '腿踢', open: true, S: 13, A: 5, R: 14, dmg: 11, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
     limb: 'ff', fx: 'kick', lunge: [6, 13, 12],
     keys: [[0, {}], [0.55, { ff: [30, 62], tor: -8, bf: [-27, 0], fh: [22, -12], bh: [6, -7], head: 3, hy: 74, dx: 3, tw: 10 }],
       [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [36, 44], tor: -14, dx: 13, hy: 74, bf: [-27, 0] }], [3, {}]] }),
   // 拳→踢
-  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 12, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
+  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 16, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
     limb: 'bf', fx: 'whip', lunge: [5, 10, 10],
     keys: [[0, {}], [0.5, { bf: [10, 56], tor: -10, ff: [22, 0], fh: [20, -14], bh: [6, -6], spin: 20, hy: 74, tw: 0 }],
       [1, { bf: [94, 96], tor: -40, dx: 22, ff: [8, 0], fh: [-4, -22], bh: [2, -10], head: 16, spin: 30, hy: 76, tw: -10 }, 'back'],
@@ -1781,21 +1833,21 @@ const MOVES = {
       [2.4, { bf: [24, 48], tor: -12, dx: 12, spin: 10, hy: 72 }], [3, {}]] }),
   // 踢→踢：二起脚（腾空飞脚，击倒）。2.4：腾起来先提前膝（第一脚），身子在空中基本立着、微微后仰，
   // 后腿从后面撩上来踢到头那么高，前手往前拍过去（以前整个人往后躺，像摔出去）
-  twinKick: M({ kind: 'kick', label: '二起脚', stamp: '二起脚', lead: 'kick', S: 8, A: 5, R: 16, dmg: 11, reach: 116, stun: 18, bstun: 11, kb: 6, stop: 9, shake: 6, power: .9,
+  twinKick: M({ kind: 'kick', label: '二起脚', stamp: '二起脚', lead: 'kick', S: 8, A: 5, R: 16, dmg: 15, reach: 116, stun: 18, bstun: 11, kb: 6, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'twinKick', ghost: true, lunge: [2, 8, 22], launch: 6, ender: true, noCancel: true,
     keys: [[0, { ff: [32, 32] }], [0.5, { air: 24, tor: 8, head: 2, ff: [24, 40], bf: [-12, 30], fh: [26, -34], bh: [-12, -30], hy: 66, tw: 20 }],
       [1, { air: 34, tor: -16, head: 8, dx: 22, ff: [4, 44], bf: [98, 104], fh: [42, -14], bh: [-30, -4], hy: 66, tw: -10 }, 'back'],
       [2, { air: 30, tor: -16, head: 8, dx: 22, ff: [4, 44], bf: [98, 104], fh: [42, -14], bh: [-30, -4], hy: 66, tw: -10 }],
       [2.5, { air: 6, tor: 6, ff: [32, 10], bf: [-20, 12], hy: 68 }], [3, {}]] }),
   // 拳拳踢：转身蹬
-  backKick: M({ kind: 'kick', label: '转身蹬', stamp: '转身蹬', lead: 'light', S: 8, A: 5, R: 16, dmg: 12, reach: 116, stun: 19, bstun: 11, kb: 11, stop: 9, shake: 6, power: .9,
+  backKick: M({ kind: 'kick', label: '转身蹬', stamp: '转身蹬', lead: 'light', S: 8, A: 5, R: 16, dmg: 17, reach: 116, stun: 19, bstun: 11, kb: 11, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'backKick', ghost: true, lunge: [2, 8, 12], ender: true, noCancel: true,
     keys: [[0, {}], [0.5, { spin: 130, tor: 22, head: 8, bf: [-30, 36], ff: [10, 0], fh: [16, -10], bh: [8, -8], hy: 70, tw: 0 }],
       [1, { spin: 180, tor: 46, head: 14, dx: 16, bf: [-104, 62], ff: [8, 0], fh: [20, 8], bh: [10, 14], hy: 72, tw: 0 }, 'back'],
       [2, { spin: 180, tor: 46, head: 14, dx: 16, bf: [-104, 62], ff: [8, 0], fh: [20, 8], bh: [10, 14], hy: 72, tw: 0 }],
       [2.5, { spin: 270, tor: 20, bf: [-22, 22], hy: 70 }], [3, { spin: 360 }]] }),
   // 重→踢：旋风腿（击倒）
-  whirl: M({ kind: 'kick', label: '旋风腿', stamp: '旋风腿', lead: 'heavy', S: 12, A: 6, R: 16, dmg: 15, reach: 126, stun: 19, bstun: 13, kb: 6, stop: 10, shake: 8, power: 1, heavy: true,
+  whirl: M({ kind: 'kick', label: '旋风腿', stamp: '旋风腿', lead: 'heavy', S: 12, A: 6, R: 16, dmg: 21, reach: 126, stun: 19, bstun: 13, kb: 6, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'ff', fx: 'whirl', ghost: true, lunge: [4, 12, 16], launch: 7, ender: true, noCancel: true,
     keys: [[0, {}], [0.4, { spin: 90, tor: -4, ff: [14, 38], air: 8, fh: [-8, -36], bh: [-16, -28], hy: 70, tw: 0 }],
       [0.75, { spin: 220, ff: [66, 70], tor: -22, air: 22, fh: [-6, -26], bh: [-20, -6], hy: 70 }],
@@ -1805,7 +1857,7 @@ const MOVES = {
   // 蹲+踢：扫堂腿（下段，击倒）
   // 1.8.0：扫堂腿太好用（快、远、下段、击倒）→ 前摇长一点、射程短一点（比腿踢近）、收招更长、倒地时间短一点；
   //        反制多了：蹲挡后踩腿、抄腿接住、跳过去打它收招（破绽）、近身短拳打失衡
-  sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 8, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
+  sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 9, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
     limb: 'ff', fx: 'sweep', lunge: [3, 10, 10], launch: 3, lie: 26, ender: true, noCancel: true,
     // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前。
     // 2.5（Jack：后面那条腿不是往后，是往侧面 —— z 轴）：蹲着的后腿膝盖、脚尖朝外（bo，往离镜头远的那一侧摆出去），
@@ -1820,21 +1872,21 @@ const MOVES = {
      1.7.0：出手时整个人往前下方倾（rot），拳脚真的够得着对面；判定持续到快落地，同一个距离什么时候出都打得到；
      往下够的深度统一 AIR_VREACH。前摇没出完就落地 = 落地后马上在地上出这一招（fighter.js onLand），按了一定有反应 */
   // 挥拳（跳起来出；2.4 Jack：跳起来出的招名字不要「空中」两个字，以前叫空中挥拳）：拳头先甩到脑后，人往前一扑，从上往前下方砸过去
-  airJab: M({ kind: 'jab', label: '挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
+  airJab: M({ kind: 'jab', label: '挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 7, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
     keys: [[0, JT], [0.55, J_(JT, { rot: 4, tor: -10, head: -6, fh: [-20, -50], fe: -1, bh: [8, -8], ff: [20, 48], bf: [-4, 42], tw: 20 })],
       [1, { rot: 22, tor: 30, head: -8, dx: 5.5, fh: [60, 12], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }, 'back'],
       [2, { rot: 24, tor: 32, head: -8, dx: 5.5, fh: [58, 16], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }], [3, JD]] }),
   // 泰山压顶：后仰把双拳举过头顶，再整个人往前下方卷下去砸（1.9.0 伤害 12 → 11：打蹲着的人让给千斤坠）
   // 2.1（Jack：打电脑像「版本答案」，前摇、整个动作都太快）：前摇 7 → 10、判定 10 → 11、后摇 8 → 10（举过头顶那一下看得清）
-  airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 11, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+  airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 12, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'hammer', air: true,
     keys: [[0, JT], [0.7, { rot: -8, tor: -28, head: -12, fh: [-12, -60], bh: [-22, -54], fe: -1, be: -1, ff: [18, 56], bf: [2, 50], tw: 0 }],
       [1, { rot: 26, tor: 50, head: 18, dx: 15, fh: [56, 42], bh: [50, 46], ff: [22, 24], bf: [-24, 36], tw: 0 }, 'out'],
       [2, { rot: 28, tor: 52, head: 18, dx: 15, fh: [54, 46], bh: [48, 50], ff: [22, 24], bf: [-24, 36], tw: 0 }], [3, JD]] }),
   // 飞踢：先把膝盖收到胸口，身体后仰，整个人前倾着一脚往前下方蹬出去
   // 2.1（Jack：和泰山压顶一样太快、太好用）：前摇 6 → 9、判定 12 → 13、后摇 7 → 9（收膝那一下看得清，整个动作慢一点）
-  airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 10, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
+  airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 11, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, JT], [0.6, { rot: -6, tor: 12, head: -6, ff: [10, 62], bf: [-6, 48], fh: [24, -30], bh: [6, -8], tw: 10 }],
       [1, { rot: 14, tor: -38, head: 14, dx: 19, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }, 'back'],
@@ -1843,7 +1895,7 @@ const MOVES = {
   // 1.9.0：主系「坠」—— 专破蹲着的防守和反击：踩蹲着 / 蹲挡 / 出下段的 ×1.3，对空招（托天掌、冲天炮）打不到它、反被踩倒 ×1.5；
   //        怕站着的拳：被短拳系 / 重拳系迎着打中 = 倒栽葱 ×1.4、倒地更久；站挡挡得住。前摇更慢（腾得更高）。
   //        踩中后弹起落在对手面前，这一下算「腿起手」：落地 踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳（都是真连）
-  dive: M({ kind: 'kick', label: '千斤坠', stamp: '千斤坠', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 9, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
+  dive: M({ kind: 'kick', label: '千斤坠', stamp: '千斤坠', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 10, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
     limb: 'ff', fx: 'dive', air: true, ghost: true, dive: true, aaProof: true,
     keys: [[0, JT], [0.7, { rot: -8, tor: 8, head: 4, ff: [22, 60], bf: [-10, 46], fh: [16, -46], bh: [-24, -36], tw: 0 }],
       [1, { rot: -42, tor: 2, head: 12, ff: [16, -16], bf: [-22, 36], fh: [-26, -30], bh: [-36, -12], tw: 0 }, 'out'],
@@ -1852,7 +1904,7 @@ const MOVES = {
   /* ---- 擒拿（挡不住；出腿时被拿 = 接腿摔；被任何正在判定中的打击打断）----
      1.8.0：抓住以后先「擒住」一小会儿 —— 这时候按 拳 = 提膝撞，踢 = 别腿摔，重 / 后 = 过肩摔，什么都不按 = 推开；
      被抓的人在擒住刚开始那几帧按「拿」能挣脱。蹲着的人站着抓不到（要用蹲+拿「抄腿」）；抄腿只抓蹲着的和出腿的 */
-  grab: M({ kind: 'grab', label: '擒拿', open: true, S: 6, A: 4, R: 15, dmg: 5, reach: 84, power: .4,
+  grab: M({ kind: 'grab', label: '擒拿', open: true, S: 6, A: 4, R: 15, dmg: 6, reach: 84, power: .4,
     limb: 'fh', lunge: [2, 6, 8],
     keys: [[0, {}], [0.4, { fh: [12, 2], bh: [8, 4], tor: 4, dx: -4, hy: 70, tw: 0 }],
       [1, { fh: [54, 16], bh: [50, 20], tor: 30, dx: 18, hy: 64, ff: [42, 0], bf: [-26, 0], head: -8, tw: 0 }, 'out'],
@@ -1920,14 +1972,14 @@ const MOVES = {
       [1, { fh: [64, -12], bh: [60, -6], tor: 28, dx: 37, hy: 64, head: -4, ff: [50, 0], bf: [-32, 0], tw: 10 }, 'back'],
       [2, { fh: [64, -12], bh: [60, -6], tor: 28, dx: 37, hy: 64, head: -4, ff: [50, 0], bf: [-32, 0], tw: 10 }], [3, {}]] }),
   // 截拳（1.8.0）：挡住以后（格挡硬直里）按「重」，花 GC_COST 气从格挡里直接打出一拳。出手前打击无敌，把对方打开
-  jieQuan: M({ kind: 'heavy', label: '截拳', stamp: '截拳', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 9, reach: 104, stun: 18, bstun: 10, kb: 9, stop: 9, shake: 5, power: .9, heavy: true,
+  jieQuan: M({ kind: 'heavy', label: '截拳', stamp: '截拳', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 11, reach: 104, stun: 18, bstun: 10, kb: 9, stop: 9, shake: 5, power: .9, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [0, 5, 18], sinv: [0, 6], cost: GC_COST, ender: true, noCancel: true,
     keys: [[0, { hy: 70, tor: 2, head: 8, dx: -3, tw: 8, fh: [17, -17], bh: [13, -13], ff: [24, 0], bf: [-33, 0] }],
       [0.5, { hy: 68, tor: 8, head: 4, dx: -2, tw: 24, fh: [26, -10], bh: [9, -8], ff: [28, 0], bf: [-33, 0] }],
       [1, { hy: 64, tor: 24, head: -4, dx: 17, tw: 50, fh: [64, -4], bh: [6, -6], ff: [46, 0], bf: [-36, 0] }, 'back'],
       [2, { hy: 64, tor: 24, head: -4, dx: 17, tw: 50, fh: [64, -4], bh: [6, -6], ff: [46, 0], bf: [-36, 0] }], [3, {}]] }),
   // 踩腿（1.8.0）：蹲挡住扫堂腿这类下段腿以后按「踢」，抬膝往前下一脚踩在对方伸出来的腿上。击倒
-  stomp: M({ kind: 'kick', label: '踩腿', stamp: '踩腿', height: 'low', S: 4, A: 4, R: 14, dmg: 10, reach: 122, stun: 16, bstun: 9, kb: 4, stop: 9, shake: 6, power: .9,
+  stomp: M({ kind: 'kick', label: '踩腿', stamp: '踩腿', height: 'low', S: 4, A: 4, R: 14, dmg: 12, reach: 122, stun: 16, bstun: 9, kb: 4, stop: 9, shake: 6, power: .9,
     limb: 'ff', fx: 'stomp', lunge: [1, 4, 24], launch: 4, lie: 30, ender: true, noCancel: true,
     keys: [[0, J_(P_LOW, { ff: [30, 0] })], [0.6, { hy: 72, tor: -8, head: 6, dx: 4, ff: [30, 66], bf: [-22, 0], fh: [26, -14], bh: [6, -8], tw: 10 }],
       [1, { hy: 62, tor: 22, head: -10, dx: 22, ff: [76, 4], bf: [-26, 0], fh: [22, -6], bh: [6, -6], tw: 10 }, 'out'],
@@ -1950,7 +2002,7 @@ const MOVES = {
   // 回身肘（2.0.2）：闪身躲过重拳、钻到对手身后，自动转身一肘顶在他背上（fighter.js slipElbow）。
   // 打中：他背对着你往前踉跄 STAGGER 帧（打得中、动不了、不自动转身，combat.js applyHit 的 stagger），你先动二十来帧接着打。
   // 姿势：一开始还背对着他（spin 165，刚钻过去的样子），拧身转过来（spin 95，肘往后蓄），再把前手的肘往前顶出去
-  slipElbow: M({ kind: 'heavy', label: '回身肘', stamp: '回身肘', tier: 'heavy', lead: 'heavy', S: 5, A: 3, R: 12, dmg: 8, reach: 86, stun: 18, bstun: 10, kb: STAGGER_KB,
+  slipElbow: M({ kind: 'heavy', label: '回身肘', stamp: '回身肘', tier: 'heavy', lead: 'heavy', S: 5, A: 3, R: 12, dmg: 10, reach: 86, stun: 18, bstun: 10, kb: STAGGER_KB,
     stop: 8, shake: 4, power: .8, limb: 'fe', fx: 'slipElbow', ghost: true, lunge: [0, 5, 18], stagger: true, ender: true, noCancel: true,
     keys: [[0, { spin: 165, tor: 24, hy: 58, head: 2, fh: [14, -18], bh: [16, -12], fe: -1, ff: [30, 0], bf: [-32, 0], tw: 0 }],
       [0.55, { spin: 95, tor: 6, hy: 66, head: -4, dx: -4, fh: [-8, -8], bh: [8, -10], ff: [24, 0], bf: [-36, 0], tw: -20 }],
@@ -1962,7 +2014,7 @@ const MOVES = {
       [0.14, { tor: -18, head: -22, hy: 78, fh: [42, -54], bh: [-40, -52], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
       [0.5, { tor: -14, head: -18, hy: 76, fh: [40, -48], bh: [-38, -46], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
   // 泼墨：气满时按「重+踢」，出手前打击无敌。2.1（Jack：伤害太低）22 → 40
-  super: M({ kind: 'heavy', label: '泼墨', stamp: '泼墨', tier: 'super', S: 8, A: 6, R: 22, dmg: 40, reach: 136, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
+  super: M({ kind: 'heavy', label: '泼墨', stamp: '泼墨', tier: 'super', S: 8, A: 6, R: 22, dmg: 48, reach: 136, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
     limb: 'fh', fx: 'splash', ghost: true, lunge: [2, 8, 34], sinv: [0, 14], launch: 8, ender: true, noCancel: true, cost: QI_MAX, antiAir: 40,
     keys: [[0, {}], [0.6, { tor: -20, dx: -12, hy: 64, fh: [-12, -44], bh: [-30, -32], fe: -1, be: -1, head: -10, ff: [30, 0], bf: [-38, 0], tw: 0 }],
       [1, { tor: 34, dx: 44, hy: 58, head: -6, fh: [72, -6], bh: [66, 2], ff: [60, 0], bf: [-40, 0], tw: 16 }, 'back'],
@@ -2088,6 +2140,7 @@ const PRESS_SET = new Set(PRESS_ACTS);
 const HOLD = a => 1 << HELD_ACTS.indexOf(a);
 const TAP = a => 1 << (5 + PRESS_ACTS.indexOf(a));
 const DASH_KEY = 1 << (5 + PRESS_ACTS.length);   // 2.4：冲刺用冲刺键（这一位一直带着，联机时对面也知道这个人双击方向不冲刺）
+const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY;    // 输入里「按住」的那几位（不是这一帧新按的）：联机猜对方、step() 里一帧的前几步用（2.6 从 net.js 挪过来）
 
 class Pad {
   constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.pending = []; this.keyDash = null; }
@@ -2284,7 +2337,7 @@ function fxDo(sig, play) {
   if (game.quiet) { if (FXREC.fresh) FXREC.fresh.push([game.frame, sig, play]); return; }
   if (game.mode === 'online') {
     let a = FXREC.log.get(game.frame);
-    if (!a) { FXREC.log.set(game.frame, a = []); for (const f of FXREC.log.keys()) if (f < game.frame - 60) FXREC.log.delete(f); }
+    if (!a) { FXREC.log.set(game.frame, a = []); for (const f of FXREC.log.keys()) if (f < game.frame - 60 * SUB) FXREC.log.delete(f); }
     a.push(sig);
   }
   play();
@@ -2384,25 +2437,27 @@ function stamp(x, y, text, size = 30, own) {
 // 画面正中的大字：回合、时间到这种没有归属（墨色）；「某某 胜」用赢的人的颜色
 const announce = (text, sub, life = 70, size = 120, own) => addFx({ type: 'announce', text, sub, life, size, col: colOf(own) });
 
+// 2.6 特效每步（DT 帧）走一次：寿命、速度都还是按帧写的，每步走 DT 那么多；每帧乘一次的衰减换成每步乘 rootDT
+const FXK = { drop: rootDT(0.985), spark: rootDT(0.86), dust: rootDT(0.94), grow: rootDT(1.025), qv: rootDT(0.985), qr: rootDT(0.985) };
 function updateFx() {
   for (let i = FX.length - 1; i >= 0; i--) {
     const e = FX[i];
-    e.life--;
-    e.px = e.x; e.py = e.y;                              // 2.0.1 上一帧在哪（画的时候在两帧之间插值，高刷新率屏幕上不一顿一顿）
+    e.life -= DT;
+    e.px = e.x; e.py = e.y;                              // 2.0.1 上一步在哪（画的时候在两步之间插值，高刷新率屏幕上不一顿一顿）
     if (e.type === 'drop') {
-      e.vy += 0.36; e.x += e.vx; e.y += e.vy; e.vx *= 0.985;
+      e.vy += 0.36 * DT; e.x += e.vx * DT; e.y += e.vy * DT; e.vx *= FXK.drop;
       if (e.y >= FLOOR + 2) { splats.push({ x: e.x, rx: e.r * rnd(1.6, 2.6), life: 200, max: 200, color: e.color }); e.life = 0; }
     } else if (e.type === 'spark') {
-      e.x += e.vx; e.y += e.vy; e.vx *= 0.86; e.vy = e.vy * 0.86 + e.g;
+      e.x += e.vx * DT; e.y += e.vy * DT; e.vx *= FXK.spark; e.vy = e.vy * FXK.spark + e.g * DT;
       if (e.y > FLOOR) { e.y = FLOOR; e.vy *= -0.3; }
     } else if (e.type === 'dust') {
-      e.x += e.vx; e.y += e.vy; e.vx *= 0.94; e.vy *= 0.94; e.r *= 1.025;
+      e.x += e.vx * DT; e.y += e.vy * DT; e.vx *= FXK.dust; e.vy *= FXK.dust; e.r *= FXK.grow;
     } else if (e.type === 'tag') {
-      e.y -= 0.7;
+      e.y -= 0.7 * DT;
     }
     if (e.life <= 0) FX.splice(i, 1);
   }
-  for (let i = splats.length - 1; i >= 0; i--) if (--splats[i].life <= 0) splats.splice(i, 1);
+  for (let i = splats.length - 1; i >= 0; i--) if ((splats[i].life -= DT) <= 0) splats.splice(i, 1);
   updateQi();
   if (splats.length > 160) splats.splice(0, splats.length - 160);
 }
@@ -2878,10 +2933,10 @@ const QI_BACK = [['hip', 'neck'], ['hip', 'neck'], ['sh', 'neck']];             
 /* 这一刻火往哪边冒（2.1）：人横着动得快（跑、冲刺、出招往前冲、在空中飞、被打飞）火就往身后斜着拖，越快越斜；站着就往上冒。
    返回 { lean: 火往身后偏多少（0 = 竖着往上，1 = 差不多横着往后拖）, back: 身后是哪边（-1 / 1） } */
 function qiFlow(F) {
-  const vx = F.qx === undefined ? 0 : F.x - F.qx;
+  const vx = F.qx === undefined ? 0 : (F.x - F.qx) / DT;         // 每帧走多少（2.6 一步只走 DT 帧）
   F.qx = F.x;
   const sp = Math.abs(vx) + (F.airborne ? Math.abs(F.vx || 0) * 0.5 : 0);
-  F.qlean = (F.qlean || 0) + (clamp((sp - 1.2) / 5, 0, 1) - (F.qlean || 0)) * 0.25;   // 平滑一点，停下来火慢慢立回去
+  F.qlean = (F.qlean || 0) + (clamp((sp - 1.2) / 5, 0, 1) - (F.qlean || 0)) * lk(0.25);   // 平滑一点，停下来火慢慢立回去
   const back = Math.abs(vx) > 0.6 ? (vx > 0 ? -1 : 1) : -F.facing;
   return { lean: F.qlean, back };
 }
@@ -2905,11 +2960,12 @@ function qiRing(F, n, k) {
 }
 function emitQi(F) {
   // 连击的火：连上就往上涨（快），断了很快退掉（2.0.2：半秒多就没了；以前要一秒多，打完了还一直烧着）
+  // 2.6 每步调一次：往目标挪的快慢按 lk() 换算，冒火的条数 ×DT（每帧冒几条照旧）
   const tgt = F.comboLive ? comboHeat(F.combo) : 0, h0 = F.heat || 0;
-  F.heat = h0 + (tgt - h0) * (tgt > h0 ? 0.3 : 0.08);
+  F.heat = h0 + (tgt - h0) * lk(tgt > h0 ? 0.3 : 0.08);
   if (F.heat < 0.02 && tgt === 0) F.heat = 0;
   const { a, glow } = qiLevel(F);
-  F.qiGlow += (glow - F.qiGlow) * 0.2;
+  F.qiGlow += (glow - F.qiGlow) * lk(0.2);
   const flow = qiFlow(F);
   if (reduceMotion || !F.J) return;
   const J = F.J, h = F.heat, P = pal(F), L = flow.lean, bk = flow.back;
@@ -2923,7 +2979,7 @@ function emitQi(F) {
     flame(F, P.qi, x, y, vx, vy, r * (1 + 0.15 * L), al, life * (1 - 0.25 * L), Object.assign({ buoy: 0.02 + 0.06 * L, drag: 0.975 - 0.02 * L }, extra));
   };
   // 招式的气（泼墨、爆气、截拳、卸力）
-  let n = a * (2 + 2.6 * a);
+  let n = a * (2 + 2.6 * a) * DT;
   while (n > 0 && a > 0.02) {
     if (n < 1 && vrnd() > n) break;
     n--;
@@ -2934,7 +2990,7 @@ function emitQi(F) {
   // 连招的火（2.0.2）：3 连才起，只在拳脚上冒；4 连起整个人冒火，一部分火苗烧到身子前面；越往后火苗越多、越大、越浓、窜得越高
   if (h > 0.05) {
     const big = h > 0.6, hm = Math.min(1, h);
-    let k = h * (1.6 + 2.6 * h);                              // 每帧几个：3 连 1、4 连 2.1、5 连 3.5、6 连 5.3、7 连以上 7.3（2.1：少一点，一条一条火舌看得清）
+    let k = h * (1.6 + 2.6 * h) * DT;                         // 每帧几个：3 连 1、4 连 2.1、5 连 3.5、6 连 5.3、7 连以上 7.3（2.1：少一点，一条一条火舌看得清）
     while (k > 0) {
       if (k < 1 && vrnd() > k) break;
       k--;
@@ -2945,7 +3001,7 @@ function emitQi(F) {
     }
     // 5 连起：背上往身后斜着往上喷大火舌（像一件火做的披风；跑起来就整片往后拖）
     if (h > 0.8) {
-      let p = (h - 0.7) * 2.2;                                // 5 连每帧 0.44 条、6 连 1、7 连以上 1.5
+      let p = (h - 0.7) * 2.2 * DT;                           // 5 连每帧 0.44 条、6 连 1、7 连以上 1.5
       while (p > 0) {
         if (p < 1 && vrnd() > p) break;
         p--;
@@ -2960,12 +3016,13 @@ function emitQi(F) {
 function updateQi() {
   for (let i = QI.length - 1; i >= 0; i--) {
     const p = QI[i];
-    p.px = p.x; p.py = p.y;                                   // 2.0.1 上一帧在哪（画的时候插值）
-    p.ph += 0.22;
-    p.vx *= p.drag || 1; p.vy = p.vy * 0.985 - (p.buoy || 0);   // 2.1 斜着 / 往外冒出去的火：横着慢下来，慢慢往上卷
-    p.x += p.vx + Math.sin(p.ph) * 0.4; p.y += p.vy;
-    if (p.k === 'flame') p.r *= 0.985;                         // 火苗越飘越细
-    if (--p.life <= 0) QI.splice(i, 1);
+    p.px = p.x; p.py = p.y;                                   // 2.0.1 上一步在哪（画的时候插值）
+    p.ph += 0.22 * DT;
+    if (p.dr === undefined) p.dr = rootDT(p.drag || 1);
+    p.vx *= p.dr; p.vy = p.vy * FXK.qv - (p.buoy || 0) * DT;  // 2.1 斜着 / 往外冒出去的火：横着慢下来，慢慢往上卷
+    p.x += (p.vx + Math.sin(p.ph) * 0.4) * DT; p.y += p.vy * DT;
+    if (p.k === 'flame') p.r *= FXK.qr;                        // 火苗越飘越细
+    if ((p.life -= DT) <= 0) QI.splice(i, 1);
   }
   if (QI.length > 1000) QI.splice(0, QI.length - 1000);         // 连招烧旺了火苗多（2.1 一圈火 → 1000）
 }
@@ -2987,6 +3044,12 @@ const dirOf = h => (h.right ? 1 : 0) - (h.left ? 1 : 0);
    不会冲过对手、招打在身后的空气上（以前跑着贴脸按重，铁山靠会冲过去打空）。
    对手在空中不挡（能从底下钻过去）；冲刺是 script 动作，不走这里（就是要穿过去） */
 const lungeStop = (gap, o) => !o.airborne && gap >= 0 && gap <= PUSH;
+const PULL_K = lerpK(0.3);          // 擒住时每帧把对手往怀里带三成 → 每步带多少（2.6）
+// 画面上「每帧往目标挪 k」换成每步（只是画面，可以用缓存；联机重算时不跑）
+const LK_CACHE = {};
+const lk = k => LK_CACHE[k] || (LK_CACHE[k] = lerpK(k));
+// 发带（2.6 Jack：短一点点、细一点点）：8 个点、每节 6.5 → 5.7（长 45 → 40）；画的宽度在 render.js
+const RIB_N = 8, RIB_SEG = 5.7, RIB_DAMP = rootDT(0.86);
 // 对手正起跳下蹲：马上要跳出去的水平速度（和 update 里 jumpsquat 那段一样算）
 function takeoffVx(o) {
   const dir = dirOf(o.inp.held);
@@ -3032,11 +3095,14 @@ function throwPath(u, x0) {
 // 1.9.0：摆幅加大 —— 往前摆时手送到肩膀前面，往后摆时整条胳膊甩到身后
 // 1.9.4（Jack：小臂别往前伸那么多，往前上一点）：往前摆时大臂少抬一点（80° → 70°）、肘弯得更多，
 // 小臂斜着往前上（摆到最前面时小臂高过水平 50° 多），手不再平平地往前够；往后甩不变
+const RUN_ARM_F = 50, RUN_ARM_B = 46;
 function runArm(u, tor, amp) {
   const c = Math.cos(TAU * (u - 0.04));                  // c=1：同侧腿刚落地 → 这只手摆到最后
   const fwd = c < 0;
-  const th = ((fwd ? -c * 70 : -c * 66) * amp + 6 - tor * 0.6) * D2R;   // 上臂离竖直向下的角度（正 = 往前）
-  const ph = (fwd ? 72 - 14 * c : 72 - 38 * c) * D2R;                    // 肘弯：往前送时弯得多（小臂朝前上），往后甩时半张
+  // 2.6（Jack：跑步手臂太甩了）：前后摆幅 70° / 66° → 50° / 46°
+  const th = ((fwd ? -c * RUN_ARM_F : -c * RUN_ARM_B) * amp + 6 - tor * 0.6) * D2R;   // 上臂离竖直向下的角度（正 = 往前）
+  // 2.6 摆幅小了，往前送时肘再多弯一点（72 - 14c → 74 - 20c），小臂照旧斜着朝前上（Jack 1.9.4 要的），不是平平地往前够
+  const ph = (fwd ? 74 - 20 * c : 72 - 38 * c) * D2R;                    // 肘弯：往前送时弯得多（小臂朝前上），往后甩时半张
   const ex = Math.sin(th) * BONE.ua, ey = Math.cos(th) * BONE.ua;
   return [ex + Math.sin(th + ph) * BONE.fa, ey + Math.cos(th + ph) * BONE.fa];
 }
@@ -3074,7 +3140,7 @@ class Fighter {
     // 发带：两条从头带结上飘出去（2.0.2 以前还有第三条从腰上飘，改成箍着的腰带了，见 body.js drawWaistBelt）
     this.ribbons = [0, 1].map(() => {
       const a = this.J.knot, pts = [];
-      for (let i = 0; i < 8; i++) pts.push({ x: a[0] - facing * i * 6, y: a[1] + i * 2, px: a[0] - facing * i * 6, py: a[1] + i * 2 });
+      for (let i = 0; i < RIB_N; i++) pts.push({ x: a[0] - facing * i * RIB_SEG, y: a[1] + i * 2, px: a[0] - facing * i * RIB_SEG, py: a[1] + i * 2 });
       return pts;
     });
   }
@@ -3085,9 +3151,10 @@ class Fighter {
   }
   get airborne() { return this.alt > 0 || this.vz > 0; }
   actionable() { return ACTIONABLE.has(this.state); }
+  // 第 r[0] ~ r[1] 帧（含）：2.6 起时间带小数，按「第 k 帧 = [k, k+1)」比
   inFrames(key) {
     const m = this.move, r = m && this.state === 'attack' ? m.def[key] : null;
-    return !!r && m.t >= r[0] && m.t <= r[1];
+    return !!r && m.t >= r[0] && m.t < r[1] + 1;
   }
   invuln() { return this.state === 'down' || this.state === 'ko' || this.state === 'win' || this.state === 'tumble' || this.inFrames('inv'); }
   strikeInv() { return this.inFrames('sinv'); }
@@ -3097,13 +3164,13 @@ class Fighter {
     const m = this.move;
     if (this.state !== 'attack' || !m || !m.def.armor || m.armorLeft <= 0) return false;
     const a = m.def.armor;
-    return m.t >= a.from && m.t <= m.S && (!tier || a.vs.includes(tier));
+    return m.t >= a.from && m.t < m.S + 1 && (!tier || a.vs.includes(tier));
   }
   facingTo(other) { return (other.x - this.x) * this.facing >= -4; }
   isBlocking() { return (this.state === 'block' || this.state === 'blockstun') && !this.airborne; }
   isCrouching() { return this.state === 'crouch' || ((this.state === 'block' || this.state === 'blockstun') && this.lowBlock); }
   blockHeightOK(h) { return h === 'low' ? this.lowBlock : h === 'high' ? !this.lowBlock : true; }
-  parryReady() { return !this.noParry && this.parryOK && this.clock - this.blockPress <= PARRY_WIN; }
+  parryReady() { return !this.noParry && this.parryOK && this.clock - this.blockPress < PARRY_WIN + 1; }
   gainQi(n) { this.qi = clamp(Math.round((this.qi + n) * 10) / 10, 0, QI_MAX); }   // 保留一位小数，联机两边算出来一样
   runSpeed() { return Math.min(RUN_MAX, RUN_START + this.runT * RUN_ACC); }
   // 贴得很近时朝向对方
@@ -3123,9 +3190,10 @@ class Fighter {
   // 正在冲刺、冲刺的前冲还没走完（这时回身出招，人还往原来的方向滑）
   dashTurning() { const m = this.move; return this.state === 'attack' && !!m && m.name === 'dash' && m.t < m.def.lunge[1]; }
   aimSide(d) {
-    const me = this, o = this.opp, air = this.airborne, S = d.S, n = d.dive ? S : S + d.A;   // 千斤坠只看出脚那一帧（出脚时还会再瞄一次，见 aimDive）
+    // 2.6 一步一步推（DT 帧一步，和 update 一样的物理）；判定帧按「第 k 帧 = [k, k+1)」：S + 1 起、到 S + A + 1 之前
+    const me = this, o = this.opp, air = this.airborne, S = d.S, n = d.dive ? S + FE : S + d.A + FE;   // 千斤坠只看出脚那一刻（出脚时还会再瞄一次，见 aimDive）
     const lg = !air && !d.script && d.lunge ? d.lunge : null, lstep = lg ? lg[2] / (lg[1] - lg[0]) : 0;
-    const keep = dirOf(this.inp.held) ? 1 : AIR_DRAG;
+    const keepR = dirOf(this.inp.held) ? 1 : AIR_DRAG_DT.r, keepC = dirOf(this.inp.held) ? DT : AIR_DRAG_DT.cp;
     const run = this.state === 'run' ? this.facing * this.runSpeed() * 0.5 : 0;   // 跑着出招带的惯性（startAttack / beginMove 里加的）
     const dashIn = !air && !d.script && d.kind !== 'push' && ((this.state === 'attack' && !!this.move && this.move.name === 'dash') || this.clock - this.dashEnd <= DASH_IN_WIN);
     const turnKv = this.dashTurning() ? this.facing * DASH_TURN_KV : 0;   // 冲刺里回身：往原来的方向滑（startAttack）
@@ -3143,68 +3211,73 @@ class Fighter {
     const odir = o.state === 'tumble' ? 0 : dirOf(o.inp.held);
     const oam = om && om.air && !om.hit && !om.blocked ? om : null, odv = oam && oam.def.dive ? oam : null;
     const ducks = !air && d.height === 'low';               // 我这一招身子压得低：飞踢踢不到（evadeCrouch）
-    const inR = (r, t) => !!r && t >= r[0] && t <= r[1];
+    const inR = (r, t) => !!r && t >= r[0] && t < r[1] + 1;
     const immune = t => inR(d.inv, t) || inR(d.sinv, t) || (!odv && inR(d.airInv, t));   // 我这一招第 t 帧打不中（无敌、托天掌的对空无敌）
     const meAlt = air ? me.alt : 0;
     const sim = (f, fly) => {                               // fly = false：对手正起跳下蹲也当他不跳（只用来定「一样多」时转不转）
       let sx = me.x, kv = me.kvx + run + (dashIn && f === me.dashFace ? f * 5 : 0) + (f !== me.facing ? turnKv : 0), sv = air ? me.vx * (d.dive ? 0.3 : 1) : 0;
       let ox = o.x, oz = o.alt, ovz = o.vz, okv = o.kvx, ov = o.airborne ? o.vx : 0, oAir = o.airborne, ocap = o.vxCap;
-      let squat = fly && o.state === 'jumpsquat' ? Math.max(1, 3 - o.t) : 0;
+      let squat = fly && o.state === 'jumpsquat' ? Math.max(DT, 3 - o.t) : 0;
       let dt = oam ? oam.t : 0, dface = o.facing, ddvx = odv ? odv.dvx : undefined, ostop = false, mt = 0;
-      const oStep = () => {                                  // 对手走一帧
+      const oStep = () => {                                  // 对手走一步
         if (ostop) return;
-        if (odv && oAir && dt === odv.S) {                   // 千斤坠出脚：重新瞄准我（aimDive）
+        if (odv && oAir && dt === odv.S + FE) {              // 千斤坠出脚：重新瞄准我（aimDive）
           const f0 = Math.max(1, Math.ceil((oz - meAlt - odv.def.vreach) / DIVE_VZ)), dx = sx - ox;
           if (Math.abs(dx) >= 3) dface = dx > 0 ? 1 : -1;
           ddvx = clamp((dx * dface - DIVE_AIM) / f0, 0, DIVE_VX);
         }
-        if (oam) dt++;
-        ox += okv; okv *= 0.82;
-        if (squat > 0) { ox += o.facing * o.takeoffV; if (--squat > 0) return; ov = takeoffVx(o); ovz = JUMP_V; oz = 0.01; oAir = true; ocap = Math.max(AIR_DRIFT, Math.abs(ov)); }
+        if (oam) dt += DT;
+        ox += okv * KB_DAMP.c; okv *= KB_DAMP.r;
+        if (squat > 0) { ox += o.facing * o.takeoffV * DT; squat -= DT; if (squat > 1e-9) return; ov = takeoffVx(o); ovz = JUMP_V; oz = 0.01; oAir = true; ocap = Math.max(AIR_DRIFT, Math.abs(ov)); }
         if (!oAir) return;
+        let cx = DT;
         if (odv) {                                           // 千斤坠
-          const div = dt > odv.S;
-          if (div) { ovz = -DIVE_VZ; ov = dface * (ddvx === undefined ? DIVE_VX : ddvx); }
-          oz += ovz; if (!div) ovz -= GRAV * 0.5;
+          const div = dt >= odv.S + 1;
+          if (div) { ovz = -DIVE_VZ; ov = dface * (ddvx === undefined ? DIVE_VX : ddvx); oz += ovz * DT; }
+          else { oz += ovz * DT + GRAV * 0.5 * GH; ovz -= GRAV * 0.5 * DT; }
         } else {
-          oz += ovz; ovz -= GRAV;
+          oz += ovz * DT + GRAV * GH; ovz -= GRAV * DT;
           if (o.state !== 'tumble') {
             if (odir) {
               const same = odir * ov > 0; if (!same) ocap = AIR_DRIFT;
               const lim = same ? Math.max(AIR_DRIFT, ocap) : AIR_DRIFT;
-              ov += odir * AIR_ACC; if (odir * ov > lim) ov = odir * lim;
-            } else { ov *= AIR_DRAG; ocap = AIR_DRIFT; }
+              ov += odir * AIR_ACC * DT; if (odir * ov > lim) ov = odir * lim;
+            } else { ov *= AIR_DRAG_DT.r; ocap = AIR_DRIFT; cx = AIR_DRAG_DT.cp; }
           }
         }
-        ox += ov;
+        ox += ov * cx;
         if (oz <= 0) { oz = 0; oAir = false; okv += ov * 0.5; ov = 0; }
         // 他空中的招打到我了（和 combat.js reaches 一样：我在他面前 -6 ~ reach、离他脚下 vreach 以内、在判定帧里）：他就停在那儿
-        if (oam && oAir && dt > oam.S && (odv || dt <= oam.S + oam.def.A) && !(oam.def.evadeCrouch && ducks) && !immune(mt)) {
+        if (oam && oAir && dt >= oam.S + 1 && (odv || dt < oam.S + oam.def.A + 1) && !(oam.def.evadeCrouch && ducks) && !immune(mt)) {
           const fd = (sx - ox) * dface; if (fd >= -6 && fd <= oam.def.reach && oz - meAlt <= (oam.def.vreach || 999)) ostop = true;
         }
       };
       let sx0 = me.x, kv0 = me.kvx, sv0 = sv;                // sx0：要是不出这一招（没有前冲、不推挤），我会在哪（定「转不转」用）
-      const meMove = () => { sx += kv; kv *= 0.82; sx0 += kv0; kv0 *= 0.82; if (air) { sx += sv; sx0 += sv0; if (!d.dive) { sv *= keep; sv0 *= keep; } } };
+      const meMove = () => {
+        sx += kv * KB_DAMP.c; kv *= KB_DAMP.r; sx0 += kv0 * KB_DAMP.c; kv0 *= KB_DAMP.r;
+        if (air) { if (d.dive) { sx += sv * DT; sx0 += sv0 * DT; } else { sv *= keepR; sv0 *= keepR; sx += sv * keepC; sx0 += sv0 * keepC; } }
+      };
       const push = () => {                                   // 两人都在地上、身子叠着：互相推开（和 combat.js separate 一样）
         const dd = ox - sx, ad = Math.abs(dd);
         if (air || oAir || ad >= 2 * PUSH) return;
-        const p = Math.min((2 * PUSH - ad) / 2, SOFT_PUSH), s = dd > 0 ? 1 : dd < 0 ? -1 : (me.facing > 0 ? 1 : -1);
+        const p = Math.min((2 * PUSH - ad) / 2, SOFT_PUSH * DT), s = dd > 0 ? 1 : dd < 0 ? -1 : (me.facing > 0 ? 1 : -1);
         sx -= s * p; ox += s * p;
       };
-      // 按下这一帧：自己 update 剩下的物理照走；对手这一帧要是还没动（他排在后面）也走一下；最后推挤
+      // 按下这一步：自己 update 剩下的物理照走；对手这一步要是还没动（他排在后面）也走一下；最后推挤
       meMove(); if (me.idx === 0) oStep(); push();
       let hits = 0, side = 0, side0 = 0;
-      for (let t = 1; t <= n; t++) {                         // t = 这一招走到第几帧（判定帧是 S+1 ~ S+A）
+      const t0 = Math.min(S + 1, n);
+      for (let t = DT; t <= n + 1e-9; t += DT) {             // t = 这一招走到哪（判定是 S+1 ~ S+A+1 之前）
         mt = t;
         if (me.idx === 1) oStep();
-        if (lg && t - 1 >= lg[0] && t - 1 < lg[1] && !(f * (ox - sx) >= 0 && f * (ox - sx) <= PUSH && !oAir)) sx += f * lstep;
+        if (lg && t - 1 >= lg[0] && t - 1 < lg[1] && !(f * (ox - sx) >= 0 && f * (ox - sx) <= PUSH && !oAir)) sx += f * lstep * DT;
         meMove();
         if (me.idx === 0) oStep();
-        if (t === Math.min(S + 1, n)) { side = ox - sx; side0 = ox - sx0; }
-        if (t > S && f * (ox - sx) >= -6 && f * (ox - sx) <= d.reach && oz <= reachUp) hits++;
+        if (Math.abs(t - t0) < 1e-9) { side = ox - sx; side0 = ox - sx0; }
+        if (t >= S + 1 && f * (ox - sx) >= -6 && f * (ox - sx) <= d.reach && oz <= reachUp) hits++;
         push();
       }
-      return { hits, front: f * side, side0 };              // front：判定开始那一帧对手在我面前多远（负数 = 在身后）；side0：对手离「不出招的我」多远
+      return { hits, front: f * side, side0 };              // front：判定开始那一刻对手在我面前多远（负数 = 在身后）；side0：对手离「不出招的我」多远
     };
     let a = sim(this.facing, true), b = sim(-this.facing, true);
     if (a.hits !== b.hits) return a.hits > b.hits ? this.facing : -this.facing;
@@ -3254,7 +3327,7 @@ class Fighter {
     const b = this.inp.buf;
     for (let i = 0; i < b.length; i++) {
       const e = b[i];
-      if (this.clock - e.t > BUF_WIN) { b.splice(i, 1); i--; continue; }
+      if (this.clock - e.t >= BUF_WIN + 1) { b.splice(i, 1); i--; continue; }
       if (acts.includes(e.a)) { if (!peek) b.splice(i, 1); return e.a; }
     }
     return null;
@@ -3264,44 +3337,47 @@ class Fighter {
     const buf = this.inp.buf;
     let ia = -1, ib = -1;
     for (let i = 0; i < buf.length; i++) {
-      if (this.clock - buf[i].t > BUF_WIN) continue;
+      if (this.clock - buf[i].t >= BUF_WIN + 1) continue;
       if (buf[i].a === a && ia < 0) ia = i;
       else if (buf[i].a === b && ib < 0) ib = i;
     }
-    if (ia < 0 || ib < 0 || Math.abs(buf[ia].t - buf[ib].t) > PAIR_WIN) return false;
+    if (ia < 0 || ib < 0 || Math.abs(buf[ia].t - buf[ib].t) >= PAIR_WIN + 1) return false;
     buf.splice(Math.max(ia, ib), 1); buf.splice(Math.min(ia, ib), 1);
     return true;
   }
-  baseTime() {
+  // 这一招走到 t（默认现在）对应招式表时间轴上的哪一刻（被势破拖慢了前摇、被挡住拉长了收招都按比例换回去）。连续的，不是一帧一帧的
+  baseTime(t) {
     const m = this.move, d = m.def;
-    if (m.t <= m.S) return m.S ? m.t * d.S / m.S : 0;
+    if (t === undefined) t = m.t;
+    if (t <= m.S) return m.S ? t * d.S / m.S : 0;
     // 2.1 被挡住多出来的收招（m.pen）：收招动作放慢拉长，不是收完了站着不动
-    if (m.pen && m.t > m.S + d.A) return d.S + d.A + (m.t - m.S - d.A) * d.R / (d.R + m.pen);
-    return m.t - m.S + d.S;
+    if (m.pen && t > m.S + d.A) return d.S + d.A + (t - m.S - d.A) * d.R / (d.R + m.pen);
+    return t - m.S + d.S;
   }
   inActive() {
     const m = this.move;
-    return m && !m.def.script && m.t > m.S && m.t <= m.S + m.def.A;
+    return m && !m.def.script && m.t >= m.S + 1 && m.t < m.S + m.def.A + 1;
   }
   jabRun() { let j = 0; for (let i = this.chain.length - 1; i >= 0 && this.chain[i] === 'jab'; i--) j++; return j; }
   // 踩腿：刚蹲挡住一记下段腿（扫堂腿），对方还在那一招里（出完判定了）
   stompReady() {
     const o = this.opp, om = o.move;
-    return this.stompFor >= 0 && o.state === 'attack' && !!om && om.serial === this.stompFor && om.t > om.S;
+    return this.stompFor >= 0 && o.state === 'attack' && !!om && om.serial === this.stompFor && om.t >= om.S + 1;
   }
   canCancel(kind) {
     const m = this.move;
     if (!m || m.air || m.def.script || m.def.noCancel) return false;
     if (!(m.hit || m.blocked || m.absorbed)) return false;          // 2.1 被霸体吃了也能接（不然「连打破霸体」打不出来）
-    const after = m.t - m.S;
-    if (after < 1 || after > m.def.A + 12) return false;
+    // 判定开始以后的第 1 ~ A+12 帧能接（按下这一步之后招式走到 m.t + DT，以前是走完一帧）
+    const after = m.t + DT - 1 - m.S;
+    if (after < 1 || after >= m.def.A + 13) return false;
     if (kind === 'jab' && this.jabRun() >= JAB_CHAIN_MAX) return false;
     return (CANCEL[m.def.kind] || []).includes(kind);
   }
   startAttack(kind, cancel) {
     const air = this.airborne;
     if (air && (this.airUsed || kind === 'grab')) return false;
-    if (!cancel && this.chainIdle > CHAIN_WIN) { this.chain = []; this.rushStamped = false; }
+    if (!cancel && this.chainIdle >= CHAIN_WIN + 1) { this.chain = []; this.rushStamped = false; }
     const h = this.inp.held, dir = dirOf(h), o = this.opp;
     // 1.9.0 朝向吸附：先估这一招判定时对手在哪边（toward，1.9.4 起按 aimSide 推：自己的前冲、跳的惯性、对手跳到哪都算进去）。
     // 对手在 ASSIST_R 以内、或者没按方向 → 朝对手打（近身乱按方向也不打空）；远了才照按的方向打
@@ -3336,7 +3412,7 @@ class Fighter {
     // 冲势：冲刺途中（无敌帧快结束时）或冲刺刚结束出的第一招
     const fromDash = this.state === 'attack' && this.move && this.move.name === 'dash';
     // 2.0：冲势只给往冲刺方向打的那一招（冲过人再回身打不带冲势，见 startAttack 的 DASH_TURN_KV）
-    const dashIn = !air && !d.script && d.kind !== 'push' && this.facing === this.dashFace && (fromDash || this.clock - this.dashEnd <= DASH_IN_WIN);
+    const dashIn = !air && !d.script && d.kind !== 'push' && this.facing === this.dashFace && (fromDash || this.clock - this.dashEnd < DASH_IN_WIN + 1);
     if (dashIn) { this.kvx += this.facing * 5; this.dashEnd = -999; dashInFx(this); }
     this.slipGot = false;
     this.move = { def: d, name, t: 0, S, hit: false, blocked: false, done: false, air, slowed, serial: ++this.serial,
@@ -3371,7 +3447,7 @@ class Fighter {
   // 挣脱（1.8.0）：被擒住的头 HOLD_ESC 帧里按「拿」（提前几帧按的也算）
   tryEscape() {
     const o = this.opp, m = o.move;
-    if (!this.grabbed || o.state !== 'attack' || !m || m.name !== 'hold' || this.clock - this.heldAt > HOLD_ESC) return false;
+    if (!this.grabbed || o.state !== 'attack' || !m || m.name !== 'hold' || this.clock - this.heldAt >= HOLD_ESC + 1) return false;
     if (!this.takePress(['grab'])) return false;
     escapeGrab(o, this);
     return true;
@@ -3389,7 +3465,7 @@ class Fighter {
     this.gwalk = 0;
     if (locked) { if (this.state !== 'win') this.state = 'idle'; this.runT = 0; return; }
     if (this.qi >= QI_MAX && this.pairPressed('heavy', 'kick')) { this.facing = this.aimSide(MOVES.super); this.beginMove('super', null); return; }
-    if (this.clock - this.dashT <= 3) {
+    if (this.clock - this.dashT < 4) {
       this.dashT = -999;
       // 2.0：按着挡（不蹲）朝对手双击 = 闪身（从他身边钻过去）；不按挡、或者按着挡往后双击，还是普通冲刺
       if (h.block && !h.down && this.dashDir === this.oppSide()) { this.beginSlip(); return; }
@@ -3403,22 +3479,22 @@ class Fighter {
     if (h.block) {
       this.autoFace(); this.state = 'block'; this.lowBlock = !!h.down; this.runT = 0;
       // 2.0 边挡边走：按着挡 + 方向（不蹲）= 举着手慢慢走，往前往后都行（不转身，一直面朝对手，照样挡得住）
-      if (!h.down && dir) { this.x += dir * BLOCK_WALK; this.gwalk = dir * this.facing; this.walkPhase += BLOCK_WALK / 44; }
+      if (!h.down && dir) { this.x += dir * BLOCK_WALK * DT; this.gwalk = dir * this.facing; this.walkPhase += BLOCK_WALK / 44 * DT; }
       return;
     }
     if (h.down) { this.autoFace(); this.state = 'crouch'; this.runT = 0; return; }
     if (dir) {
       if (dir !== this.facing) { this.facing = dir; this.runT = 0; }   // 掉头
-      this.runT++;
+      this.runT += DT;
       const v = this.runSpeed();
-      this.x += dir * v; this.state = 'run'; this.walkPhase += v * RUN_ST / (RUN_X0 - RUN_X1);    // 步频跟着速度，脚不打滑
+      this.x += dir * v * DT; this.state = 'run'; this.walkPhase += v * RUN_ST / (RUN_X0 - RUN_X1) * DT;    // 步频跟着速度，脚不打滑
     } else { this.runT = 0; this.state = 'idle'; }
   }
   update(locked) {
-    this.clock++;
-    if (this.slowJab > 0) this.slowJab--;
-    if (this.state !== 'attack') this.chainIdle++;
-    if (this.comboT > 0) this.comboT--;
+    this.clock += DT;
+    if (this.slowJab > 0) this.slowJab = Math.max(0, this.slowJab - DT);
+    if (this.state !== 'attack') this.chainIdle += DT;
+    if (this.comboT > 0) this.comboT = Math.max(0, this.comboT - DT);
     if (this.state !== 'hit' && this.state !== 'down' && this.state !== 'ko') this.comboTaken = 0;
     if (locked) this.inp.buf.length = 0;
     const h = this.inp.held;
@@ -3428,8 +3504,8 @@ class Fighter {
     this.prevBlock = bl;
     // 2.4 冲刺键（键位设置里选了「冲刺键」的人，双击方向就只是走路 —— inp.keyDash）：按一下 = 往按着的方向冲，没按方向就往前（面朝的方向）
     if (!this.inp.keyDash) {
-      if (h.left && !this.prevL) { if (this.clock - this.tapL <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = -1; this.tapL = -999; } else this.tapL = this.clock; }
-      if (h.right && !this.prevR) { if (this.clock - this.tapR <= DTAP_WIN) { this.dashT = this.clock; this.dashDir = 1; this.tapR = -999; } else this.tapR = this.clock; }
+      if (h.left && !this.prevL) { if (this.clock - this.tapL < DTAP_WIN + 1) { this.dashT = this.clock; this.dashDir = -1; this.tapL = -999; } else this.tapL = this.clock; }
+      if (h.right && !this.prevR) { if (this.clock - this.tapR < DTAP_WIN + 1) { this.dashT = this.clock; this.dashDir = 1; this.tapR = -999; } else this.tapR = this.clock; }
     }
     if (this.takePress(['dash'])) { this.dashT = this.clock; this.dashDir = dirOf(h) || this.facing; this.tapL = this.tapR = -999; }
     this.prevL = !!h.left; this.prevR = !!h.right;
@@ -3441,12 +3517,12 @@ class Fighter {
         const o = this.opp;
         if (!locked && o.reel && o.state === 'hit' && !o.airborne && Math.abs(o.x - this.x) <= 116 && this.takePress(['grab'])) { this.parryThrow(); break; }
         if (!locked) { const k = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (k && this.startAttack(k, false)) break; }
-        if (++this.t >= PARRY_POSE) this.state = 'idle';
+        if ((this.t += DT) >= PARRY_POSE) this.state = 'idle';
         break;
       }
       case 'jumpsquat':
-        this.x += this.facing * this.takeoffV;          // 跑着起跳，蹲的这几帧还在往前冲
-        if (++this.t >= 3) {
+        this.x += this.facing * this.takeoffV * DT;     // 跑着起跳，蹲的这几帧还在往前冲
+        if ((this.t += DT) >= 3) {
           const dir = dirOf(h);
           let vx;
           const running = this.takeoffV > 0 && dir !== -this.facing;
@@ -3460,7 +3536,7 @@ class Fighter {
         }
         break;
       case 'air':
-        this.airT++;
+        this.airT += DT;
         if (!locked) {
           const dir = dirOf(h);
           if (dir) this.facing = dir;
@@ -3468,19 +3544,19 @@ class Fighter {
         }
         break;
       case 'tumble':                     // 空中的腿被地上的腿顶回去：往后翻着飞，落地前什么都不能做（也打不中他）
-        this.t++;
+        this.t += DT;
         break;
       case 'land':
         // 普通落地可以马上再跳（落地前按的跳不会被吃掉）；空中出招没打中的落地硬直不行
         if (!locked && this.landT <= 4 && this.takePress(['up'])) { this.takeoffV = 0; this.state = 'jumpsquat'; this.t = 0; break; }
-        if (++this.t >= this.landT) this.state = 'idle';
+        if ((this.t += DT) >= this.landT) this.state = 'idle';
         break;
       case 'attack': this.attackStep(locked); break;
       case 'hit':
         if (!locked && this.tryEscape()) break;
         if (!locked && this.tryBurst()) break;
-        if (--this.stunT <= 0) {
-          this.freeAt = this.clock;      // 这一帧刚恢复，还来不及挡：这一帧打中仍算连上
+        if ((this.stunT -= DT) <= 0) {
+          this.freeAt = this.clock;      // 这一步刚恢复，还来不及挡：这一步打中仍算连上
           this.grabbed = false; this.reel = false; this.clashed = false; this.carried = false; this.stagger = false;   // 踉跄完了：又会自动面向对手
           if (this.airborne) { this.state = 'air'; this.airUsed = true; this.vx = 0; } else this.state = 'idle';
         }
@@ -3489,21 +3565,21 @@ class Fighter {
         this.lowBlock = !!h.down;
         this.autoFace();                 // 挡住的硬直里对手绕到身后：跟着转过去接着挡（1.9.0）
         // 2.0 闪身：挡住的硬直里按着挡、朝对手双击 → 不等硬直完，直接从他身边钻过去
-        if (!locked && h.block && !h.down && this.clock - this.dashT <= 3 && this.dashDir === this.oppSide()) { this.dashT = -999; this.beginSlip(); break; }
+        if (!locked && h.block && !h.down && this.clock - this.dashT < 4 && this.dashDir === this.oppSide()) { this.dashT = -999; this.beginSlip(); break; }
         if (!locked && this.stompReady() && this.takePress(['kick'])) { this.beginMove('stomp', 'kick'); break; }        // 蹲挡住扫堂腿 → 踩腿
         if (!locked && this.qi >= GC_COST && this.takePress(['heavy'])) { this.beginMove('jieQuan', null); break; }      // 挡住后按重 → 截拳
         if (!locked && this.takePress(['jab'])) { this.beginMove('shove', null); break; }
-        if (--this.stunT <= 0) this.state = (h.block && !locked) ? 'block' : 'idle';
+        if ((this.stunT -= DT) <= 0) this.state = (h.block && !locked) ? 'block' : 'idle';
         break;
       case 'down':
         if (this.downPhase === 'lie') {
-          if (++this.t >= this.lieT) {
+          if ((this.t += DT) >= this.lieT) {
             this.downPhase = 'getup'; this.t = 0;
             this.rollDir = this.state === 'down' && !locked ? dirOf(h) : 0;     // 起身时按住方向 = 往那边滚身起
           }
         } else if (this.downPhase === 'getup') {
-          if (this.rollDir) this.x += this.rollDir * ROLL_DIST / GETUP;
-          if (++this.t >= GETUP) {
+          if (this.rollDir) this.x += this.rollDir * ROLL_DIST / GETUP * DT;
+          if ((this.t += DT) >= GETUP) {
             // 2.0：起身完了先是「起身硬直」RISE 帧：站起来那几帧，打得中、还动不了（给对面先出手）
             this.state = 'rise'; this.downPhase = null; this.t = 0;
             if (this.rollDir) { this.facing = this.opp.x >= this.x ? 1 : -1; this.rollDir = 0; }
@@ -3511,35 +3587,39 @@ class Fighter {
         }
         break;
       case 'rise':
-        if (++this.t >= RISE) this.state = 'idle';
+        if ((this.t += DT) >= RISE) this.state = 'idle';
         break;
       case 'ko': case 'win': break;
     }
     // 物理
     if (this.carried) { this.kvx = 0; this.x = clamp(this.x, WALL_L, WALL_R); return; }   // 被过肩摔扛着：位置由出手方每帧摆（carryStep）
-    this.x += this.kvx; this.kvx *= 0.82; if (Math.abs(this.kvx) < 0.05) this.kvx = 0;
+    // 2.6 一步走 DT 帧：击退每帧剩 82% → 每步剩 KB_DAMP.r，位移乘 KB_DAMP.c（整帧时和以前一样远）
+    this.x += this.kvx * KB_DAMP.c; this.kvx *= KB_DAMP.r; if (Math.abs(this.kvx) < 0.05) this.kvx = 0;
     if (this.airborne) {
       const m = this.move, atkAir = this.state === 'attack' && m && m.air;
-      const dive = atkAir && m.def.dive, diving = dive && !m.hit && !m.blocked && m.t > m.S;
+      const dive = atkAir && m.def.dive, diving = dive && !m.hit && !m.blocked && m.t >= m.S + 1;
       // 千斤坠：前摇里先腾起来、重力减半（在高处顿一下）；出脚后沿斜线匀速往前下方踩（不受重力）。
-      // 1.9.4：斜度是出脚那一帧按对手远近定的（m.dvx，见 aimDive），近了踩得陡
-      if (diving) { this.vz = -DIVE_VZ; this.vx = this.facing * (m.dvx === undefined ? DIVE_VX : m.dvx); }
-      this.alt += this.vz;
-      if (!diving) this.vz -= dive && m.t <= m.S ? GRAV * 0.5 : GRAV;     // 千斤坠前摇：在高处悬一下（1.9.0 悬得更久，看得见要踩了）
-      if (this.state === 'tumble') this.x += this.vx;      // 翻滚：横向匀速飞回去（飞得远），方向键管不了
+      // 1.9.4：斜度是出脚那一刻按对手远近定的（m.dvx，见 aimDive），近了踩得陡
+      if (diving) { this.vz = -DIVE_VZ; this.vx = this.facing * (m.dvx === undefined ? DIVE_VX : m.dvx); this.alt += this.vz * DT; }
+      else {
+        const g = dive && m.t < m.S + 1 ? GRAV * 0.5 : GRAV;          // 千斤坠前摇：在高处悬一下（1.9.0 悬得更久，看得见要踩了）
+        this.alt += this.vz * DT + g * GH; this.vz -= g * DT;
+      }
+      if (this.state === 'tumble') this.x += this.vx * DT;      // 翻滚：横向匀速飞回去（飞得远），方向键管不了
       else if (this.state === 'air' || atkAir) {
         // 空中横向：顺着起跳方向能保持跑速；松开就慢慢变小；空中再按只能小幅调整
         const dir = locked ? 0 : dirOf(h);
+        let cx = DT;
         if (dive) { /* 千斤坠：不受方向键影响 */ }
         else if (dir) {
           const same = dir * this.vx > 0;
           if (!same) this.vxCap = AIR_DRIFT;
           const lim = same ? Math.max(AIR_DRIFT, this.vxCap) : AIR_DRIFT;
-          let v = this.vx + dir * AIR_ACC;
+          let v = this.vx + dir * AIR_ACC * DT;
           if (dir * v > lim) v = dir * lim;
           this.vx = v;
-        } else { this.vx *= AIR_DRAG; this.vxCap = AIR_DRIFT; }
-        this.x += this.vx;
+        } else { this.vx *= AIR_DRAG_DT.r; this.vxCap = AIR_DRIFT; cx = AIR_DRAG_DT.cp; }
+        this.x += this.vx * cx;
       }
       if (this.alt <= 0) { this.alt = 0; this.vz = 0; this.onLand(); }
     }
@@ -3547,48 +3627,51 @@ class Fighter {
   }
   attackStep(locked) {
     const m = this.move, d = m.def;
+    // 2.6 这一步先查再把 m.t 加 DT。k = m.t + DT - 1：和以前（一帧一帧、先查再加 1）查的时候 m.t 是同一个意思 ——
+    // 以前「m.t === X」是招式开始后第 X+1 帧那一下，现在就是 k === X（招式开始后正好过了 X+1 帧的那一步）
+    const k = m.t + DT - 1;
     if (!locked) {
       // 重/踢 刚出手几帧内补按另一个 = 同时按：气满放泼墨
-      if (m.t <= PAIR_WIN && !m.air && (m.press === 'heavy' || m.press === 'kick') && this.qi >= QI_MAX) {
+      if (k < PAIR_WIN + 1 && !m.air && (m.press === 'heavy' || m.press === 'kick') && this.qi >= QI_MAX) {
         const other = m.press === 'heavy' ? 'kick' : 'heavy';
         if (this.takePress([other])) { this.beginMove('super', null); return; }
       }
-      const k = this.takePress(['jab', 'heavy', 'kick', 'grab'], true);
-      if (k && this.canCancel(k)) { this.takePress([k]); this.startAttack(k, true); return; }
+      const kk = this.takePress(['jab', 'heavy', 'kick', 'grab'], true);
+      if (kk && this.canCancel(kk)) { this.takePress([kk]); this.startAttack(kk, true); return; }
     }
     const o = this.opp;
     if (d.lunge && !m.air) {
       // 前冲：贴到对手身上就停，不冲过人（1.9.4，冲刺、闪身除外）。闪身冲多远写在这一招身上（lungePx）
-      const [a, b] = d.lunge, px = m.lungePx !== undefined ? m.lungePx : d.lunge[2], tb = this.baseTime();
-      if (tb >= a && tb < b && (d.script || !lungeStop((o.x - this.x) * this.facing, o))) this.x += this.facing * px / (b - a);
+      const [a, b] = d.lunge, px = m.lungePx !== undefined ? m.lungePx : d.lunge[2], tb = this.baseTime(k);
+      if (tb >= a && tb < b && (d.script || !lungeStop((o.x - this.x) * this.facing, o))) this.x += this.facing * px / (b - a) * DT;
     }
     if (m.name === 'slip') {
       // 2.0.2 躲过了重拳：钻到他身后（按他面朝的方向过了 SLIP_ELBOW_AT）、或者钻完了，就自动回身一肘
-      if (!locked && this.slipGot && ((this.x - o.x) * o.facing <= -SLIP_ELBOW_AT || m.t >= d.lunge[1])) { this.slipElbow(); return; }
+      if (!locked && this.slipGot && ((this.x - o.x) * o.facing <= -SLIP_ELBOW_AT || k >= d.lunge[1])) { this.slipElbow(); return; }
       // 钻空了（没躲着重拳）：第 SLIP_CANCEL 帧起可以直接按招打出去
-      if (!locked && !this.slipGot && m.t >= SLIP_CANCEL) { const k = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (k && this.startAttack(k, false)) return; }
-      if (m.t > 0 && m.t < d.lunge[1] && m.t % 2 === 0) slipLines(this);
+      if (!locked && !this.slipGot && k >= SLIP_CANCEL) { const kk = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (kk && this.startAttack(kk, false)) return; }
+      if (k > 0 && k < d.lunge[1] && k % 2 === 0) slipLines(this);
     }
-    if (d.dive && m.t === m.S && !m.hit && !m.blocked) this.aimDive(m);   // 千斤坠这一帧出脚：重新瞄（1.9.4）
+    if (d.dive && k === m.S && !m.hit && !m.blocked) this.aimDive(m);   // 千斤坠出脚的那一刻：重新瞄（1.9.4）
     if (m.name === 'dash') {
       // 冲刺第 DASH_CANCEL 帧起可以直接按招打出去（带冲势）
-      if (!locked && m.t >= DASH_CANCEL) { const k = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (k && this.startAttack(k, false)) return; }
-      if (m.t === 0) { dust(this.x - this.facing * 20, FLOOR, 5); burst(this.x - this.facing * 30, FLOOR - 40, -this.facing, 4, 30, 2.5, pal(this).qi); }
-      if (m.t > 0 && m.t < 10 && m.t % 2 === 0) dashLines(this);
-      if (m.t === 10) { dust(this.x + this.facing * 24, FLOOR, 6); Sound.land(); }
+      if (!locked && k >= DASH_CANCEL) { const kk = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (kk && this.startAttack(kk, false)) return; }
+      if (k === 0) { dust(this.x - this.facing * 20, FLOOR, 5); burst(this.x - this.facing * 30, FLOOR - 40, -this.facing, 4, 30, 2.5, pal(this).qi); }
+      if (k > 0 && k < 10 && k % 2 === 0) dashLines(this);
+      if (k === 10) { dust(this.x + this.facing * 24, FLOOR, 6); Sound.land(); }
     }
     const held = o.grabbed && o.state === 'hit';
     // 擒住 / 提膝 / 别腿摔 / 抱腿摔：把对手往怀里带（贴身好接后续）
     if (held && (m.name === 'hold' || m.name === 'knee' || m.name === 'trip' || m.name === 'tackle')) {
-      o.x += (this.x + this.facing * HOLD_GAP - o.x) * 0.3; o.kvx = 0;
+      o.x += (this.x + this.facing * HOLD_GAP - o.x) * PULL_K; o.kvx = 0;
     }
     if (m.name === 'hold') {
       // 擒住期间按的键决定后续：拳 = 提膝撞，踢 = 别腿摔，重 = 过肩摔；最后一帧按着后 = 过肩摔；都没按 = 推开
       if (!locked && !m.pick && m.holdKind === 'grab') {
-        const k = this.takePress(['jab', 'kick', 'heavy']);
-        if (k) m.pick = k === 'jab' ? 'knee' : k === 'kick' ? 'trip' : 'throw';
+        const kk = this.takePress(['jab', 'kick', 'heavy']);
+        if (kk) m.pick = kk === 'jab' ? 'knee' : kk === 'kick' ? 'trip' : 'throw';
       }
-      if (m.t >= d.R - 1) {
+      if (k >= d.R - 1) {
         if (!held) { this.move = null; this.state = 'idle'; this.chainIdle = 0; return; }
         const backHeld = !locked && (this.facing > 0 ? this.inp.held.left : this.inp.held.right);
         const pick = m.holdKind === 'tackle' ? 'tackle' : m.pick || (backHeld ? 'throw' : 'push');
@@ -3596,18 +3679,18 @@ class Fighter {
         return;
       }
     }
-    if (m.name === 'grabHit' && m.t === d.evPush && held) grabPush(this, o, d.R - m.t);
-    if (m.name === 'knee' && held && (m.t === d.evHit || m.t === d.evHit2)) kneeHit(this, o, m.t === d.evHit2, d.R - m.t);
-    if ((m.name === 'trip' || m.name === 'tackle') && m.t === d.evSlam && held) slamDown(this, o, m.name);
+    if (m.name === 'grabHit' && k === d.evPush && held) grabPush(this, o, d.R - k);
+    if (m.name === 'knee' && held && (k === d.evHit || k === d.evHit2)) kneeHit(this, o, k === d.evHit2, d.R - k);
+    if ((m.name === 'trip' || m.name === 'tackle') && k === d.evSlam && held) slamDown(this, o, m.name);
     if (m.name === 'throwBack') {
-      if (m.t <= d.evSlam) this.carryStep(m.t / d.evSlam);
-      if (m.t === 2 || m.t === 7) Sound.whoosh(m.t === 2 ? 0.5 : 1);
-      if (m.t === d.evSlam) this.throwOver();
+      if (k <= d.evSlam) this.carryStep(Math.max(0, k) / d.evSlam);
+      if (k === 2 || k === 7) Sound.whoosh(k === 2 ? 0.5 : 1);
+      if (k === d.evSlam) this.throwOver();
     }
-    if ((m.name === 'legCatch' || m.name === 'scoop') && m.t === d.evSlam) { game.shake = Math.max(game.shake, 7); dust(o.x, FLOOR, 8, true); Sound.hit(0.9); }
-    if (m.name === 'burst' && m.t === d.evWave) this.burstWave();
-    if (d.dive && (m.hit || m.blocked)) m.bounce = (m.bounce || 0) + 1;   // 千斤坠踩中后翻跟头的进度（画面用）
-    m.t++;
+    if ((m.name === 'legCatch' || m.name === 'scoop') && k === d.evSlam) { game.shake = Math.max(game.shake, 7); dust(o.x, FLOOR, 8, true); Sound.hit(0.9); }
+    if (m.name === 'burst' && k === d.evWave) this.burstWave();
+    if (d.dive && (m.hit || m.blocked)) m.bounce = (m.bounce || 0) + DT;   // 千斤坠踩中后翻跟头的进度（画面用，帧）
+    m.t += DT;
     if (m.t >= m.S + d.A + d.R + (m.pen || 0)) {
       if (m.name === 'dash') this.dashEnd = this.clock;
       if (m.name === 'slip') this.slipEnd = this.clock;
@@ -3626,7 +3709,7 @@ class Fighter {
     // 背后快到墙了：一边摔一边往前挪，给对手留出落地的地方（以前是摔完瞬移）
     const land = this.x - this.facing * THROW_LAND;
     const need = land < WALL_L ? WALL_L - land : land > WALL_R ? WALL_R - land : 0;
-    if (need) this.x = clamp(this.x + clamp(need, -6, 6), WALL_L, WALL_R);
+    if (need) this.x = clamp(this.x + clamp(need, -6 * DT, 6 * DT), WALL_L, WALL_R);
     const [x, alt, rot] = throwPath(u, o.carry0);
     o.x = clamp(this.x + this.facing * x, WALL_L, WALL_R); o.alt = alt; o.carryRot = rot;
   }
@@ -3680,10 +3763,11 @@ class Fighter {
       const m = this.move, dv = m.def.dive;
       // 还没来得及判定就落地（前摇没出完，或者落地这一帧才刚出手）：当作这一招没出，
       // 落地后马上在地上出（按键重新放回缓冲）—— 按了一定有反应
-      const early = !dv && !m.hit && !m.blocked && m.t <= m.S + 1;
+      const early = !dv && !m.hit && !m.blocked && m.t < m.S + 2;
       if (early && m.press) this.inp.press(m.press, this.clock);
       // 千斤坠：踩中落地快（好接腿的连招）；被挡、踩空落地硬直长（1.9.0）
-      this.landT = dv ? (m.hit ? 2 : m.blocked ? 7 : 11) : m.hit || early ? 3 : 7; this.move = null; this.state = 'land'; this.t = 0; this.chainIdle = 0;
+      // 2.6 空中招的落地硬直就是它的后摇：跟着 ×ATK_TEMPO（2 / 3 / 7 / 11 → 2.25 / 3.25 / 7.5 / 11.75）
+      this.landT = TA(dv ? (m.hit ? 2 : m.blocked ? 7 : 11) : m.hit || early ? 3 : 7); this.move = null; this.state = 'land'; this.t = 0; this.chainIdle = 0;
       dust(this.x, FLOOR, dv ? 10 : 5, dv); if (dv) game.shake = Math.max(game.shake, 4); Sound.land();
     } else if (this.state === 'down' || this.state === 'ko') {
       if (this.downPhase === 'fall') { this.downPhase = 'lie'; this.t = 0; dust(this.x, FLOOR, 9, true); game.shake = Math.max(game.shake, 4); Sound.land(); }
@@ -3826,7 +3910,7 @@ class Fighter {
       // 跑步是循环动作，跟得紧一点（不然摆幅被抹平、脚会打滑）；刚起跑那几帧松一点，从站姿顺过去
       const k = st === 'attack' || st === 'tumble' ? 0.78 : this.carried ? 0.85 : (st === 'hit' || st === 'blockstun' || st === 'parry') ? 0.6
         : (st === 'down' || st === 'ko') ? (this.slam && this.downPhase === 'fall' ? 0.6 : 0.3) : st === 'run' ? (this.runT < 5 ? 0.5 : 0.88) : st === 'air' ? 0.32 : 0.4;
-      if (!hold) lerpPose(this.disp, tg, k, this.disp, true);
+      if (!hold) lerpPose(this.disp, tg, lk(k), this.disp, true);       // 每帧往目标挪 k → 每步挪 lk(k)（2.6）
       const hy0 = this.hipY, ik0 = this.ikS ? this.ikS.slice() : null;
       this.fk();
       this.fitContact(hy0, ik0);
@@ -3835,7 +3919,7 @@ class Fighter {
       const m = this.move;
       if (m && !m.def.script && m.def.limb && m.t >= m.S - 3 && m.t <= m.S + m.def.A + 2) {
         const e = this.J[m.def.limb];
-        this.trail.push({ x: e[0], y: e[1], life: 8, f: game.frame });
+        this.trail.push({ x: e[0], y: e[1], life: 8, max: 8, f: game.frame });
         if (m.def.ghost && m.t % 2 === 0) this.ghosts.push({ J: cloneJ(this.J), life: 10 });
       }
       if (m && (m.name === 'dash' || (m.name === 'slip' && m.t < 14) || (m.dashIn && m.t <= m.S + m.def.A)) && m.t % 2 === 0) this.ghosts.push({ J: cloneJ(this.J), life: 6, dash: true });
@@ -3844,11 +3928,11 @@ class Fighter {
         const step = Math.floor(this.walkPhase * 2);
         if (step !== this.lastStep) { this.lastStep = step; const foot = step % 2 ? this.J.bf : this.J.ff; dust(foot[0], FLOOR, 2); }
       }
-      for (let i = this.trail.length - 1; i >= 0; i--) if (--this.trail[i].life <= 0) this.trail.splice(i, 1);
-      for (let i = this.ghosts.length - 1; i >= 0; i--) if (--this.ghosts[i].life <= 0) this.ghosts.splice(i, 1);
+      for (let i = this.trail.length - 1; i >= 0; i--) if ((this.trail[i].life -= DT) <= 0) this.trail.splice(i, 1);
+      for (let i = this.ghosts.length - 1; i >= 0; i--) if ((this.ghosts[i].life -= DT) <= 0) this.ghosts.splice(i, 1);
     }
-    if (this.hitFlash > 0) this.hitFlash--;          // 挨打白闪 / 抖动（只是画面），打中停顿里也照常倒数
-    if (this.hitShake > 0) this.hitShake--;
+    if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - DT);          // 挨打白闪 / 抖动（只是画面），打中停顿里也照常倒数
+    if (this.hitShake > 0) this.hitShake = Math.max(0, this.hitShake - DT);
     this.updateRibbons();
   }
   // 2.0.1 画面插值：记下上一帧画出来的样子（骨骼、发带、位置），render.js 在两帧之间按时间插着画 ——
@@ -3960,7 +4044,7 @@ class Fighter {
     const S = this.ikS || (this.ikS = [0, 0, 0, 0]), fresh = !this.J;
     const limb = (i, px, py, qx, qy, a, b, hx2, hy2) => {
       const want = ik(px, py, qx, qy, a, b, hx2, hy2)[4];
-      S[i] = fresh ? want : S[i] + clamp(want - S[i], -IK_FLIP, IK_FLIP);
+      S[i] = fresh ? want : S[i] + clamp(want - S[i], -IK_FLIP * DT, IK_FLIP * DT);
       return ik(px, py, qx, qy, a, b, hx2, hy2, S[i]);
     };
     const kf = p.fn === undefined ? 1 : p.fn, kb = p.bn === undefined ? 1 : p.bn;   // 膝盖往哪边顶（1 往前；-1 往后：仆步那条蹲着的腿脚尖外摆）
@@ -4002,7 +4086,7 @@ class Fighter {
     let hipT;
     if (this.airborne) hipT = Math.min(-(this.alt + p.hy), -maxY);
     else hipT = -maxY - p.air;
-    this.hipY = this.airborne ? hipT : this.hipY + (hipT - this.hipY) * (this.state === 'run' ? 0.85 : 0.55);
+    this.hipY = this.airborne ? hipT : this.hipY + (hipT - this.hipY) * lk(this.state === 'run' ? 0.85 : 0.55);
     if (!this.J) this.hipY = hipT;
     const J = this.J || (this.J = {});
     const f = this.facing, ox = this.x, oy = FLOOR + this.hipY;
@@ -4015,18 +4099,19 @@ class Fighter {
     J.fyaw = p.fo || 0; J.byaw = p.bo || 0;                    // 2.5 脚尖跟着膝盖往侧面摆多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }
+  // 发带：一串点（Verlet），每步按上一步的位移接着飘（每帧剩 86%）+ 风 + 重力（每帧² 多少像素 → 乘 DT²）
   updateRibbons() {
-    const J = this.J, f = this.facing * (J.turned ? -1 : 1);
+    const J = this.J, f = this.facing * (J.turned ? -1 : 1), dd = RIB_DAMP, d2 = DT * DT;
     this.ribbons.forEach((pts, k) => {
       const a = k < 2 ? J.knot : J.belt;
       pts[0].x = a[0]; pts[0].y = a[1] + (k === 1 ? 2 : 0);
-      const seg = k < 2 ? 6.5 : 5;
+      const seg = k < 2 ? RIB_SEG : 5;
       for (let i = 1; i < pts.length; i++) {
         const p = pts[i];
-        const vx = (p.x - p.px) * 0.86, vy = (p.y - p.py) * 0.86;
+        const vx = (p.x - p.px) * dd, vy = (p.y - p.py) * dd;
         p.px = p.x; p.py = p.y;
         const wind = -f * 0.18 + Math.sin(this.clock * 0.09 + i * 0.7 + k * 1.3) * 0.12;
-        p.x += vx + wind; p.y += vy + 0.24;
+        p.x += vx + wind * d2; p.y += vy + 0.24 * d2;
       }
       for (let it = 0; it < 3; it++) {
         for (let i = 1; i < pts.length; i++) {
@@ -4059,7 +4144,8 @@ function cloneJ(J) {
           挡后反击 / 卸力反击 / 破绽：防住以后打对方收招有加成，击倒招加得最多 */
 
 const atWall = F => F.x <= WALL_L + 2 || F.x >= WALL_R - 2;
-const stop = n => Math.round(n * HITSTOP);
+const stop = n => grid(n * HITSTOP);          // 顿帧（2.6 取到 0.25 帧）
+// 2.6 时间比较：第 k 帧 = [k, k+1)，以前「t > X」写成 t >= X + 1、「t <= X」写成 t < X + 1（见 config.js）
 // 1.9.2：画面上飘的字只出招名和结果（拼、压、化解、卸、破招 ×1.2、倒栽葱 ×1.3、伤害…），不出讲规则的字
 // （谁克谁、该站挡还是蹲挡、背后挡不住、站着的抄不到）—— 这些写进打桩练习的数值面板（info.why），不飘在人身上
 const CRASH_NAME = '倒栽葱';                     // 空中出招被克制、打下来（倒地更久）
@@ -4106,7 +4192,7 @@ function grabIntent(A, B) {
   if (A.state !== 'attack' || !m || m.def.kind !== 'grab' || m.done || !A.inActive() || B.invuln()) return null;
   const dist = (B.x - A.x) * A.facing;
   const bm = B.state === 'attack' ? B.move : null;
-  const kicking = !!bm && bm.def.kind === 'kick' && !bm.def.dive && bm.t >= 3 && bm.t <= bm.S + bm.def.A && B.facingTo(A);
+  const kicking = !!bm && bm.def.kind === 'kick' && !bm.def.dive && bm.t >= 3 && bm.t < bm.S + bm.def.A + 1 && B.facingTo(A);
   if (m.def.low) {
     // 抄腿：接住地上的出腿（扫堂腿也接得住；跳起来的腿抄不到）；抓蹲着的；站着的抓不到
     if (kicking && !bm.air && B.alt <= 24 && dist >= -6 && dist <= Math.max(m.def.reach, bm.def.reach) + 6) return 'scoop';
@@ -4155,7 +4241,7 @@ function lungeLeft(F) {
 function committed(B, A, lead) {
   const m = B.move;
   if (B.state !== 'attack' || !m || m.done || m.def.script || m.def.kind === 'grab' || m.def.kind === 'push') return false;
-  if (m.t > m.S + m.def.A || m.S - m.t > lead) return false;
+  if (m.t >= m.S + m.def.A + 1 || m.S - m.t > lead) return false;
   if (!reaches(B, A, m, lungeLeft(B) + 6)) return false;
   if (A.invuln() || shielded(B, A, m)) return false;
   if (m.def.evadeCrouch && A.isCrouching()) return false;
@@ -4212,7 +4298,7 @@ function strikeOn(A, B) {
 // → A 这一下被化解打空，B 的招照常打出并算克制。重拳对短拳走「霸体」，不走这里
 function readBeat(B, A) {
   const m = B.move, ta = A.move.def.tier;
-  if (B.state !== 'attack' || !m || m.done || m.def.script || m.t < 3 || m.t > m.S) return false;
+  if (B.state !== 'attack' || !m || m.done || m.def.script || m.t < 3 || m.t >= m.S + 1) return false;
   if (beats(m.def.tier, ta) <= 0 || (m.def.armor && m.def.armor.vs.includes(ta))) return false;
   return committed(B, A, BEAT_LEAD);
 }
@@ -4232,7 +4318,7 @@ function applyHit(A, B, how) {
   B.holdPose = true;          // 2.4 打中（挡住）那一帧挨打的人先不动，顿帧里拳脚正好落在身上，顿完了才往后仰（只是画面）
   const c = contactPoint(A, B);
   const bm = B.state === 'attack' && B.move && !B.move.def.script ? B.move : null;
-  const inStartup = !!bm && bm.t <= bm.S;
+  const inStartup = !!bm && bm.t < bm.S + 1;
   const front = B.facingTo(A);
   if (B.isBlocking() && front && B.parryReady()) return parry(A, B, c);
   if (B.isBlocking() && front && B.blockHeightOK(d.height)) return guard(A, B, c);
@@ -4243,7 +4329,7 @@ function applyHit(A, B, how) {
   // 迎击：打在全速跑过来、或冲刺收尾（无敌帧过了）的人身上
   const charging = (B.state === 'run' && B.runT >= RUN_CHARGE) || (B.state === 'attack' && B.move && B.move.name === 'dash');
   // 1.8.0 防守反击：挡后反击（打在自己刚挡住的那一招收招里）、破绽（击倒招打空了打它收招）、卸力反击（卸力后趁失衡打）
-  const inRecovery = !!bm && bm.t > bm.S + bm.def.A;
+  const inRecovery = !!bm && bm.t >= bm.S + bm.def.A + 1;
   let punish = null;
   if (inRecovery && A.guardOn === bm.serial) punish = ['挡后反击', bm.def.launch ? PUNISH_KD_MUL : PUNISH_MUL];
   else if (inRecovery && bm.def.launch && !bm.hit) punish = ['破绽', WHIFF_KD_MUL];
@@ -4274,7 +4360,7 @@ function applyHit(A, B, how) {
   const wrongGuard = B.isBlocking() && front;
   const backHit = B.isBlocking() && !front;
   // 拳打在正在出腿（单脚站着）的人身上 → 失衡倒地
-  const offBalance = !!bm && d.tier === 'light' && bm.def.tier === 'kick' && !bm.air && bm.t >= 4 && bm.t <= bm.S + bm.def.A;
+  const offBalance = !!bm && d.tier === 'light' && bm.def.tier === 'kick' && !bm.air && bm.t >= 4 && bm.t < bm.S + bm.def.A + 1;
   const rising = B.state === 'rise';                    // 2.0 打在起身硬直里（打桩面板上写一句）
 
   B.hp -= dmg; m.hit = true; A.stats.hits++;
@@ -4296,7 +4382,7 @@ function applyHit(A, B, how) {
   }
   else {
     const bonusStun = punish && label === punish[0] ? PUNISH_STUN : label === '截住闪身' ? SLIP_CAUGHT_STUN : 0;
-    B.state = 'hit'; B.stunT = Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n) + (m.air ? 4 : 0) + bonusStun;
+    B.state = 'hit'; B.stunT = Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n) + (m.air ? AIR_STUN : 0) + bonusStun;
     B.hurtHeavy = !!d.heavy || d.kind === 'kick';
     B.kvx = dir * d.kb * (1 + KB_GROW * n); if (wasAir) { B.vz = Math.max(B.vz, 2.5); B.vx = 0; }
     B.move = null; B.chain = []; B.chainIdle = 99; B.runT = 0;
@@ -4532,7 +4618,7 @@ function doGrab(A, B, type) {
     // 接腿摔（站着拿住对方的腿）/ 抄腿摔（蹲着抄住对方的腿，扫堂腿也算）：马上摔倒，挣不脱
     const scoop = type === 'scoop', wasSweep = !!(B.move && B.move.def.height === 'low');
     const airK = !scoop && (B.airborne || (B.move && B.move.air));
-    const dmg = scoop ? SCOOP_DMG : airK ? 9 : 6;
+    const dmg = scoop ? SCOOP_DMG : airK ? CATCH_AIR_DMG : CATCH_DMG;
     B.hp -= dmg; A.stats.hits++; A.stats.specials++;
     A.gainQi(dmg * 0.4 * QI_PER_HP); B.gainQi(dmg * 0.9 * QI_PER_HP);
     const foot = B.J.ff;
@@ -4584,7 +4670,7 @@ function grabDamage(A, B, dmg, label, big) {
 // 推开（擒住后什么都不按）：把人推出去，自己先动一点
 function grabPush(A, B, left) {
   grabDamage(A, B, MOVES.grab.dmg, '擒拿 · 推开', false);
-  B.grabbed = false; B.stunT = left + 4; B.kvx = A.facing * 8; B.hurtHeavy = false;
+  B.grabbed = false; B.stunT = left + TA(4); B.kvx = A.facing * 8; B.hurtHeavy = false;
   game.freeze = stop(4); dust(B.x, FLOOR, 3); burst(B.x, FLOOR - 70, A.facing, 6, 24, 3, pal(A).fx);
   Sound.hit(0.4);
   if (B.hp <= 0) { B.hp = 0; B.knockDown(4, A.facing * 3, 999, true); }
@@ -4632,7 +4718,7 @@ function separate(a, b) {
   if (rolling(a) || rolling(b)) return;             // 滚身起能从人脚下滚过去
   const dashing = F => F.state === 'attack' && F.move && (F.move.name === 'dash' || F.move.name === 'slip');
   if (ad >= min || a.airborne || b.airborne || dashing(a) || dashing(b)) return;   // 冲刺、闪身时身子能穿过去
-  const push = Math.min((min - ad) / 2, SOFT_PUSH), s = d > 0 ? 1 : d < 0 ? -1 : (a.facing > 0 ? 1 : -1);
+  const push = Math.min((min - ad) / 2, SOFT_PUSH * DT), s = d > 0 ? 1 : d < 0 ? -1 : (a.facing > 0 ? 1 : -1);   // 2.6 每步推 DT 帧那么多
   a.x -= s * push; b.x += s * push;
   a.x = clamp(a.x, WALL_L, WALL_R); b.x = clamp(b.x, WALL_L, WALL_R);
 }
@@ -4708,14 +4794,16 @@ const LEVELS = {
   // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
   // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
   hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
-    punish: .95, combo: 1, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
+    punish: .9, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86 },
+  // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
+  //（乱换招的木头玩家打掉的血占比，2.5：入门 67% · 简单 53% · 中等 38% · 困难 28% · 终极 22.5%；2.6：66% · 52% · 34% · 28.5% · 23.5%）
   // 终极（2.1 叫「极难」，id 还是 hell）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
   // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明。
   // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
   // 2.3（Jack：再降 5~10%）：瞬间看穿基础 0.3 → 0.2（你老出的招最多还是 0.55：别养习惯）、看穿 see 0.55 → 0.48、平时反应 10 → 11 帧、挡 0.8 → 0.74
   hell: { react: 11, block: .74, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
-    punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
+    punish: .93, combo: .93, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
     inst: .2, instMax: .55, instReact: 1 },
 };
@@ -4766,7 +4854,8 @@ class Brain {
     this.memo = { wake: { stand: 1, to: 1, away: 1 }, open: [{}, {}, {}], after: { hit: 1, hold: 1, slip: 0.5, move: 0.5 },
       // 2.1 跳过来干什么、冲刺完干什么、跑到跟前干什么（起始是「一般人」的样子）
       jump: { air: 1.2, dive: 0.5, empty: 0.5 }, dash: { strike: 1, grab: 0.4, none: 0.5 }, run: { shoulder: 0.8, grab: 0.5, strike: 0.6, stop: 0.6 },
-      hz: [0.04, 0.02, 0.01] };   // 他在近 / 中 / 远能出手的时候，每帧先出手的概率（慢慢更新）
+      hz: [0.04, 0.02, 0.01],     // 他在近 / 中 / 远能出手的时候，每帧先出手的概率（慢慢更新）
+      meaty: 0 };                 // 2.6 自己起身那几帧挨打（被压起身）的次数（慢慢淡忘）
     this.wakeLogged = false; this.openSeen = -1; this.afterWatch = null; this.wasBlocked = false; this.pressTurn = -1; this.punishFor = null;
     // 2.1
     this.aa = null; this.jumpSeen = false;           // 防跳：这一跳想好的接法 { plan, at }；看没看见这一跳
@@ -4798,6 +4887,11 @@ class Brain {
     const press = a => { if (a.startsWith('d:')) { H.down = true; a = a.slice(2); } f.inp.press(a, f.clock); };
     const pair = () => { f.inp.press('heavy', f.clock); f.inp.press('kick', f.clock); };
     this.learn(o);                                             // 2.1 所有难度都记习惯（记得准不准看 L.habit）
+    // 2.6 起身那几帧（起身硬直，或者这一帧刚从地上起来）掉了血 = 被人压起身打中了
+    if (f.hp < this.lastHp && (this.lastSt === 'rise' || (this.lastSt === 'down' && this.lastPh === 'getup'))) this.memo.meaty++;
+    // 又被打倒了（上一次看还在起身、站起来，这一次又躺下了 —— 起身那一下挨打，两次看之间就倒了，一直是「倒地」）：滚不滚重新掷
+    this.newDown = f.state === 'down' && (this.lastSt !== 'down' || (this.lastPh === 'getup' && f.downPhase !== 'getup'));
+    this.lastHp = f.hp; this.lastSt = f.state; this.lastPh = f.downPhase;
     // 2.1 极难：起跳也可能被它 1 帧看穿（每一跳掷一次骰子）—— 看穿了就按他现在的样子想接法，也不会往跳起来的人身上出地上的招
     const upNow = o.state === 'jumpsquat' || o.airborne;
     if (!upNow) { this.upRolled = false; this.upNow = false; }
@@ -4812,6 +4906,8 @@ class Brain {
     }
     // 多帧操作（闪步双击、跑动）；被打断就作废
     if (f.state === 'hit' || f.state === 'down' || f.state === 'blockstun' || f.state === 'rise') this.seq = [];
+    // 2.6 挨上了 / 被打倒了：刚才想好的「挡几帧、蹲几帧」作废（以前一直留着，起身以后接着按刚才那个高度挡，又挨一下扫堂腿）
+    if (f.state === 'hit' || f.state === 'down') { this.blockT = 0; this.duckT = 0; }
     if (this.seq.length) {
       const st = this.seq.shift();
       if (st.back) go(-1); if (st.fwd) go(1);
@@ -4826,7 +4922,12 @@ class Brain {
     // 倒地：起身时滚开（往墙的反方向）；起身硬直里什么也做不了
     if (f.state === 'down') {
       this.aa = null;
-      if (this.rollPick === null) this.rollPick = R() < L.roll ? (R() < 0.5 ? 1 : -1) : 0;
+      // 2.6 起身老被人卡着时机打（压起身）：记下来，越挨越爱滚，而且往远处滚（往他那边滚正好滚到他脚底下）；记得准不准看 L.habit
+      if (this.rollPick === null || this.newDown) {
+        const mt = this.memo.meaty, pr = Math.min(0.92, L.roll + 0.32 * mt * (L.habit || 0.5));
+        this.rollPick = R() < pr ? (mt > 0.5 || R() < 0.5 ? -1 : 1) : 0;     // -1 往远处滚、1 往他那边滚
+        this.memo.meaty *= 0.9;
+      }
       if (this.rollPick) { let d = this.rollPick * toward; if (f.x + d * ROLL_DIST < WALL_L + 20 || f.x + d * ROLL_DIST > WALL_R - 20) d = -d; if (d > 0) H.right = true; else H.left = true; }
       return;
     }
@@ -5174,7 +5275,8 @@ class Brain {
       const tw = o.x >= f.x ? 1 : -1, behind = f.x - tw * 100;
       if (behind < WALL_L + 20 || behind > WALL_R - 20) { A.plan = 'block'; return this.airDefense(s, dist, press, go, lag); }   // 退不了（到墙了）就站着挡
       // 他往下落、离得不远了：往后冲刺（冲刺前几帧无敌）躲开，他落空、落地有硬直；还远就举着手往后挪（面朝他，照样挡得住）
-      if (!A.done && dist <= 150 && s.vz < 2) { A.done = true; this.dashAway(); return true; }
+      // 2.6：冲刺要按三帧（按 → 松 → 按）才冲得出去；空中招前摇长了一点，出手的那一帧往后挪了零点几帧 —— 再晚一帧按，冲刺的无敌还没开始就挨上了，所以早一帧按
+      if (!A.done && dist <= 150 && s.vz < 2 + GRAV) { A.done = true; this.dashAway(); return true; }
       if (dist <= 240) { f.noParry = true; this.lowBlock = false; H.block = true; go(-1); return true; }
       return false;
     }
@@ -5451,7 +5553,8 @@ class Brain {
         band[k] = (band[k] || 0) + w;
       }
     }
-    if (o.state === 'jumpsquat' && o.t === 0) band.jump = (band.jump || 0) + w;
+    // 他起跳（每一跳记一次；2.6 电脑一帧看一次，起跳那一步不一定正好看到，所以记着这一跳看过没有）
+    if (o.state === 'jumpsquat') { if (!this.jsSeen) { this.jsSeen = true; band.jump = (band.jump || 0) + w; } } else this.jsSeen = false;
     // 2.1 他在这个距离能出手的时候多常出手（一贴近就出手的人，近身就要多护着）
     const started = !!om && om.serial !== this.hzSer && !om.def.script;
     if (om) this.hzSer = om.serial;
@@ -5511,7 +5614,7 @@ class Dummy {
         if (o.move && o.state === 'attack' && o.move.serial !== this.seen) { this.seen = o.move.serial; this.low = Math.random() < 0.5; }
         H.down = this.low; break;
       }
-      case 'jump': if (f.actionable() && f.clock % 45 === 0) f.inp.press('up', f.clock); break;
+      case 'jump': if ((this.jt = (this.jt || 0) + 1) >= 45 && f.actionable()) { this.jt = 0; f.inp.press('up', f.clock); } break;   // 大约 45 帧跳一次
     }
   }
 }
@@ -5641,7 +5744,7 @@ const walkTo = (me, op, d) => gap(me, op) > d + 4 ? TW(me, op) : 0;
    主动课：at 木桩从多远出招，act 出招剧本；被动课：react: true，pose 木桩的架势（每帧），你出一招算一遍
    win(R)：这一遍成没成功（R 见 Drill.check）；miss(R)：没成功时给的提示（不给就用通用的） */
 const DRILL_TOPICS = [
-  ['jab', '短拳', '贴身最快的一下（前摇 5 帧），看见了再挡来不及，靠预判和霸体'],
+  ['jab', '短拳', `贴身最快的一下（前摇 ${MOVES.jab.S} 帧），看见了再挡来不及，靠预判和霸体`],
   ['lowJab', '下盘拳', '蹲着出的拳，下段：站着挡不住'],
   ['rush', '连拳（连珠快拳）', '一串短拳压着你打'],
   ['upper', '冲天炮（拳拳重）', '拳拳接重，击倒，收招很长'],
@@ -5675,7 +5778,7 @@ const DRILL_TOPICS = [
   ['catch', '接腿', '木桩专等你出腿，一伸手就接住'],
   ['slip', '闪身', '木桩按着挡从你身边钻过去'],
   ['burst', '爆气', '你连打它，它花半格气爆开'],
-  ['super', '泼墨', '气满放的必杀（40 血）'],
+  ['super', '泼墨', `气满放的必杀（${MOVES.super.dmg} 血）`],
   ['wake', '起身攻防', '倒地、起身、压起身、滚身起'],
 ];
 const DRILLS = [
@@ -5717,7 +5820,7 @@ const DRILLS = [
     why: '连段压制的破法：推挡、卸力、截拳、爆气',
     demo: (st, me) => me.state === 'blockstun' ? BLK | TAP('jab') : BLK, win: R => R.my('shove') },
   { id: 'rush.burst', topic: 'rush', name: '挨打时爆气', at: 82, act: seq('jab', 'jab', 'jab', 'jab'), meQi: 60,
-    how: ['这一课别挡，先挨两下', '挨打的时候按 [重] + [踢]（一起按）爆气 —— 花半格气', '爆开把他打倒，掉 18 血'],
+    how: ['这一课别挡，先挨两下', '挨打的时候按 [重] + [踢]（一起按）爆气 —— 花半格气', `爆开把他打倒，掉 ${BURST_DMG} 血`],
     why: '爆气只在挨打时能用：对方倒地；他要是面朝你举着手，只吃三成（这一课给你气）',
     demo: (st, me) => me.state === 'hit' && me.comboTaken >= 2 ? TAP('heavy') | TAP('kick') : 0,
     win: R => R.my('burst', e => e.hit), miss: R => R.my('burst', e => e.miss) ? '爆早了 / 他不在身边' : '挨打的时候按 [重] + [踢]' },
@@ -6472,8 +6575,9 @@ const viewInfo = () => ({ vw: VW, vh: VH, fy: FY, scale, pxr, zmax: ZOOM * zoomB
    现在：RA = 这一刻在上一帧和这一帧之间走到哪了（0~1，ui.js 主循环按时间算），人（骨骼、发带）、特效、气都在两帧之间插着画，
    镜头的平滑也按真实时间算（不按画了几次算）。60Hz 的屏幕 RA 一直是 1：不插值，也就不多一点延迟。只是画面，不影响胜负 */
 let RA = 1;
+const RIB_W = 4.6;                                   // 发带画多宽（2.6：5.4 → 4.6）
 const lerp = (a, b, k) => a + (b - a) * k;
-const RL = e => e.life + (1 - RA);                   // 插值后的剩余寿命（特效的淡出、放大跟着插）
+const RL = e => e.life + (1 - RA) * DT;              // 插值后的剩余寿命（特效的淡出、放大跟着插；2.6 一步 DT 帧）
 const RX = e => e.px === undefined ? e.x : lerp(e.px, e.x, RA), RY = e => e.py === undefined ? e.y : lerp(e.py, e.y, RA);
 // 一个人这一刻画成什么样：插值好的骨骼 J、发带、位置。一帧挪了一大截（回合重开、被摔过去）就不插
 function viewOf(F) {
@@ -6497,7 +6601,7 @@ function drawFighter(F, V) {
   V = V || viewOf(F);
   const J = V.J, P = pal(F);
   // 1.9.0 打击手感：刚挨打的人在打中停顿里左右抖几下
-  const shake = F.hitShake > 0 && !reduceMotion ? (F.hitShake % 2 ? 1 : -1) * Math.min(3, F.hitShake * 0.5) : 0;
+  const shake = F.hitShake > 0 && !reduceMotion ? (Math.ceil(F.hitShake) % 2 ? 1 : -1) * Math.min(3, F.hitShake * 0.5) : 0;
   if (shake) { ctx.save(); ctx.translate(shake, 0); }
   // 影子
   const sw = 38 * (1 - Math.min(V.alt, 200) / 320);
@@ -6541,7 +6645,7 @@ function drawFighter(F, V) {
   ctx.strokeStyle = F.sash;
   for (const pts of V.ribbons) {
     for (let i = 1; i < pts.length; i++) {
-      ctx.lineWidth = 5.4 * (1 - i / pts.length * 0.45);       // 2.5 照参考图：发带是两条扁扁的宽带子
+      ctx.lineWidth = RIB_W * (1 - i / pts.length * 0.45);     // 2.5 照参考图：发带是两条扁扁的宽带子；2.6（Jack：细一点点）5.4 → 4.6
       ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
     }
   }
@@ -6596,8 +6700,8 @@ function drawFigure(J, col, band, trail) {
   }
   const f = J.facing * (J.turned ? -1 : 1), k = J.knot;
   ctx.strokeStyle = band;
-  for (const [dy, len] of [[0, 30], [5, 24]]) {
-    ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
+  for (const [dy, len] of [[0, 26], [5, 21]]) {                     // 2.6 发带短一点、细一点（和对战里一样）
+    ctx.lineWidth = RIB_W * 0.93; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
     ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
   }
   ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;
@@ -6945,7 +7049,8 @@ function drawDrillPanel() {
   const lines = [];
   d.how.forEach((t, i) => wrapText(drillText(t, false), x + w - pad - tx).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
   const how = lines.slice(0, 4);
-  const h = 60 + how.length * 22;
+  // 2.6 人物放大了一点（ZOOM 1.86），头顶高了：面板再紧一点（头一行 60 → 56、每行 22 → 20），最高 220，不压人头
+  const LH = 20, h = 56 + how.length * LH;
   paperPanel(x, y, w, h, c.demo);
   sealTag(x + pad, y + 13, c.demo ? '演示' : '破招');
   // 右上：成功几次（三个圈，涂满 = 成功一次）；演示时写「电脑替你按」
@@ -6979,7 +7084,7 @@ function drawDrillPanel() {
   }
   ctx.globalAlpha = 1;
   // 下面：一步一步怎么破（序号在朱印底下那一列，字和课名对齐）
-  let yy = y + 66;
+  let yy = y + 63;
   for (const L of how) {
     if (L.n) {
       ctx.beginPath(); ctx.arc(x + pad + 46, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
@@ -6987,7 +7092,7 @@ function drawDrillPanel() {
     }
     ctx.textAlign = 'left'; ctx.font = `500 15px ${UIF}`; ctx.fillStyle = '#2b2c28';
     ctx.fillText(L.l, tx, yy + 1);
-    yy += 22;
+    yy += LH;
   }
   // 过关：印章盖在面板右上（压着那三个圈），一秒后弹结算
   if (c.passed && !c.demo) {
@@ -7141,10 +7246,11 @@ let lastRT = 0, shakeF = -1, shX = 0, shY = 0;
 function render() {
   ctx.setTransform(pxr * scale, 0, 0, pxr * scale, 0, 0);
   // 2.0.1：镜头的平滑按真实时间算（以前每画一次挪一截，144Hz 的屏幕上镜头比人走得勤，人看着一抖一抖）
-  const now = performance.now(), rdt = lastRT ? clamp(now - lastRT, 0, 100) : STEP_MS; lastRT = now;
-  const ease = k => 1 - Math.pow(1 - k, rdt / STEP_MS);
-  if (game.frame !== shakeF) {                        // 震屏每一帧（逻辑帧）换一次位置，不是每画一次换一次
-    shakeF = game.frame;
+  const now = performance.now(), rdt = lastRT ? clamp(now - lastRT, 0, 100) : FRAME_MS; lastRT = now;
+  const ease = k => 1 - Math.pow(1 - k, rdt / FRAME_MS);   // k = 每 1/60 秒挪多少
+  const fno = Math.floor(game.frame / SUB);
+  if (fno !== shakeF) {                               // 震屏每一帧（1/60 秒）换一次位置，不是每画一次、每一步换一次
+    shakeF = fno;
     shX = game.shake > 0.3 && !reduceMotion ? rnd(-1, 1) * game.shake : 0; shY = game.shake > 0.3 && !reduceMotion ? rnd(-1, 1) * game.shake * 0.6 : 0;
   }
   const sx = shX, sy = shY;
@@ -7282,8 +7388,8 @@ function drawNetStatus() {
     ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('等待对方…', VW / 2, y0 + 30);
   }
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = Net.desync ? C.cin : 'rgba(23,24,26,.5)';
-  const rb = Net.rb, roll = rb && rb.stats.rollbacks ? ` · 回滚 ${(rb.stats.frames / Math.max(1, rb.stats.rollbacks)).toFixed(1)} 帧/次` : '';
-  ctx.fillText(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${Net.delay} 帧${roll}`, VW / 2, VH - 22);
+  const rb = Net.rb, roll = rb && rb.stats.rollbacks ? ` · 回滚 ${(rb.stats.frames / SUB / Math.max(1, rb.stats.rollbacks)).toFixed(1)} 帧/次` : '';
+  ctx.fillText(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${+(Net.delay / SUB).toFixed(2)} 帧${roll}`, VW / 2, VH - 22);
 }
 </script>
 <script>
@@ -7292,12 +7398,14 @@ function drawNetStatus() {
    只是画面，不进战斗逻辑：场地大小、墙的位置所有场景都一样（联机两边场景不一样也不会不同步，只是房主选的那张两边都用）。
    每张图三层：
      远景 far（视差 PAR_FAR）、中景 mid（视差 PAR_MID）—— 画在「画面坐标」里，地线对齐画面上的地线，跟着镜头慢慢挪；
+     （2.6 另外可以有天 sky（视差 PAR_SKY，比远景还慢得多）：朱日远山的太阳画在这一层 —— 太阳隔得最远，镜头怎么挪它都差不多在原地）
      地面 ground —— 画在场地坐标里，跟人一起动、一起缩放；
      另外 near（可选）每帧现画，比如竹林两头那几根顶天的竹子、桃花园两头的老桃树（太高，放不进地面那一层）。
    三层都先画在离屏画布上，分辨率按屏幕算（全屏、高分屏也清楚），每帧只贴图。画的时候只用「种子随机数」，每次画出来一样 */
 
 function seeded(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const PAR_FAR = 0.12, PAR_MID = 0.38;     // 远景、中景跟镜头挪多少（地面是 1）
+const PAR_SKY = 0.03;                     // 2.6 天（太阳）跟镜头挪多少（Jack：太阳的位置看上去几乎不该变）
 const VW_MAX = 1600;                      // 画面最宽按这么宽准备（再宽的屏幕两边补纸色）
 const SKY_BELOW = 150;                    // 远景、中景在地线下面多画一截（地面那层盖住大半）
 const GX0 = -120, GUP = 190, GDN = 170;   // 地面层：从场地 x=GX0 画到 STAGE_W-GX0，地线上方 GUP、下方 GDN
@@ -7836,12 +7944,16 @@ const STAGES = {
   /* 朱日远山（1.0 起的那张，2.0 重画大了、去掉右边的「以武会友」和「斗」）：纸、朱红的太阳、两道远山、山雾、飞鸟 */
   sun: {
     name: '朱日远山', pick: true, paper: '#ebeae2',
-    far(g, L) {
+    // 2.6 纸和太阳单独一层（天，视差 PAR_SKY）：远山、山雾还在远景那一层，雾照样罩在太阳前面
+    sky(g, L) {
       const { w, fy, R } = L;
       paperFill(g, w, L.h, C.paper, R);
       const sx = w * 0.58, sy = fy - 352;
       g.fillStyle = 'rgba(184,50,29,.13)'; g.beginPath(); g.arc(sx, sy, 58, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(184,50,29,.06)'; g.beginPath(); g.arc(sx, sy, 74, 0, Math.PI * 2); g.fill();
+    },
+    far(g, L) {
+      const { w, fy, R } = L, sx = w * 0.58;
       for (let i = 0; i < 4; i++) mistBlob(g, w * (0.15 + 0.23 * i) + R() * 60, fy - 300 - R() * 120, 150 + R() * 90, 22 + R() * 12, 0.5);
       ridge(g, w, fy - 160, 70, 0.10, 3, 0.006);
       birds(g, [[-92, 120, 1], [-62, 104, .8], [-70, 138, .7], [-122, 150, .6], [260, 92, .55], [282, 82, .45]].map(([dx, y, s]) => [sx + dx, fy - 520 + y, s]));
@@ -7992,7 +8104,7 @@ const STAGES = {
       }
       // 竹林脚下的雾
       mist(g, w, fy - 70, 90, 0.6, '226,228,222');
-      // 2.5.1 萤火改成会飞、会一闪一闪的（LIVE.bamboo），以前这里是十几个不动的亮点
+      // 2.5.1 萤火改成会飞、会一闪一闪的；2.6（Jack：萤火虫不好看、晃眼睛）换成一阵阵风吹下来的竹叶（LIVE.bamboo）
     },
     ground(g, L) {
       const { x0, x1, R } = L, GW = x1 - x0;
@@ -8047,7 +8159,7 @@ const STAGES = {
       for (let i = 0; i < 8; i++) grove(g, (i + 0.1 + R() * 0.8) * w / 8, fy - 132 - R() * 76, 34 + R() * 46, R, 0.85);
       for (let i = 0; i < 5; i++) mistBlob(g, R() * w, fy - 210 - R() * 150, 180 + R() * 120, 18 + R() * 12, 0.6, H);
       mist(g, w, fy - 150, 110, 0.6, H);
-      // 2.5.1 天上的鸟改成会飞的（LIVE.peach：从左边飞到右边，以前这里是三只不动的燕子）
+      // 2.5.1 天上的鸟改成会飞的；2.6 改成燕子，飞在中景那一层（LIVE.peach.mid）
     },
     mid(g, L) {
       const { w, fy, R } = L, c = w / 2, fall = [];
@@ -8380,9 +8492,15 @@ const STAGE_PICK = Object.keys(STAGES).filter(k => STAGES[k].pick);
    · 大漠孤烟：烽火台的孤烟一团团往上升（到顶上被风带着往右偏一点）；风卷起一缕缕沙从沙丘上往右掠过去
    · 练武场：两面旗迎风飘（波纹从旗杆往外、从上往下走，穗子跟着甩）
    都在人身后（远景、中景、场地两头），颜色淡、动得慢，打架的那一块干净。
+   2.6（Jack）：
+   · 桃花园的鸟改成燕子：剪刀尾、镰刀一样的长翅膀；飞在中景那一层（以前在远景，镜头挪它几乎不动，看着像跟着人走），飞得快，
+     扇一阵、张着翅膀飘一阵，偶尔收起翅膀往下一扎再拉起来；
+   · 竹林的萤火虫换成竹叶：一阵风过来（两头的竹子摇得最厉害的时候）从竹梢上吹下来几片，打着转往右飘、慢慢落，墨灰色，不发光、不闪；
+   · 朱日远山：太阳单独一层，跟镜头挪得很少（PAR_SKY）；云短一点、厚一点；
+   · 暂停的时候背景整个停住（菜单后面的背景照样动）。
    每张图的 live：{ far(g, L, st, dt), mid(g, L, st, dt) } —— 每帧现画，在贴完那一层之后、同一套坐标里（跟着视差挪）：
      L = { w, h, fy（这一层里地线的高度）, vis: [看得见的左边, 右边] }；st = 这张图的动态状态（换图才清空，窗口缩放重画背景不清空）；
-     dt = 这一帧过了几秒（真实时间，暂停、慢镜头照样动）。场地两头每帧现画的 near(ctx, st) 也拿得到 st。
+     dt = 这一帧过了几秒（真实时间，慢镜头照样动；2.6 暂停时是 0）。场地两头每帧现画的 near(ctx, st) 也拿得到 st。
    只用自己的随机数 LIVE_R（不碰 Math.random、vrnd —— 电脑 AI、特效都不受影响）；系统设置了「减少动态效果」就不动（旗子照样画，静止的）。
    只是画面：不进战斗逻辑、不走联机（两边各看各的） */
 const LIVE_R = seeded(((Date.now() % 2147483647) ^ 0x2545f491) >>> 0);
@@ -8404,23 +8522,32 @@ const YARD_FLAGS = [-520, 600];                       // 练武场两面旗（�
 // 竹林两头的竹子迎着风摇（多斜多少：正 = 往右）。风从左边来，所以总是往右偏、一阵一阵的
 const bambooSway = (t, i) => 0.0032 + 0.0026 * Math.sin(t * 0.9 + i * 0.7) + 0.0011 * Math.sin(t * 2.1 + i * 1.9);
 
-// 一只小鸟（侧面，往右飞）：身子、头、剪刀尾，两只翅膀上下扇（w：1 扬到最高、-1 压到最低、0 平着看过去只剩一小片）；远侧那只淡一点、慢半拍
-function liveBird(g, x, y, s, w, w2, a) {
-  g.save(); g.translate(x, y); g.scale(s, s);
-  const wing = (k, al) => {
-    g.fillStyle = INK(al, '34,36,40');
-    g.beginPath(); g.moveTo(2.2, -0.6);
-    g.quadraticCurveTo(0.8, -0.8 - 7.5 * k, -2.6 + Math.abs(k) * 0.8, -1 - 9.5 * k);
-    g.quadraticCurveTo(-1.2, -0.8 - 4 * k, -1.8, -0.2);
+// 2.6 一只燕子（侧面，往右飞）：细长的身子、白肚皮、短尖嘴，两只镰刀一样又长又窄的翅膀，剪刀尾（两根长尾羽一上一下分开）。
+// k：翅膀扇到哪（1 扬到最高、-1 压到最低），k2 远侧那只（慢半拍、淡一点）；fold：翅膀往后收多少（0 张开，1 收成一把剪刀 —— 俯冲）；ang：身子仰俯
+function swallow(g, x, y, s, ang, k, k2, fold, a) {
+  g.save(); g.translate(x, y); g.rotate(ang); g.scale(s, s);
+  const col = '30,32,38';
+  const wing = (k, al, side) => {
+    const rx = 1.4, ry = -0.5, len = 15 - 4 * fold, el = k * (1.05 - 0.4 * fold);           // 翅根在身子前半截；收起来短一点、扇不大
+    // 从侧下方一点看过去：平着的时候近的那只在身子下面、远的那只在上面（张开的样子看得出来），收起来贴着身子
+    const tx = rx - len * (0.34 + 0.5 * fold) * (0.8 + 0.2 * Math.cos(el)), ty = ry - len * Math.sin(el) * 0.92 + side * len * 0.42 * Math.cos(el) * (1 - 0.6 * fold);
+    const dx = tx - rx, dy = ty - ry, n = Math.hypot(dx, dy) || 1, mx = (rx + tx) / 2, my = (ry + ty) / 2;
+    let px = -dy / n, py = dx / n; if (px < 0) { px = -px; py = -py; }                      // 翅膀前缘那一侧
+    g.fillStyle = INK(al, col);
+    g.beginPath(); g.moveTo(rx, ry);
+    g.quadraticCurveTo(mx + px * n * 0.2, my + py * n * 0.2, tx, ty);                         // 前缘往外鼓
+    g.quadraticCurveTo(mx + px * n * 0.07 - dx * 0.12, my + py * n * 0.07 - dy * 0.12, -2.4, 0.3);   // 后缘往里凹，回到身子后半截
     g.closePath(); g.fill();
   };
-  wing(w2, a * 0.6);
-  g.fillStyle = INK(a, '34,36,40');
-  g.beginPath(); g.ellipse(0, 0, 4.4, 1.55, -0.06, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.arc(4.4, -0.7, 1.45, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.moveTo(5.6, -0.9); g.lineTo(7.4, -0.5); g.lineTo(5.6, -0.1); g.fill();
-  g.beginPath(); g.moveTo(-3.2, -0.3); g.lineTo(-8, -1.6); g.lineTo(-7.2, 0.2); g.lineTo(-8, 1.7); g.lineTo(-3.2, 0.6); g.fill();
-  wing(w, a);
+  wing(k2, a * 0.55, -1);
+  g.fillStyle = INK(a, col);
+  for (const ey of [-2.2 - fold * 0.5, 1.9 + fold * 0.5]) { g.beginPath(); g.moveTo(-3.4, -0.55); g.lineTo(-12.5, ey); g.lineTo(-3.4, 0.6); g.closePath(); g.fill(); }
+  g.beginPath(); g.ellipse(0.2, 0, 4.9, 1.45, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(4.5, -0.45, 1.5, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.moveTo(5.8, -0.75); g.lineTo(7.3, -0.35); g.lineTo(5.8, 0.05); g.fill();
+  g.fillStyle = `rgba(244,240,234,${a * 0.65})`;
+  g.beginPath(); g.ellipse(0.9, 0.78, 3.1, 0.52, 0.05, 0, Math.PI * 2); g.fill();
+  wing(k, a, 1);
   g.restore();
 }
 // 一缕白云（朱日远山）：底边平一点、上边一团一团鼓起来（中间那几团大），两头拖成细丝；底下一层很淡的灰（看得出是云，不是一条白杠）；画一次存成图
@@ -8428,7 +8555,7 @@ function cloudSprite(len, th) {
   const pad = 40, k = 1.5, W2 = len + pad * 2, H2 = th * 5 + pad, c = document.createElement('canvas');
   c.width = Math.ceil(W2 * k); c.height = Math.ceil(H2 * k);
   const g = c.getContext('2d'); g.scale(k, k);
-  const base = H2 * 0.6, n = 8 + ((LIVE_R() * 4) | 0);
+  const base = H2 * 0.6, n = Math.max(5, Math.round(len / 32)) + ((LIVE_R() * 2) | 0);      // 2.6 云短了：团数跟着长短走
   for (let i = 0; i < n; i++) {
     const u = (i + 0.5) / n, x = pad + len * u + lrand(-8, 8), env = Math.pow(Math.sin(Math.PI * u), 0.8);
     mistBlob(g, x, base + th * 0.25, len / n * lrand(1.3, 1.8), th * (0.25 + 0.3 * env), 0.06, '104,108,112');      // 底下淡淡的灰
@@ -8489,24 +8616,52 @@ function liveFlag(g, fx, fy, t, ph) {
     g.beginPath(); g.moveTo(p[0], p[1] + 1); g.lineTo(p[0] + 1 + (p[0] - q[0]) * 0.9, p[1] + 12); g.stroke();
   }
 }
-// 一群鸟：扇几下、滑一会儿（扇的时候翅膀上下、身子跟着一起一伏；滑的时候翅膀微微扬着不动）
-function birdFlap(m, dt) {
+// 2.6 燕子飞一步：扇一阵（一秒四五下，往上拔一点、加速）→ 张着翅膀飘一阵（慢一点、慢慢往下沉）→ 偶尔收起翅膀往下一扎、再拉起来（俯冲）。
+// 总是往右（横着的速度一直是正的），上下不出 y0 ~ y1 这一段天
+function swallowStep(m, dt, y0, y1) {
   m.tm -= dt;
-  if (m.glide) {
-    const e = Math.min(1, dt * 4); m.w += (0.3 - m.w) * e; m.w2 += (0.24 - m.w2) * e;
-    if (m.tm <= 0) { m.glide = false; m.ph = Math.asin(clamp(m.w, -1, 1)); m.tm = lrand(2.5, 5); }
-  } else {
-    m.ph += dt * Math.PI * 2 / m.per; m.w = Math.sin(m.ph); m.w2 = Math.sin(m.ph - 0.35);
-    if (m.tm <= 0 && Math.abs(m.w - 0.3) < 0.15 && Math.cos(m.ph) > 0) { m.glide = true; m.tm = lrand(0.8, 2); }
+  if (m.tm <= 0) {
+    m.mode = m.mode === 'flap' ? (LIVE_R() < 0.3 ? 'dive' : 'glide') : 'flap';
+    m.tm = m.t0 = m.mode === 'flap' ? lrand(0.45, 1.1) : m.mode === 'glide' ? lrand(0.7, 1.6) : lrand(0.55, 0.8);
   }
+  const e6 = Math.min(1, dt * 6);
+  let tvx, tvy, fold, kk = 2.4;
+  if (m.mode === 'flap') {
+    m.ph += dt * Math.PI * 2 / m.per; m.k = Math.sin(m.ph); m.k2 = Math.sin(m.ph - 0.45);
+    tvx = m.v; tvy = -16; fold = 0.08;
+  } else if (m.mode === 'glide') {
+    m.k += (0.14 - m.k) * e6; m.k2 += (0.08 - m.k2) * e6;
+    tvx = m.v * 0.8; tvy = 20; fold = 0.28;
+  } else {
+    m.k += (0.22 - m.k) * e6; m.k2 += (0.18 - m.k2) * e6;
+    const u = 1 - m.tm / m.t0;
+    tvx = m.v * 1.18; tvy = u < 0.5 ? 120 : -95; fold = 0.85; kk = 4;
+  }
+  if (m.y > y1) tvy = Math.min(tvy, -45); else if (m.y < y0) tvy = Math.max(tvy, 45);
+  const e = Math.min(1, dt * kk);
+  m.vx += (tvx - m.vx) * e; m.vy += (tvy - m.vy) * e;
+  m.fold += (fold - m.fold) * Math.min(1, dt * 7);
+  m.x += m.vx * dt; m.y += m.vy * dt;
+}
+// 2.6 飘着的一片竹叶：中间宽、两头尖；flip：翻到哪（1 正面、0 侧着只剩一道线、负的 = 反面，淡一点）
+function driftLeaf(g, x, y, len, ang, flip, a, col) {
+  const c = Math.cos(ang), sn = Math.sin(ang), w = len * 0.13 * Math.max(0.1, Math.abs(flip));
+  const P = (u, v) => [x + c * u - sn * v, y + sn * u + c * v];
+  // 竹叶是披针形：靠叶柄那头最宽，往叶尖长长地收尖
+  const b = P(-len * 0.5, 0), t = P(len * 0.5, 0), l1 = P(-len * 0.4, w * 1.15), l2 = P(len * 0.02, w * 0.95), r1 = P(len * 0.02, -w * 0.95), r2 = P(-len * 0.4, -w * 1.15);
+  g.fillStyle = INK(a * (flip < 0 ? 0.72 : 1), col);
+  g.beginPath(); g.moveTo(b[0], b[1]);
+  g.bezierCurveTo(l1[0], l1[1], l2[0], l2[1], t[0], t[1]);
+  g.bezierCurveTo(r1[0], r1[1], r2[0], r2[1], b[0], b[1]);
+  g.fill();
 }
 
 const LIVE = {
   sun: {
-    // 几缕白云从左往右慢慢飘（三缕，飘出右边就从左边再进来一缕新的；四成从太阳前面过）
+    // 几缕白云从左往右慢慢飘（三缕，飘出右边就从左边再进来一缕新的；四成从太阳前面过）。2.6（Jack：云短一点、厚一点）：长 220~420 → 150~260、厚 12~22 → 19~30
     far(g, L, st, dt) {
       const CL = st.clouds || (st.clouds = []), sunY = L.fy - 352;
-      const make = x => { const len = lrand(220, 420), th = lrand(12, 22), y = LIVE_R() < 0.4 ? sunY + lrand(-26, 30) : L.fy - lrand(230, 430); return { x, y, sp: lrand(5, 10), spr: cloudSprite(len, th) }; };
+      const make = x => { const len = lrand(150, 260), th = lrand(19, 30), y = LIVE_R() < 0.4 ? sunY + lrand(-26, 30) : L.fy - lrand(230, 430); return { x, y, sp: lrand(5, 10), spr: cloudSprite(len, th) }; };
       if (!CL.length) for (let i = 0; i < 3; i++) CL.push(make(L.w * (i + lrand(0.1, 0.9)) / 3));
       for (let i = 0; i < CL.length; i++) {
         const c = CL[i]; c.x += c.sp * dt;
@@ -8545,50 +8700,50 @@ const LIVE = {
     },
   },
   bamboo: {
-    // 萤火虫：一闪一闪（亮一阵、暗一阵），慢慢往右飘、上下浮着；十来只，出来、消失都是慢慢的；黄绿色（夜里的灰底上看得出来）
+    // 2.6 竹叶（换掉萤火虫）：风一阵一阵的 —— 两头的竹子往右摇得越厉害，竹梢上吹下来的叶子越多（风小的时候一片也不掉）；
+    // 叶子打着转往右飘、左右荡着慢慢落（翻过来的时候窄、淡一点），飘一阵就淡掉；最多十片，都在人头顶上面那一截
     mid(g, L, st, dt) {
-      const FL = st.flies || (st.flies = []), halo = softDot('206,228,86'), core = softDot('248,252,186');
-      if (st.nextFly === undefined) st.nextFly = 0;
-      if (dt > 0 && st.t >= st.nextFly && FL.length < 10) {
-        FL.push({ x: lrand(L.vis[0] + 30, L.vis[1] - 120), y: L.fy - lrand(50, 260), vx: lrand(4, 10), bA: lrand(4, 10), bP: lrand(3, 6), ph: LIVE_R() * 6.28, life: 0, dur: lrand(7, 13), pP: lrand(1.6, 3.2), pPh: LIVE_R() * 6.28 });
-        st.nextFly = st.t + lrand(0.6, 1.8);
+      const LF = st.leaves || (st.leaves = []);
+      const gust = clamp((bambooSway(st.t, 1) - 0.0034) / 0.0034, 0, 1);       // 这一阵风多大（0 ~ 1）
+      if (dt > 0 && LF.length < 10 && LIVE_R() < dt * 2.4 * gust) {
+        LF.push({ x: lrand(L.vis[0] - 80, L.vis[1] - 160), y: L.fy - lrand(400, 560), vx: lrand(30, 52), vy: lrand(15, 26), len: lrand(17, 25),
+          ang: lrand(-0.6, 0.6), sw: lrand(1.6, 2.6), swPh: LIVE_R() * 6.28, fl: lrand(2.2, 3.6), flPh: LIVE_R() * 6.28, life: 0, dur: lrand(7, 11), a: lrand(0.5, 0.64) });
       }
-      for (let i = FL.length - 1; i >= 0; i--) {
-        const f = FL[i]; f.life += dt;
-        if (f.life >= f.dur) { FL.splice(i, 1); continue; }
-        f.x += f.vx * dt;
-        const y = f.y + f.bA * Math.sin(Math.PI * 2 * f.life / f.bP + f.ph);
-        const glow = lifeFade(f.life, f.dur, 1.2, 1.5) * Math.pow(Math.max(0, Math.sin(Math.PI * 2 * f.life / f.pP + f.pPh)) * 0.75 + 0.25, 1.4);
-        dotAt(g, halo, f.x, y, 12, glow * 0.6);
-        dotAt(g, core, f.x, y, 3.2, glow);
+      for (let i = LF.length - 1; i >= 0; i--) {
+        const f = LF[i]; f.life += dt;
+        if (f.life >= f.dur) { LF.splice(i, 1); continue; }
+        const swing = Math.sin(f.life * f.sw + f.swPh);                         // 左右荡（像纸片落下来那样）
+        f.x += (f.vx * (0.75 + 0.5 * gust) + swing * 14) * dt; f.y += f.vy * (0.85 + 0.3 * Math.abs(swing)) * dt;
+        driftLeaf(g, f.x, f.y, f.len, f.ang + 0.55 * swing, Math.cos(f.life * f.fl + f.flPh), f.a * lifeFade(f.life, f.dur, 0.8, 1.6), '24,26,30');
       }
     },
   },
   peach: {
-    // 鸟（Jack 点名要的）：隔十几秒从地图左边飞进来一群（一只、两只或三只），缓缓扇翅膀，飞到右边出去；同时最多两群
-    far(g, L, st, dt) {
-      const B = st.birds || (st.birds = []);
-      if (st.nextBird === undefined) st.nextBird = st.t + lrand(1.5, 4);
-      if (dt > 0 && st.t >= st.nextBird && B.length < 2) {
-        const n = LIVE_R() < 0.5 ? 1 : LIVE_R() < 0.7 ? 2 : 3, s0 = lrand(0.95, 1.2);
-        const fl = { x: -40, y: L.fy - lrand(250, 380), sp: lrand(40, 58), ph: LIVE_R() * 6.28, m: [] };
-        for (let i = 0; i < n; i++) fl.m.push({ dx: -i * lrand(16, 26), dy: i ? lrand(-9, 9) : 0, s: s0 * lrand(0.88, 1.08), ph: LIVE_R() * 6.28, per: lrand(0.95, 1.35), glide: false, tm: lrand(2.5, 5), w: 0, w2: 0 });
-        B.push(fl); st.nextBird = st.t + lrand(8, 20);
-      }
-      for (let i = B.length - 1; i >= 0; i--) {
-        const fl = B[i]; fl.x += fl.sp * dt;
-        let left = 1e9;
-        for (const m of fl.m) {
-          birdFlap(m, dt);
-          const x = fl.x + m.dx, y = fl.y + m.dy + Math.sin(st.t * 0.45 + fl.ph) * 7 + (m.glide ? 0 : Math.cos(m.ph) * 0.9);
-          left = Math.min(left, x);
-          if (x > L.vis[0] - 30 && x < L.vis[1] + 30) liveBird(g, x, y, m.s, m.w, m.w2, 0.6);
-        }
-        if (left > L.w + 40) B.splice(i, 1);
-      }
-    },
+    // 2.6 燕子（Jack：鸟改成燕子，是背景里的、不跟着人走，飞快点，一会儿飞一会儿飘）：中景那一层（镜头一挪，它跟着桃林一起挪），
+    // 隔几秒从看得见的左边飞进来一只、两只或三只，在桃树上面那一截天上往右飞（一秒两百来像素），飞出右边就没了；同时最多两群。
     // 落英：几片花瓣翻着跟头往右飘、慢慢往下落（在人头顶上面那一截，飘一阵就淡掉）
     mid(g, L, st, dt) {
+      const B = st.birds || (st.birds = []), y0 = L.fy - 490, y1 = L.fy - 350;          // 飞在桃树梢上面那一截天（比人头高一截）
+      if (st.nextBird === undefined) st.nextBird = st.t + lrand(1, 3);
+      if (dt > 0 && st.t >= st.nextBird && B.length < 2) {
+        const n = LIVE_R() < 0.45 ? 1 : LIVE_R() < 0.65 ? 2 : 3, v = lrand(175, 240), y = lrand(y0 + 20, y1 - 30);
+        const fl = { m: [] };
+        for (let i = 0; i < n; i++) fl.m.push({ x: L.vis[0] - 40 - i * lrand(26, 60), y: y + (i ? lrand(-28, 28) : 0), vx: v, vy: 0, v: v * lrand(0.94, 1.06), s: lrand(1.35, 1.65),
+          mode: 'flap', tm: lrand(0.3, 1), t0: 1, ph: LIVE_R() * 6.28, per: lrand(0.2, 0.26), k: 0, k2: 0, fold: 0.1 });
+        B.push(fl); st.nextBird = st.t + lrand(5, 12);
+      }
+      for (let i = B.length - 1; i >= 0; i--) {
+        const fl = B[i]; let left = 1e9;
+        for (const m of fl.m) {
+          if (dt > 0) swallowStep(m, dt, y0, y1);
+          left = Math.min(left, m.x);
+          if (m.x > L.vis[0] - 40 && m.x < L.vis[1] + 40) {
+            const ang = clamp(Math.atan2(m.vy, m.vx), -0.45, 0.45), bob = m.mode === 'flap' ? Math.cos(m.ph) * 0.8 : 0;
+            swallow(g, m.x, m.y + bob, m.s, ang, m.k, m.k2, m.fold, 0.7);
+          }
+        }
+        if (left > L.vis[1] + 300 || left > L.w + 40) B.splice(i, 1);
+      }
       const P = st.petals || (st.petals = []);
       if (st.nextPetal === undefined) st.nextPetal = st.t + lrand(0.5, 2);
       if (dt > 0 && st.t >= st.nextPetal && P.length < 6) {
@@ -8674,20 +8829,23 @@ const Stage = {
     };
     const farW = Math.ceil(vw + 160 + STAGE_W * PAR_FAR), midW = Math.ceil(vw + 160 + STAGE_W * PAR_MID), lh = top + SKY_BELOW;
     const far = mk(farW, lh, w.back * 0.85, S.far, 1);
+    const sky = S.sky ? mk(Math.ceil(vw + 160 + STAGE_W * PAR_SKY), lh, w.back * 0.85, S.sky, 4) : null;
     const mid = S.mid ? mk(midW, lh, w.back, S.mid, 2) : null;
     const GW = STAGE_W - 2 * GX0, GH = GUP + GDN;
     const gc = document.createElement('canvas');
     gc.width = Math.ceil(GW * w.ground); gc.height = Math.ceil(GH * w.ground);
     const gg = gc.getContext('2d'); gg.scale(w.ground, w.ground); gg.translate(-GX0, GUP - FLOOR);
     S.ground(gg, { x0: GX0, x1: STAGE_W - GX0, R: R(3) });
-    this.layers = { far, mid, ground: gc, near: S.near || null };
+    this.layers = { sky, far, mid, ground: gc, near: S.near || null };
     this.built = { id, back: w.back, ground: w.ground, top, vw };
     this.id = id;
     if (!this.live || this.live.id !== id) this.live = { id, t: 0 };      // 2.5.1 换了图才从头来（窗口缩放重画背景，鸟照样接着飞）
   },
   // 2.5.1 动态背景的时钟：真实时间，一帧最多算 0.1 秒（切到后台再回来不会一下子跳一大截）；「减少动态效果」时不走
+  // 2.6（Jack：暂停的时候别飞）：暂停时背景也停住（菜单背景不算暂停，照样动）
   liveStep() {
-    const now = performance.now(), dt = this.liveLast && !reduceMotion ? clamp((now - this.liveLast) / 1000, 0, 0.1) : 0;
+    const paused = typeof game !== 'undefined' && game.paused;
+    const now = performance.now(), dt = this.liveLast && !reduceMotion && !paused ? clamp((now - this.liveLast) / 1000, 0, 0.1) : 0;
     this.liveLast = now;
     if (this.live) this.live.t += dt;
     return dt;
@@ -8700,7 +8858,7 @@ const Stage = {
     ctx.fillRect(-20, -20, view.vw + 40, view.vh + 40);
     if (!L) return;
     const top = this.built.top, lv = S.live, st = this.live, dt = this.liveStep();
-    for (const [c, par, py, k] of [[L.far, PAR_FAR, 0.25, 'far'], [L.mid, PAR_MID, 0.5, 'mid']]) {
+    for (const [c, par, py, k] of [[L.sky, PAR_SKY, 0.1, 'sky'], [L.far, PAR_FAR, 0.25, 'far'], [L.mid, PAR_MID, 0.5, 'mid']]) {
       if (!c) continue;
       const x = view.vw / 2 - c.lw / 2 - (camX - STAGE_W / 2) * par, y = view.fy + lift * py - top;
       ctx.drawImage(c, x, y, c.lw, c.lh);
@@ -8732,6 +8890,7 @@ const Stage = {
       paint(tg, { w: lw, h: LH, fy: top, R: seeded(seed * 7919 + id.length * 131) });
       return t;
     };
+    if (S.sky) g.drawImage(layer(S.sky, 4), 0, 0);
     g.drawImage(layer(S.far, 1), 0, 0);
     if (S.mid) g.drawImage(layer(S.mid, 2), 0, 0);
     g.fillStyle = 'rgba(23,24,26,.55)'; g.fillRect(0, top * k, tw, 2);
@@ -8783,7 +8942,7 @@ const game = {
   mode: 'attract',          // attract（菜单背景电脑互打）| pve | pvp | online | train（训练场，2.0.2 以前叫打桩练习）
   phase: 'attract',         // attract | intro | fight | ko | roundEnd | over
   diff: 'normal', p: [F1, F2], brains: [null, null],
-  frame: 0, freeze: 0, shake: 0, flash: 0, punch: 0, timeScale: 1,
+  frame: 0, freeze: 0, shake: 0, flash: 0, punch: 0, timeScale: 1,   // frame：走了几步（2.6 起一步 = DT 帧）；freeze：顿帧还剩几帧
   quiet: false,             // 联机回滚重算时为 true：不出特效、不出声（1.9.0）
   round: 1, wins: [0, 0], timer: ROUND_FRAMES, phaseT: 0, paused: false, winner: -1,
   endless: false,           // 双人对战不限时，打到一方倒下为止
@@ -8836,54 +8995,60 @@ function endRound(winner, reason) {
   else { announce('胜负已分', null, 80, 110, game.p[winner]); Sound.finale(); }
 }
 
-function step(inputs) {
+/* 2.6 逻辑一步（DT 帧 = 1/240 秒）：主循环、联机一步一步调。
+   电脑 AI、木桩、破招练习、给 AI 看的快照（record）照旧一帧一次，都在每一帧的最后一步（走完正好是整帧，game.frame 是 SUB 的倍数）：
+   电脑在这一步开头想、按（和 step() 里人新按的招同一步），快照、破招练习的计时在这一步最后。
+   画面上的东西（姿势、特效、震屏、血条缓降）每步都走，按 DT 换算，屏幕刷新率高的时候更顺 */
+const SHAKE_K = rootDT(0.86), FLASH_K = rootDT(0.84), PUNCH_K = rootDT(0.8);
+function simTick(inputs) {
   game.frame++;
+  const fr = game.frame % SUB === 0;          // 这一步是一帧的最后一步（走完正好是整帧）
   const [a, b] = game.p;
   const locked = game.phase !== 'fight' && game.phase !== 'attract';
   for (let i = 0; i < 2; i++) {
-    if (game.brains[i]) game.brains[i].tick(locked);
+    if (game.brains[i]) { if (fr) game.brains[i].tick(locked); }
     else applyInput(game.p[i], inputs ? inputs[i] | 0 : 0);
   }
   const frozen = game.freeze > 0;
-  if (frozen) game.freeze--;
+  if (frozen) game.freeze = Math.max(0, game.freeze - DT);
   else {
     a.update(locked); b.update(locked);
-    // 朝向吸附（1.9.0）：不按左右的时候（站、蹲、挡）自动面向对手，不管远近；在判定之前做，对手刚绕到身后这一帧就转过来
+    // 朝向吸附（1.9.0）：不按左右的时候（站、蹲、挡）自动面向对手，不管远近；在判定之前做，对手刚绕到身后这一步就转过来
     for (const F of game.p) if (F.actionable() && !F.inp.held.left && !F.inp.held.right) F.autoFace();
     resolve(a, b);
     separate(a, b);
-    a.record(); b.record();
+    if (fr) { a.record(); b.record(); }
   }
   if (!game.quiet) {                 // 联机回滚重算时只算胜负，不动画面
-    a.keepPrev(); b.keepPrev();      // 2.0.1 上一帧的样子（画面插值用）
+    a.keepPrev(); b.keepPrev();      // 2.0.1 上一步的样子（画面插值用）
     a.animate(frozen); b.animate(frozen);
     for (const F of game.p) {
-      if (F.lagHp > F.hp) F.lagHp = Math.max(F.hp, F.lagHp - (F.state === 'hit' || frozen ? 0.05 : 0.6) * F.maxHp / 100);
+      if (F.lagHp > F.hp) F.lagHp = Math.max(F.hp, F.lagHp - (F.state === 'hit' || frozen ? 0.05 : 0.6) * F.maxHp / 100 * DT);
       else F.lagHp = F.hp;
     }
     updateFx();
-    game.shake *= 0.86; game.flash *= 0.84; game.punch *= 0.8;
+    game.shake *= SHAKE_K; game.flash *= FLASH_K; game.punch *= PUNCH_K;
   }
 
   switch (game.phase) {
     case 'attract':
-      if (a.hp <= 0 || b.hp <= 0) { if (++game.phaseT > 130) { resetFighters(); game.phaseT = 0; } }
+      if (a.hp <= 0 || b.hp <= 0) { if ((game.phaseT += DT) >= 131) { resetFighters(); game.phaseT = 0; } }
       break;
     case 'intro':
       // 2.3 开场字幕配锣鼓；2.4（Jack：锣鼓太诡异）换成战鼓 + 镲 + 古筝：回合名随着「锵」砸下来；战鼓越敲越密；「战」的时候「锵」+ 古筝和弦（fx.js INTRO_BEATS）
       introBeats(game.phaseT, roundName() === '决胜局');
       if (game.phaseT === 10) announce(roundName(), null, 56, 96);
       if (game.phaseT === 68) announce('战', null, 38, 170);
-      if (++game.phaseT >= 100) { game.phase = 'fight'; game.phaseT = 0; }
+      if ((game.phaseT += DT) >= 100) { game.phase = 'fight'; game.phaseT = 0; }
       break;
     case 'fight':
-      if (game.mode === 'train') { trainTick(); break; }
+      if (game.mode === 'train') { trainTick(fr); break; }
       if (a.hp <= 0 || b.hp <= 0) endRound(a.hp <= 0 && b.hp <= 0 ? -1 : a.hp <= 0 ? 1 : 0, 'ko');
-      else if (!game.endless && --game.timer <= 0) { game.timer = 0; endRound(a.hp === b.hp ? -1 : a.hp > b.hp ? 0 : 1, 'time'); }
+      else if (!game.endless && (game.timer -= DT) <= 0) { game.timer = 0; endRound(a.hp === b.hp ? -1 : a.hp > b.hp ? 0 : 1, 'time'); }
       break;
     case 'ko':
       game.timeScale = game.phaseT < 40 && !reduceMotion ? 0.3 : 1;
-      if (++game.phaseT >= 120) {
+      if ((game.phaseT += DT) >= 120) {
         game.timeScale = 1; game.phase = 'roundEnd'; game.phaseT = 0;
         if (game.winner >= 0) {
           game.wins[game.winner]++;
@@ -8896,7 +9061,7 @@ function step(inputs) {
     case 'roundEnd': {
       const Wf = game.winner >= 0 ? game.p[game.winner] : null;
       if (Wf && (Wf.actionable() || Wf.state === 'land')) Wf.state = 'win';
-      if (++game.phaseT >= 110) {
+      if ((game.phaseT += DT) >= 110) {
         if (game.wins[0] >= WIN_ROUNDS || game.wins[1] >= WIN_ROUNDS) { game.phase = 'over'; game.phaseT = 0; Hooks.matchOver(); }
         else { if (game.winner >= 0) game.round++; startRound(); }
       }
@@ -8909,8 +9074,15 @@ function step(inputs) {
     }
   }
 }
+/* 一帧（SUB 步）：测试、平衡报告、动作台、benchsim 用（以前的 step）。和 60 帧/秒时一模一样：
+   按住的方向、格挡这一帧的每一步都按着（走、跑这一帧照样走一整帧那么远）；新按下的招在这一帧最后一步按下去
+   （招式从整帧开始算，m.t 在每一帧末尾还是整数）。走到整帧为止 */
+function step(inputs) {
+  const v = [inputs ? inputs[0] | 0 : 0, inputs ? inputs[1] | 0 : 0], h = [v[0] & HELD_MASK, v[1] & HELD_MASK];
+  do { simTick((game.frame + 1) % SUB === 0 ? v : h); } while (game.frame % SUB);
+}
 // 打桩：木桩掉到三成以下、这一套打完就回满；玩家掉血也回满；可选无限气
-function trainTick() {
+function trainTick(fr) {
   const [a, b] = game.p;
   if (b.hp <= b.maxHp * DUMMY_REFILL && (b.actionable() || b.hp <= 0)) {
     if (b.state === 'ko') { b.state = 'idle'; b.downPhase = null; }
@@ -8918,7 +9090,7 @@ function trainTick() {
   }
   if (a.hp < a.maxHp && a.actionable()) a.hp = a.lagHp = a.maxHp;
   if (game.trainQi) a.qi = QI_MAX;
-  Drill.tick();                    // 2.1 破招练习：这一遍的计时、判成没成功
+  if (fr) Drill.tick();             // 2.1 破招练习：这一遍的计时、判成没成功（一帧一次）
 }
 // 五局三胜：两边都差一局就赢 = 决胜局
 function roundName() {
@@ -9162,7 +9334,8 @@ function settleLook(host, want, cur) {
    [0] 类型 1 = 输入   [1] 局号 epoch & 255   [2..5] 这包第一帧的帧号   [6..9] 我已经连续收到你的输入到第几帧（不含）
    [10] 帧数 n（≤ 48）   [11] 我觉得我比你快几帧（-128~127，时间同步用）
    [12..] 每帧一个输入，2 字节（低 5 位按住、往上 5 位新按下，见 input.js） */
-const PKT_INPUT = 1, PKT_MAX = 48, PKT_HEAD = 12;
+// 2.6 逻辑一秒 240 步：「帧号」都是步数，一包最多带 PKT_MAX 步（以前 48 帧）；一秒发 60 包左右（每 SUB 步发一次）
+const PKT_INPUT = 1, PKT_MAX = 192, PKT_HEAD = 12;
 function encodeInputs(epoch, first, ack, vals, adv) {
   const n = vals.length, buf = new ArrayBuffer(PKT_HEAD + 2 * n), dv = new DataView(buf);
   dv.setUint8(0, PKT_INPUT); dv.setUint8(1, epoch & 255); dv.setUint32(2, first); dv.setUint32(6, ack); dv.setUint8(10, n);
@@ -9180,7 +9353,7 @@ function decodeInputs(buf) {
 }
 
 /* ---------- 回滚帧同步的核心（不碰网络，tests.js 直接拿来测） ---------- */
-const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY;    // 输入里「按住」的那几位：猜对方的输入只猜这几位（新按的招不猜）；2.4 加上「用冲刺键」那一位
+// HELD_MASK（输入里「按住」的那几位：猜对方的输入只猜这几位，新按的招不猜）在 input.js
 class Rollback {
   // role：'host' 算 step([本机, 对方])，'guest' 算 step([对方, 本机])
   constructor(delay, role) {
@@ -9229,7 +9402,7 @@ class Rollback {
     return depth;
   }
   // 还能不能往下算：对方的输入落后太多（超过 MAX_PRED 帧）就停下来等
-  canAdvance() { return this.frame - this.remoteUntil < NET.MAX_PRED && this.localUntil > this.frame; }
+  canAdvance() { return this.frame - this.remoteUntil < NET.MAX_PRED * SUB && this.localUntil > this.frame; }
   // 算一帧
   advance() {
     const f = this.frame;
@@ -9238,9 +9411,9 @@ class Rollback {
     const r = this.remote.has(f) ? this.remote.get(f) : this.predict();
     this.used.set(f, r);
     const l = this.local.get(f) | 0;
-    step(this.role === 'host' ? [l, r] : [r, l]);
+    simTick(this.role === 'host' ? [l, r] : [r, l]);
     this.frame = f + 1;
-    if (this.frame % NET.HASH_EVERY === 0) this.hashAt.set(this.frame, stateHash());
+    if (this.frame % (NET.HASH_EVERY * SUB) === 0) this.hashAt.set(this.frame, stateHash());
   }
   // 我觉得我比对方快几帧：我的帧号 - 对方发最新那包时的帧号（含单程延迟，两边一样多）
   localAdv() { return this.lastRemote < 0 ? 0 : this.frame - (this.lastRemote - this.delay); }
@@ -9619,7 +9792,7 @@ const Net = {
     }
   },
   // 输入延迟：有回滚，只要单程延迟的一半左右（1~3 帧）；按键基本没有延迟感
-  pickDelay() { return NET.DELAY || clamp(Math.round(this.rtt / 2 / STEP_MS * 0.5), 1, 3); },
+  pickDelay() { return NET.DELAY ? NET.DELAY * SUB : clamp(Math.round(this.rtt / 2 / STEP_MS * 0.5), SUB, 3 * SUB); },   // 步数（1 ~ 3 帧）
   // 房主开一局（第一局和再战都走这里）
   startAsHost() {
     if (this.role !== 'host' || !this.open) return;
@@ -9657,7 +9830,7 @@ const Net = {
     if (!this.open) { this.stall++; return; }                  // 掉线重连中：原地等
     this.acc += dt * game.timeScale;
     let n = 0;
-    while (this.acc >= STEP_MS && n < 4) {
+    while (this.acc >= STEP_MS - 1e-6 && n < 4 * SUB) {
       rb.sample(() => pads[0].sample());
       if (!rb.canAdvance()) {                                  // 对方太久没消息：等
         this.stall++;
@@ -9667,13 +9840,13 @@ const Net = {
       }
       // 时间同步：我比对方快一帧以上（我老在猜他、他老在回滚），每 6 帧停一帧等等他
       this.adv = this.adv * 0.9 + rb.timeSync() * 0.1;
-      if (this.adv > 1 && ++this.holdN % 6 === 0) { this.acc -= STEP_MS; n++; continue; }
+      if (this.adv > SUB && ++this.holdN % 6 === 0) { this.acc -= STEP_MS; n++; continue; }   // 快一帧（SUB 步）以上：每 6 步停一步
       this.stall = 0;
-      this.sendInputs();
+      if (rb.frame % SUB === 0) this.sendInputs();                 // 一帧发一包（带上对方还没确认的那几步）
       rb.advance();
       this.acc -= STEP_MS; n++;
     }
-    if (n >= 4) this.acc = 0;
+    if (n >= 4 * SUB) this.acc = 0;
     rb.prune();
     for (const [f, h] of rb.takeHashes()) { this.checkHash(f, h, 'l'); this.sendCtl({ t: 'h', e: this.epoch, f, h }); }
   },
@@ -9974,14 +10147,16 @@ function relTableHtml() {
 const relLegend = '<span class="chip w2">克</span>单方面打中 <span class="chip w1">压</span>两边都中、你占大便宜 <span class="chip eq">平</span>拼招 <span class="chip l1">被压</span> <span class="chip l2">被克</span>';
 const FRAME_ROWS = ['jab', 'heavy', 'kick', 'grab', 'lowGrab', 'beng', 'whip', 'elbow', 'chop', 'whirl', 'stepPunch', 'hammer', 'twinKick', 'upper', 'backKick', 'rushEnd',
   'lowJab', 'sweep', 'palm', 'shoulder', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'jieQuan', 'stomp', 'slipElbow', 'super'];
+// 2.6 帧数按 1/4 帧算：整数照写，零头写成 .25 / .5 / .75
+const fmtF = v => Number.isInteger(v) ? String(v) : String(+v.toFixed(2));
 function frameTableHtml() {
   const rows = FRAME_ROWS.map(k => {
     const d = MOVES[k], dmg = d.kind === 'grab' ? (k === 'grab' ? `${d.dmg}~${THROW_DMG}` : `${TACKLE_DMG}~${SCOOP_DMG}`) : Math.round(d.dmg * (d.air ? AIR_BONUS : 1));
-    return `<tr><td>${d.label}</td><td>${TIER_NAME[d.lead] || '—'}</td><td>${TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${d.S}</td><td>${d.dive ? '到地' : d.A}</td><td>${d.R}</td><td>${dmg}</td><td>${d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
+    return `<tr><td>${d.label}</td><td>${TIER_NAME[d.lead] || '—'}</td><td>${TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${fmtF(d.S)}</td><td>${d.dive ? '到地' : fmtF(d.A)}</td><td>${fmtF(d.R)}</td><td>${dmg}</td><td>${d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
   }).join('');
   return `<table class="frames"><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-const FRAME_NOTE = '1 帧 = 1/60 秒。射程是两人中心距（像素，含往前冲的那一段）；空中招伤害已含 ×' + AIR_BONUS + '。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。';
+const FRAME_NOTE = '1 帧 = 1/60 秒（2.6 起按 1/4 帧算，所以有 .25、.5、.75）。射程是两人中心距（像素，含往前冲的那一段）；空中招伤害已含 ×' + AIR_BONUS + '。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。';
 
 // 键位表的一行一行：[说明, 动作…]
 const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']],
@@ -11072,22 +11247,24 @@ for (const btn of touchEl.querySelectorAll('.tc')) {
 /* 帧数表、克制总表、破解表：2.2 起在 guide.js（教程「查表」那一页 / 软件版教程）里，直接读 MOVES */
 
 /* ---------- 主循环 ---------- */
-let last = performance.now(), acc = 0, rafAvg = STEP_MS, smooth = false;
+let last = performance.now(), acc = 0, rafAvg = FRAME_MS, aligned = true;
 function loop(now) {
   let dt = Math.min(100, now - last); last = now;
-  // 2.0.1 帧率：rafAvg = 屏幕大概多久刷新一次。60Hz 屏幕：间隔在 16.7ms 上下抖，偶尔一下走 0 步、下一下走 2 步（画面一顿），
-  // 离一步很近的就当正好一步，画面不插值（不多延迟）。别的刷新率（120 / 144 / 75Hz…）：逻辑帧和画面对不齐，
-  // 在两帧之间插值着画（render.js RA），人跑起来才顺、没有重影
+  // 2.0.1 / 2.6 帧率：逻辑一秒 SIM_HZ（240）步，和屏幕刷新率无关。rafAvg = 屏幕大概多久刷新一次：
+  // 刚好是整数步（60Hz = 4 步、120Hz = 2 步、240Hz = 1 步）就把这一下对齐成正好那么多步，画面不插值（不多一点延迟；
+  // 60Hz 屏幕间隔在 16.7ms 上下抖，不对齐的话偶尔一下走 3 步、下一下走 5 步，画面一顿）；
+  // 别的刷新率（144 / 165 / 75Hz…）逻辑步和画面对不齐，在两步之间插值着画（render.js RA），人跑起来才顺、没有重影
   rafAvg += (dt - rafAvg) * 0.05;
-  if (smooth ? Math.abs(rafAvg - STEP_MS) < 1 : Math.abs(rafAvg - STEP_MS) > 1.6) smooth = !smooth;
-  if (!smooth && Math.abs(dt - STEP_MS) < 1.2) dt = STEP_MS;
-  if (game.mode === 'online') { if (!document.hidden) Net.tick(dt); RA = smooth ? clamp(Net.acc / STEP_MS, 0, 1) : 1; }
+  const k = Math.max(1, Math.round(rafAvg / STEP_MS)), off = Math.abs(rafAvg - k * STEP_MS);
+  if (aligned ? off > 0.8 : off < 0.4) aligned = !aligned;
+  if (aligned && Math.abs(dt - k * STEP_MS) < 1.2) dt = k * STEP_MS;
+  if (game.mode === 'online') { if (!document.hidden) Net.tick(dt); RA = aligned ? 1 : clamp(Net.acc / STEP_MS, 0, 1); }
   else if (!game.paused) {
     acc += dt * game.timeScale;
     let n = 0;
-    while (acc >= STEP_MS && n < 5) { step([pads[0].sample(), pads[1].sample()]); acc -= STEP_MS; n++; }
-    if (n >= 5) acc = 0;
-    RA = smooth || game.timeScale < 1 ? clamp(acc / STEP_MS, 0, 1) : 1;        // KO 慢镜头时 60Hz 屏幕也插（不然三帧才动一下）
+    while (acc >= STEP_MS - 1e-6 && n < 5 * SUB) { simTick([pads[0].sample(), pads[1].sample()]); acc -= STEP_MS; n++; }
+    if (n >= 5 * SUB) acc = 0;
+    RA = !aligned || game.timeScale < 1 ? clamp(acc / STEP_MS, 0, 1) : 1;        // KO 慢镜头时也插（不然几帧才动一下）
   }
   render();
   Ach.watch();
@@ -11153,7 +11330,7 @@ function boot(data) {
 const hot = window.claude && window.claude.hot;
 if (hot && hot.snapshot) { try { hot.snapshot(() => ({ diff: game.diff, sound: Sound.on, vol: Sound.vol })); } catch (e) {} }
 if (hot && hot.ready) hot.ready(boot); else boot(hot && hot.data ? hot.data : {});
-window.__modou = { game, F1, F2, MOVES, POSE, step, startMatch, Brain, render, FX, Net, pads, stateHash };
+window.__modou = { game, F1, F2, MOVES, POSE, step, simTick, startMatch, Brain, render, FX, Net, pads, stateHash };
 </script>
 </body>
 </html>

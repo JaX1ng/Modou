@@ -3,12 +3,14 @@
    只是画面，不进战斗逻辑：场地大小、墙的位置所有场景都一样（联机两边场景不一样也不会不同步，只是房主选的那张两边都用）。
    每张图三层：
      远景 far（视差 PAR_FAR）、中景 mid（视差 PAR_MID）—— 画在「画面坐标」里，地线对齐画面上的地线，跟着镜头慢慢挪；
+     （2.6 另外可以有天 sky（视差 PAR_SKY，比远景还慢得多）：朱日远山的太阳画在这一层 —— 太阳隔得最远，镜头怎么挪它都差不多在原地）
      地面 ground —— 画在场地坐标里，跟人一起动、一起缩放；
      另外 near（可选）每帧现画，比如竹林两头那几根顶天的竹子、桃花园两头的老桃树（太高，放不进地面那一层）。
    三层都先画在离屏画布上，分辨率按屏幕算（全屏、高分屏也清楚），每帧只贴图。画的时候只用「种子随机数」，每次画出来一样 */
 
 function seeded(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 const PAR_FAR = 0.12, PAR_MID = 0.38;     // 远景、中景跟镜头挪多少（地面是 1）
+const PAR_SKY = 0.03;                     // 2.6 天（太阳）跟镜头挪多少（Jack：太阳的位置看上去几乎不该变）
 const VW_MAX = 1600;                      // 画面最宽按这么宽准备（再宽的屏幕两边补纸色）
 const SKY_BELOW = 150;                    // 远景、中景在地线下面多画一截（地面那层盖住大半）
 const GX0 = -120, GUP = 190, GDN = 170;   // 地面层：从场地 x=GX0 画到 STAGE_W-GX0，地线上方 GUP、下方 GDN
@@ -547,12 +549,16 @@ const STAGES = {
   /* 朱日远山（1.0 起的那张，2.0 重画大了、去掉右边的「以武会友」和「斗」）：纸、朱红的太阳、两道远山、山雾、飞鸟 */
   sun: {
     name: '朱日远山', pick: true, paper: '#ebeae2',
-    far(g, L) {
+    // 2.6 纸和太阳单独一层（天，视差 PAR_SKY）：远山、山雾还在远景那一层，雾照样罩在太阳前面
+    sky(g, L) {
       const { w, fy, R } = L;
       paperFill(g, w, L.h, C.paper, R);
       const sx = w * 0.58, sy = fy - 352;
       g.fillStyle = 'rgba(184,50,29,.13)'; g.beginPath(); g.arc(sx, sy, 58, 0, Math.PI * 2); g.fill();
       g.fillStyle = 'rgba(184,50,29,.06)'; g.beginPath(); g.arc(sx, sy, 74, 0, Math.PI * 2); g.fill();
+    },
+    far(g, L) {
+      const { w, fy, R } = L, sx = w * 0.58;
       for (let i = 0; i < 4; i++) mistBlob(g, w * (0.15 + 0.23 * i) + R() * 60, fy - 300 - R() * 120, 150 + R() * 90, 22 + R() * 12, 0.5);
       ridge(g, w, fy - 160, 70, 0.10, 3, 0.006);
       birds(g, [[-92, 120, 1], [-62, 104, .8], [-70, 138, .7], [-122, 150, .6], [260, 92, .55], [282, 82, .45]].map(([dx, y, s]) => [sx + dx, fy - 520 + y, s]));
@@ -703,7 +709,7 @@ const STAGES = {
       }
       // 竹林脚下的雾
       mist(g, w, fy - 70, 90, 0.6, '226,228,222');
-      // 2.5.1 萤火改成会飞、会一闪一闪的（LIVE.bamboo），以前这里是十几个不动的亮点
+      // 2.5.1 萤火改成会飞、会一闪一闪的；2.6（Jack：萤火虫不好看、晃眼睛）换成一阵阵风吹下来的竹叶（LIVE.bamboo）
     },
     ground(g, L) {
       const { x0, x1, R } = L, GW = x1 - x0;
@@ -758,7 +764,7 @@ const STAGES = {
       for (let i = 0; i < 8; i++) grove(g, (i + 0.1 + R() * 0.8) * w / 8, fy - 132 - R() * 76, 34 + R() * 46, R, 0.85);
       for (let i = 0; i < 5; i++) mistBlob(g, R() * w, fy - 210 - R() * 150, 180 + R() * 120, 18 + R() * 12, 0.6, H);
       mist(g, w, fy - 150, 110, 0.6, H);
-      // 2.5.1 天上的鸟改成会飞的（LIVE.peach：从左边飞到右边，以前这里是三只不动的燕子）
+      // 2.5.1 天上的鸟改成会飞的；2.6 改成燕子，飞在中景那一层（LIVE.peach.mid）
     },
     mid(g, L) {
       const { w, fy, R } = L, c = w / 2, fall = [];
@@ -1091,9 +1097,15 @@ const STAGE_PICK = Object.keys(STAGES).filter(k => STAGES[k].pick);
    · 大漠孤烟：烽火台的孤烟一团团往上升（到顶上被风带着往右偏一点）；风卷起一缕缕沙从沙丘上往右掠过去
    · 练武场：两面旗迎风飘（波纹从旗杆往外、从上往下走，穗子跟着甩）
    都在人身后（远景、中景、场地两头），颜色淡、动得慢，打架的那一块干净。
+   2.6（Jack）：
+   · 桃花园的鸟改成燕子：剪刀尾、镰刀一样的长翅膀；飞在中景那一层（以前在远景，镜头挪它几乎不动，看着像跟着人走），飞得快，
+     扇一阵、张着翅膀飘一阵，偶尔收起翅膀往下一扎再拉起来；
+   · 竹林的萤火虫换成竹叶：一阵风过来（两头的竹子摇得最厉害的时候）从竹梢上吹下来几片，打着转往右飘、慢慢落，墨灰色，不发光、不闪；
+   · 朱日远山：太阳单独一层，跟镜头挪得很少（PAR_SKY）；云短一点、厚一点；
+   · 暂停的时候背景整个停住（菜单后面的背景照样动）。
    每张图的 live：{ far(g, L, st, dt), mid(g, L, st, dt) } —— 每帧现画，在贴完那一层之后、同一套坐标里（跟着视差挪）：
      L = { w, h, fy（这一层里地线的高度）, vis: [看得见的左边, 右边] }；st = 这张图的动态状态（换图才清空，窗口缩放重画背景不清空）；
-     dt = 这一帧过了几秒（真实时间，暂停、慢镜头照样动）。场地两头每帧现画的 near(ctx, st) 也拿得到 st。
+     dt = 这一帧过了几秒（真实时间，慢镜头照样动；2.6 暂停时是 0）。场地两头每帧现画的 near(ctx, st) 也拿得到 st。
    只用自己的随机数 LIVE_R（不碰 Math.random、vrnd —— 电脑 AI、特效都不受影响）；系统设置了「减少动态效果」就不动（旗子照样画，静止的）。
    只是画面：不进战斗逻辑、不走联机（两边各看各的） */
 const LIVE_R = seeded(((Date.now() % 2147483647) ^ 0x2545f491) >>> 0);
@@ -1115,23 +1127,32 @@ const YARD_FLAGS = [-520, 600];                       // 练武场两面旗（�
 // 竹林两头的竹子迎着风摇（多斜多少：正 = 往右）。风从左边来，所以总是往右偏、一阵一阵的
 const bambooSway = (t, i) => 0.0032 + 0.0026 * Math.sin(t * 0.9 + i * 0.7) + 0.0011 * Math.sin(t * 2.1 + i * 1.9);
 
-// 一只小鸟（侧面，往右飞）：身子、头、剪刀尾，两只翅膀上下扇（w：1 扬到最高、-1 压到最低、0 平着看过去只剩一小片）；远侧那只淡一点、慢半拍
-function liveBird(g, x, y, s, w, w2, a) {
-  g.save(); g.translate(x, y); g.scale(s, s);
-  const wing = (k, al) => {
-    g.fillStyle = INK(al, '34,36,40');
-    g.beginPath(); g.moveTo(2.2, -0.6);
-    g.quadraticCurveTo(0.8, -0.8 - 7.5 * k, -2.6 + Math.abs(k) * 0.8, -1 - 9.5 * k);
-    g.quadraticCurveTo(-1.2, -0.8 - 4 * k, -1.8, -0.2);
+// 2.6 一只燕子（侧面，往右飞）：细长的身子、白肚皮、短尖嘴，两只镰刀一样又长又窄的翅膀，剪刀尾（两根长尾羽一上一下分开）。
+// k：翅膀扇到哪（1 扬到最高、-1 压到最低），k2 远侧那只（慢半拍、淡一点）；fold：翅膀往后收多少（0 张开，1 收成一把剪刀 —— 俯冲）；ang：身子仰俯
+function swallow(g, x, y, s, ang, k, k2, fold, a) {
+  g.save(); g.translate(x, y); g.rotate(ang); g.scale(s, s);
+  const col = '30,32,38';
+  const wing = (k, al, side) => {
+    const rx = 1.4, ry = -0.5, len = 15 - 4 * fold, el = k * (1.05 - 0.4 * fold);           // 翅根在身子前半截；收起来短一点、扇不大
+    // 从侧下方一点看过去：平着的时候近的那只在身子下面、远的那只在上面（张开的样子看得出来），收起来贴着身子
+    const tx = rx - len * (0.34 + 0.5 * fold) * (0.8 + 0.2 * Math.cos(el)), ty = ry - len * Math.sin(el) * 0.92 + side * len * 0.42 * Math.cos(el) * (1 - 0.6 * fold);
+    const dx = tx - rx, dy = ty - ry, n = Math.hypot(dx, dy) || 1, mx = (rx + tx) / 2, my = (ry + ty) / 2;
+    let px = -dy / n, py = dx / n; if (px < 0) { px = -px; py = -py; }                      // 翅膀前缘那一侧
+    g.fillStyle = INK(al, col);
+    g.beginPath(); g.moveTo(rx, ry);
+    g.quadraticCurveTo(mx + px * n * 0.2, my + py * n * 0.2, tx, ty);                         // 前缘往外鼓
+    g.quadraticCurveTo(mx + px * n * 0.07 - dx * 0.12, my + py * n * 0.07 - dy * 0.12, -2.4, 0.3);   // 后缘往里凹，回到身子后半截
     g.closePath(); g.fill();
   };
-  wing(w2, a * 0.6);
-  g.fillStyle = INK(a, '34,36,40');
-  g.beginPath(); g.ellipse(0, 0, 4.4, 1.55, -0.06, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.arc(4.4, -0.7, 1.45, 0, Math.PI * 2); g.fill();
-  g.beginPath(); g.moveTo(5.6, -0.9); g.lineTo(7.4, -0.5); g.lineTo(5.6, -0.1); g.fill();
-  g.beginPath(); g.moveTo(-3.2, -0.3); g.lineTo(-8, -1.6); g.lineTo(-7.2, 0.2); g.lineTo(-8, 1.7); g.lineTo(-3.2, 0.6); g.fill();
-  wing(w, a);
+  wing(k2, a * 0.55, -1);
+  g.fillStyle = INK(a, col);
+  for (const ey of [-2.2 - fold * 0.5, 1.9 + fold * 0.5]) { g.beginPath(); g.moveTo(-3.4, -0.55); g.lineTo(-12.5, ey); g.lineTo(-3.4, 0.6); g.closePath(); g.fill(); }
+  g.beginPath(); g.ellipse(0.2, 0, 4.9, 1.45, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(4.5, -0.45, 1.5, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.moveTo(5.8, -0.75); g.lineTo(7.3, -0.35); g.lineTo(5.8, 0.05); g.fill();
+  g.fillStyle = `rgba(244,240,234,${a * 0.65})`;
+  g.beginPath(); g.ellipse(0.9, 0.78, 3.1, 0.52, 0.05, 0, Math.PI * 2); g.fill();
+  wing(k, a, 1);
   g.restore();
 }
 // 一缕白云（朱日远山）：底边平一点、上边一团一团鼓起来（中间那几团大），两头拖成细丝；底下一层很淡的灰（看得出是云，不是一条白杠）；画一次存成图
@@ -1139,7 +1160,7 @@ function cloudSprite(len, th) {
   const pad = 40, k = 1.5, W2 = len + pad * 2, H2 = th * 5 + pad, c = document.createElement('canvas');
   c.width = Math.ceil(W2 * k); c.height = Math.ceil(H2 * k);
   const g = c.getContext('2d'); g.scale(k, k);
-  const base = H2 * 0.6, n = 8 + ((LIVE_R() * 4) | 0);
+  const base = H2 * 0.6, n = Math.max(5, Math.round(len / 32)) + ((LIVE_R() * 2) | 0);      // 2.6 云短了：团数跟着长短走
   for (let i = 0; i < n; i++) {
     const u = (i + 0.5) / n, x = pad + len * u + lrand(-8, 8), env = Math.pow(Math.sin(Math.PI * u), 0.8);
     mistBlob(g, x, base + th * 0.25, len / n * lrand(1.3, 1.8), th * (0.25 + 0.3 * env), 0.06, '104,108,112');      // 底下淡淡的灰
@@ -1200,24 +1221,52 @@ function liveFlag(g, fx, fy, t, ph) {
     g.beginPath(); g.moveTo(p[0], p[1] + 1); g.lineTo(p[0] + 1 + (p[0] - q[0]) * 0.9, p[1] + 12); g.stroke();
   }
 }
-// 一群鸟：扇几下、滑一会儿（扇的时候翅膀上下、身子跟着一起一伏；滑的时候翅膀微微扬着不动）
-function birdFlap(m, dt) {
+// 2.6 燕子飞一步：扇一阵（一秒四五下，往上拔一点、加速）→ 张着翅膀飘一阵（慢一点、慢慢往下沉）→ 偶尔收起翅膀往下一扎、再拉起来（俯冲）。
+// 总是往右（横着的速度一直是正的），上下不出 y0 ~ y1 这一段天
+function swallowStep(m, dt, y0, y1) {
   m.tm -= dt;
-  if (m.glide) {
-    const e = Math.min(1, dt * 4); m.w += (0.3 - m.w) * e; m.w2 += (0.24 - m.w2) * e;
-    if (m.tm <= 0) { m.glide = false; m.ph = Math.asin(clamp(m.w, -1, 1)); m.tm = lrand(2.5, 5); }
-  } else {
-    m.ph += dt * Math.PI * 2 / m.per; m.w = Math.sin(m.ph); m.w2 = Math.sin(m.ph - 0.35);
-    if (m.tm <= 0 && Math.abs(m.w - 0.3) < 0.15 && Math.cos(m.ph) > 0) { m.glide = true; m.tm = lrand(0.8, 2); }
+  if (m.tm <= 0) {
+    m.mode = m.mode === 'flap' ? (LIVE_R() < 0.3 ? 'dive' : 'glide') : 'flap';
+    m.tm = m.t0 = m.mode === 'flap' ? lrand(0.45, 1.1) : m.mode === 'glide' ? lrand(0.7, 1.6) : lrand(0.55, 0.8);
   }
+  const e6 = Math.min(1, dt * 6);
+  let tvx, tvy, fold, kk = 2.4;
+  if (m.mode === 'flap') {
+    m.ph += dt * Math.PI * 2 / m.per; m.k = Math.sin(m.ph); m.k2 = Math.sin(m.ph - 0.45);
+    tvx = m.v; tvy = -16; fold = 0.08;
+  } else if (m.mode === 'glide') {
+    m.k += (0.14 - m.k) * e6; m.k2 += (0.08 - m.k2) * e6;
+    tvx = m.v * 0.8; tvy = 20; fold = 0.28;
+  } else {
+    m.k += (0.22 - m.k) * e6; m.k2 += (0.18 - m.k2) * e6;
+    const u = 1 - m.tm / m.t0;
+    tvx = m.v * 1.18; tvy = u < 0.5 ? 120 : -95; fold = 0.85; kk = 4;
+  }
+  if (m.y > y1) tvy = Math.min(tvy, -45); else if (m.y < y0) tvy = Math.max(tvy, 45);
+  const e = Math.min(1, dt * kk);
+  m.vx += (tvx - m.vx) * e; m.vy += (tvy - m.vy) * e;
+  m.fold += (fold - m.fold) * Math.min(1, dt * 7);
+  m.x += m.vx * dt; m.y += m.vy * dt;
+}
+// 2.6 飘着的一片竹叶：中间宽、两头尖；flip：翻到哪（1 正面、0 侧着只剩一道线、负的 = 反面，淡一点）
+function driftLeaf(g, x, y, len, ang, flip, a, col) {
+  const c = Math.cos(ang), sn = Math.sin(ang), w = len * 0.13 * Math.max(0.1, Math.abs(flip));
+  const P = (u, v) => [x + c * u - sn * v, y + sn * u + c * v];
+  // 竹叶是披针形：靠叶柄那头最宽，往叶尖长长地收尖
+  const b = P(-len * 0.5, 0), t = P(len * 0.5, 0), l1 = P(-len * 0.4, w * 1.15), l2 = P(len * 0.02, w * 0.95), r1 = P(len * 0.02, -w * 0.95), r2 = P(-len * 0.4, -w * 1.15);
+  g.fillStyle = INK(a * (flip < 0 ? 0.72 : 1), col);
+  g.beginPath(); g.moveTo(b[0], b[1]);
+  g.bezierCurveTo(l1[0], l1[1], l2[0], l2[1], t[0], t[1]);
+  g.bezierCurveTo(r1[0], r1[1], r2[0], r2[1], b[0], b[1]);
+  g.fill();
 }
 
 const LIVE = {
   sun: {
-    // 几缕白云从左往右慢慢飘（三缕，飘出右边就从左边再进来一缕新的；四成从太阳前面过）
+    // 几缕白云从左往右慢慢飘（三缕，飘出右边就从左边再进来一缕新的；四成从太阳前面过）。2.6（Jack：云短一点、厚一点）：长 220~420 → 150~260、厚 12~22 → 19~30
     far(g, L, st, dt) {
       const CL = st.clouds || (st.clouds = []), sunY = L.fy - 352;
-      const make = x => { const len = lrand(220, 420), th = lrand(12, 22), y = LIVE_R() < 0.4 ? sunY + lrand(-26, 30) : L.fy - lrand(230, 430); return { x, y, sp: lrand(5, 10), spr: cloudSprite(len, th) }; };
+      const make = x => { const len = lrand(150, 260), th = lrand(19, 30), y = LIVE_R() < 0.4 ? sunY + lrand(-26, 30) : L.fy - lrand(230, 430); return { x, y, sp: lrand(5, 10), spr: cloudSprite(len, th) }; };
       if (!CL.length) for (let i = 0; i < 3; i++) CL.push(make(L.w * (i + lrand(0.1, 0.9)) / 3));
       for (let i = 0; i < CL.length; i++) {
         const c = CL[i]; c.x += c.sp * dt;
@@ -1256,50 +1305,50 @@ const LIVE = {
     },
   },
   bamboo: {
-    // 萤火虫：一闪一闪（亮一阵、暗一阵），慢慢往右飘、上下浮着；十来只，出来、消失都是慢慢的；黄绿色（夜里的灰底上看得出来）
+    // 2.6 竹叶（换掉萤火虫）：风一阵一阵的 —— 两头的竹子往右摇得越厉害，竹梢上吹下来的叶子越多（风小的时候一片也不掉）；
+    // 叶子打着转往右飘、左右荡着慢慢落（翻过来的时候窄、淡一点），飘一阵就淡掉；最多十片，都在人头顶上面那一截
     mid(g, L, st, dt) {
-      const FL = st.flies || (st.flies = []), halo = softDot('206,228,86'), core = softDot('248,252,186');
-      if (st.nextFly === undefined) st.nextFly = 0;
-      if (dt > 0 && st.t >= st.nextFly && FL.length < 10) {
-        FL.push({ x: lrand(L.vis[0] + 30, L.vis[1] - 120), y: L.fy - lrand(50, 260), vx: lrand(4, 10), bA: lrand(4, 10), bP: lrand(3, 6), ph: LIVE_R() * 6.28, life: 0, dur: lrand(7, 13), pP: lrand(1.6, 3.2), pPh: LIVE_R() * 6.28 });
-        st.nextFly = st.t + lrand(0.6, 1.8);
+      const LF = st.leaves || (st.leaves = []);
+      const gust = clamp((bambooSway(st.t, 1) - 0.0034) / 0.0034, 0, 1);       // 这一阵风多大（0 ~ 1）
+      if (dt > 0 && LF.length < 10 && LIVE_R() < dt * 2.4 * gust) {
+        LF.push({ x: lrand(L.vis[0] - 80, L.vis[1] - 160), y: L.fy - lrand(400, 560), vx: lrand(30, 52), vy: lrand(15, 26), len: lrand(17, 25),
+          ang: lrand(-0.6, 0.6), sw: lrand(1.6, 2.6), swPh: LIVE_R() * 6.28, fl: lrand(2.2, 3.6), flPh: LIVE_R() * 6.28, life: 0, dur: lrand(7, 11), a: lrand(0.5, 0.64) });
       }
-      for (let i = FL.length - 1; i >= 0; i--) {
-        const f = FL[i]; f.life += dt;
-        if (f.life >= f.dur) { FL.splice(i, 1); continue; }
-        f.x += f.vx * dt;
-        const y = f.y + f.bA * Math.sin(Math.PI * 2 * f.life / f.bP + f.ph);
-        const glow = lifeFade(f.life, f.dur, 1.2, 1.5) * Math.pow(Math.max(0, Math.sin(Math.PI * 2 * f.life / f.pP + f.pPh)) * 0.75 + 0.25, 1.4);
-        dotAt(g, halo, f.x, y, 12, glow * 0.6);
-        dotAt(g, core, f.x, y, 3.2, glow);
+      for (let i = LF.length - 1; i >= 0; i--) {
+        const f = LF[i]; f.life += dt;
+        if (f.life >= f.dur) { LF.splice(i, 1); continue; }
+        const swing = Math.sin(f.life * f.sw + f.swPh);                         // 左右荡（像纸片落下来那样）
+        f.x += (f.vx * (0.75 + 0.5 * gust) + swing * 14) * dt; f.y += f.vy * (0.85 + 0.3 * Math.abs(swing)) * dt;
+        driftLeaf(g, f.x, f.y, f.len, f.ang + 0.55 * swing, Math.cos(f.life * f.fl + f.flPh), f.a * lifeFade(f.life, f.dur, 0.8, 1.6), '24,26,30');
       }
     },
   },
   peach: {
-    // 鸟（Jack 点名要的）：隔十几秒从地图左边飞进来一群（一只、两只或三只），缓缓扇翅膀，飞到右边出去；同时最多两群
-    far(g, L, st, dt) {
-      const B = st.birds || (st.birds = []);
-      if (st.nextBird === undefined) st.nextBird = st.t + lrand(1.5, 4);
-      if (dt > 0 && st.t >= st.nextBird && B.length < 2) {
-        const n = LIVE_R() < 0.5 ? 1 : LIVE_R() < 0.7 ? 2 : 3, s0 = lrand(0.95, 1.2);
-        const fl = { x: -40, y: L.fy - lrand(250, 380), sp: lrand(40, 58), ph: LIVE_R() * 6.28, m: [] };
-        for (let i = 0; i < n; i++) fl.m.push({ dx: -i * lrand(16, 26), dy: i ? lrand(-9, 9) : 0, s: s0 * lrand(0.88, 1.08), ph: LIVE_R() * 6.28, per: lrand(0.95, 1.35), glide: false, tm: lrand(2.5, 5), w: 0, w2: 0 });
-        B.push(fl); st.nextBird = st.t + lrand(8, 20);
-      }
-      for (let i = B.length - 1; i >= 0; i--) {
-        const fl = B[i]; fl.x += fl.sp * dt;
-        let left = 1e9;
-        for (const m of fl.m) {
-          birdFlap(m, dt);
-          const x = fl.x + m.dx, y = fl.y + m.dy + Math.sin(st.t * 0.45 + fl.ph) * 7 + (m.glide ? 0 : Math.cos(m.ph) * 0.9);
-          left = Math.min(left, x);
-          if (x > L.vis[0] - 30 && x < L.vis[1] + 30) liveBird(g, x, y, m.s, m.w, m.w2, 0.6);
-        }
-        if (left > L.w + 40) B.splice(i, 1);
-      }
-    },
+    // 2.6 燕子（Jack：鸟改成燕子，是背景里的、不跟着人走，飞快点，一会儿飞一会儿飘）：中景那一层（镜头一挪，它跟着桃林一起挪），
+    // 隔几秒从看得见的左边飞进来一只、两只或三只，在桃树上面那一截天上往右飞（一秒两百来像素），飞出右边就没了；同时最多两群。
     // 落英：几片花瓣翻着跟头往右飘、慢慢往下落（在人头顶上面那一截，飘一阵就淡掉）
     mid(g, L, st, dt) {
+      const B = st.birds || (st.birds = []), y0 = L.fy - 490, y1 = L.fy - 350;          // 飞在桃树梢上面那一截天（比人头高一截）
+      if (st.nextBird === undefined) st.nextBird = st.t + lrand(1, 3);
+      if (dt > 0 && st.t >= st.nextBird && B.length < 2) {
+        const n = LIVE_R() < 0.45 ? 1 : LIVE_R() < 0.65 ? 2 : 3, v = lrand(175, 240), y = lrand(y0 + 20, y1 - 30);
+        const fl = { m: [] };
+        for (let i = 0; i < n; i++) fl.m.push({ x: L.vis[0] - 40 - i * lrand(26, 60), y: y + (i ? lrand(-28, 28) : 0), vx: v, vy: 0, v: v * lrand(0.94, 1.06), s: lrand(1.35, 1.65),
+          mode: 'flap', tm: lrand(0.3, 1), t0: 1, ph: LIVE_R() * 6.28, per: lrand(0.2, 0.26), k: 0, k2: 0, fold: 0.1 });
+        B.push(fl); st.nextBird = st.t + lrand(5, 12);
+      }
+      for (let i = B.length - 1; i >= 0; i--) {
+        const fl = B[i]; let left = 1e9;
+        for (const m of fl.m) {
+          if (dt > 0) swallowStep(m, dt, y0, y1);
+          left = Math.min(left, m.x);
+          if (m.x > L.vis[0] - 40 && m.x < L.vis[1] + 40) {
+            const ang = clamp(Math.atan2(m.vy, m.vx), -0.45, 0.45), bob = m.mode === 'flap' ? Math.cos(m.ph) * 0.8 : 0;
+            swallow(g, m.x, m.y + bob, m.s, ang, m.k, m.k2, m.fold, 0.7);
+          }
+        }
+        if (left > L.vis[1] + 300 || left > L.w + 40) B.splice(i, 1);
+      }
       const P = st.petals || (st.petals = []);
       if (st.nextPetal === undefined) st.nextPetal = st.t + lrand(0.5, 2);
       if (dt > 0 && st.t >= st.nextPetal && P.length < 6) {
@@ -1385,20 +1434,23 @@ const Stage = {
     };
     const farW = Math.ceil(vw + 160 + STAGE_W * PAR_FAR), midW = Math.ceil(vw + 160 + STAGE_W * PAR_MID), lh = top + SKY_BELOW;
     const far = mk(farW, lh, w.back * 0.85, S.far, 1);
+    const sky = S.sky ? mk(Math.ceil(vw + 160 + STAGE_W * PAR_SKY), lh, w.back * 0.85, S.sky, 4) : null;
     const mid = S.mid ? mk(midW, lh, w.back, S.mid, 2) : null;
     const GW = STAGE_W - 2 * GX0, GH = GUP + GDN;
     const gc = document.createElement('canvas');
     gc.width = Math.ceil(GW * w.ground); gc.height = Math.ceil(GH * w.ground);
     const gg = gc.getContext('2d'); gg.scale(w.ground, w.ground); gg.translate(-GX0, GUP - FLOOR);
     S.ground(gg, { x0: GX0, x1: STAGE_W - GX0, R: R(3) });
-    this.layers = { far, mid, ground: gc, near: S.near || null };
+    this.layers = { sky, far, mid, ground: gc, near: S.near || null };
     this.built = { id, back: w.back, ground: w.ground, top, vw };
     this.id = id;
     if (!this.live || this.live.id !== id) this.live = { id, t: 0 };      // 2.5.1 换了图才从头来（窗口缩放重画背景，鸟照样接着飞）
   },
   // 2.5.1 动态背景的时钟：真实时间，一帧最多算 0.1 秒（切到后台再回来不会一下子跳一大截）；「减少动态效果」时不走
+  // 2.6（Jack：暂停的时候别飞）：暂停时背景也停住（菜单背景不算暂停，照样动）
   liveStep() {
-    const now = performance.now(), dt = this.liveLast && !reduceMotion ? clamp((now - this.liveLast) / 1000, 0, 0.1) : 0;
+    const paused = typeof game !== 'undefined' && game.paused;
+    const now = performance.now(), dt = this.liveLast && !reduceMotion && !paused ? clamp((now - this.liveLast) / 1000, 0, 0.1) : 0;
     this.liveLast = now;
     if (this.live) this.live.t += dt;
     return dt;
@@ -1411,7 +1463,7 @@ const Stage = {
     ctx.fillRect(-20, -20, view.vw + 40, view.vh + 40);
     if (!L) return;
     const top = this.built.top, lv = S.live, st = this.live, dt = this.liveStep();
-    for (const [c, par, py, k] of [[L.far, PAR_FAR, 0.25, 'far'], [L.mid, PAR_MID, 0.5, 'mid']]) {
+    for (const [c, par, py, k] of [[L.sky, PAR_SKY, 0.1, 'sky'], [L.far, PAR_FAR, 0.25, 'far'], [L.mid, PAR_MID, 0.5, 'mid']]) {
       if (!c) continue;
       const x = view.vw / 2 - c.lw / 2 - (camX - STAGE_W / 2) * par, y = view.fy + lift * py - top;
       ctx.drawImage(c, x, y, c.lw, c.lh);
@@ -1443,6 +1495,7 @@ const Stage = {
       paint(tg, { w: lw, h: LH, fy: top, R: seeded(seed * 7919 + id.length * 131) });
       return t;
     };
+    if (S.sky) g.drawImage(layer(S.sky, 4), 0, 0);
     g.drawImage(layer(S.far, 1), 0, 0);
     if (S.mid) g.drawImage(layer(S.mid, 2), 0, 0);
     g.fillStyle = 'rgba(23,24,26,.55)'; g.fillRect(0, top * k, tw, 2);

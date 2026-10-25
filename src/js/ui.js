@@ -880,22 +880,24 @@ for (const btn of touchEl.querySelectorAll('.tc')) {
 /* 帧数表、克制总表、破解表：2.2 起在 guide.js（教程「查表」那一页 / 软件版教程）里，直接读 MOVES */
 
 /* ---------- 主循环 ---------- */
-let last = performance.now(), acc = 0, rafAvg = STEP_MS, smooth = false;
+let last = performance.now(), acc = 0, rafAvg = FRAME_MS, aligned = true;
 function loop(now) {
   let dt = Math.min(100, now - last); last = now;
-  // 2.0.1 帧率：rafAvg = 屏幕大概多久刷新一次。60Hz 屏幕：间隔在 16.7ms 上下抖，偶尔一下走 0 步、下一下走 2 步（画面一顿），
-  // 离一步很近的就当正好一步，画面不插值（不多延迟）。别的刷新率（120 / 144 / 75Hz…）：逻辑帧和画面对不齐，
-  // 在两帧之间插值着画（render.js RA），人跑起来才顺、没有重影
+  // 2.0.1 / 2.6 帧率：逻辑一秒 SIM_HZ（240）步，和屏幕刷新率无关。rafAvg = 屏幕大概多久刷新一次：
+  // 刚好是整数步（60Hz = 4 步、120Hz = 2 步、240Hz = 1 步）就把这一下对齐成正好那么多步，画面不插值（不多一点延迟；
+  // 60Hz 屏幕间隔在 16.7ms 上下抖，不对齐的话偶尔一下走 3 步、下一下走 5 步，画面一顿）；
+  // 别的刷新率（144 / 165 / 75Hz…）逻辑步和画面对不齐，在两步之间插值着画（render.js RA），人跑起来才顺、没有重影
   rafAvg += (dt - rafAvg) * 0.05;
-  if (smooth ? Math.abs(rafAvg - STEP_MS) < 1 : Math.abs(rafAvg - STEP_MS) > 1.6) smooth = !smooth;
-  if (!smooth && Math.abs(dt - STEP_MS) < 1.2) dt = STEP_MS;
-  if (game.mode === 'online') { if (!document.hidden) Net.tick(dt); RA = smooth ? clamp(Net.acc / STEP_MS, 0, 1) : 1; }
+  const k = Math.max(1, Math.round(rafAvg / STEP_MS)), off = Math.abs(rafAvg - k * STEP_MS);
+  if (aligned ? off > 0.8 : off < 0.4) aligned = !aligned;
+  if (aligned && Math.abs(dt - k * STEP_MS) < 1.2) dt = k * STEP_MS;
+  if (game.mode === 'online') { if (!document.hidden) Net.tick(dt); RA = aligned ? 1 : clamp(Net.acc / STEP_MS, 0, 1); }
   else if (!game.paused) {
     acc += dt * game.timeScale;
     let n = 0;
-    while (acc >= STEP_MS && n < 5) { step([pads[0].sample(), pads[1].sample()]); acc -= STEP_MS; n++; }
-    if (n >= 5) acc = 0;
-    RA = smooth || game.timeScale < 1 ? clamp(acc / STEP_MS, 0, 1) : 1;        // KO 慢镜头时 60Hz 屏幕也插（不然三帧才动一下）
+    while (acc >= STEP_MS - 1e-6 && n < 5 * SUB) { simTick([pads[0].sample(), pads[1].sample()]); acc -= STEP_MS; n++; }
+    if (n >= 5 * SUB) acc = 0;
+    RA = !aligned || game.timeScale < 1 ? clamp(acc / STEP_MS, 0, 1) : 1;        // KO 慢镜头时也插（不然几帧才动一下）
   }
   render();
   Ach.watch();
@@ -961,4 +963,4 @@ function boot(data) {
 const hot = window.claude && window.claude.hot;
 if (hot && hot.snapshot) { try { hot.snapshot(() => ({ diff: game.diff, sound: Sound.on, vol: Sound.vol })); } catch (e) {} }
 if (hot && hot.ready) hot.ready(boot); else boot(hot && hot.data ? hot.data : {});
-window.__modou = { game, F1, F2, MOVES, POSE, step, startMatch, Brain, render, FX, Net, pads, stateHash };
+window.__modou = { game, F1, F2, MOVES, POSE, step, simTick, startMatch, Brain, render, FX, Net, pads, stateHash };

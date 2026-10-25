@@ -40,7 +40,7 @@ const game = {
   mode: 'attract',          // attract（菜单背景电脑互打）| pve | pvp | online | train（训练场，2.0.2 以前叫打桩练习）
   phase: 'attract',         // attract | intro | fight | ko | roundEnd | over
   diff: 'normal', p: [F1, F2], brains: [null, null],
-  frame: 0, freeze: 0, shake: 0, flash: 0, punch: 0, timeScale: 1,
+  frame: 0, freeze: 0, shake: 0, flash: 0, punch: 0, timeScale: 1,   // frame：走了几步（2.6 起一步 = DT 帧）；freeze：顿帧还剩几帧
   quiet: false,             // 联机回滚重算时为 true：不出特效、不出声（1.9.0）
   round: 1, wins: [0, 0], timer: ROUND_FRAMES, phaseT: 0, paused: false, winner: -1,
   endless: false,           // 双人对战不限时，打到一方倒下为止
@@ -93,54 +93,60 @@ function endRound(winner, reason) {
   else { announce('胜负已分', null, 80, 110, game.p[winner]); Sound.finale(); }
 }
 
-function step(inputs) {
+/* 2.6 逻辑一步（DT 帧 = 1/240 秒）：主循环、联机一步一步调。
+   电脑 AI、木桩、破招练习、给 AI 看的快照（record）照旧一帧一次，都在每一帧的最后一步（走完正好是整帧，game.frame 是 SUB 的倍数）：
+   电脑在这一步开头想、按（和 step() 里人新按的招同一步），快照、破招练习的计时在这一步最后。
+   画面上的东西（姿势、特效、震屏、血条缓降）每步都走，按 DT 换算，屏幕刷新率高的时候更顺 */
+const SHAKE_K = rootDT(0.86), FLASH_K = rootDT(0.84), PUNCH_K = rootDT(0.8);
+function simTick(inputs) {
   game.frame++;
+  const fr = game.frame % SUB === 0;          // 这一步是一帧的最后一步（走完正好是整帧）
   const [a, b] = game.p;
   const locked = game.phase !== 'fight' && game.phase !== 'attract';
   for (let i = 0; i < 2; i++) {
-    if (game.brains[i]) game.brains[i].tick(locked);
+    if (game.brains[i]) { if (fr) game.brains[i].tick(locked); }
     else applyInput(game.p[i], inputs ? inputs[i] | 0 : 0);
   }
   const frozen = game.freeze > 0;
-  if (frozen) game.freeze--;
+  if (frozen) game.freeze = Math.max(0, game.freeze - DT);
   else {
     a.update(locked); b.update(locked);
-    // 朝向吸附（1.9.0）：不按左右的时候（站、蹲、挡）自动面向对手，不管远近；在判定之前做，对手刚绕到身后这一帧就转过来
+    // 朝向吸附（1.9.0）：不按左右的时候（站、蹲、挡）自动面向对手，不管远近；在判定之前做，对手刚绕到身后这一步就转过来
     for (const F of game.p) if (F.actionable() && !F.inp.held.left && !F.inp.held.right) F.autoFace();
     resolve(a, b);
     separate(a, b);
-    a.record(); b.record();
+    if (fr) { a.record(); b.record(); }
   }
   if (!game.quiet) {                 // 联机回滚重算时只算胜负，不动画面
-    a.keepPrev(); b.keepPrev();      // 2.0.1 上一帧的样子（画面插值用）
+    a.keepPrev(); b.keepPrev();      // 2.0.1 上一步的样子（画面插值用）
     a.animate(frozen); b.animate(frozen);
     for (const F of game.p) {
-      if (F.lagHp > F.hp) F.lagHp = Math.max(F.hp, F.lagHp - (F.state === 'hit' || frozen ? 0.05 : 0.6) * F.maxHp / 100);
+      if (F.lagHp > F.hp) F.lagHp = Math.max(F.hp, F.lagHp - (F.state === 'hit' || frozen ? 0.05 : 0.6) * F.maxHp / 100 * DT);
       else F.lagHp = F.hp;
     }
     updateFx();
-    game.shake *= 0.86; game.flash *= 0.84; game.punch *= 0.8;
+    game.shake *= SHAKE_K; game.flash *= FLASH_K; game.punch *= PUNCH_K;
   }
 
   switch (game.phase) {
     case 'attract':
-      if (a.hp <= 0 || b.hp <= 0) { if (++game.phaseT > 130) { resetFighters(); game.phaseT = 0; } }
+      if (a.hp <= 0 || b.hp <= 0) { if ((game.phaseT += DT) >= 131) { resetFighters(); game.phaseT = 0; } }
       break;
     case 'intro':
       // 2.3 开场字幕配锣鼓；2.4（Jack：锣鼓太诡异）换成战鼓 + 镲 + 古筝：回合名随着「锵」砸下来；战鼓越敲越密；「战」的时候「锵」+ 古筝和弦（fx.js INTRO_BEATS）
       introBeats(game.phaseT, roundName() === '决胜局');
       if (game.phaseT === 10) announce(roundName(), null, 56, 96);
       if (game.phaseT === 68) announce('战', null, 38, 170);
-      if (++game.phaseT >= 100) { game.phase = 'fight'; game.phaseT = 0; }
+      if ((game.phaseT += DT) >= 100) { game.phase = 'fight'; game.phaseT = 0; }
       break;
     case 'fight':
-      if (game.mode === 'train') { trainTick(); break; }
+      if (game.mode === 'train') { trainTick(fr); break; }
       if (a.hp <= 0 || b.hp <= 0) endRound(a.hp <= 0 && b.hp <= 0 ? -1 : a.hp <= 0 ? 1 : 0, 'ko');
-      else if (!game.endless && --game.timer <= 0) { game.timer = 0; endRound(a.hp === b.hp ? -1 : a.hp > b.hp ? 0 : 1, 'time'); }
+      else if (!game.endless && (game.timer -= DT) <= 0) { game.timer = 0; endRound(a.hp === b.hp ? -1 : a.hp > b.hp ? 0 : 1, 'time'); }
       break;
     case 'ko':
       game.timeScale = game.phaseT < 40 && !reduceMotion ? 0.3 : 1;
-      if (++game.phaseT >= 120) {
+      if ((game.phaseT += DT) >= 120) {
         game.timeScale = 1; game.phase = 'roundEnd'; game.phaseT = 0;
         if (game.winner >= 0) {
           game.wins[game.winner]++;
@@ -153,7 +159,7 @@ function step(inputs) {
     case 'roundEnd': {
       const Wf = game.winner >= 0 ? game.p[game.winner] : null;
       if (Wf && (Wf.actionable() || Wf.state === 'land')) Wf.state = 'win';
-      if (++game.phaseT >= 110) {
+      if ((game.phaseT += DT) >= 110) {
         if (game.wins[0] >= WIN_ROUNDS || game.wins[1] >= WIN_ROUNDS) { game.phase = 'over'; game.phaseT = 0; Hooks.matchOver(); }
         else { if (game.winner >= 0) game.round++; startRound(); }
       }
@@ -166,8 +172,15 @@ function step(inputs) {
     }
   }
 }
+/* 一帧（SUB 步）：测试、平衡报告、动作台、benchsim 用（以前的 step）。和 60 帧/秒时一模一样：
+   按住的方向、格挡这一帧的每一步都按着（走、跑这一帧照样走一整帧那么远）；新按下的招在这一帧最后一步按下去
+   （招式从整帧开始算，m.t 在每一帧末尾还是整数）。走到整帧为止 */
+function step(inputs) {
+  const v = [inputs ? inputs[0] | 0 : 0, inputs ? inputs[1] | 0 : 0], h = [v[0] & HELD_MASK, v[1] & HELD_MASK];
+  do { simTick((game.frame + 1) % SUB === 0 ? v : h); } while (game.frame % SUB);
+}
 // 打桩：木桩掉到三成以下、这一套打完就回满；玩家掉血也回满；可选无限气
-function trainTick() {
+function trainTick(fr) {
   const [a, b] = game.p;
   if (b.hp <= b.maxHp * DUMMY_REFILL && (b.actionable() || b.hp <= 0)) {
     if (b.state === 'ko') { b.state = 'idle'; b.downPhase = null; }
@@ -175,7 +188,7 @@ function trainTick() {
   }
   if (a.hp < a.maxHp && a.actionable()) a.hp = a.lagHp = a.maxHp;
   if (game.trainQi) a.qi = QI_MAX;
-  Drill.tick();                    // 2.1 破招练习：这一遍的计时、判成没成功
+  if (fr) Drill.tick();             // 2.1 破招练习：这一遍的计时、判成没成功（一帧一次）
 }
 // 五局三胜：两边都差一局就赢 = 决胜局
 function roundName() {

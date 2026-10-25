@@ -42,8 +42,9 @@ const viewInfo = () => ({ vw: VW, vh: VH, fy: FY, scale, pxr, zmax: ZOOM * zoomB
    现在：RA = 这一刻在上一帧和这一帧之间走到哪了（0~1，ui.js 主循环按时间算），人（骨骼、发带）、特效、气都在两帧之间插着画，
    镜头的平滑也按真实时间算（不按画了几次算）。60Hz 的屏幕 RA 一直是 1：不插值，也就不多一点延迟。只是画面，不影响胜负 */
 let RA = 1;
+const RIB_W = 4.6;                                   // 发带画多宽（2.6：5.4 → 4.6）
 const lerp = (a, b, k) => a + (b - a) * k;
-const RL = e => e.life + (1 - RA);                   // 插值后的剩余寿命（特效的淡出、放大跟着插）
+const RL = e => e.life + (1 - RA) * DT;              // 插值后的剩余寿命（特效的淡出、放大跟着插；2.6 一步 DT 帧）
 const RX = e => e.px === undefined ? e.x : lerp(e.px, e.x, RA), RY = e => e.py === undefined ? e.y : lerp(e.py, e.y, RA);
 // 一个人这一刻画成什么样：插值好的骨骼 J、发带、位置。一帧挪了一大截（回合重开、被摔过去）就不插
 function viewOf(F) {
@@ -67,7 +68,7 @@ function drawFighter(F, V) {
   V = V || viewOf(F);
   const J = V.J, P = pal(F);
   // 1.9.0 打击手感：刚挨打的人在打中停顿里左右抖几下
-  const shake = F.hitShake > 0 && !reduceMotion ? (F.hitShake % 2 ? 1 : -1) * Math.min(3, F.hitShake * 0.5) : 0;
+  const shake = F.hitShake > 0 && !reduceMotion ? (Math.ceil(F.hitShake) % 2 ? 1 : -1) * Math.min(3, F.hitShake * 0.5) : 0;
   if (shake) { ctx.save(); ctx.translate(shake, 0); }
   // 影子
   const sw = 38 * (1 - Math.min(V.alt, 200) / 320);
@@ -111,7 +112,7 @@ function drawFighter(F, V) {
   ctx.strokeStyle = F.sash;
   for (const pts of V.ribbons) {
     for (let i = 1; i < pts.length; i++) {
-      ctx.lineWidth = 5.4 * (1 - i / pts.length * 0.45);       // 2.5 照参考图：发带是两条扁扁的宽带子
+      ctx.lineWidth = RIB_W * (1 - i / pts.length * 0.45);     // 2.5 照参考图：发带是两条扁扁的宽带子；2.6（Jack：细一点点）5.4 → 4.6
       ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
     }
   }
@@ -166,8 +167,8 @@ function drawFigure(J, col, band, trail) {
   }
   const f = J.facing * (J.turned ? -1 : 1), k = J.knot;
   ctx.strokeStyle = band;
-  for (const [dy, len] of [[0, 30], [5, 24]]) {
-    ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
+  for (const [dy, len] of [[0, 26], [5, 21]]) {                     // 2.6 发带短一点、细一点（和对战里一样）
+    ctx.lineWidth = RIB_W * 0.93; ctx.beginPath(); ctx.moveTo(k[0], k[1] + dy * 0.3);
     ctx.quadraticCurveTo(k[0] - f * len * 0.5, k[1] + dy + 4, k[0] - f * len, k[1] + dy + 12); ctx.stroke();
   }
   ctx.shadowColor = 'rgba(23,24,26,.3)'; ctx.shadowBlur = 2;
@@ -515,7 +516,8 @@ function drawDrillPanel() {
   const lines = [];
   d.how.forEach((t, i) => wrapText(drillText(t, false), x + w - pad - tx).forEach((l, j) => lines.push({ n: j ? 0 : i + 1, l })));
   const how = lines.slice(0, 4);
-  const h = 60 + how.length * 22;
+  // 2.6 人物放大了一点（ZOOM 1.86），头顶高了：面板再紧一点（头一行 60 → 56、每行 22 → 20），最高 220，不压人头
+  const LH = 20, h = 56 + how.length * LH;
   paperPanel(x, y, w, h, c.demo);
   sealTag(x + pad, y + 13, c.demo ? '演示' : '破招');
   // 右上：成功几次（三个圈，涂满 = 成功一次）；演示时写「电脑替你按」
@@ -549,7 +551,7 @@ function drawDrillPanel() {
   }
   ctx.globalAlpha = 1;
   // 下面：一步一步怎么破（序号在朱印底下那一列，字和课名对齐）
-  let yy = y + 66;
+  let yy = y + 63;
   for (const L of how) {
     if (L.n) {
       ctx.beginPath(); ctx.arc(x + pad + 46, yy, 10, 0, Math.PI * 2); ctx.fillStyle = C.ink; ctx.fill();
@@ -557,7 +559,7 @@ function drawDrillPanel() {
     }
     ctx.textAlign = 'left'; ctx.font = `500 15px ${UIF}`; ctx.fillStyle = '#2b2c28';
     ctx.fillText(L.l, tx, yy + 1);
-    yy += 22;
+    yy += LH;
   }
   // 过关：印章盖在面板右上（压着那三个圈），一秒后弹结算
   if (c.passed && !c.demo) {
@@ -711,10 +713,11 @@ let lastRT = 0, shakeF = -1, shX = 0, shY = 0;
 function render() {
   ctx.setTransform(pxr * scale, 0, 0, pxr * scale, 0, 0);
   // 2.0.1：镜头的平滑按真实时间算（以前每画一次挪一截，144Hz 的屏幕上镜头比人走得勤，人看着一抖一抖）
-  const now = performance.now(), rdt = lastRT ? clamp(now - lastRT, 0, 100) : STEP_MS; lastRT = now;
-  const ease = k => 1 - Math.pow(1 - k, rdt / STEP_MS);
-  if (game.frame !== shakeF) {                        // 震屏每一帧（逻辑帧）换一次位置，不是每画一次换一次
-    shakeF = game.frame;
+  const now = performance.now(), rdt = lastRT ? clamp(now - lastRT, 0, 100) : FRAME_MS; lastRT = now;
+  const ease = k => 1 - Math.pow(1 - k, rdt / FRAME_MS);   // k = 每 1/60 秒挪多少
+  const fno = Math.floor(game.frame / SUB);
+  if (fno !== shakeF) {                               // 震屏每一帧（1/60 秒）换一次位置，不是每画一次、每一步换一次
+    shakeF = fno;
     shX = game.shake > 0.3 && !reduceMotion ? rnd(-1, 1) * game.shake : 0; shY = game.shake > 0.3 && !reduceMotion ? rnd(-1, 1) * game.shake * 0.6 : 0;
   }
   const sx = shX, sy = shY;
@@ -852,6 +855,6 @@ function drawNetStatus() {
     ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('等待对方…', VW / 2, y0 + 30);
   }
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = Net.desync ? C.cin : 'rgba(23,24,26,.5)';
-  const rb = Net.rb, roll = rb && rb.stats.rollbacks ? ` · 回滚 ${(rb.stats.frames / Math.max(1, rb.stats.rollbacks)).toFixed(1)} 帧/次` : '';
-  ctx.fillText(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${Net.delay} 帧${roll}`, VW / 2, VH - 22);
+  const rb = Net.rb, roll = rb && rb.stats.rollbacks ? ` · 回滚 ${(rb.stats.frames / SUB / Math.max(1, rb.stats.rollbacks)).toFixed(1)} 帧/次` : '';
+  ctx.fillText(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${+(Net.delay / SUB).toFixed(2)} 帧${roll}`, VW / 2, VH - 22);
 }

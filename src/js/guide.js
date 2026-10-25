@@ -234,14 +234,16 @@ function relTableHtml() {
 const relLegend = '<span class="chip w2">克</span>单方面打中 <span class="chip w1">压</span>两边都中、你占大便宜 <span class="chip eq">平</span>拼招 <span class="chip l1">被压</span> <span class="chip l2">被克</span>';
 const FRAME_ROWS = ['jab', 'heavy', 'kick', 'grab', 'lowGrab', 'beng', 'whip', 'elbow', 'chop', 'whirl', 'stepPunch', 'hammer', 'twinKick', 'upper', 'backKick', 'rushEnd',
   'lowJab', 'sweep', 'palm', 'shoulder', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'jieQuan', 'stomp', 'slipElbow', 'super'];
+// 2.6 帧数按 1/4 帧算：整数照写，零头写成 .25 / .5 / .75
+const fmtF = v => Number.isInteger(v) ? String(v) : String(+v.toFixed(2));
 function frameTableHtml() {
   const rows = FRAME_ROWS.map(k => {
     const d = MOVES[k], dmg = d.kind === 'grab' ? (k === 'grab' ? `${d.dmg}~${THROW_DMG}` : `${TACKLE_DMG}~${SCOOP_DMG}`) : Math.round(d.dmg * (d.air ? AIR_BONUS : 1));
-    return `<tr><td>${d.label}</td><td>${TIER_NAME[d.lead] || '—'}</td><td>${TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${d.S}</td><td>${d.dive ? '到地' : d.A}</td><td>${d.R}</td><td>${dmg}</td><td>${d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
+    return `<tr><td>${d.label}</td><td>${TIER_NAME[d.lead] || '—'}</td><td>${TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${fmtF(d.S)}</td><td>${d.dive ? '到地' : fmtF(d.A)}</td><td>${fmtF(d.R)}</td><td>${dmg}</td><td>${d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
   }).join('');
   return `<table class="frames"><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
-const FRAME_NOTE = '1 帧 = 1/60 秒。射程是两人中心距（像素，含往前冲的那一段）；空中招伤害已含 ×' + AIR_BONUS + '。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。';
+const FRAME_NOTE = '1 帧 = 1/60 秒（2.6 起按 1/4 帧算，所以有 .25、.5、.75）。射程是两人中心距（像素，含往前冲的那一段）；空中招伤害已含 ×' + AIR_BONUS + '。段：中段站蹲都能挡，下段要蹲挡，上段要站挡。';
 
 // 键位表的一行一行：[说明, 动作…]
 const KEY_ROWS = [['移动', ['left', 'right'], '按哪边朝哪边跑'], ['跳', ['up']], ['蹲', ['down']], ['短拳', ['jab']], ['重拳', ['heavy']], ['腿踢', ['kick']], ['格挡', ['block'], '按住'], ['擒拿', ['grab']],

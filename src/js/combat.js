@@ -11,7 +11,8 @@
           挡后反击 / 卸力反击 / 破绽：防住以后打对方收招有加成，击倒招加得最多 */
 
 const atWall = F => F.x <= WALL_L + 2 || F.x >= WALL_R - 2;
-const stop = n => Math.round(n * HITSTOP);
+const stop = n => grid(n * HITSTOP);          // 顿帧（2.6 取到 0.25 帧）
+// 2.6 时间比较：第 k 帧 = [k, k+1)，以前「t > X」写成 t >= X + 1、「t <= X」写成 t < X + 1（见 config.js）
 // 1.9.2：画面上飘的字只出招名和结果（拼、压、化解、卸、破招 ×1.2、倒栽葱 ×1.3、伤害…），不出讲规则的字
 // （谁克谁、该站挡还是蹲挡、背后挡不住、站着的抄不到）—— 这些写进打桩练习的数值面板（info.why），不飘在人身上
 const CRASH_NAME = '倒栽葱';                     // 空中出招被克制、打下来（倒地更久）
@@ -58,7 +59,7 @@ function grabIntent(A, B) {
   if (A.state !== 'attack' || !m || m.def.kind !== 'grab' || m.done || !A.inActive() || B.invuln()) return null;
   const dist = (B.x - A.x) * A.facing;
   const bm = B.state === 'attack' ? B.move : null;
-  const kicking = !!bm && bm.def.kind === 'kick' && !bm.def.dive && bm.t >= 3 && bm.t <= bm.S + bm.def.A && B.facingTo(A);
+  const kicking = !!bm && bm.def.kind === 'kick' && !bm.def.dive && bm.t >= 3 && bm.t < bm.S + bm.def.A + 1 && B.facingTo(A);
   if (m.def.low) {
     // 抄腿：接住地上的出腿（扫堂腿也接得住；跳起来的腿抄不到）；抓蹲着的；站着的抓不到
     if (kicking && !bm.air && B.alt <= 24 && dist >= -6 && dist <= Math.max(m.def.reach, bm.def.reach) + 6) return 'scoop';
@@ -107,7 +108,7 @@ function lungeLeft(F) {
 function committed(B, A, lead) {
   const m = B.move;
   if (B.state !== 'attack' || !m || m.done || m.def.script || m.def.kind === 'grab' || m.def.kind === 'push') return false;
-  if (m.t > m.S + m.def.A || m.S - m.t > lead) return false;
+  if (m.t >= m.S + m.def.A + 1 || m.S - m.t > lead) return false;
   if (!reaches(B, A, m, lungeLeft(B) + 6)) return false;
   if (A.invuln() || shielded(B, A, m)) return false;
   if (m.def.evadeCrouch && A.isCrouching()) return false;
@@ -164,7 +165,7 @@ function strikeOn(A, B) {
 // → A 这一下被化解打空，B 的招照常打出并算克制。重拳对短拳走「霸体」，不走这里
 function readBeat(B, A) {
   const m = B.move, ta = A.move.def.tier;
-  if (B.state !== 'attack' || !m || m.done || m.def.script || m.t < 3 || m.t > m.S) return false;
+  if (B.state !== 'attack' || !m || m.done || m.def.script || m.t < 3 || m.t >= m.S + 1) return false;
   if (beats(m.def.tier, ta) <= 0 || (m.def.armor && m.def.armor.vs.includes(ta))) return false;
   return committed(B, A, BEAT_LEAD);
 }
@@ -184,7 +185,7 @@ function applyHit(A, B, how) {
   B.holdPose = true;          // 2.4 打中（挡住）那一帧挨打的人先不动，顿帧里拳脚正好落在身上，顿完了才往后仰（只是画面）
   const c = contactPoint(A, B);
   const bm = B.state === 'attack' && B.move && !B.move.def.script ? B.move : null;
-  const inStartup = !!bm && bm.t <= bm.S;
+  const inStartup = !!bm && bm.t < bm.S + 1;
   const front = B.facingTo(A);
   if (B.isBlocking() && front && B.parryReady()) return parry(A, B, c);
   if (B.isBlocking() && front && B.blockHeightOK(d.height)) return guard(A, B, c);
@@ -195,7 +196,7 @@ function applyHit(A, B, how) {
   // 迎击：打在全速跑过来、或冲刺收尾（无敌帧过了）的人身上
   const charging = (B.state === 'run' && B.runT >= RUN_CHARGE) || (B.state === 'attack' && B.move && B.move.name === 'dash');
   // 1.8.0 防守反击：挡后反击（打在自己刚挡住的那一招收招里）、破绽（击倒招打空了打它收招）、卸力反击（卸力后趁失衡打）
-  const inRecovery = !!bm && bm.t > bm.S + bm.def.A;
+  const inRecovery = !!bm && bm.t >= bm.S + bm.def.A + 1;
   let punish = null;
   if (inRecovery && A.guardOn === bm.serial) punish = ['挡后反击', bm.def.launch ? PUNISH_KD_MUL : PUNISH_MUL];
   else if (inRecovery && bm.def.launch && !bm.hit) punish = ['破绽', WHIFF_KD_MUL];
@@ -226,7 +227,7 @@ function applyHit(A, B, how) {
   const wrongGuard = B.isBlocking() && front;
   const backHit = B.isBlocking() && !front;
   // 拳打在正在出腿（单脚站着）的人身上 → 失衡倒地
-  const offBalance = !!bm && d.tier === 'light' && bm.def.tier === 'kick' && !bm.air && bm.t >= 4 && bm.t <= bm.S + bm.def.A;
+  const offBalance = !!bm && d.tier === 'light' && bm.def.tier === 'kick' && !bm.air && bm.t >= 4 && bm.t < bm.S + bm.def.A + 1;
   const rising = B.state === 'rise';                    // 2.0 打在起身硬直里（打桩面板上写一句）
 
   B.hp -= dmg; m.hit = true; A.stats.hits++;
@@ -248,7 +249,7 @@ function applyHit(A, B, how) {
   }
   else {
     const bonusStun = punish && label === punish[0] ? PUNISH_STUN : label === '截住闪身' ? SLIP_CAUGHT_STUN : 0;
-    B.state = 'hit'; B.stunT = Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n) + (m.air ? 4 : 0) + bonusStun;
+    B.state = 'hit'; B.stunT = Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n) + (m.air ? AIR_STUN : 0) + bonusStun;
     B.hurtHeavy = !!d.heavy || d.kind === 'kick';
     B.kvx = dir * d.kb * (1 + KB_GROW * n); if (wasAir) { B.vz = Math.max(B.vz, 2.5); B.vx = 0; }
     B.move = null; B.chain = []; B.chainIdle = 99; B.runT = 0;
@@ -484,7 +485,7 @@ function doGrab(A, B, type) {
     // 接腿摔（站着拿住对方的腿）/ 抄腿摔（蹲着抄住对方的腿，扫堂腿也算）：马上摔倒，挣不脱
     const scoop = type === 'scoop', wasSweep = !!(B.move && B.move.def.height === 'low');
     const airK = !scoop && (B.airborne || (B.move && B.move.air));
-    const dmg = scoop ? SCOOP_DMG : airK ? 9 : 6;
+    const dmg = scoop ? SCOOP_DMG : airK ? CATCH_AIR_DMG : CATCH_DMG;
     B.hp -= dmg; A.stats.hits++; A.stats.specials++;
     A.gainQi(dmg * 0.4 * QI_PER_HP); B.gainQi(dmg * 0.9 * QI_PER_HP);
     const foot = B.J.ff;
@@ -536,7 +537,7 @@ function grabDamage(A, B, dmg, label, big) {
 // 推开（擒住后什么都不按）：把人推出去，自己先动一点
 function grabPush(A, B, left) {
   grabDamage(A, B, MOVES.grab.dmg, '擒拿 · 推开', false);
-  B.grabbed = false; B.stunT = left + 4; B.kvx = A.facing * 8; B.hurtHeavy = false;
+  B.grabbed = false; B.stunT = left + TA(4); B.kvx = A.facing * 8; B.hurtHeavy = false;
   game.freeze = stop(4); dust(B.x, FLOOR, 3); burst(B.x, FLOOR - 70, A.facing, 6, 24, 3, pal(A).fx);
   Sound.hit(0.4);
   if (B.hp <= 0) { B.hp = 0; B.knockDown(4, A.facing * 3, 999, true); }
@@ -584,7 +585,7 @@ function separate(a, b) {
   if (rolling(a) || rolling(b)) return;             // 滚身起能从人脚下滚过去
   const dashing = F => F.state === 'attack' && F.move && (F.move.name === 'dash' || F.move.name === 'slip');
   if (ad >= min || a.airborne || b.airborne || dashing(a) || dashing(b)) return;   // 冲刺、闪身时身子能穿过去
-  const push = Math.min((min - ad) / 2, SOFT_PUSH), s = d > 0 ? 1 : d < 0 ? -1 : (a.facing > 0 ? 1 : -1);
+  const push = Math.min((min - ad) / 2, SOFT_PUSH * DT), s = d > 0 ? 1 : d < 0 ? -1 : (a.facing > 0 ? 1 : -1);   // 2.6 每步推 DT 帧那么多
   a.x -= s * push; b.x += s * push;
   a.x = clamp(a.x, WALL_L, WALL_R); b.x = clamp(b.x, WALL_L, WALL_R);
 }

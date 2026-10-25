@@ -68,14 +68,16 @@ const LEVELS = {
   // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
   // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
   hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
-    punish: .95, combo: 1, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
+    punish: .9, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86 },
+  // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
+  //（乱换招的木头玩家打掉的血占比，2.5：入门 67% · 简单 53% · 中等 38% · 困难 28% · 终极 22.5%；2.6：66% · 52% · 34% · 28.5% · 23.5%）
   // 终极（2.1 叫「极难」，id 还是 hell）：平时反应 10 帧（和人差不多），但每一招有 inst 的概率被它 1 帧看穿、按最赚的破法、时机按到帧（非人）；
   // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明。
   // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
   // 2.3（Jack：再降 5~10%）：瞬间看穿基础 0.3 → 0.2（你老出的招最多还是 0.55：别养习惯）、看穿 see 0.55 → 0.48、平时反应 10 → 11 帧、挡 0.8 → 0.74
   hell: { react: 11, block: .74, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
-    punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
+    punish: .93, combo: .93, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
     inst: .2, instMax: .55, instReact: 1 },
 };
@@ -126,7 +128,8 @@ class Brain {
     this.memo = { wake: { stand: 1, to: 1, away: 1 }, open: [{}, {}, {}], after: { hit: 1, hold: 1, slip: 0.5, move: 0.5 },
       // 2.1 跳过来干什么、冲刺完干什么、跑到跟前干什么（起始是「一般人」的样子）
       jump: { air: 1.2, dive: 0.5, empty: 0.5 }, dash: { strike: 1, grab: 0.4, none: 0.5 }, run: { shoulder: 0.8, grab: 0.5, strike: 0.6, stop: 0.6 },
-      hz: [0.04, 0.02, 0.01] };   // 他在近 / 中 / 远能出手的时候，每帧先出手的概率（慢慢更新）
+      hz: [0.04, 0.02, 0.01],     // 他在近 / 中 / 远能出手的时候，每帧先出手的概率（慢慢更新）
+      meaty: 0 };                 // 2.6 自己起身那几帧挨打（被压起身）的次数（慢慢淡忘）
     this.wakeLogged = false; this.openSeen = -1; this.afterWatch = null; this.wasBlocked = false; this.pressTurn = -1; this.punishFor = null;
     // 2.1
     this.aa = null; this.jumpSeen = false;           // 防跳：这一跳想好的接法 { plan, at }；看没看见这一跳
@@ -158,6 +161,11 @@ class Brain {
     const press = a => { if (a.startsWith('d:')) { H.down = true; a = a.slice(2); } f.inp.press(a, f.clock); };
     const pair = () => { f.inp.press('heavy', f.clock); f.inp.press('kick', f.clock); };
     this.learn(o);                                             // 2.1 所有难度都记习惯（记得准不准看 L.habit）
+    // 2.6 起身那几帧（起身硬直，或者这一帧刚从地上起来）掉了血 = 被人压起身打中了
+    if (f.hp < this.lastHp && (this.lastSt === 'rise' || (this.lastSt === 'down' && this.lastPh === 'getup'))) this.memo.meaty++;
+    // 又被打倒了（上一次看还在起身、站起来，这一次又躺下了 —— 起身那一下挨打，两次看之间就倒了，一直是「倒地」）：滚不滚重新掷
+    this.newDown = f.state === 'down' && (this.lastSt !== 'down' || (this.lastPh === 'getup' && f.downPhase !== 'getup'));
+    this.lastHp = f.hp; this.lastSt = f.state; this.lastPh = f.downPhase;
     // 2.1 极难：起跳也可能被它 1 帧看穿（每一跳掷一次骰子）—— 看穿了就按他现在的样子想接法，也不会往跳起来的人身上出地上的招
     const upNow = o.state === 'jumpsquat' || o.airborne;
     if (!upNow) { this.upRolled = false; this.upNow = false; }
@@ -172,6 +180,8 @@ class Brain {
     }
     // 多帧操作（闪步双击、跑动）；被打断就作废
     if (f.state === 'hit' || f.state === 'down' || f.state === 'blockstun' || f.state === 'rise') this.seq = [];
+    // 2.6 挨上了 / 被打倒了：刚才想好的「挡几帧、蹲几帧」作废（以前一直留着，起身以后接着按刚才那个高度挡，又挨一下扫堂腿）
+    if (f.state === 'hit' || f.state === 'down') { this.blockT = 0; this.duckT = 0; }
     if (this.seq.length) {
       const st = this.seq.shift();
       if (st.back) go(-1); if (st.fwd) go(1);
@@ -186,7 +196,12 @@ class Brain {
     // 倒地：起身时滚开（往墙的反方向）；起身硬直里什么也做不了
     if (f.state === 'down') {
       this.aa = null;
-      if (this.rollPick === null) this.rollPick = R() < L.roll ? (R() < 0.5 ? 1 : -1) : 0;
+      // 2.6 起身老被人卡着时机打（压起身）：记下来，越挨越爱滚，而且往远处滚（往他那边滚正好滚到他脚底下）；记得准不准看 L.habit
+      if (this.rollPick === null || this.newDown) {
+        const mt = this.memo.meaty, pr = Math.min(0.92, L.roll + 0.32 * mt * (L.habit || 0.5));
+        this.rollPick = R() < pr ? (mt > 0.5 || R() < 0.5 ? -1 : 1) : 0;     // -1 往远处滚、1 往他那边滚
+        this.memo.meaty *= 0.9;
+      }
       if (this.rollPick) { let d = this.rollPick * toward; if (f.x + d * ROLL_DIST < WALL_L + 20 || f.x + d * ROLL_DIST > WALL_R - 20) d = -d; if (d > 0) H.right = true; else H.left = true; }
       return;
     }
@@ -534,7 +549,8 @@ class Brain {
       const tw = o.x >= f.x ? 1 : -1, behind = f.x - tw * 100;
       if (behind < WALL_L + 20 || behind > WALL_R - 20) { A.plan = 'block'; return this.airDefense(s, dist, press, go, lag); }   // 退不了（到墙了）就站着挡
       // 他往下落、离得不远了：往后冲刺（冲刺前几帧无敌）躲开，他落空、落地有硬直；还远就举着手往后挪（面朝他，照样挡得住）
-      if (!A.done && dist <= 150 && s.vz < 2) { A.done = true; this.dashAway(); return true; }
+      // 2.6：冲刺要按三帧（按 → 松 → 按）才冲得出去；空中招前摇长了一点，出手的那一帧往后挪了零点几帧 —— 再晚一帧按，冲刺的无敌还没开始就挨上了，所以早一帧按
+      if (!A.done && dist <= 150 && s.vz < 2 + GRAV) { A.done = true; this.dashAway(); return true; }
       if (dist <= 240) { f.noParry = true; this.lowBlock = false; H.block = true; go(-1); return true; }
       return false;
     }
@@ -811,7 +827,8 @@ class Brain {
         band[k] = (band[k] || 0) + w;
       }
     }
-    if (o.state === 'jumpsquat' && o.t === 0) band.jump = (band.jump || 0) + w;
+    // 他起跳（每一跳记一次；2.6 电脑一帧看一次，起跳那一步不一定正好看到，所以记着这一跳看过没有）
+    if (o.state === 'jumpsquat') { if (!this.jsSeen) { this.jsSeen = true; band.jump = (band.jump || 0) + w; } } else this.jsSeen = false;
     // 2.1 他在这个距离能出手的时候多常出手（一贴近就出手的人，近身就要多护着）
     const started = !!om && om.serial !== this.hzSer && !om.def.script;
     if (om) this.hzSer = om.serial;
@@ -871,7 +888,7 @@ class Dummy {
         if (o.move && o.state === 'attack' && o.move.serial !== this.seen) { this.seen = o.move.serial; this.low = Math.random() < 0.5; }
         H.down = this.low; break;
       }
-      case 'jump': if (f.actionable() && f.clock % 45 === 0) f.inp.press('up', f.clock); break;
+      case 'jump': if ((this.jt = (this.jt || 0) + 1) >= 45 && f.actionable()) { this.jt = 0; f.inp.press('up', f.clock); } break;   // 大约 45 帧跳一次
     }
   }
 }

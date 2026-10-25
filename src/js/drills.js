@@ -122,7 +122,7 @@ const walkTo = (me, op, d) => gap(me, op) > d + 4 ? TW(me, op) : 0;
    主动课：at 木桩从多远出招，act 出招剧本；被动课：react: true，pose 木桩的架势（每帧），你出一招算一遍
    win(R)：这一遍成没成功（R 见 Drill.check）；miss(R)：没成功时给的提示（不给就用通用的） */
 const DRILL_TOPICS = [
-  ['jab', '短拳', '贴身最快的一下（前摇 5 帧），看见了再挡来不及，靠预判和霸体'],
+  ['jab', '短拳', `贴身最快的一下（前摇 ${MOVES.jab.S} 帧），看见了再挡来不及，靠预判和霸体`],
   ['lowJab', '下盘拳', '蹲着出的拳，下段：站着挡不住'],
   ['rush', '连拳（连珠快拳）', '一串短拳压着你打'],
   ['upper', '冲天炮（拳拳重）', '拳拳接重，击倒，收招很长'],
@@ -156,7 +156,7 @@ const DRILL_TOPICS = [
   ['catch', '接腿', '木桩专等你出腿，一伸手就接住'],
   ['slip', '闪身', '木桩按着挡从你身边钻过去'],
   ['burst', '爆气', '你连打它，它花半格气爆开'],
-  ['super', '泼墨', '气满放的必杀（40 血）'],
+  ['super', '泼墨', `气满放的必杀（${MOVES.super.dmg} 血）`],
   ['wake', '起身攻防', '倒地、起身、压起身、滚身起'],
 ];
 const DRILLS = [
@@ -198,7 +198,7 @@ const DRILLS = [
     why: '连段压制的破法：推挡、卸力、截拳、爆气',
     demo: (st, me) => me.state === 'blockstun' ? BLK | TAP('jab') : BLK, win: R => R.my('shove') },
   { id: 'rush.burst', topic: 'rush', name: '挨打时爆气', at: 82, act: seq('jab', 'jab', 'jab', 'jab'), meQi: 60,
-    how: ['这一课别挡，先挨两下', '挨打的时候按 [重] + [踢]（一起按）爆气 —— 花半格气', '爆开把他打倒，掉 18 血'],
+    how: ['这一课别挡，先挨两下', '挨打的时候按 [重] + [踢]（一起按）爆气 —— 花半格气', `爆开把他打倒，掉 ${BURST_DMG} 血`],
     why: '爆气只在挨打时能用：对方倒地；他要是面朝你举着手，只吃三成（这一课给你气）',
     demo: (st, me) => me.state === 'hit' && me.comboTaken >= 2 ? TAP('heavy') | TAP('kick') : 0,
     win: R => R.my('burst', e => e.hit), miss: R => R.my('burst', e => e.miss) ? '爆早了 / 他不在身边' : '挨打的时候按 [重] + [踢]' },

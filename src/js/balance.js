@@ -1,5 +1,5 @@
 'use strict';
-/* 平衡报告（1.8.0；1.9.0 加了千斤坠、拳迎千斤坠 / 腿顶飞踢）：双击 balance.html 跑，大约一两分钟。不进游戏，只是开发时查平衡用。
+/* 平衡报告（1.8.0；1.9.0 加了千斤坠、拳迎千斤坠 / 腿顶飞踢）：双击 balance.html 跑，大约三四分钟（2.6 起一帧四步）。不进游戏，只是开发时查平衡用。
    一、中立局「同时下决定」的收益矩阵 → 求均衡混合策略（博弈论里的纳什均衡，用遗憾匹配迭代）。
       每个选项 = 开局前 45 帧照计划按（出什么招 / 挡 / 跳 / 冲刺 / 跑过去…）；之后双方都按「好玩家」反应：
       打中就接连招、挡住 / 卸力后够得着就惩罚、踩腿 / 截拳这类反制有就用；看招再挡的人反应 REACT 帧。
@@ -329,7 +329,7 @@ const zh = list => list.map(t => { const i = t.lastIndexOf(' '); return (OPT_NAM
 function aiStats(lv, rounds) {
   const use = {}, kd = {}, lab = {};
   startMatch('pvp'); game.brains = [new Brain(F1, lv), new Brain(F2, lv)]; game.endless = true;
-  let r = 0, frames = 0;
+  let r = 0, frames = 0, prevPhase = game.phase;
   const seen = [-1, -1], wasDown = [false, false], lastInfo = [null, null];
   while (r < rounds && frames < 600000) {
     step([0, 0]); frames++;
@@ -343,7 +343,8 @@ function aiStats(lv, rounds) {
       if (d && !wasDown[1 - i]) { const n = F.info ? F.info.label : '?'; kd[n] = (kd[n] || 0) + 1; }
       wasDown[1 - i] = d;
     }
-    if (game.phase === 'roundEnd' && game.phaseT === 1) r++;
+    if (game.phase === 'roundEnd' && prevPhase !== 'roundEnd') r++;        // 2.6：phaseT 一步走 1/4 帧，不一定正好等于 1，按「刚进 roundEnd」数
+    prevPhase = game.phase;
     if (game.phase === 'over') { game.wins = [0, 0]; startRound(); }
   }
   const top = (o, n) => { const t = Object.values(o).reduce((a, b) => a + b, 0); return Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => `${k} ${(v / t * 100).toFixed(0)}%`).join(' · '); };
@@ -355,7 +356,7 @@ window.aiStats = aiStats;
 if (document.getElementById('out')) {
   const out = document.getElementById('out');
   const say = t => { out.textContent += t + '\n'; };
-  say(`墨斗 ${VERSION} 平衡报告（跑完大约一两分钟）\n`);
+  say(`墨斗 ${VERSION} 平衡报告（跑完大约三四分钟）\n`);
   setTimeout(() => {
     const r = runBalance({ qi: 30 });
     say('一、中立局均衡（每一行：两人相距多远 → 均衡里各选项占比）');

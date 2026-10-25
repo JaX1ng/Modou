@@ -6,7 +6,28 @@
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.5.1';
+const VERSION = '2.6.0';
+
+/* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
+   以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
+   · 逻辑一秒算 SIM_HZ（240）步（tick），和屏幕刷新率无关（60Hz 屏幕一次画面算 4 步，240Hz 屏幕一步一画，144Hz 插值着画）；
+   · 时长照旧用「帧」（1 帧 = 1/60 秒）写，但可以带小数，最细 DT = 0.25 帧（约 4 毫秒）；计时器每步加 DT；
+   · 速度、加速度照旧是「每帧多少像素」，每步只走 DT 那么多；每帧乘一次的衰减（击退、空气阻力）每步乘 rootDT(f)
+     （用开方算，不用 Math.pow —— 联机两边的浏览器算出来要一模一样）。整帧的时候位置、轨迹和以前 60 帧/秒一样。
+   · 时间怎么比（第 k 帧 = 从 k 到 k+1 那一段）：以前「t > X」（第 X 帧以后）写成 t >= X + 1，「t <= X」写成 t < X + 1；
+     「t >= X」「t < X」「倒数到 0」照旧。招式里 attackStep 先查再加的，用 k = m.t + DT - 1 代替以前的 m.t 来比（见 fighter.js）。
+   · step(inputs) 还是「一帧」（4 步：按住的键每一步都按着，新按的招在最后一步）—— 测试、平衡报告、动作台照旧按帧推；主循环、联机一步一步推（simTick） */
+const SIM_HZ = 240, SUB = SIM_HZ / 60, DT = 1 / SUB, FE = 1 - DT;
+const STEP_MS = 1000 / SIM_HZ, FRAME_MS = 1000 / 60;
+const grid = n => Math.round(n * SUB) / SUB;                     // 取到 DT 的整数倍（帧数用）
+function rootDT(f) { let r = f; for (let n = SUB; n > 1; n >>= 1) r = Math.sqrt(r); return r; }   // f 的 DT 次方（SUB 是 2 的幂）
+// 每帧「先走 v、再 v *= f」→ 每步「走 v·c、再 v *= r」：SUB 步加起来正好是以前一帧走的那么多
+// cp：先乘衰减再走（「v *= f; x += v」那种写法）时每步位移乘多少
+function damp(f) { const r = rootDT(f), c = f === 1 ? DT : (1 - r) / (1 - f); return { r, c, cp: c * f / r }; }
+const lerpK = k => 1 - rootDT(1 - k);                            // 每帧往目标挪 k → 每步挪多少
+// 重力：每帧「先 alt += vz、再 vz -= g」→ 每步 alt += vz·DT + g·GH、vz -= g·DT（整帧时轨迹一模一样）
+const GH = (DT - DT * DT) / 2;
+const KB_DAMP = damp(0.82);                                      // 击退（kvx）每帧剩 82%
 
 // 1.8.0 节奏：整体放慢约 7%（Jack：多一点反应时间，别慢太多）。帧数都按 TF() 换算取整，速度按 TEMPO 除。
 // 1.9.3 打击节奏再慢 5%（Jack：尤其是前摇、后摇）：招式的前摇 / 判定 / 后摇、硬直、倒地、起身这些帧数再 ×HIT_TEMPO；
@@ -21,6 +42,11 @@ const TEMPO = 1.07, TEMPO2 = TEMPO * TEMPO, HIT_TEMPO = 1.05, OPEN_TEMPO = 1.12,
 const TF = n => Math.round(n * TEMPO * HIT_TEMPO);
 const TFO = n => Math.round(n * TEMPO * HIT_TEMPO * OPEN_TEMPO);
 const TFH = n => Math.round(n * TEMPO * REACT_TEMPO);
+// 2.6 前后摇再长一点（Jack：所有动作前摇再长 5~10%；后摇主要是拳头在对方身上多停一会儿）：
+//   招式的前摇 S、后摇 R，连同挨打硬直 stun、格挡硬直 bstun（不然连招接不上、挡后反击的帧差变了）都在 2.5 的帧数上再 ×ATK_TEMPO，
+//   取到 0.25 帧（以前只能取整帧：前摇 5 帧最少也得加到 6 帧，+20%）。判定帧 A 不变。拳头停在身上见 HITSTOP（顿帧）
+const ATK_TEMPO = 1.075;
+const TA = n => grid(n * ATK_TEMPO);
 
 // 场地（逻辑坐标，画布按比例缩放）。W 是画面宽；场地 STAGE_W 比画面宽，镜头跟着两人左右移
 const W = 1200, H = 600, FLOOR = 520, PUSH = 25;                    // PUSH = 身体半宽
@@ -29,7 +55,7 @@ const START_GAP = 360;                   // 开局两人站在场地正中、相
 // 镜头（1.8.0）：人物放大。人机 / 联机 / 打桩：镜头跟着自己，对手可以在画面外（画面边上有箭头）；
 // 双人对战：两人都要在画面里 —— 镜头随距离缩放（近了放大、远了拉远），两人最远 MAXD_PVP
 // 2.0（Jack：人物再大一点，大小粗细一起放大）：1.62 → 1.76。全屏时屏幕比 2:1 高（16:9、16:10），多出来的高度再放大一点（render.js zoomBoost）
-const ZOOM = 1.76;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62）
+const ZOOM = 1.86;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62，2.0 ~ 2.5 是 1.76；2.6 Jack：人物屏幕占比再大一点点）
 const ZOOM_PVP_MIN = 1.24, CAM_MARGIN = 80;   // 双人对战最远时拉到多远；人离画面边至少留多少（场地坐标）
 const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）。画面宽窄怎么变它都不变（是规则）
 const MAX_HP = 400;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500；2.3 Jack：全部改成 400）
@@ -55,7 +81,7 @@ const BLOCK_WALK = 1.8 / TEMPO;          // 边挡边走的速度（跑步起步
 const SLIP_PAST = 62, SLIP_MIN = 70, SLIP_MAX = 150;   // 钻到对手身后多远（两人中心）；最少 / 最多冲多远
 const SLIP_CANCEL = TF(9);               // 闪身钻空了（没躲着重拳）：第几帧起能直接出招
 const SLIP_ELBOW_AT = 30;                // 躲过重拳以后，钻到他身后多远（两人中心，按他面朝的方向算）就回身出肘；钻完了还没到也出
-const SLIP_CAUGHT_MUL = 1.3, SLIP_CAUGHT_STUN = TF(5);   // 截住闪身的伤害倍率；截住时多几帧硬直
+const SLIP_CAUGHT_MUL = 1.3, SLIP_CAUGHT_STUN = TA(TF(5));   // 截住闪身的伤害倍率；截住时多几帧硬直
 const STAGGER = TF(32), STAGGER_KB = 3;  // 被回身肘打中：背对着踉跄多久（帧）、往前踉跄的力度
 // 1.9.0 朝向吸附加强（防打背身）：
 //   · 不按左右（站着、蹲着）、格挡、挡住的硬直里：一律自动面向对手（不管远近），对手跑到身后马上转过来；
@@ -70,6 +96,7 @@ const RUN_CARRY = 1.15;                  // 跑着起跳：水平速度 = 跑速
 const LEAP_VX = 6.6 / TEMPO;                     // 水平速度超过这个，空中用「飞身」姿势（1.7.0 起不再翻跟头）
 const AIR_ACC = 0.35 / TEMPO2, AIR_DRIFT = 3.0 / TEMPO;   // 空中按方向：加速度、能自己控制到的最高水平速度（比地面慢）
 const AIR_DRAG = 0.9719;                 // 空中松开方向，水平速度每帧剩几成（1.8.0：0.97 按节奏换算）
+const AIR_DRAG_DT = damp(AIR_DRAG);       // 2.6 每步剩几成（r）、这一步的位移乘多少（c）
 const AIR_BONUS = 1.35;                  // 跳起出招伤害倍率
 const AIR_SAFE = 60;                     // 跳到比这还高，普通地面招打不到（对空招另算，见招式的 antiAir）
 const AIR_VREACH = 105;                  // 空中招往下够多深：人斜着往前下打，整个跳跃过程都够得着地上的人（1.6.0 是 72~80，时机不对就打不到）
@@ -92,9 +119,11 @@ const KICK_AA_ALT = 100;                 // 地上的腿能迎着打到多高的
 const CHAIN_WIN = TF(22);                    // 上一招结束后多少帧内再出招算连招变招
 const BUF_WIN = 8;                       // 按键缓冲帧数
 const PAIR_WIN = 3;                      // 「重+踢」两键间隔几帧内算同时按
-const HITSTOP = 0.85;                    // 打中时的停顿（顿帧）倍率，越小节奏越快（1.8.0 从 0.8 加一点，看得清打中了没）
+// 打中时的停顿（顿帧）倍率，越小节奏越快（1.8.0 从 0.8 加一点，看得清打中了没）。
+// 2.6（Jack：拳头在对方身上停留的时间长一点）：0.85 → 1.15，顿帧里两人都不动、拳脚落在身上（帧差不变，只是这一下停得久一点、看得清）
+const HITSTOP = 1.15;
 const BLOCK_KEEP = 0.3;                  // 格挡后承受的伤害比例
-const SLOW_JAB_FRAMES = TF(90), SLOW_JAB_ADD = 4;   // 被挡后「势破」持续帧数、下一记短拳前摇增加帧数
+const SLOW_JAB_FRAMES = TF(90), SLOW_JAB_ADD = TA(4);   // 被挡后「势破」持续帧数、下一记短拳前摇增加帧数（2.6 跟着前摇 ×ATK_TEMPO）
 // 倒地（2.0，Jack：倒地起身的后摇太长；起身后要有几帧「挨打又动不了」，给对面先出手）：
 //   躺着 LIE_* → 起身 GETUP（打不中、动不了，从躺着撑到蹲着）→ 起身硬直 RISE（站起来那几帧：打得中、还动不了）→ 能动。
 //   RISE 的长短：对面在你刚能挨打那一帧出短拳（前摇 5）来得及打中；出腿踢（前摇 16）来不及 —— 你先能挡。
@@ -103,8 +132,7 @@ const LIE_HIT = TFH(28);                 // 普通击倒躺多久（1.9.4 是 40
 const LIE_GROUND = TFH(40), LIE_AIR = TFH(76); // 接腿摔倒地帧数（地面/空中）
 const GETUP = TFH(13), RISE = TFH(9);    // 起身（打不中）、起身硬直（打得中、动不了）。1.9.4：起身 20 帧，起来马上能动
 const LIE_CRASH = TFH(52);               // 倒栽葱（空中出招被克制打下来）倒地更久（1.9.0）
-const ROUND_FRAMES = 300 * 60, WIN_ROUNDS = 3;   // 人机/联机每回合 300 秒；双人不限时；五局三胜（1.8.0，以前三局两胜）
-const STEP_MS = 1000 / 60;
+const ROUND_FRAMES = 300 * 60, WIN_ROUNDS = 3;   // 人机/联机每回合 300 秒（按帧数，1 秒 60 帧）；双人不限时；五局三胜（1.8.0，以前三局两胜）
 
 // 交手（两边同时出招）。每个招有「主系」tier 和「起手」lead，先比主系、再比起手
 const TRADE_LEAD = 3;      // 被打中时自己的招还差 ≤3 帧就出来 = 已经出手，算「交手」而不是被破招
@@ -112,13 +140,14 @@ const BEAT_LEAD = 8;       // 自己的招主系克制对方、且 ≤8 帧内�
 const CLASH_KEEP = 0.5;    // 平（拼招）：各吃对方伤害的五成
 const CLASH_STUN = TFH(11), CLASH_KB = 7.5;   // 拼招后双方硬直、互相震退的力度
 const PRESS_KEEP = 0.3;    // 压：主系相同、起手克制。被压的吃全额，压人的只吃三成
-const PRESS_STUN = TFH(8);     // 压人的一方小硬直（被压的吃正常硬直，所以压人的能接着打）
+const PRESS_STUN = TA(TFH(8));     // 压人的一方小硬直（被压的吃正常硬直，所以压人的能接着打）。2.6 起硬直、前后摇都 ×ATK_TEMPO，帧差照旧
 const COUNTER_MUL = 1.2;   // 破招：打在对方前摇里；迎击：打在全速跑过来、或冲刺收尾的人身上
 const BEAT_MUL = 1.3;      // 克：主系克制，克制方单方面打中
 const ARMOR_KEEP = 0.5;    // 霸体硬吃短拳时吃的伤害比例
 
 // 连击衰减（防止一套连到死）：同一套连击里每多挨一下
-const STUN_DECAY = 3, STUN_FLOOR = 3;    // 硬直少 3 帧，最少 3 帧
+const STUN_DECAY = TA(3), STUN_FLOOR = TA(3);    // 硬直少 3 帧，最少 3 帧（2.6 ×ATK_TEMPO：3.25）
+const AIR_STUN = TA(4);                  // 跳起来打中多几帧硬直（2.6 以前写在 combat.js 里：4）
 const KB_GROW = 0.3;                     // 击退 +30%，连着打会把人越推越远
 const DMG_DECAY = 0.08, DMG_FLOOR = 0.5; // 伤害 -8%，最低五成
 const JAB_CHAIN_MAX = 6;                 // 一串最多 6 拳，第 6 拳是收势「寸劲」
@@ -126,26 +155,28 @@ const JAB_CHAIN_MAX = 6;                 // 一串最多 6 拳，第 6 拳是收
 // 防守反击
 const PARRY_WIN = 6;       // 刚按下格挡的 6 帧内被打中 = 卸力（背对着挡不了，也卸不了）
 const PARRY_LOCK = 24;     // 两次按格挡间隔不足 24 帧，第二次没有卸力判定（防乱按）
-const PARRY_STUN = TFH(22);  // 被卸力的一方失衡帧数
+const PARRY_STUN = TFH(22);  // 被卸力的一方失衡帧数（挨了打的后摇，2.0 起按 TFH；2.6 不跟着 ×ATK_TEMPO —— 失衡够长，反打的招前摇长一点照样接得上）
 const PARRY_POSE = 6;      // 卸力成功后的收势帧（期间可以直接出招反打）
-const PUSH_KB = 12, PUSH_STUN = TFH(9);      // 推挡：把对方推开的力度、打断对方的硬直
+const PUSH_KB = 12, PUSH_STUN = TA(TFH(9));      // 推挡：把对方推开的力度、打断对方的硬直
 // 1.8.0 防守反击的收益（打得越险的招，被反击时吃得越重）
 const PUNISH_MUL = 1.3, PUNISH_KD_MUL = 1.5;   // 挡后反击：打在自己刚挡住的那一招的收招里 ×1.3；那一招是击倒招 ×1.5
 // 2.1 被挡住的招收招更长（拳不算、空中招看落地硬直）：重系、腿系、对空 +BLOCK_PEN，击倒招 +BLOCK_PEN_KD。
 // 以前被挡住的重拳、腿、击倒招，挡的人一能动就够不着、来不及（实测几乎打不出「挡后反击」，规则里写的破法练不出来）
-const BLOCK_PEN = TF(5), BLOCK_PEN_KD = TF(7);
-const PUNISH_STUN = TF(5);               // 挡后反击、卸力反击打中多 5 帧硬直（好接连招）
+const BLOCK_PEN = TA(TF(5)), BLOCK_PEN_KD = TA(TF(7));
+const PUNISH_STUN = TA(TF(5));           // 挡后反击、卸力反击打中多 5 帧硬直（好接连招）
 const WHIFF_KD_MUL = 1.25;               // 破绽：击倒招打空 / 被躲开，打它的收招
 const PARRY_MUL = 1.35;                  // 卸力反击：卸力后趁对方失衡打中；卸掉的是击倒招按 PUNISH_KD_MUL
 const GC_COST = 25;                      // 截拳（挡住后按重）耗气
 const HOLD_ESC = TF(7);                  // 擒住开始后几帧内被抓的人按「拿」能挣脱（打中停顿那几帧也算）
-const THROW_DMG = 10, KNEE_DMG = [4, 5], KNEE_ADV = TF(6), TRIP_DMG = 8, TACKLE_DMG = 9, SCOOP_DMG = 10, PARRY_THROW_DMG = 13;
+// 2.6（Jack：所有招伤害略微提高，高级招和普通招拉开）：摔、提膝这些「抓住以后的招」都 +20% 左右（过肩摔 10 → 12、借力摔 13 → 16 ……）
+const THROW_DMG = 12, KNEE_DMG = [5, 6], KNEE_ADV = TA(TF(6)), TRIP_DMG = 10, TACKLE_DMG = 11, SCOOP_DMG = 12, PARRY_THROW_DMG = 16;
+const CATCH_DMG = 7, CATCH_AIR_DMG = 11;   // 接腿摔（站着接住地上的腿 / 跳起来的腿）。2.5 以前写在 combat.js 里：6 / 9
 const HOLD_GAP = 54;                     // 擒住时把对手带到身前多近
 const ROLL_DIST = 96;                    // 倒地起身时按住方向：滚身起，往那边滚这么远
 const QI_MAX = 100, QI_BURST = 50;       // 气：满格 100；爆气消耗 50，泼墨消耗 100
 const QI_PER_HP = 1 / 6;                 // 掉 / 打掉多少血换多少气（血量 6 倍，气按比例折算，涨气速度和以前一样）
 // 2.1（Jack：爆气没啥用 → 挨打的时候爆开，把对方炸倒、打掉 18）：只在挨打（受击硬直）里能爆，格挡硬直里不行
-const BURST_RANGE = 180, BURST_DMG = 18, BURST_KB = 7, BURST_LIE = TFH(28);   // 爆气炸到多远、伤害、把人炸飞的力度、对方躺多久
+const BURST_RANGE = 180, BURST_DMG = 21, BURST_KB = 7, BURST_LIE = TFH(28);   // 爆气炸到多远、伤害（2.6：18 → 21）、把人炸飞的力度、对方躺多久
 const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着格挡：只吃三成、被推开一点、几乎不硬直，爆气方的后摇就能被打
 
 // 联机（P2P）

@@ -53,12 +53,12 @@ function benchSetup(dist, def, col) {
 const BENCH_SEQ = {
   hold: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : 0 },
   grabHit: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : 0 },
-  knee: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : F.move && F.move.name === 'hold' && F.move.t === 3 ? TAP('jab') : 0 },
-  trip: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : F.move && F.move.name === 'hold' && F.move.t === 3 ? TAP('kick') : 0 },
-  throwBack: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : F.move && F.move.name === 'hold' && F.move.t === 3 ? TAP('heavy') : 0 },
+  knee: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : F.move && F.move.name === 'hold' && F.move.t >= 3 && F.move.t < 4 ? TAP('jab') : 0 },
+  trip: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : F.move && F.move.name === 'hold' && F.move.t >= 3 && F.move.t < 4 ? TAP('kick') : 0 },
+  throwBack: { dist: 70, me: (i, F) => i === 0 ? TAP('grab') : F.move && F.move.name === 'hold' && F.move.t >= 3 && F.move.t < 4 ? TAP('heavy') : 0 },
   tackle: { dist: 76, def: 'crouch', me: (i, F) => i === 0 ? HOLD('down') | TAP('grab') : 0 },
-  legCatch: { dist: 112, op: (i, F, O) => i === 0 ? TAP('kick') : 0, me: (i, F, O) => O.move && O.move.name === 'kick' && O.move.t === 6 ? TAP('grab') : 0 },
-  scoop: { dist: 104, op: (i, F, O) => i === 0 ? HOLD('down') | TAP('kick') : 0, me: (i, F, O) => O.move && O.move.name === 'sweep' && O.move.t === 3 ? HOLD('down') | TAP('grab') : 0 },
+  legCatch: { dist: 112, op: (i, F, O) => i === 0 ? TAP('kick') : 0, me: (i, F, O) => O.move && O.move.name === 'kick' && O.move.t >= 6 && O.move.t < 7 ? TAP('grab') : 0 },
+  scoop: { dist: 104, op: (i, F, O) => i === 0 ? HOLD('down') | TAP('kick') : 0, me: (i, F, O) => O.move && O.move.name === 'sweep' && O.move.t >= 3 && O.move.t < 4 ? HOLD('down') | TAP('grab') : 0 },
   // 回身肘：对手出重拳，按着挡朝他双击闪过去，钻到他身后自动回身一肘（打在背上）
   slipElbow: { dist: 80, min: 30, op: i => i === 3 ? TAP('heavy') : 0,
     me: (i, F) => F.move && F.move.name === 'slipElbow' ? 0 : i >= 13 && i <= 15 ? HOLD('block') | (i === 14 ? 0 : HOLD('right')) : HOLD('block') },

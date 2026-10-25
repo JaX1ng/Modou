@@ -57,7 +57,7 @@ function fxDo(sig, play) {
   if (game.quiet) { if (FXREC.fresh) FXREC.fresh.push([game.frame, sig, play]); return; }
   if (game.mode === 'online') {
     let a = FXREC.log.get(game.frame);
-    if (!a) { FXREC.log.set(game.frame, a = []); for (const f of FXREC.log.keys()) if (f < game.frame - 60) FXREC.log.delete(f); }
+    if (!a) { FXREC.log.set(game.frame, a = []); for (const f of FXREC.log.keys()) if (f < game.frame - 60 * SUB) FXREC.log.delete(f); }
     a.push(sig);
   }
   play();
@@ -157,25 +157,27 @@ function stamp(x, y, text, size = 30, own) {
 // 画面正中的大字：回合、时间到这种没有归属（墨色）；「某某 胜」用赢的人的颜色
 const announce = (text, sub, life = 70, size = 120, own) => addFx({ type: 'announce', text, sub, life, size, col: colOf(own) });
 
+// 2.6 特效每步（DT 帧）走一次：寿命、速度都还是按帧写的，每步走 DT 那么多；每帧乘一次的衰减换成每步乘 rootDT
+const FXK = { drop: rootDT(0.985), spark: rootDT(0.86), dust: rootDT(0.94), grow: rootDT(1.025), qv: rootDT(0.985), qr: rootDT(0.985) };
 function updateFx() {
   for (let i = FX.length - 1; i >= 0; i--) {
     const e = FX[i];
-    e.life--;
-    e.px = e.x; e.py = e.y;                              // 2.0.1 上一帧在哪（画的时候在两帧之间插值，高刷新率屏幕上不一顿一顿）
+    e.life -= DT;
+    e.px = e.x; e.py = e.y;                              // 2.0.1 上一步在哪（画的时候在两步之间插值，高刷新率屏幕上不一顿一顿）
     if (e.type === 'drop') {
-      e.vy += 0.36; e.x += e.vx; e.y += e.vy; e.vx *= 0.985;
+      e.vy += 0.36 * DT; e.x += e.vx * DT; e.y += e.vy * DT; e.vx *= FXK.drop;
       if (e.y >= FLOOR + 2) { splats.push({ x: e.x, rx: e.r * rnd(1.6, 2.6), life: 200, max: 200, color: e.color }); e.life = 0; }
     } else if (e.type === 'spark') {
-      e.x += e.vx; e.y += e.vy; e.vx *= 0.86; e.vy = e.vy * 0.86 + e.g;
+      e.x += e.vx * DT; e.y += e.vy * DT; e.vx *= FXK.spark; e.vy = e.vy * FXK.spark + e.g * DT;
       if (e.y > FLOOR) { e.y = FLOOR; e.vy *= -0.3; }
     } else if (e.type === 'dust') {
-      e.x += e.vx; e.y += e.vy; e.vx *= 0.94; e.vy *= 0.94; e.r *= 1.025;
+      e.x += e.vx * DT; e.y += e.vy * DT; e.vx *= FXK.dust; e.vy *= FXK.dust; e.r *= FXK.grow;
     } else if (e.type === 'tag') {
-      e.y -= 0.7;
+      e.y -= 0.7 * DT;
     }
     if (e.life <= 0) FX.splice(i, 1);
   }
-  for (let i = splats.length - 1; i >= 0; i--) if (--splats[i].life <= 0) splats.splice(i, 1);
+  for (let i = splats.length - 1; i >= 0; i--) if ((splats[i].life -= DT) <= 0) splats.splice(i, 1);
   updateQi();
   if (splats.length > 160) splats.splice(0, splats.length - 160);
 }
@@ -651,10 +653,10 @@ const QI_BACK = [['hip', 'neck'], ['hip', 'neck'], ['sh', 'neck']];             
 /* 这一刻火往哪边冒（2.1）：人横着动得快（跑、冲刺、出招往前冲、在空中飞、被打飞）火就往身后斜着拖，越快越斜；站着就往上冒。
    返回 { lean: 火往身后偏多少（0 = 竖着往上，1 = 差不多横着往后拖）, back: 身后是哪边（-1 / 1） } */
 function qiFlow(F) {
-  const vx = F.qx === undefined ? 0 : F.x - F.qx;
+  const vx = F.qx === undefined ? 0 : (F.x - F.qx) / DT;         // 每帧走多少（2.6 一步只走 DT 帧）
   F.qx = F.x;
   const sp = Math.abs(vx) + (F.airborne ? Math.abs(F.vx || 0) * 0.5 : 0);
-  F.qlean = (F.qlean || 0) + (clamp((sp - 1.2) / 5, 0, 1) - (F.qlean || 0)) * 0.25;   // 平滑一点，停下来火慢慢立回去
+  F.qlean = (F.qlean || 0) + (clamp((sp - 1.2) / 5, 0, 1) - (F.qlean || 0)) * lk(0.25);   // 平滑一点，停下来火慢慢立回去
   const back = Math.abs(vx) > 0.6 ? (vx > 0 ? -1 : 1) : -F.facing;
   return { lean: F.qlean, back };
 }
@@ -678,11 +680,12 @@ function qiRing(F, n, k) {
 }
 function emitQi(F) {
   // 连击的火：连上就往上涨（快），断了很快退掉（2.0.2：半秒多就没了；以前要一秒多，打完了还一直烧着）
+  // 2.6 每步调一次：往目标挪的快慢按 lk() 换算，冒火的条数 ×DT（每帧冒几条照旧）
   const tgt = F.comboLive ? comboHeat(F.combo) : 0, h0 = F.heat || 0;
-  F.heat = h0 + (tgt - h0) * (tgt > h0 ? 0.3 : 0.08);
+  F.heat = h0 + (tgt - h0) * lk(tgt > h0 ? 0.3 : 0.08);
   if (F.heat < 0.02 && tgt === 0) F.heat = 0;
   const { a, glow } = qiLevel(F);
-  F.qiGlow += (glow - F.qiGlow) * 0.2;
+  F.qiGlow += (glow - F.qiGlow) * lk(0.2);
   const flow = qiFlow(F);
   if (reduceMotion || !F.J) return;
   const J = F.J, h = F.heat, P = pal(F), L = flow.lean, bk = flow.back;
@@ -696,7 +699,7 @@ function emitQi(F) {
     flame(F, P.qi, x, y, vx, vy, r * (1 + 0.15 * L), al, life * (1 - 0.25 * L), Object.assign({ buoy: 0.02 + 0.06 * L, drag: 0.975 - 0.02 * L }, extra));
   };
   // 招式的气（泼墨、爆气、截拳、卸力）
-  let n = a * (2 + 2.6 * a);
+  let n = a * (2 + 2.6 * a) * DT;
   while (n > 0 && a > 0.02) {
     if (n < 1 && vrnd() > n) break;
     n--;
@@ -707,7 +710,7 @@ function emitQi(F) {
   // 连招的火（2.0.2）：3 连才起，只在拳脚上冒；4 连起整个人冒火，一部分火苗烧到身子前面；越往后火苗越多、越大、越浓、窜得越高
   if (h > 0.05) {
     const big = h > 0.6, hm = Math.min(1, h);
-    let k = h * (1.6 + 2.6 * h);                              // 每帧几个：3 连 1、4 连 2.1、5 连 3.5、6 连 5.3、7 连以上 7.3（2.1：少一点，一条一条火舌看得清）
+    let k = h * (1.6 + 2.6 * h) * DT;                         // 每帧几个：3 连 1、4 连 2.1、5 连 3.5、6 连 5.3、7 连以上 7.3（2.1：少一点，一条一条火舌看得清）
     while (k > 0) {
       if (k < 1 && vrnd() > k) break;
       k--;
@@ -718,7 +721,7 @@ function emitQi(F) {
     }
     // 5 连起：背上往身后斜着往上喷大火舌（像一件火做的披风；跑起来就整片往后拖）
     if (h > 0.8) {
-      let p = (h - 0.7) * 2.2;                                // 5 连每帧 0.44 条、6 连 1、7 连以上 1.5
+      let p = (h - 0.7) * 2.2 * DT;                           // 5 连每帧 0.44 条、6 连 1、7 连以上 1.5
       while (p > 0) {
         if (p < 1 && vrnd() > p) break;
         p--;
@@ -733,12 +736,13 @@ function emitQi(F) {
 function updateQi() {
   for (let i = QI.length - 1; i >= 0; i--) {
     const p = QI[i];
-    p.px = p.x; p.py = p.y;                                   // 2.0.1 上一帧在哪（画的时候插值）
-    p.ph += 0.22;
-    p.vx *= p.drag || 1; p.vy = p.vy * 0.985 - (p.buoy || 0);   // 2.1 斜着 / 往外冒出去的火：横着慢下来，慢慢往上卷
-    p.x += p.vx + Math.sin(p.ph) * 0.4; p.y += p.vy;
-    if (p.k === 'flame') p.r *= 0.985;                         // 火苗越飘越细
-    if (--p.life <= 0) QI.splice(i, 1);
+    p.px = p.x; p.py = p.y;                                   // 2.0.1 上一步在哪（画的时候插值）
+    p.ph += 0.22 * DT;
+    if (p.dr === undefined) p.dr = rootDT(p.drag || 1);
+    p.vx *= p.dr; p.vy = p.vy * FXK.qv - (p.buoy || 0) * DT;  // 2.1 斜着 / 往外冒出去的火：横着慢下来，慢慢往上卷
+    p.x += (p.vx + Math.sin(p.ph) * 0.4) * DT; p.y += p.vy * DT;
+    if (p.k === 'flame') p.r *= FXK.qr;                        // 火苗越飘越细
+    if ((p.life -= DT) <= 0) QI.splice(i, 1);
   }
   if (QI.length > 1000) QI.splice(0, QI.length - 1000);         // 连招烧旺了火苗多（2.1 一圈火 → 1000）
 }

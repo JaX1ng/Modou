@@ -128,7 +128,8 @@ function settleLook(host, want, cur) {
    [0] 类型 1 = 输入   [1] 局号 epoch & 255   [2..5] 这包第一帧的帧号   [6..9] 我已经连续收到你的输入到第几帧（不含）
    [10] 帧数 n（≤ 48）   [11] 我觉得我比你快几帧（-128~127，时间同步用）
    [12..] 每帧一个输入，2 字节（低 5 位按住、往上 5 位新按下，见 input.js） */
-const PKT_INPUT = 1, PKT_MAX = 48, PKT_HEAD = 12;
+// 2.6 逻辑一秒 240 步：「帧号」都是步数，一包最多带 PKT_MAX 步（以前 48 帧）；一秒发 60 包左右（每 SUB 步发一次）
+const PKT_INPUT = 1, PKT_MAX = 192, PKT_HEAD = 12;
 function encodeInputs(epoch, first, ack, vals, adv) {
   const n = vals.length, buf = new ArrayBuffer(PKT_HEAD + 2 * n), dv = new DataView(buf);
   dv.setUint8(0, PKT_INPUT); dv.setUint8(1, epoch & 255); dv.setUint32(2, first); dv.setUint32(6, ack); dv.setUint8(10, n);
@@ -146,7 +147,7 @@ function decodeInputs(buf) {
 }
 
 /* ---------- 回滚帧同步的核心（不碰网络，tests.js 直接拿来测） ---------- */
-const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY;    // 输入里「按住」的那几位：猜对方的输入只猜这几位（新按的招不猜）；2.4 加上「用冲刺键」那一位
+// HELD_MASK（输入里「按住」的那几位：猜对方的输入只猜这几位，新按的招不猜）在 input.js
 class Rollback {
   // role：'host' 算 step([本机, 对方])，'guest' 算 step([对方, 本机])
   constructor(delay, role) {
@@ -195,7 +196,7 @@ class Rollback {
     return depth;
   }
   // 还能不能往下算：对方的输入落后太多（超过 MAX_PRED 帧）就停下来等
-  canAdvance() { return this.frame - this.remoteUntil < NET.MAX_PRED && this.localUntil > this.frame; }
+  canAdvance() { return this.frame - this.remoteUntil < NET.MAX_PRED * SUB && this.localUntil > this.frame; }
   // 算一帧
   advance() {
     const f = this.frame;
@@ -204,9 +205,9 @@ class Rollback {
     const r = this.remote.has(f) ? this.remote.get(f) : this.predict();
     this.used.set(f, r);
     const l = this.local.get(f) | 0;
-    step(this.role === 'host' ? [l, r] : [r, l]);
+    simTick(this.role === 'host' ? [l, r] : [r, l]);
     this.frame = f + 1;
-    if (this.frame % NET.HASH_EVERY === 0) this.hashAt.set(this.frame, stateHash());
+    if (this.frame % (NET.HASH_EVERY * SUB) === 0) this.hashAt.set(this.frame, stateHash());
   }
   // 我觉得我比对方快几帧：我的帧号 - 对方发最新那包时的帧号（含单程延迟，两边一样多）
   localAdv() { return this.lastRemote < 0 ? 0 : this.frame - (this.lastRemote - this.delay); }
@@ -585,7 +586,7 @@ const Net = {
     }
   },
   // 输入延迟：有回滚，只要单程延迟的一半左右（1~3 帧）；按键基本没有延迟感
-  pickDelay() { return NET.DELAY || clamp(Math.round(this.rtt / 2 / STEP_MS * 0.5), 1, 3); },
+  pickDelay() { return NET.DELAY ? NET.DELAY * SUB : clamp(Math.round(this.rtt / 2 / STEP_MS * 0.5), SUB, 3 * SUB); },   // 步数（1 ~ 3 帧）
   // 房主开一局（第一局和再战都走这里）
   startAsHost() {
     if (this.role !== 'host' || !this.open) return;
@@ -623,7 +624,7 @@ const Net = {
     if (!this.open) { this.stall++; return; }                  // 掉线重连中：原地等
     this.acc += dt * game.timeScale;
     let n = 0;
-    while (this.acc >= STEP_MS && n < 4) {
+    while (this.acc >= STEP_MS - 1e-6 && n < 4 * SUB) {
       rb.sample(() => pads[0].sample());
       if (!rb.canAdvance()) {                                  // 对方太久没消息：等
         this.stall++;
@@ -633,13 +634,13 @@ const Net = {
       }
       // 时间同步：我比对方快一帧以上（我老在猜他、他老在回滚），每 6 帧停一帧等等他
       this.adv = this.adv * 0.9 + rb.timeSync() * 0.1;
-      if (this.adv > 1 && ++this.holdN % 6 === 0) { this.acc -= STEP_MS; n++; continue; }
+      if (this.adv > SUB && ++this.holdN % 6 === 0) { this.acc -= STEP_MS; n++; continue; }   // 快一帧（SUB 步）以上：每 6 步停一步
       this.stall = 0;
-      this.sendInputs();
+      if (rb.frame % SUB === 0) this.sendInputs();                 // 一帧发一包（带上对方还没确认的那几步）
       rb.advance();
       this.acc -= STEP_MS; n++;
     }
-    if (n >= 4) this.acc = 0;
+    if (n >= 4 * SUB) this.acc = 0;
     rb.prune();
     for (const [f, h] of rb.takeHashes()) { this.checkHash(f, h, 'l'); this.sendCtl({ t: 'h', e: this.epoch, f, h }); }
   },

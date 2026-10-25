@@ -17,6 +17,11 @@
    ============================================================ */
 const TIER_OF_KIND = { jab: 'light', heavy: 'heavy', kick: 'kick' };
 const TIME_KEYS = ['S', 'A', 'R', 'stun', 'bstun', 'evThrow', 'evPush', 'evSlam', 'evWave', 'evHit', 'evHit2'];
+// 2.6 前后摇（Jack）：这几样在 2.5 的帧数上再 ×ATK_TEMPO（config.js），取到 0.25 帧；判定 A 不变。擒拿后续、冲刺这些 script 动作不变
+const ATK_KEYS = ['S', 'R', 'stun', 'bstun'];
+// 2.6（Jack：拳头在对方身上停留的时间长一点，算在后摇里）：收招的头 HOLD_R（两成）拳脚还停在打出去的地方，之后才往回收
+// （打中时顿帧里本来就停着，顿完了再多停一会儿；打空了就是打出去以后顿一下再收）。空中招的判定一直持续到落地，不用
+const HOLD_R = 0.2;
 function M(o) {
   o.base = { S: o.S, A: o.A, R: o.R };          // 换算前的基准帧数（测试核对节奏用）
   for (const k of TIME_KEYS) if (typeof o[k] === 'number' && o[k] > 0) o[k] = (o.open && (k === 'S' || k === 'R') ? TFO : TF)(o[k]);
@@ -24,6 +29,21 @@ function M(o) {
   for (const k of ['inv', 'sinv', 'airInv', 'slipInv']) if (o[k]) o[k] = o[k].map(TF);
   if (o.lunge) o.lunge = [TF(o.lunge[0]), TF(o.lunge[1]), o.lunge[2]];
   if (o.armor) o.armor = Object.assign({}, o.armor, { from: TF(o.armor.from) });
+  if (!o.script) {
+    o.pre26 = { S: o.S, R: o.R, stun: o.stun, bstun: o.bstun };      // 2.5 的帧数（测试核对「前摇再长 5~10%」用）
+    for (const k of ATK_KEYS) if (typeof o[k] === 'number' && o[k] > 0) o[k] = TA(o[k]);
+    // 前冲、无敌、霸体这些按招式自己的时间轴算的，跟着一起拉长（不然前冲提前冲完、无敌提前没了）
+    for (const k of ['inv', 'sinv', 'airInv', 'slipInv']) if (o[k]) o[k] = o[k].map(TA);
+    if (o.lunge) o.lunge = [TA(o.lunge[0]), TA(o.lunge[1]), o.lunge[2]];
+    if (o.armor) o.armor.from = TA(o.armor.from);
+    if (!o.air) {
+      const i2 = o.keys.findIndex(k => k[0] === 2);
+      if (i2 >= 0) {
+        for (const k of o.keys) if (k[0] > 2 && k[0] < 3) k[0] = 2 + HOLD_R + (k[0] - 2) * (1 - HOLD_R);
+        o.keys.splice(i2 + 1, 0, [2 + HOLD_R, o.keys[i2][1], 'io']);
+      }
+    }
+  }
   o.tier = o.tier || TIER_OF_KIND[o.kind] || o.kind;
   o.lead = o.lead || o.tier;
   o.height = o.height || 'mid';
@@ -52,82 +72,82 @@ const P_LOW = { hy: 50, tor: 28, head: -6, tw: 18, ff: [28, 0], bf: [-26, 0], fh
 const MOVES = {
   /* ---- 拳系（light）：快，近身抢先；被重拳霸体吃掉，但能打断腿 ---- */
   // 短拳：前手从胸口直接往前弹出去，第一帧就往前走、不往回收（1.7.0：以前也先往回收一下，和重拳的起手分不清）
-  jab: M({ kind: 'jab', label: '短拳', open: true, S: 4, A: 3, R: 7, dmg: 5, reach: 92, stun: 13, bstun: 7, kb: 2.2, stop: 4, power: .3,
+  jab: M({ kind: 'jab', label: '短拳', open: true, S: 4, A: 3, R: 7, dmg: 6, reach: 92, stun: 13, bstun: 7, kb: 2.2, stop: 4, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 4, 5],
     keys: [[0, {}], [1, P_JAB, 'back'], [2, P_JAB], [2.45, J_(P_JAB, { tor: 10, dx: 6, tw: 32, fh: [38, -3], ff: [34, 0] })], [3, {}]] }),
-  jab2: M({ kind: 'jab', label: '后手直拳', tag: '后手直拳', S: 4, A: 3, R: 7, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
+  jab2: M({ kind: 'jab', label: '后手直拳', tag: '后手直拳', S: 4, A: 3, R: 7, dmg: 7, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
     limb: 'bh', fx: 'jab2', lunge: [1, 4, 6],
     keys: [[0, {}], [0.4, { tw: 30, fh: [22, -4], tor: 4 }], [1, P_CROSS, 'back'], [2, P_CROSS], [2.45, J_(P_CROSS, { tor: 12, dx: 8, tw: -24, bh: [38, -3] })], [3, {}]] }),
-  jab3: M({ kind: 'jab', label: '摆拳', tag: '摆拳', S: 5, A: 3, R: 8, dmg: 6, reach: 90, stun: 14, bstun: 8, kb: 2.8, stop: 5, power: .4,
+  jab3: M({ kind: 'jab', label: '摆拳', tag: '摆拳', S: 5, A: 3, R: 8, dmg: 8, reach: 90, stun: 14, bstun: 8, kb: 2.8, stop: 5, power: .4,
     limb: 'fh', fx: 'hook', lunge: [1, 5, 5],
     keys: [[0, {}], [0.5, { fh: [4, -8], fe: -1, tor: 0, dx: -3, head: 4, tw: 0 }],
       [1, { fh: [46, -14], fe: -1, tor: 24, dx: 10, head: -4, tw: 54, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }, 'back'],
       [2, { fh: [48, -11], fe: -1, tor: 28, dx: 10, head: -4, tw: 58, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }], [3, {}]] }),
-  rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 4, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
+  rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] })], [3, { tor: 14 }]] }),
-  rushR: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 4, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
+  rushR: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'bh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_CROSS, { tor: 22, dx: 12 }), 'back'], [2, J_(P_CROSS, { tor: 22, dx: 12 })], [3, { tor: 14 }]] }),
-  rushEnd: M({ kind: 'jab', label: '寸劲', tag: '寸劲', S: 5, A: 3, R: 12, dmg: 7, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
+  rushEnd: M({ kind: 'jab', label: '寸劲', tag: '寸劲', S: 5, A: 3, R: 12, dmg: 10, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'rushEnd', ghost: true, lunge: [1, 5, 8], ender: true, noCancel: true,
     keys: [[0, { tor: 6, dx: -6, fh: [10, -4], tw: 0 }], [1, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }, 'back'],
       [2, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
-  lowJab: M({ kind: 'jab', label: '下盘拳', open: true, S: 5, A: 3, R: 8, dmg: 4, reach: 88, stun: 12, bstun: 7, kb: 2, stop: 4, power: .3, height: 'low',
+  lowJab: M({ kind: 'jab', label: '下盘拳', open: true, S: 5, A: 3, R: 8, dmg: 5, reach: 88, stun: 12, bstun: 7, kb: 2, stop: 4, power: .3, height: 'low',
     limb: 'fh', fx: 'low', lunge: [1, 5, 4],
     keys: [[0, J_(P_LOW, { fh: [24, -6] })], [1, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] }), 'back'],
       [2, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] })], [3, J_(P_LOW, { fh: [24, -6] })]] }),
   // 重→拳：贴身顶肘
-  elbow: M({ kind: 'jab', label: '顶肘', tag: '顶肘', lead: 'heavy', S: 4, A: 3, R: 9, dmg: 7, reach: 84, stun: 14, bstun: 8, kb: 4, stop: 5, shake: 2, power: .5,
+  elbow: M({ kind: 'jab', label: '顶肘', tag: '顶肘', lead: 'heavy', S: 4, A: 3, R: 9, dmg: 9, reach: 84, stun: 14, bstun: 8, kb: 4, stop: 5, shake: 2, power: .5,
     limb: 'fe', fx: 'elbow', lunge: [1, 4, 10],
     keys: [[0, { tor: 14 }], [0.5, { tor: 2, dx: -4, tw: -10, fh: [8, -12] }],
       [1, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }, 'back'],
       [2, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }], [3, {}]] }),
   // 腿→拳：踢完落步往前冲拳
-  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 6, reach: 100, stun: 14, bstun: 8, kb: 3.5, stop: 5, power: .5,
+  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 8, reach: 100, stun: 14, bstun: 8, kb: 3.5, stop: 5, power: .5,
     limb: 'bh', fx: 'jab2', lunge: [1, 5, 24],
     keys: [[0, { tor: -4, ff: [32, 30] }], [1, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }, 'back'],
       [2, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }], [3, {}]] }),
 
   /* ---- 重系（heavy）：前摇里带霸体，能硬吃一记短拳；怕腿 ---- */
   // 重拳：先往后蓄 —— 身子后坐、后手拉到耳朵后面、前手伸出去瞄（拳头上聚墨气），再拧腰把后手砸出去。和短拳反着来，一眼分得开
-  heavy: M({ kind: 'heavy', label: '重拳', open: true, S: 11, A: 4, R: 13, dmg: 12, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
+  heavy: M({ kind: 'heavy', label: '重拳', open: true, S: 11, A: 4, R: 13, dmg: 13, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [6, 11, 14], armor: { n: 1, from: 2, vs: ['light'] },
     keys: [[0, {}], [0.3, { tor: 2, dx: -6, hy: 68, head: 4, tw: 34, fh: [32, -4], bh: [-4, -8], ff: [30, 0], bf: [-36, 0] }, 'out'],
       [0.9, { tor: -6, dx: -10, hy: 67, head: 6, tw: 48, fh: [36, -6], bh: [-12, -10], ff: [30, 0], bf: [-40, 0] }],
       [1, P_HEAVY, 'back'], [2, P_HEAVY], [2.5, J_(P_HEAVY, { tor: 16, dx: 14, tw: -30, bh: [44, -2] })], [3, {}]] }),
   // 拳→重
-  beng: M({ kind: 'heavy', label: '崩拳', stamp: '崩拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 15, reach: 112, stun: 19, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
+  beng: M({ kind: 'heavy', label: '崩拳', stamp: '崩拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 19, reach: 112, stun: 19, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [4, 9, 18],
     keys: [[0, {}], [0.5, { fh: [2, 4], tor: 2, hy: 64, dx: -6, tw: -10, bh: [6, -6] }],
       [1, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }, 'back'],
       [2, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }], [3, {}]] }),
   // 重→重：劈挂，上段（蹲着挡不住）
-  chop: M({ kind: 'heavy', label: '劈挂掌', stamp: '劈挂', lead: 'heavy', height: 'high', S: 9, A: 4, R: 14, dmg: 13, reach: 104, stun: 18, bstun: 12, kb: 6, stop: 9, shake: 6, power: .9, heavy: true,
+  chop: M({ kind: 'heavy', label: '劈挂掌', stamp: '劈挂', lead: 'heavy', height: 'high', S: 9, A: 4, R: 14, dmg: 17, reach: 104, stun: 18, bstun: 12, kb: 6, stop: 9, shake: 6, power: .9, heavy: true,
     limb: 'bh', fx: 'chop', ghost: true, lunge: [4, 9, 12], ender: true, noCancel: true,
     keys: [[0, { tor: 12 }], [0.6, { tor: -16, head: -8, dx: -6, hy: 72, tw: 40, bh: [-6, -60], be: -1, fh: [26, -8], ff: [30, 0], bf: [-32, 0] }],
       [1, { tor: 40, dx: 22, hy: 60, head: -2, tw: -40, bh: [56, 22], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }, 'out'],
       [2, { tor: 42, dx: 22, hy: 60, head: -2, tw: -42, bh: [54, 28], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
   // 腿→重：盖步砸拳，击倒
-  hammer: M({ kind: 'heavy', label: '盖步砸拳', stamp: '盖步砸拳', lead: 'kick', S: 9, A: 5, R: 15, dmg: 14, reach: 108, stun: 20, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
+  hammer: M({ kind: 'heavy', label: '盖步砸拳', stamp: '盖步砸拳', lead: 'kick', S: 9, A: 5, R: 15, dmg: 20, reach: 108, stun: 20, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'bh', fx: 'hammerFist', ghost: true, lunge: [2, 9, 26], launch: 5, ender: true, noCancel: true,
     keys: [[0, { tor: 0 }], [0.6, { spin: 30, tor: -10, head: -12, hy: 72, tw: 30, bh: [-20, -58], be: -1, fh: [18, -26], ff: [12, 0], bf: [-38, 0] }],
       [1, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }, 'out'],
       [2, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }], [3, { spin: 0 }]] }),
   // 拳拳重：冲天炮（对空，击倒）
-  upper: M({ kind: 'heavy', label: '冲天炮', stamp: '冲天炮', tier: 'aa', lead: 'light', S: 8, A: 4, R: 16, dmg: 16, reach: 98, stun: 19, bstun: 12, kb: 3, stop: 10, shake: 7, power: 1, heavy: true,
+  upper: M({ kind: 'heavy', label: '冲天炮', stamp: '冲天炮', tier: 'aa', lead: 'light', S: 8, A: 4, R: 16, dmg: 22, reach: 98, stun: 19, bstun: 12, kb: 3, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'bh', fx: 'upper', ghost: true, lunge: [4, 8, 9], launch: 9, noCancel: true, ender: true, antiAir: 120,
     keys: [[0, {}], [0.5, { bh: [14, 30], hy: 50, tor: 26, fh: [16, -10], dx: 4, tw: 34 }],
       [1, { bh: [60, -30], hy: 78, tor: 6, dx: 29, bf: [-20, 10], head: -10, fh: [10, -8], air: 6, tw: -44, ff: [42, 0] }, 'out'],
       [2, { bh: [30, -62], hy: 82, tor: -10, dx: 22, bf: [-14, 14], head: -18, fh: [8, -8], air: 8, tw: -40, ff: [38, 0] }], [3, {}]] }),
   // 蹲+重：托天掌（对空）
-  palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', open: true, S: 7, A: 5, R: 15, dmg: 10, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
+  palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', open: true, S: 7, A: 5, R: 15, dmg: 11, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
     limb: 'fh', fx: 'palm', ghost: true, lunge: [2, 7, 6], launchAir: 9, antiAir: 160, airInv: [1, 12], ender: true, noCancel: true,
     keys: [[0, J_(P_LOW, { fh: [20, 10], bh: [10, 14] })], [0.5, J_(P_LOW, { hy: 40, fh: [24, 22], bh: [14, 24], tor: 34 })],
       [1, { hy: 76, tor: 8, head: -12, fh: [54, -34], bh: [48, -30], ff: [42, 0], bf: [-24, 6], air: 4, dx: 28, tw: 14 }, 'out'],
       [2, { hy: 80, tor: -6, head: -20, fh: [34, -60], bh: [24, -56], ff: [36, 0], bf: [-20, 8], air: 6, dx: 18, tw: 10 }], [3, {}]] }),
   // 跑+重：铁山靠
-  shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 13, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
+  shoulder: M({ kind: 'heavy', label: '铁山靠', stamp: '铁山靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 14, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
     // 2.4：先缩身蓄一下，再侧过身、压低重心，肩背撞进去（低头、两手收在身前，前脚一大步落地）
     keys: [[0, { tor: 24 }], [0.5, { tor: 10, spin: 30, dx: -8, hy: 62, head: 6, fh: [10, -6], bh: [-2, 0], ff: [26, 0], bf: [-34, 0], tw: 0 }],
@@ -136,12 +156,12 @@ const MOVES = {
 
   /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ----
      2.0（Jack：腿踢还是超标，尤其距离）：腿踢射程 134 → 126，腿系连招、飞踢也一起短 4~10 */
-  kick: M({ kind: 'kick', label: '腿踢', open: true, S: 13, A: 5, R: 14, dmg: 10, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
+  kick: M({ kind: 'kick', label: '腿踢', open: true, S: 13, A: 5, R: 14, dmg: 11, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
     limb: 'ff', fx: 'kick', lunge: [6, 13, 12],
     keys: [[0, {}], [0.55, { ff: [30, 62], tor: -8, bf: [-27, 0], fh: [22, -12], bh: [6, -7], head: 3, hy: 74, dx: 3, tw: 10 }],
       [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [36, 44], tor: -14, dx: 13, hy: 74, bf: [-27, 0] }], [3, {}]] }),
   // 拳→踢
-  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 12, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
+  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 16, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
     limb: 'bf', fx: 'whip', lunge: [5, 10, 10],
     keys: [[0, {}], [0.5, { bf: [10, 56], tor: -10, ff: [22, 0], fh: [20, -14], bh: [6, -6], spin: 20, hy: 74, tw: 0 }],
       [1, { bf: [94, 96], tor: -40, dx: 22, ff: [8, 0], fh: [-4, -22], bh: [2, -10], head: 16, spin: 30, hy: 76, tw: -10 }, 'back'],
@@ -149,21 +169,21 @@ const MOVES = {
       [2.4, { bf: [24, 48], tor: -12, dx: 12, spin: 10, hy: 72 }], [3, {}]] }),
   // 踢→踢：二起脚（腾空飞脚，击倒）。2.4：腾起来先提前膝（第一脚），身子在空中基本立着、微微后仰，
   // 后腿从后面撩上来踢到头那么高，前手往前拍过去（以前整个人往后躺，像摔出去）
-  twinKick: M({ kind: 'kick', label: '二起脚', stamp: '二起脚', lead: 'kick', S: 8, A: 5, R: 16, dmg: 11, reach: 116, stun: 18, bstun: 11, kb: 6, stop: 9, shake: 6, power: .9,
+  twinKick: M({ kind: 'kick', label: '二起脚', stamp: '二起脚', lead: 'kick', S: 8, A: 5, R: 16, dmg: 15, reach: 116, stun: 18, bstun: 11, kb: 6, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'twinKick', ghost: true, lunge: [2, 8, 22], launch: 6, ender: true, noCancel: true,
     keys: [[0, { ff: [32, 32] }], [0.5, { air: 24, tor: 8, head: 2, ff: [24, 40], bf: [-12, 30], fh: [26, -34], bh: [-12, -30], hy: 66, tw: 20 }],
       [1, { air: 34, tor: -16, head: 8, dx: 22, ff: [4, 44], bf: [98, 104], fh: [42, -14], bh: [-30, -4], hy: 66, tw: -10 }, 'back'],
       [2, { air: 30, tor: -16, head: 8, dx: 22, ff: [4, 44], bf: [98, 104], fh: [42, -14], bh: [-30, -4], hy: 66, tw: -10 }],
       [2.5, { air: 6, tor: 6, ff: [32, 10], bf: [-20, 12], hy: 68 }], [3, {}]] }),
   // 拳拳踢：转身蹬
-  backKick: M({ kind: 'kick', label: '转身蹬', stamp: '转身蹬', lead: 'light', S: 8, A: 5, R: 16, dmg: 12, reach: 116, stun: 19, bstun: 11, kb: 11, stop: 9, shake: 6, power: .9,
+  backKick: M({ kind: 'kick', label: '转身蹬', stamp: '转身蹬', lead: 'light', S: 8, A: 5, R: 16, dmg: 17, reach: 116, stun: 19, bstun: 11, kb: 11, stop: 9, shake: 6, power: .9,
     limb: 'bf', fx: 'backKick', ghost: true, lunge: [2, 8, 12], ender: true, noCancel: true,
     keys: [[0, {}], [0.5, { spin: 130, tor: 22, head: 8, bf: [-30, 36], ff: [10, 0], fh: [16, -10], bh: [8, -8], hy: 70, tw: 0 }],
       [1, { spin: 180, tor: 46, head: 14, dx: 16, bf: [-104, 62], ff: [8, 0], fh: [20, 8], bh: [10, 14], hy: 72, tw: 0 }, 'back'],
       [2, { spin: 180, tor: 46, head: 14, dx: 16, bf: [-104, 62], ff: [8, 0], fh: [20, 8], bh: [10, 14], hy: 72, tw: 0 }],
       [2.5, { spin: 270, tor: 20, bf: [-22, 22], hy: 70 }], [3, { spin: 360 }]] }),
   // 重→踢：旋风腿（击倒）
-  whirl: M({ kind: 'kick', label: '旋风腿', stamp: '旋风腿', lead: 'heavy', S: 12, A: 6, R: 16, dmg: 15, reach: 126, stun: 19, bstun: 13, kb: 6, stop: 10, shake: 8, power: 1, heavy: true,
+  whirl: M({ kind: 'kick', label: '旋风腿', stamp: '旋风腿', lead: 'heavy', S: 12, A: 6, R: 16, dmg: 21, reach: 126, stun: 19, bstun: 13, kb: 6, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'ff', fx: 'whirl', ghost: true, lunge: [4, 12, 16], launch: 7, ender: true, noCancel: true,
     keys: [[0, {}], [0.4, { spin: 90, tor: -4, ff: [14, 38], air: 8, fh: [-8, -36], bh: [-16, -28], hy: 70, tw: 0 }],
       [0.75, { spin: 220, ff: [66, 70], tor: -22, air: 22, fh: [-6, -26], bh: [-20, -6], hy: 70 }],
@@ -173,7 +193,7 @@ const MOVES = {
   // 蹲+踢：扫堂腿（下段，击倒）
   // 1.8.0：扫堂腿太好用（快、远、下段、击倒）→ 前摇长一点、射程短一点（比腿踢近）、收招更长、倒地时间短一点；
   //        反制多了：蹲挡后踩腿、抄腿接住、跳过去打它收招（破绽）、近身短拳打失衡
-  sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 8, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
+  sweep: M({ kind: 'kick', label: '扫堂腿', stamp: '扫堂腿', height: 'low', S: 10, A: 4, R: 20, dmg: 9, reach: 112, stun: 16, bstun: 9, kb: 4, stop: 7, shake: 4, power: .7,
     limb: 'ff', fx: 'sweep', lunge: [3, 10, 10], launch: 3, lie: 26, ender: true, noCancel: true,
     // 后腿深蹲撑住、前腿贴地伸直扫出去；手收在身前。
     // 2.5（Jack：后面那条腿不是往后，是往侧面 —— z 轴）：蹲着的后腿膝盖、脚尖朝外（bo，往离镜头远的那一侧摆出去），
@@ -188,21 +208,21 @@ const MOVES = {
      1.7.0：出手时整个人往前下方倾（rot），拳脚真的够得着对面；判定持续到快落地，同一个距离什么时候出都打得到；
      往下够的深度统一 AIR_VREACH。前摇没出完就落地 = 落地后马上在地上出这一招（fighter.js onLand），按了一定有反应 */
   // 挥拳（跳起来出；2.4 Jack：跳起来出的招名字不要「空中」两个字，以前叫空中挥拳）：拳头先甩到脑后，人往前一扑，从上往前下方砸过去
-  airJab: M({ kind: 'jab', label: '挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
+  airJab: M({ kind: 'jab', label: '挥拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 7, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
     keys: [[0, JT], [0.55, J_(JT, { rot: 4, tor: -10, head: -6, fh: [-20, -50], fe: -1, bh: [8, -8], ff: [20, 48], bf: [-4, 42], tw: 20 })],
       [1, { rot: 22, tor: 30, head: -8, dx: 5.5, fh: [60, 12], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }, 'back'],
       [2, { rot: 24, tor: 32, head: -8, dx: 5.5, fh: [58, 16], bh: [6, -6], ff: [18, 42], bf: [-34, 26], tw: 50 }], [3, JD]] }),
   // 泰山压顶：后仰把双拳举过头顶，再整个人往前下方卷下去砸（1.9.0 伤害 12 → 11：打蹲着的人让给千斤坠）
   // 2.1（Jack：打电脑像「版本答案」，前摇、整个动作都太快）：前摇 7 → 10、判定 10 → 11、后摇 8 → 10（举过头顶那一下看得清）
-  airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 11, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+  airHeavy: M({ kind: 'heavy', label: '泰山压顶', stamp: '泰山压顶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 12, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'hammer', air: true,
     keys: [[0, JT], [0.7, { rot: -8, tor: -28, head: -12, fh: [-12, -60], bh: [-22, -54], fe: -1, be: -1, ff: [18, 56], bf: [2, 50], tw: 0 }],
       [1, { rot: 26, tor: 50, head: 18, dx: 15, fh: [56, 42], bh: [50, 46], ff: [22, 24], bf: [-24, 36], tw: 0 }, 'out'],
       [2, { rot: 28, tor: 52, head: 18, dx: 15, fh: [54, 46], bh: [48, 50], ff: [22, 24], bf: [-24, 36], tw: 0 }], [3, JD]] }),
   // 飞踢：先把膝盖收到胸口，身体后仰，整个人前倾着一脚往前下方蹬出去
   // 2.1（Jack：和泰山压顶一样太快、太好用）：前摇 6 → 9、判定 12 → 13、后摇 7 → 9（收膝那一下看得清，整个动作慢一点）
-  airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 10, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
+  airKick: M({ kind: 'kick', label: '飞踢', stamp: '飞踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 11, reach: 124, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, JT], [0.6, { rot: -6, tor: 12, head: -6, ff: [10, 62], bf: [-6, 48], fh: [24, -30], bh: [6, -8], tw: 10 }],
       [1, { rot: 14, tor: -38, head: 14, dx: 19, ff: [106, 24], bf: [-12, 52], fh: [-10, -24], bh: [2, -10], tw: 10 }, 'back'],
@@ -211,7 +231,7 @@ const MOVES = {
   // 1.9.0：主系「坠」—— 专破蹲着的防守和反击：踩蹲着 / 蹲挡 / 出下段的 ×1.3，对空招（托天掌、冲天炮）打不到它、反被踩倒 ×1.5；
   //        怕站着的拳：被短拳系 / 重拳系迎着打中 = 倒栽葱 ×1.4、倒地更久；站挡挡得住。前摇更慢（腾得更高）。
   //        踩中后弹起落在对手面前，这一下算「腿起手」：落地 踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳（都是真连）
-  dive: M({ kind: 'kick', label: '千斤坠', stamp: '千斤坠', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 9, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
+  dive: M({ kind: 'kick', label: '千斤坠', stamp: '千斤坠', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 10, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
     limb: 'ff', fx: 'dive', air: true, ghost: true, dive: true, aaProof: true,
     keys: [[0, JT], [0.7, { rot: -8, tor: 8, head: 4, ff: [22, 60], bf: [-10, 46], fh: [16, -46], bh: [-24, -36], tw: 0 }],
       [1, { rot: -42, tor: 2, head: 12, ff: [16, -16], bf: [-22, 36], fh: [-26, -30], bh: [-36, -12], tw: 0 }, 'out'],
@@ -220,7 +240,7 @@ const MOVES = {
   /* ---- 擒拿（挡不住；出腿时被拿 = 接腿摔；被任何正在判定中的打击打断）----
      1.8.0：抓住以后先「擒住」一小会儿 —— 这时候按 拳 = 提膝撞，踢 = 别腿摔，重 / 后 = 过肩摔，什么都不按 = 推开；
      被抓的人在擒住刚开始那几帧按「拿」能挣脱。蹲着的人站着抓不到（要用蹲+拿「抄腿」）；抄腿只抓蹲着的和出腿的 */
-  grab: M({ kind: 'grab', label: '擒拿', open: true, S: 6, A: 4, R: 15, dmg: 5, reach: 84, power: .4,
+  grab: M({ kind: 'grab', label: '擒拿', open: true, S: 6, A: 4, R: 15, dmg: 6, reach: 84, power: .4,
     limb: 'fh', lunge: [2, 6, 8],
     keys: [[0, {}], [0.4, { fh: [12, 2], bh: [8, 4], tor: 4, dx: -4, hy: 70, tw: 0 }],
       [1, { fh: [54, 16], bh: [50, 20], tor: 30, dx: 18, hy: 64, ff: [42, 0], bf: [-26, 0], head: -8, tw: 0 }, 'out'],
@@ -288,14 +308,14 @@ const MOVES = {
       [1, { fh: [64, -12], bh: [60, -6], tor: 28, dx: 37, hy: 64, head: -4, ff: [50, 0], bf: [-32, 0], tw: 10 }, 'back'],
       [2, { fh: [64, -12], bh: [60, -6], tor: 28, dx: 37, hy: 64, head: -4, ff: [50, 0], bf: [-32, 0], tw: 10 }], [3, {}]] }),
   // 截拳（1.8.0）：挡住以后（格挡硬直里）按「重」，花 GC_COST 气从格挡里直接打出一拳。出手前打击无敌，把对方打开
-  jieQuan: M({ kind: 'heavy', label: '截拳', stamp: '截拳', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 9, reach: 104, stun: 18, bstun: 10, kb: 9, stop: 9, shake: 5, power: .9, heavy: true,
+  jieQuan: M({ kind: 'heavy', label: '截拳', stamp: '截拳', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 11, reach: 104, stun: 18, bstun: 10, kb: 9, stop: 9, shake: 5, power: .9, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [0, 5, 18], sinv: [0, 6], cost: GC_COST, ender: true, noCancel: true,
     keys: [[0, { hy: 70, tor: 2, head: 8, dx: -3, tw: 8, fh: [17, -17], bh: [13, -13], ff: [24, 0], bf: [-33, 0] }],
       [0.5, { hy: 68, tor: 8, head: 4, dx: -2, tw: 24, fh: [26, -10], bh: [9, -8], ff: [28, 0], bf: [-33, 0] }],
       [1, { hy: 64, tor: 24, head: -4, dx: 17, tw: 50, fh: [64, -4], bh: [6, -6], ff: [46, 0], bf: [-36, 0] }, 'back'],
       [2, { hy: 64, tor: 24, head: -4, dx: 17, tw: 50, fh: [64, -4], bh: [6, -6], ff: [46, 0], bf: [-36, 0] }], [3, {}]] }),
   // 踩腿（1.8.0）：蹲挡住扫堂腿这类下段腿以后按「踢」，抬膝往前下一脚踩在对方伸出来的腿上。击倒
-  stomp: M({ kind: 'kick', label: '踩腿', stamp: '踩腿', height: 'low', S: 4, A: 4, R: 14, dmg: 10, reach: 122, stun: 16, bstun: 9, kb: 4, stop: 9, shake: 6, power: .9,
+  stomp: M({ kind: 'kick', label: '踩腿', stamp: '踩腿', height: 'low', S: 4, A: 4, R: 14, dmg: 12, reach: 122, stun: 16, bstun: 9, kb: 4, stop: 9, shake: 6, power: .9,
     limb: 'ff', fx: 'stomp', lunge: [1, 4, 24], launch: 4, lie: 30, ender: true, noCancel: true,
     keys: [[0, J_(P_LOW, { ff: [30, 0] })], [0.6, { hy: 72, tor: -8, head: 6, dx: 4, ff: [30, 66], bf: [-22, 0], fh: [26, -14], bh: [6, -8], tw: 10 }],
       [1, { hy: 62, tor: 22, head: -10, dx: 22, ff: [76, 4], bf: [-26, 0], fh: [22, -6], bh: [6, -6], tw: 10 }, 'out'],
@@ -318,7 +338,7 @@ const MOVES = {
   // 回身肘（2.0.2）：闪身躲过重拳、钻到对手身后，自动转身一肘顶在他背上（fighter.js slipElbow）。
   // 打中：他背对着你往前踉跄 STAGGER 帧（打得中、动不了、不自动转身，combat.js applyHit 的 stagger），你先动二十来帧接着打。
   // 姿势：一开始还背对着他（spin 165，刚钻过去的样子），拧身转过来（spin 95，肘往后蓄），再把前手的肘往前顶出去
-  slipElbow: M({ kind: 'heavy', label: '回身肘', stamp: '回身肘', tier: 'heavy', lead: 'heavy', S: 5, A: 3, R: 12, dmg: 8, reach: 86, stun: 18, bstun: 10, kb: STAGGER_KB,
+  slipElbow: M({ kind: 'heavy', label: '回身肘', stamp: '回身肘', tier: 'heavy', lead: 'heavy', S: 5, A: 3, R: 12, dmg: 10, reach: 86, stun: 18, bstun: 10, kb: STAGGER_KB,
     stop: 8, shake: 4, power: .8, limb: 'fe', fx: 'slipElbow', ghost: true, lunge: [0, 5, 18], stagger: true, ender: true, noCancel: true,
     keys: [[0, { spin: 165, tor: 24, hy: 58, head: 2, fh: [14, -18], bh: [16, -12], fe: -1, ff: [30, 0], bf: [-32, 0], tw: 0 }],
       [0.55, { spin: 95, tor: 6, hy: 66, head: -4, dx: -4, fh: [-8, -8], bh: [8, -10], ff: [24, 0], bf: [-36, 0], tw: -20 }],
@@ -330,7 +350,7 @@ const MOVES = {
       [0.14, { tor: -18, head: -22, hy: 78, fh: [42, -54], bh: [-40, -52], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
       [0.5, { tor: -14, head: -18, hy: 76, fh: [40, -48], bh: [-38, -46], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
   // 泼墨：气满时按「重+踢」，出手前打击无敌。2.1（Jack：伤害太低）22 → 40
-  super: M({ kind: 'heavy', label: '泼墨', stamp: '泼墨', tier: 'super', S: 8, A: 6, R: 22, dmg: 40, reach: 136, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
+  super: M({ kind: 'heavy', label: '泼墨', stamp: '泼墨', tier: 'super', S: 8, A: 6, R: 22, dmg: 48, reach: 136, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
     limb: 'fh', fx: 'splash', ghost: true, lunge: [2, 8, 34], sinv: [0, 14], launch: 8, ender: true, noCancel: true, cost: QI_MAX, antiAir: 40,
     keys: [[0, {}], [0.6, { tor: -20, dx: -12, hy: 64, fh: [-12, -44], bh: [-30, -32], fe: -1, be: -1, head: -10, ff: [30, 0], bf: [-38, 0], tw: 0 }],
       [1, { tor: 34, dx: 44, hy: 58, head: -6, fh: [72, -6], bh: [66, 2], ff: [60, 0], bf: [-40, 0], tw: 16 }, 'back'],

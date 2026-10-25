@@ -16,6 +16,7 @@ const PRESS_SET = new Set(PRESS_ACTS);
 const HOLD = a => 1 << HELD_ACTS.indexOf(a);
 const TAP = a => 1 << (5 + PRESS_ACTS.indexOf(a));
 const DASH_KEY = 1 << (5 + PRESS_ACTS.length);   // 2.4：冲刺用冲刺键（这一位一直带着，联机时对面也知道这个人双击方向不冲刺）
+const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY;    // 输入里「按住」的那几位（不是这一帧新按的）：联机猜对方、step() 里一帧的前几步用（2.6 从 net.js 挪过来）
 
 class Pad {
   constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.pending = []; this.keyDash = null; }
