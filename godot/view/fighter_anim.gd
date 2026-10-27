@@ -432,7 +432,7 @@ func fitContact(hy0: float, ik0) -> void:
 	var tgt := func(arms: bool) -> Array:
 		var key := "hit" if arms else "body"
 		if not lazy.has(key):
-			lazy[key] = BodyGeo.bodyTargets(bd, OJ, not arms, o.parts_now())
+			lazy[key] = BodyGeo.bodyTargets(o.bd, OJ, not arms, o.parts_now())
 		return lazy[key]
 	var st := {"ik0": ik0}
 	var whole := limb == "sh"
@@ -482,7 +482,7 @@ func fitContact(hy0: float, ik0) -> void:
 	var oToe := minf(float(OJ.ff[0]) * fw, float(OJ.bf[0]) * fw) - R_FOOT
 	if absf(ax) >= 0.6 and toeMax - (oToe + 4.0) > 0.5:
 		var front := 1e9
-		for q in BodyGeo.bodyParts(bd, OJ, 0.0, FIT_FEET).parts:
+		for q in BodyGeo.bodyParts(o.bd, OJ, 0.0, FIT_FEET).parts:
 			if q.get("foot", false):
 				for pt in q.pts:
 					front = minf(front, pt[0] * fw)

@@ -54,6 +54,17 @@
 
 动作台（poses.html）、平衡报告（balance.html）这些工具先不搬，需要时还用 JS 版的。
 
+## 正式人物模型（AI 生成的）
+
+Jack 出模型的流程：GPT 照原画出一张 A 字站姿的建模参考图（手臂离开身体、劲装、没有飘带长袍）→ Meshy 生成（智能拓扑 / 重拓扑到 3 万面上下、四边面）→ 绑骨（人形、Mixamo 骨架）→ 下载 GLB（Mixamo、单个文件），发给 Claude。Claude 这边：
+
+1. `python3 godot/tools/import_char.py 原文件.glb godot/assets/chars/名字 名字`：拆出网格 + 蒙皮（去掉贴图、动画）、贴图碎块之间的黑底填上旁边的颜色存 4K / 2K 两张 JPG、两只手各加三节「握拳骨」（Meshy 的骨骼没有手指）。
+2. 贴图的导入设置：4K 用 VRAM 压缩 + 高质量（桌面版）；2K 用有损（网页版，下载小、手机浏览器也能用）。export_presets 里网页版不带 `*_4k.jpg`、桌面版不带 `*_2k.jpg`。
+3. `godot/view/char_model.gd` 的 `MODELS`、`LOOKS` 加一行：哪个人物（侠 / 僧）、哪身颜色用它，放大多少（`scale`：和简易模型一样高）。
+4. 看效果：`tests/render_model.gd`（各个姿势、全部招式拍图）、`tests/shoot_variants.gd`（真的场景里拍，查画面问题）、`tests/model_info.gd`（量出来的身材和简易模型比）。
+
+接法（`view/char_model.gd`）：动作还是原来那一套（FighterAnim / Rig 算关节，招式数据一个不动）；模型的每根 Mixamo 骨头跟着 Rig 的一根骨头走 —— 模型站姿时先按 Rig 的规矩算出「这个姿势下 Rig 该是什么样」，记下模型骨头相对它的偏差，以后每帧照着摆；模型自己的身材（骨头多长、肩多宽、脚踝多高）量成一个 BodyDef 交给 FighterAnim，拳脚够得着、脚踩在地上。骨骼是「平的」（没有父子关系），胳膊腿顺着骨头伸缩一点正好接上。
+
 ## 给 Claude：做 Godot 版的规矩
 
 1. 先读这份和 NOTES；要搬哪个文件就只打开 JS 里对应的那个。
@@ -77,3 +88,7 @@
   - 导出：`godot/tools/build_web.sh` → `godot-web/`；字体裁剪 `godot/tools/make_fonts.py`（加了新字要跑）。
   - 湿地面里有人的倒影（只在积水里、被落叶挡住）。
 - 2026-10-27（Jack 要 exe）：Windows 版 `godot/tools/build_windows.sh` → `godot/build/Modou-版本-windows.zip`（一个 exe，游戏数据嵌在里面，Forward+；图标、版本信息用 resedit 改进模板）。直接发给 Jack，不进仓库、不建公开的 Release。桌面版的灯、人的亮度按 Forward+ 另调了一套（和网页版看上去一样）；桌面版暂时不能联机。存档在 %APPDATA%\Modou。
+- 3.0.0-alpha.3（2026-10-27，第一个正式人物）：玩家一「墨」那身换成 Jack 用 Meshy 做的侠（`godot/assets/chars/xia/`，做法见上面「正式人物模型」）；别的颜色还是代码做的简易模型（贴图的颜色换不了）。
+  - 手：平时握拳；掌、推、抓、摔这些招张开（`FighterView.OPEN_HANDS`），倒地、被摔、卸力时半张。
+  - 正式模型不吃场景的雾（镜头离人 20 米上下，雾会把贴图里的藏青、墨色抬成灰的），墨线细一点（头发、手指那些细的地方粗线会起毛）；没有头带，发带不画。
+  - 还没做：袍子下摆、马尾跟着动（现在是硬的：深弯腰的招 —— 抱腿摔、抄腿 —— 后摆会翘起来）；朝左时整个人是镜像（和街霸一样），衣服的交领会反过来。

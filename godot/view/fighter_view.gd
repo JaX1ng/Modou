@@ -2,11 +2,19 @@ class_name FighterView
 extends Node3D
 ## 场上的一个人（画面）：骨骼 + 模型 + 发带。每一帧照 FighterAnim（两步之间按 RA 插值）摆骨骼。
 ## 朝左时整个人 x 缩放 -1（镜像：和 2D 版一样，近侧永远是后手、前腿）。
+## 模型两种：代码做的简易模型（ModelBuilder，骨骼 Skel）；AI 生成的正式模型（CharModel，骨骼 ModelSkel，哪身颜色用见 CharModel.LOOKS）。
 
 const S := Rig.S
 const FIGHTER_SHADER := preload("res://view/shaders/fighter.gdshader")
 const OUTLINE_SHADER := preload("res://view/shaders/fighter_outline.gdshader")
 const REFLECT_SHADER := preload("res://view/shaders/fighter_reflect.gdshader")
+const FIGHTER_TEX_SHADER := preload("res://view/shaders/fighter_tex.gdshader")
+const REFLECT_TEX_SHADER := preload("res://view/shaders/fighter_reflect_tex.gdshader")
+## 正式模型的手（握拳骨）：这些招张开手 —— [前手, 后手] 张开多少（0 = 握拳，1 = 张开）。掌、推、抓、摔
+const OPEN_HANDS := {"chop": [0.0, 1.0], "palm": [1.0, 0.0], "shove": [1.0, 1.0], "grabHit": [1.0, 1.0],
+	"grab": [1.0, 1.0], "lowGrab": [1.0, 1.0], "hold": [1.0, 1.0], "knee": [1.0, 1.0],
+	"throwBack": [1.0, 1.0], "legCatch": [1.0, 1.0], "trip": [1.0, 1.0], "tackle": [1.0, 1.0], "scoop": [1.0, 1.0]}
+const MODEL_LINE_W := 0.0065   # 正式模型的墨线细一点（头发、手指这些细的地方粗线会起毛）
 const RIBBON_W := 4.0       # 发带画多宽（逻辑像素，和 2D 版一样）
 
 var F: Fighter
@@ -28,6 +36,15 @@ var kind := "xia"
 var look_id := ""
 var _frames: Array = []
 var _bone_idx: Array = []
+# AI 生成的正式模型（用的时候才建）：model = 量好的数据；null = 现在用的是简易模型
+var model: CharModel.Proto
+var mskel: Skeleton3D
+var mbody: MeshInstance3D
+var mshadow: MeshInstance3D
+var mrefl: MeshInstance3D
+var mmat: ShaderMaterial
+var mrefl_mat: ShaderMaterial
+var hand_open := [0.0, 0.0]      # 正式模型：[前手, 后手] 现在张开多少（往目标慢慢变）
 
 func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 	F = fighter
@@ -91,17 +108,83 @@ func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 	ribbon_node.material_override = ribbon_mat
 	add_child(ribbon_node)
 
-## 换颜色（人物颜色）：只换颜色表；第一次会做模型
+## 换颜色（人物颜色）：只换颜色表；第一次会做模型。有正式模型的那身颜色（CharModel.LOOKS）换成正式模型
 func set_look(id: String) -> void:
-	if id == look_id and body.mesh != null:
+	if id == look_id and (body.mesh != null or model != null):
 		return
 	look_id = id
 	outfit = Outfit.make(kind, id)
+	var mk := CharModel.for_look(kind, id)
+	if mk != "":
+		_use_model(mk)
+		return
+	if model != null:
+		_drop_model()
 	if body.mesh == null:
 		_build()
 	var cols := outfit.colors()
 	mat.set_shader_parameter("regions", cols)
 	refl_mat.set_shader_parameter("regions", cols)
+
+## 换成 AI 生成的正式模型：骨骼、身材（BodyDef）都换成模型的，动作重新从站姿开始
+func _use_model(key: String) -> void:
+	skel.visible = false
+	if model != null and model.key == key:
+		mskel.visible = true
+		return
+	var p := CharModel.proto(key)
+	if mskel != null:
+		mskel.queue_free()
+	model = p
+	mskel = CharModel.make_skeleton(p)
+	mskel.name = "ModelSkel"
+	add_child(mskel)
+	mbody = MeshInstance3D.new()
+	mbody.name = "Body"
+	mbody.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mshadow = MeshInstance3D.new()
+	mshadow.name = "Shadow"
+	mshadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	mrefl = MeshInstance3D.new()
+	mrefl.name = "Reflection"
+	mrefl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mrefl.extra_cull_margin = 4.0
+	for m in [mbody, mshadow, mrefl]:
+		m.mesh = p.mesh
+		m.skin = p.skin
+		m.skeleton = NodePath("..")
+		mskel.add_child(m)
+	mmat = ShaderMaterial.new()
+	mmat.shader = FIGHTER_TEX_SHADER
+	mmat.render_priority = 1
+	mmat.set_shader_parameter("albedo_tex", p.tex)
+	if RenderingServer.get_current_rendering_method() != "gl_compatibility":
+		mmat.set_shader_parameter("gain", 1.12)
+	var lm := ShaderMaterial.new()
+	lm.shader = OUTLINE_SHADER
+	lm.render_priority = 1
+	lm.set_shader_parameter("width", MODEL_LINE_W)
+	mmat.next_pass = lm
+	mbody.material_override = mmat
+	mrefl_mat = ShaderMaterial.new()
+	mrefl_mat.shader = REFLECT_TEX_SHADER
+	mrefl_mat.render_priority = -1
+	mrefl_mat.set_shader_parameter("albedo_tex", p.tex)
+	mrefl.material_override = mrefl_mat
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mshadow.material_override = sm
+	anim.bd = p.bd
+	anim.reset()
+
+## 换回代码做的简易模型
+func _drop_model() -> void:
+	model = null
+	if mskel != null:
+		mskel.visible = false
+	skel.visible = true
+	anim.bd = BodyDef.standard()
+	anim.reset()
 
 func _build() -> void:
 	var mb := ModelBuilder.new(anim.bd, outfit)
@@ -153,12 +236,18 @@ func update_pose(RA: float) -> void:
 	var toes := Rig.toe_dirs(a.bd, a.J, P3, hipY)
 	var fr := Rig.frames(P3, ang, hipY, toes)
 	_frames = fr
-	# 骨骼：每根骨头相对爸爸那根
-	for i in fr.size():
-		var p: int = Rig.PARENT[i]
-		var lt: Transform3D = fr[i] if p < 0 else (fr[p] as Transform3D).affine_inverse() * fr[i]
-		skel.set_bone_pose_position(i, lt.origin)
-		skel.set_bone_pose_rotation(i, lt.basis.get_rotation_quaternion())
+	if model != null:
+		var ho := _hand_target()
+		for h in 2:
+			hand_open[h] += (float(ho[h]) - hand_open[h]) * 0.35
+		CharModel.apply(model, mskel, fr, hand_open)
+	else:
+		# 骨骼：每根骨头相对爸爸那根
+		for i in fr.size():
+			var p: int = Rig.PARENT[i]
+			var lt: Transform3D = fr[i] if p < 0 else (fr[p] as Transform3D).affine_inverse() * fr[i]
+			skel.set_bone_pose_position(i, lt.origin)
+			skel.set_bone_pose_rotation(i, lt.basis.get_rotation_quaternion())
 	# 挨打时左右抖（和 JS 一样：打中停顿里左右各抖一下，最多 3 像素）
 	var shake := 0.0
 	if a.hitShake > 0.0 and not reduce_motion:
@@ -166,15 +255,19 @@ func update_pose(RA: float) -> void:
 	position = Vector3((x + shake) * S, 0.0, depth)
 	scale = Vector3(float(F.facing), 1.0, 1.0)
 	var fl := clampf(a.hitFlash / 3.0, 0.0, 1.0) * 0.85
-	mat.set_shader_parameter("flash", fl)
-	refl_mat.set_shader_parameter("flash", fl)
+	if model != null:
+		mmat.set_shader_parameter("flash", fl)
+		mrefl_mat.set_shader_parameter("flash", fl)
+	else:
+		mat.set_shader_parameter("flash", fl)
+		refl_mat.set_shader_parameter("flash", fl)
 	_draw_ribbons(RA, interp)
 
-## 发带（头带两条尾巴）：2D 里模拟的一串点，在人身后一点点画成带子
+## 发带（头带两条尾巴）：2D 里模拟的一串点，在人身后一点点画成带子。正式模型没有头带，不画
 func _draw_ribbons(RA: float, interp: bool) -> void:
 	ribbon_mesh.clear_surfaces()
 	var a := anim
-	if a.ribbons.is_empty():
+	if a.ribbons.is_empty() or model != null:
 		return
 	var col := outfit.band if anim.rib_anchor == "knot" else outfit.sash
 	var rw := RIBBON_W * 1.25 if anim.rib_anchor == "knot" else RIBBON_W * 2.6
@@ -206,6 +299,17 @@ func _draw_ribbons(RA: float, interp: bool) -> void:
 				ribbon_mesh.surface_set_normal(Vector3(0, 0, 1))
 				ribbon_mesh.surface_add_vertex(v)
 	ribbon_mesh.surface_end()
+
+## 正式模型的手这会儿该张开多少：[前手, 后手]
+func _hand_target() -> Array:
+	var st := F.state
+	if st == "attack" and F.move != null:
+		return OPEN_HANDS.get(F.move.name, [0.0, 0.0])
+	if st == "down" or st == "ko" or (st == "hit" and F.carried):
+		return [0.55, 0.55]
+	if st == "parry":
+		return [0.7, 0.7]
+	return [0.0, 0.0]
 
 ## 某根骨头这一帧在世界里的位置（特效挂在身上用）
 func bone_world(i: int) -> Vector3:
