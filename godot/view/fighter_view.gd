@@ -60,6 +60,9 @@ func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 	refl_mat = ShaderMaterial.new()
 	refl_mat.shader = REFLECT_SHADER
 	refl_mat.render_priority = -1
+	# 桌面版（Forward+）同样的灯下人显得暗一点：亮一点（和网页版看上去一样，见 StageView._tune_for_renderer）
+	if RenderingServer.get_current_rendering_method() != "gl_compatibility":
+		mat.set_shader_parameter("gain", 1.12)
 	refl_body = MeshInstance3D.new()
 	refl_body.name = "Reflection"
 	refl_body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

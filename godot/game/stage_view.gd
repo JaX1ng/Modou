@@ -55,6 +55,7 @@ func _ready() -> void:
 	sun.light_energy = 0.9
 	sun.rotation_degrees = Vector3(-14, 150, 0)
 	add_child(sun)
+	_tune_for_renderer()
 	# ---- 远景板 ----
 	var PLATE_H := PLATE_H0 * PLATE.get_height() / PLATE_ROWS0
 	var asp := float(PLATE.get_width()) / PLATE.get_height()
@@ -124,6 +125,17 @@ func _ready() -> void:
 	grad.set_color(1, Color("#e0661c"))
 	leaves.color_initial_ramp = grad
 	add_child(leaves)
+
+## 桌面版（Forward+）和网页版（Compatibility）算光、色调的方式不一样，同样的灯在 Forward+ 里人显得暗、偏橙：按渲染器各调一套
+## （人的亮度另外在 FighterView 里乘一点 gain）。数是对着两边的截图调到看上去一样的
+func _tune_for_renderer() -> void:
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
+		return
+	key.light_energy = 1.7
+	key.light_color = Color("#fff1de")
+	sun.light_energy = 0.8
+	env.ambient_light_energy = 1.05
+	env.ambient_light_color = Color("#bcaab0")
 
 ## 一片枫叶的小图（五个尖，红）
 static func _leaf_tex() -> ImageTexture:

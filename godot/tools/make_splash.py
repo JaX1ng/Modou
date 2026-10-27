@@ -58,4 +58,6 @@ def icon(path, N=256):
 
 splash("assets/img/splash.png")
 icon("assets/img/icon.png")
+# Windows 的图标（exe、任务栏）：一个 ico 里放几种大小
+Image.open("assets/img/icon.png").save("assets/img/icon.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 print("ok")

@@ -12,6 +12,7 @@ uniform vec3 rim_col : source_color = vec3(1.0, 0.74, 0.42);
 uniform float rim_amt = 0.55;
 uniform vec3 shade_col : source_color = vec3(0.56, 0.5, 0.62);
 uniform float alpha = 1.0;
+uniform float gain = 1.0;          // 整个人亮多少（桌面版 Forward+ 和网页版算光不一样，按渲染器调成看上去一样）
 
 varying flat float v_reg;   // 区域编号不能在三角形里插值（插出来是别的编号，一道一道的）
 varying float v_shade;
@@ -24,7 +25,7 @@ void vertex() {
 void fragment() {
 	int r = clamp(int(floor(v_reg)), 0, 15);
 	vec3 base = regions[r].rgb;
-	ALBEDO = base * mix(0.7, 1.0, v_shade);
+	ALBEDO = base * mix(0.7, 1.0, v_shade) * gain;
 	ROUGHNESS = 0.92;
 	SPECULAR = 0.1;
 	EMISSION = flash_col * flash;

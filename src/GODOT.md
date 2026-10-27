@@ -75,3 +75,5 @@
   - 声音：JS 的合成声音原样录成 wav（tools/render_sfx.mjs），音量曲线照 JS。
   - 默认颜色：玩家一墨（白袍侠）、电脑 / 玩家二赭（土黄僧袍）。
   - 导出：`godot/tools/build_web.sh` → `godot-web/`；字体裁剪 `godot/tools/make_fonts.py`（加了新字要跑）。
+  - 湿地面里有人的倒影（只在积水里、被落叶挡住）。
+- 2026-10-27（Jack 要 exe）：Windows 版 `godot/tools/build_windows.sh` → `godot/build/Modou-版本-windows.zip`（一个 exe，游戏数据嵌在里面，Forward+；图标、版本信息用 resedit 改进模板）。直接发给 Jack，不进仓库、不建公开的 Release。桌面版的灯、人的亮度按 Forward+ 另调了一套（和网页版看上去一样）；桌面版暂时不能联机。存档在 %APPDATA%\Modou。

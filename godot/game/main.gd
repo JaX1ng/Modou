@@ -37,6 +37,8 @@ var _rdt := C.FRAME_MS
 var _rng := 12345
 var _web_debug := false
 var _bench_cb: JavaScriptObject
+var _shot_path := ""             # 检查导出的版本用：环境变量 MODOU_SHOT=图片路径 → 开一局人机，跑一会儿拍一张、退出
+var _shot_n := 0
 var prof := {}                   # 测性能用（tests/perf_game.gd 打开）：每一块花了多少微秒
 var prof_on := false
 var _dbg_n := 0
@@ -143,6 +145,7 @@ func _ready() -> void:
 			_bench_cb = JavaScriptBridge.create_callback(_web_bench)
 			JavaScriptBridge.get_interface("window").__modouBench = _bench_cb
 	start_attract()
+	_shot_path = OS.get_environment("MODOU_SHOT")
 	# 界面（菜单等）
 	var ui_script = load("res://ui/ui.gd")
 	if ui_script != null:
@@ -341,6 +344,14 @@ func _process(_delta: float) -> void:
 		if n >= 5 * C.SUB:
 			_acc = 0.0
 		RA = clampf(_acc / C.STEP_MS, 0.0, 1.0) if (not _aligned or sim.timeScale < 1.0) else 1.0
+	if _shot_path != "":
+		_shot_n += 1
+		if _shot_n == 30 and ui != null:
+			ui.start("pve")
+		elif _shot_n == 400:
+			print("MODOU_SHOT: ", sim.mode, " ", sim.phase, " 第 ", sim.frame, " 步 ", sim.p[0].state, "/", sim.p[1].state)
+			get_viewport().get_texture().get_image().save_png(_shot_path)
+			get_tree().quit()
 	var tr0 := Time.get_ticks_usec() if prof_on else 0
 	render()
 	if prof_on:
