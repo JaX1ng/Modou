@@ -2,6 +2,8 @@
 
 当前版本：**2.8.0**（`js/config.js` 里的 `VERSION`）。**版本号按改动大小走（2.5.1 起，Jack：别每次都加 0.1）**：大.中.小 —— **大**（3.0.0）玩法核心大改（多流派 / 多角色、规则重做）、存档或联机整个不兼容；**中**（2.6.0）加了新玩法、新模式、新系统，或者改了规则、数值（手感会变）；**小**（2.5.1）画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。联机照旧要两边版本号完全一样。
 
+**Godot 版（2026-10 起）**：Jack 定了把墨斗搬到 Godot、做成 2.5D（3D 模型），第一步用 Godot 原样还原 2.8.0（3.0.0）。计划、技术选择、分几步搬、规矩都在 **`GODOT.md`** —— 做 Godot 版的对话先读它。这份 NOTES 照旧是全部规则、数值的说明书，JS 代码是 Godot 版对照的标准答案；现在的网页版照常能玩、照常维护。
+
 **一份代码、两个出口**（2.1 起）：网页版（GitHub Pages）和软件版（Electron 打包的 Windows 程序，上 Steam 用）。游戏代码只有一份，软件版就是把同一份网页装进一个窗口（见下面「软件版 / Steam」）。
 
 **2.8 起（Jack：太耗额度）：平时只更新网页版，软件版先不动** —— 不跑 `python build.py --desktop`、不查软件版专属的东西、不碰 `desktop/`，也不在 GitHub 上打软件版的包。改的是共用的源码，下次打软件版自然带上。**等 Jack 说「更新软件版」「打包」再做**：`python build.py --desktop` 查一遍，然后在 GitHub Actions 手动跑 desktop（`gh workflow run desktop.yml -R JaX1ng/Modou --ref main`），把那次运行的网址给 Jack（Artifacts 里的 `modou-windows`，要登录他的 GitHub 才能下；不建 Release、不推 tag，他还没打算公开）。
