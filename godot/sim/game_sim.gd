@@ -27,6 +27,7 @@ var reduce_motion := false
 
 ## 画面层接的回调
 var on_visual_step: Callable      # (frozen: bool) 每一步（不在回滚重算里）
+var on_reset: Callable            # () 两个人回到开局的位置（画面跟着重来）
 var on_match_over: Callable       # 整场打完
 var local_win_fn: Callable        # (winner) -> bool：整场打完放哪段声音（不接就用 localWin）
 var online_host := false          # 联机时自己是不是房主（玩家一）
@@ -49,6 +50,8 @@ func resetFighters() -> void:
 	p[1].reset(START_X[1], -1)
 	freeze = 0.0
 	timeScale = 1.0
+	if on_reset.is_valid():
+		on_reset.call()             # 画面跟着重来（站姿、骨骼、发带）：和 JS 的 F.reset() 一样马上算，回滚重算时也算
 	if not ev.quiet:
 		ev.fx("reset", -1)
 

@@ -1,7 +1,7 @@
 class_name Pose
 extends RefCounted
 ## 姿势（对照 JS src/js/pose.js）。一个姿势 = 一组参数，动作就是关键帧之间插值。
-## 只给画面用（逻辑层不看姿势），所以这里可以用 Vector2、sin、pow。
+## 只给画面用（逻辑层不看姿势），所以这里可以用 sin、pow。手脚的点是 [x, y]（64 位浮点，和 JS 一样，对照测试按 JS 的数比）。
 ##   tor 上身前倾 / head 头再往前低 / hy 髋离地多高 / dx 髋往前挪 / air 整个人往上抬 / rot 整个人转（翻滚、躺）/ spin 绕竖轴转身
 ##   tw 拧腰（正 = 前手那边的肩往前送）/ fe、be 肘往哪边顶 / fn、bn 膝盖往前(1)往后(-1) / ft、bt 脚尖勾多少度 / fo、bo 膝盖往侧面摆多少度
 ##   fh、bh 前手 / 后手拳心，相对两肩中间 [往前, 往下]；ff、bf 前脚 / 后脚脚踝 [相对髋往前, 离地多高]
@@ -23,11 +23,11 @@ var ft := 0.0
 var bt := 0.0
 var fo := 0.0
 var bo := 0.0
-var fh := Vector2(26, -2)
-var bh := Vector2(7, -6)
-var ff := Vector2(25, 0)
-var bf := Vector2(-30, 0)
-var fkh = null   # Vector2 或 null
+var fh := [26.0, -2.0]
+var bh := [7.0, -6.0]
+var ff := [25.0, 0.0]
+var bf := [-30.0, 0.0]
+var fkh = null   # [x, y] 或 null
 var bkh = null
 
 const NUMK := ["rot", "spin", "tor", "head", "hy", "dx", "air", "fe", "be", "tw", "fn", "bn", "ft", "bt", "fo", "bo"]
@@ -51,16 +51,17 @@ func apply_dict(o: Dictionary) -> void:
 	for k in o:
 		var v = o[k]
 		if v is Array:
-			set(k, Vector2(float(v[0]), float(v[1])))
+			set(k, [float(v[0]), float(v[1])])
 		elif v is Vector2:
-			set(k, v)
+			set(k, [float(v.x), float(v.y)])
 		else:
 			set(k, float(v))
 
 func copy_from(s: Pose) -> Pose:
 	rot = s.rot; spin = s.spin; tor = s.tor; head = s.head; hy = s.hy; dx = s.dx; air = s.air
 	fe = s.fe; be = s.be; tw = s.tw; fn = s.fn; bn = s.bn; ft = s.ft; bt = s.bt; fo = s.fo; bo = s.bo
-	fh = s.fh; bh = s.bh; ff = s.ff; bf = s.bf
+	fh[0] = s.fh[0]; fh[1] = s.fh[1]; bh[0] = s.bh[0]; bh[1] = s.bh[1]
+	ff[0] = s.ff[0]; ff[1] = s.ff[1]; bf[0] = s.bf[0]; bf[1] = s.bf[1]
 	return self
 
 func duplicate_pose() -> Pose:
@@ -93,10 +94,14 @@ static func lerpPose(a: Pose, b: Pose, t: float, out: Pose, wrap: bool) -> Pose:
 	out.bt = a.bt + (b.bt - a.bt) * t
 	out.fo = a.fo + (b.fo - a.fo) * t
 	out.bo = a.bo + (b.bo - a.bo) * t
-	out.fh = a.fh.lerp(b.fh, t)
-	out.bh = a.bh.lerp(b.bh, t)
-	out.ff = a.ff.lerp(b.ff, t)
-	out.bf = a.bf.lerp(b.bf, t)
+	out.fh[0] = a.fh[0] + (b.fh[0] - a.fh[0]) * t
+	out.fh[1] = a.fh[1] + (b.fh[1] - a.fh[1]) * t
+	out.bh[0] = a.bh[0] + (b.bh[0] - a.bh[0]) * t
+	out.bh[1] = a.bh[1] + (b.bh[1] - a.bh[1]) * t
+	out.ff[0] = a.ff[0] + (b.ff[0] - a.ff[0]) * t
+	out.ff[1] = a.ff[1] + (b.ff[1] - a.ff[1]) * t
+	out.bf[0] = a.bf[0] + (b.bf[0] - a.bf[0]) * t
+	out.bf[1] = a.bf[1] + (b.bf[1] - a.bf[1]) * t
 	if wrap:
 		o_rot = wrapDeg(o_rot)
 		o_spin = wrapDeg(o_spin)

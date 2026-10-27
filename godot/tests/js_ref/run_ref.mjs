@@ -16,7 +16,7 @@ for (const cfg of cfgs) {
   const t0 = Date.now();
   const r = await page.evaluate(c => window.runScenario(c), cfg);
   console.log(cfg.name, 'frames', r.hashes.length, 'ms', Date.now() - t0);
-  results.push({ cfg, hashes: r.hashes, full: r.full });
+  results.push(r.anim ? { cfg, hashes: r.hashes, full: r.full, anim: r.anim } : { cfg, hashes: r.hashes, full: r.full });
 }
 fs.writeFileSync(outPath, JSON.stringify(results));
 await browser.close();

@@ -86,6 +86,18 @@ function frameCanon(rec) {
 }
 function djb2(str) { let h = 5381; for (const ch of str) h = (Math.imul(h, 33) + ch.codePointAt(0)) >>> 0; return h; }
 const frameHash = rec => djb2(frameCanon(rec));
+// 动作（画面）对照：每帧两个人的骨骼 J、发带、hipY，按 Float64Array 原始字节（base64）传回去，Godot 那边容差比（sin、cos 两边实现不一样，最后一位可能差）
+const J_KEYS = ['hip', 'hipF', 'hipB', 'neck', 'neckTop', 'head', 'sh', 'shF', 'shB', 'knot', 'belt', 'fe', 'fh', 'be', 'bh', 'fk', 'ff', 'bk', 'bf'];
+function animOf(F, out) {
+  for (const k of J_KEYS) out.push(F.J[k][0], F.J[k][1]);
+  for (let r = 0; r < 2; r++) for (const q of F.ribbons[r]) out.push(q.x, q.y);
+  out.push(F.hipY, F.disp.spin, F.disp.rot);
+}
+function b64f64(arr) {
+  const b = new Uint8Array(new Float64Array(arr).buffer);
+  let s = ''; for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+  return btoa(s);
+}
 function runScenario(cfg) {
   let s = cfg.seed >>> 0;
   Math.random = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296;
@@ -109,7 +121,7 @@ function runScenario(cfg) {
   }
   const kd = cfg.keyDash || [false, false];
   const gens = [makeInputGen(cfg.inSeed[0], cfg.rate, kd[0]), makeInputGen(cfg.inSeed[1], cfg.rate, kd[1])];
-  const hashes = [], full = {};
+  const hashes = [], full = {}, anim = [];
   EV = [];
   const w = cfg.window;
   for (let i = 0; i < cfg.frames; i++) {
@@ -117,10 +129,11 @@ function runScenario(cfg) {
     step(inputs);
     const rec = record(inputs);
     hashes.push(frameHash(rec));
+    if (cfg.anim && i < cfg.anim) { animOf(F1, anim); animOf(F2, anim); }
     if (w && i >= w[0] && i <= w[1]) full[i] = hxAll(rec);
     if (game.phase === 'over') break;
     if (w && i >= w[1]) break;
   }
-  return { hashes, full };
+  return cfg.anim ? { hashes, full, anim: b64f64(anim) } : { hashes, full };
 }
 window.runScenario = runScenario;

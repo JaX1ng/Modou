@@ -1,0 +1,7 @@
+[
+ {"name": "电脑中等对困难", "mode": "pve", "ai": ["normal", "hard"], "seed": 12345, "inSeed": [1, 2], "frames": 6000, "skipIntro": false, "anim": 6000},
+ {"name": "木头人对电脑终极", "mode": "pve", "ai": [null, "hell"], "seed": 777, "inSeed": [99, 5], "frames": 6000, "skipIntro": true, "anim": 6000},
+ {"name": "双人乱按冲刺键", "mode": "pvp", "ai": [null, null], "seed": 3, "inSeed": [11, 12], "frames": 6000, "skipIntro": true, "rate": [0.25, 0.08], "keyDash": [true, false], "anim": 6000},
+ {"name": "训练场随机挡", "mode": "train", "dummy": "random", "ai": [null, null], "seed": 65, "inSeed": [35, 0], "frames": 5000, "rate": [0.3, 0.1], "trainQi": true, "anim": 5000},
+ {"name": "终极对终极整场", "mode": "pve", "ai": ["hell", "hell"], "seed": 2026, "inSeed": [0, 0], "frames": 20000, "skipIntro": false, "anim": 20000}
+]
