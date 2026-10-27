@@ -19,7 +19,7 @@
 - **网页版导出用单线程**（GitHub Pages 设不了 COOP / COEP 头，多线程版跑不起来）。导出要「导出模板」（GitHub Releases 上那个 `.tpz`，一个多 G），Claude 在工作区下载。
 - **放在哪**：仓库里新建 `godot/`（项目源码，全是文本文件：`project.godot`、`.gd`、`.tscn`、`.tres`），导出的网页版放 `godot-web/`，网址 https://jax1ng.github.io/Modou/godot-web/ 。现在的网页版（根目录 `index.html`、`src/`）一点不动，照常能玩。claude.ai Project 里也存一份 `godot/`（和 `modou/` 一样，二进制文件只放仓库）。
 - **版本号**：Godot 版从 **3.0.0** 起（NOTES 的规矩：引擎换了、存档和联机跟 2.x 整个不兼容 = 大版本）。搬家途中用 3.0.0-alpha.N。之后照 NOTES 的大.中.小走。
-- **只更新网页版**（NOTES 2.8 起的规矩照旧）：桌面版（Godot 原生导出，以后替掉 Electron）等 Jack 说再做。
+- **只更新软件版**（2026-10-27 Jack 改的规矩，替掉 NOTES 2.8 起的「只更新网页版」）：每次改完打 Windows 版（`godot/tools/build_windows.sh`，Forward+）发给 Jack；网页版（`godot-web/`）停在 3.0.0-alpha.3 不再导出。软件版还不能联机，要联机暂时还用那个网页版（两边版本号得一样）。
 
 ## 架构：判定和画面完全分开
 
@@ -70,7 +70,7 @@ Jack 出模型的流程：GPT 照原画出一张 A 字站姿的建模参考图�
 1. 先读这份和 NOTES；要搬哪个文件就只打开 JS 里对应的那个。
 2. 搬家期间不改规则、不改数值；Jack 要改的先记下，搬完再改。
 3. 逻辑层不碰画面（同 NOTES 第 3 条）；不用向量、不用 Godot 随机数；改完跑对照测试。
-4. 每次做完：导出网页版推到 `godot-web/`、源码推到 `godot/`，Project 里 `godot/` 同步；在下面「进度」写一行。
+4. 每次做完：打 Windows 版（`tools/build_windows.sh` → `godot/build/Modou-版本-windows.zip`）直接发给 Jack（不进仓库）；源码推到 `godot/`，Project 里 `godot/` 同步；在下面「进度」写一行。网页版不再导出。
 
 ## 进度
 
@@ -92,3 +92,4 @@ Jack 出模型的流程：GPT 照原画出一张 A 字站姿的建模参考图�
   - 手：平时握拳；掌、推、抓、摔这些招张开（`FighterView.OPEN_HANDS`），倒地、被摔、卸力时半张。
   - 正式模型不吃场景的雾（镜头离人 20 米上下，雾会把贴图里的藏青、墨色抬成灰的），墨线细一点（头发、手指那些细的地方粗线会起毛）；没有头带，发带不画。
   - 还没做：袍子下摆、马尾跟着动（现在是硬的：深弯腰的招 —— 抱腿摔、抄腿 —— 后摆会翘起来）；朝左时整个人是镜像（和街霸一样），衣服的交领会反过来。
+- 2026-10-27（Jack：以后不更新网页版，只更新软件版）：Windows 版 3.0.0-alpha.3（带正式模型，桌面版用 4K 贴图）。网页版停在 3.0.0-alpha.3。
