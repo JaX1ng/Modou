@@ -1,0 +1,14 @@
+; 墨斗 3.0（Godot 版）。说明见 ../src/GODOT.md
+
+config_version=5
+
+[application]
+
+config/name="墨斗"
+config/version="3.0.0-alpha.1"
+config/features=PackedStringArray("4.7", "Forward Plus")
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.web="gl_compatibility"

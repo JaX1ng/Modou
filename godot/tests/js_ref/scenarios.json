@@ -1,0 +1,20 @@
+[
+ {"name": "电脑中等对困难", "mode": "pve", "ai": ["normal", "hard"], "seed": 12345, "inSeed": [1, 2], "frames": 6000, "skipIntro": false},
+ {"name": "木头人对电脑终极", "mode": "pve", "ai": [null, "hell"], "seed": 777, "inSeed": [99, 5], "frames": 6000, "skipIntro": true},
+ {"name": "木头人对木头人", "mode": "pvp", "ai": [null, null], "seed": 1, "inSeed": [314, 2718], "frames": 8000, "skipIntro": true},
+ {"name": "电脑入门对简单", "mode": "pve", "ai": ["novice", "easy"], "seed": 4242, "inSeed": [1, 2], "frames": 6000, "skipIntro": true},
+ {"name": "终极对终极整场", "mode": "pve", "ai": ["hell", "hell"], "seed": 2026, "inSeed": [0, 0], "frames": 40000, "skipIntro": false},
+ {"name": "困难对终极整场", "mode": "pve", "ai": ["hard", "hell"], "seed": 31337, "inSeed": [0, 0], "frames": 40000, "skipIntro": false},
+ {"name": "乱按对困难整场", "mode": "pve", "ai": [null, "hard"], "seed": 8, "inSeed": [77, 0], "frames": 40000, "skipIntro": false, "rate": [0.3, 0.1]},
+ {"name": "双人乱按冲刺键", "mode": "pvp", "ai": [null, null], "seed": 3, "inSeed": [11, 12], "frames": 12000, "skipIntro": true, "rate": [0.25, 0.08], "keyDash": [true, false]},
+ {"name": "联机乱按", "mode": "online", "ai": [null, null], "seed": 9, "inSeed": [21, 22], "frames": 20000, "skipIntro": false, "rate": [0.2, 0.05]},
+ {"name": "菜单背景", "mode": "attract", "ai": [null, null], "seed": 55, "inSeed": [0, 0], "frames": 12000},
+ {"name": "训练场站桩", "mode": "train", "dummy": "stand", "ai": [null, null], "seed": 61, "inSeed": [31, 0], "frames": 5000, "rate": [0.3, 0.1]},
+ {"name": "训练场蹲桩", "mode": "train", "dummy": "crouch", "ai": [null, null], "seed": 62, "inSeed": [32, 0], "frames": 5000, "rate": [0.3, 0.1]},
+ {"name": "训练场站挡", "mode": "train", "dummy": "block", "ai": [null, null], "seed": 63, "inSeed": [33, 0], "frames": 5000, "rate": [0.3, 0.1], "trainQi": true},
+ {"name": "训练场蹲挡", "mode": "train", "dummy": "lowblock", "ai": [null, null], "seed": 64, "inSeed": [34, 0], "frames": 5000, "rate": [0.3, 0.1]},
+ {"name": "训练场随机挡", "mode": "train", "dummy": "random", "ai": [null, null], "seed": 65, "inSeed": [35, 0], "frames": 5000, "rate": [0.3, 0.1], "trainQi": true},
+ {"name": "训练场跳桩", "mode": "train", "dummy": "jump", "ai": [null, null], "seed": 66, "inSeed": [36, 0], "frames": 5000, "rate": [0.3, 0.1], "trainQi": true},
+ {"name": "双人少按", "mode": "pvp", "ai": [null, null], "seed": 4, "inSeed": [41, 42], "frames": 12000, "skipIntro": true, "rate": [0.05, 0.0]},
+ {"name": "少按对简单", "mode": "pve", "ai": [null, "easy"], "seed": 5, "inSeed": [51, 0], "frames": 20000, "skipIntro": false, "rate": [0.06, 0.01]}
+]
