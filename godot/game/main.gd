@@ -36,6 +36,9 @@ var RA := 1.0
 var _rdt := C.FRAME_MS
 var _rng := 12345
 var _web_debug := false
+var _bench_cb: JavaScriptObject
+var prof := {}                   # 测性能用（tests/perf_game.gd 打开）：每一块花了多少微秒
+var prof_on := false
 var _dbg_n := 0
 
 func _ready() -> void:
@@ -136,6 +139,9 @@ func _ready() -> void:
 	# 网页版网址后面带 ?debug：每隔一会儿把状态写到 window.__modou（自动测试看游戏走到哪了）
 	if OS.has_feature("web"):
 		_web_debug = str(JavaScriptBridge.eval("location.search.indexOf('debug') >= 0 ? 'y' : ''", true)) == "y"
+		if _web_debug:
+			_bench_cb = JavaScriptBridge.create_callback(_web_bench)
+			JavaScriptBridge.get_interface("window").__modouBench = _bench_cb
 	start_attract()
 	# 界面（菜单等）
 	var ui_script = load("res://ui/ui.gd")
@@ -182,6 +188,36 @@ func start_match(mode: String, diff := "normal", dummy := "stand") -> void:
 		sim.p[1].label = "玩家二"
 	_reset_camera()
 
+## 网页版测速（?debug）：另开一局电脑终极打终极，只算逻辑 + 动作 n 步，结果写到 window.__benchResult（毫秒）
+func _web_bench(args: Array) -> void:
+	var r := bench(int(args[0]) if args.size() > 0 else 960)
+	JavaScriptBridge.eval("window.__benchResult = %s" % JSON.stringify(r), true)
+
+func bench(n: int) -> Dictionary:
+	var g := GameSim.new()
+	var an := [FighterAnim.new(g.p[0]), FighterAnim.new(g.p[1])]
+	an[0].opp = an[1]
+	an[1].opp = an[0]
+	g.on_reset = func() -> void:
+		for a in an:
+			a.reset()
+	g.on_visual_step = func(frozen: bool) -> void:
+		g.ev.out.clear()
+		for a in an:
+			a.keepPrev()
+		an[0].animate(frozen, g.frame)
+		an[1].animate(frozen, g.frame)
+	g.startMatch("pve", Brain.new(g.p[0], "hell"), Brain.new(g.p[1], "hell"))
+	var t0 := Time.get_ticks_usec()
+	for i in n:
+		g.simTick([0, 0])
+	var t1 := Time.get_ticks_usec()
+	g.on_visual_step = func(_f: bool) -> void: g.ev.out.clear()
+	for i in n:
+		g.simTick([0, 0])
+	var t2 := Time.get_ticks_usec()
+	return {"withAnim": (t1 - t0) / 1000.0, "simOnly": (t2 - t1) / 1000.0, "n": n}
+
 ## 联机开一局（NetSession.begin 之后）：房主是玩家一。颜色两边商量好的
 func start_online(n: NetSession) -> void:
 	paused = false
@@ -219,6 +255,7 @@ func apply_looks(mode: String, net_looks: Dictionary = {}) -> void:
 
 # ---------- 每一步的画面（逻辑层每走一步调一次，回滚重算时不调） ----------
 func _visual_step(frozen: bool) -> void:
+	var tv := Time.get_ticks_usec() if prof_on else 0
 	# 这一步逻辑层发的事件：特效、飘字、印章、大字（这时骨骼还是上一步的，和 JS 当场放特效时一样）
 	for e in sim.ev.out:
 		if e.type == "snd":
@@ -231,9 +268,14 @@ func _visual_step(frozen: bool) -> void:
 			fx.per_step(i)
 	for a in anims:
 		a.keepPrev()
+	var ta := Time.get_ticks_usec() if prof_on else 0
 	anims[0].animate(frozen, sim.frame)
 	anims[1].animate(frozen, sim.frame)
+	if prof_on:
+		prof.anim = prof.get("anim", 0) + Time.get_ticks_usec() - ta
 	fx.step()
+	if prof_on:
+		prof.visual = prof.get("visual", 0) + Time.get_ticks_usec() - tv
 
 func _sound(e: Dictionary) -> void:
 	if ui != null and ui.has_method("play_sound"):
@@ -289,13 +331,20 @@ func _process(_delta: float) -> void:
 		_acc += dt * sim.timeScale
 		var n := 0
 		while _acc >= C.STEP_MS - 1e-6 and n < 5 * C.SUB:
+			var t0 := Time.get_ticks_usec() if prof_on else 0
 			sim.simTick([pads[0].sample(), pads[1].sample()])
+			if prof_on:
+				prof.step = prof.get("step", 0) + Time.get_ticks_usec() - t0
+				prof.steps = prof.get("steps", 0) + 1
 			_acc -= C.STEP_MS
 			n += 1
 		if n >= 5 * C.SUB:
 			_acc = 0.0
 		RA = clampf(_acc / C.STEP_MS, 0.0, 1.0) if (not _aligned or sim.timeScale < 1.0) else 1.0
+	var tr0 := Time.get_ticks_usec() if prof_on else 0
 	render()
+	if prof_on:
+		prof.render = prof.get("render", 0) + Time.get_ticks_usec() - tr0
 	if _web_debug:
 		_dbg_n += 1
 		if _dbg_n % 20 == 0:

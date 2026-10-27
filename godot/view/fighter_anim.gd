@@ -24,6 +24,8 @@ const RUN_ARM_F := 50.0
 const RUN_ARM_B := 46.0
 
 static var RIB_DAMP := C.rootDT(0.8)
+static var PROF := {}           # 测性能用（tests/perf_anim.gd）：每一块花了多少微秒
+static var PROF_ON := false
 static var _LK := {}
 
 var F: Fighter
@@ -270,12 +272,18 @@ func take_flags() -> void:
 		F.spinFlip = false
 		disp.spin = Pose.wrapDeg(disp.spin + 180.0)
 
+static func _pt(key: String, t0: int) -> void:
+	PROF[key] = PROF.get(key, 0) + Time.get_ticks_usec() - t0
+
 func animate(frozen: bool, frame: int) -> void:
 	take_flags()
 	var hold := F.holdPose
 	F.holdPose = false       # 刚挨了一下：这一步姿势先不变，顿帧过了再往后仰
 	if not frozen:
+		var t0 := Time.get_ticks_usec() if PROF_ON else 0
 		var tg := target()
+		if PROF_ON:
+			_pt("target", t0)
 		var st := F.state
 		var k: float
 		if st == "attack" or st == "tumble":
@@ -292,14 +300,26 @@ func animate(frozen: bool, frame: int) -> void:
 			k = 0.32
 		else:
 			k = 0.4
+		var t1 := Time.get_ticks_usec() if PROF_ON else 0
 		if not hold:
 			Pose.lerpPose(disp, tg, lk(k), disp, true)
 		var hy0 := hipY
 		var ik0 = ikS.duplicate() if ikS != null else null
+		if PROF_ON:
+			_pt("lerp", t1)
+			t1 = Time.get_ticks_usec()
 		fk()
+		if PROF_ON:
+			_pt("fk", t1)
+			t1 = Time.get_ticks_usec()
 		fitContact(hy0, ik0)
+		if PROF_ON:
+			_pt("fit", t1)
+			t1 = Time.get_ticks_usec()
 		if on_qi.is_valid():
 			on_qi.call(self)
+		if PROF_ON:
+			_pt("qi", t1)
 		# 拳脚轨迹 + 残影（只在出招时有）
 		var m := F.move
 		if m != null and not m.def.scripted and m.def.limb != "" and m.t >= m.S - 3.0 and m.t <= m.S + m.def.A + 2.0:
@@ -329,7 +349,10 @@ func animate(frozen: bool, frame: int) -> void:
 		hitFlash = maxf(0.0, hitFlash - C.DT)
 	if hitShake > 0.0:
 		hitShake = maxf(0.0, hitShake - C.DT)
+	var t2 := Time.get_ticks_usec() if PROF_ON else 0
 	updateRibbons()
+	if PROF_ON:
+		_pt("ribbons", t2)
 
 ## 这一步的外形（一块一块，别人量碰没碰到要用；一步只算一次）
 var _pc_J = null

@@ -6,6 +6,7 @@ extends Node3D
 const S := Rig.S
 const FIGHTER_SHADER := preload("res://view/shaders/fighter.gdshader")
 const OUTLINE_SHADER := preload("res://view/shaders/fighter_outline.gdshader")
+const REFLECT_SHADER := preload("res://view/shaders/fighter_reflect.gdshader")
 const RIBBON_W := 4.0       # 发带画多宽（逻辑像素，和 2D 版一样）
 
 var F: Fighter
@@ -14,6 +15,8 @@ var outfit: Outfit
 var skel: Skeleton3D
 var body: MeshInstance3D
 var shadow_body: MeshInstance3D
+var refl_body: MeshInstance3D      # 湿地面里的倒影
+var refl_mat: ShaderMaterial
 var mat: ShaderMaterial
 var line_mat: ShaderMaterial
 var ribbon_mesh: ImmediateMesh
@@ -54,6 +57,14 @@ func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 	line_mat.shader = OUTLINE_SHADER
 	line_mat.render_priority = 1
 	mat.next_pass = line_mat
+	refl_mat = ShaderMaterial.new()
+	refl_mat.shader = REFLECT_SHADER
+	refl_mat.render_priority = -1
+	refl_body = MeshInstance3D.new()
+	refl_body.name = "Reflection"
+	refl_body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	refl_body.extra_cull_margin = 4.0
+	skel.add_child(refl_body)
 	# 僧：没有头带，飘的是腰后垂下来的两条（腰带的颜色）
 	if kind == "seng":
 		anim.rib_anchor = "belt"
@@ -85,7 +96,9 @@ func set_look(id: String) -> void:
 	outfit = Outfit.make(kind, id)
 	if body.mesh == null:
 		_build()
-	mat.set_shader_parameter("regions", outfit.colors())
+	var cols := outfit.colors()
+	mat.set_shader_parameter("regions", cols)
+	refl_mat.set_shader_parameter("regions", cols)
 
 func _build() -> void:
 	var mb := ModelBuilder.new(anim.bd, outfit)
@@ -103,6 +116,10 @@ func _build() -> void:
 	shadow_body.mesh = body.mesh
 	shadow_body.skin = body.skin
 	shadow_body.skeleton = NodePath("..")
+	refl_body.mesh = body.mesh
+	refl_body.skin = body.skin
+	refl_body.skeleton = NodePath("..")
+	refl_body.material_override = refl_mat
 	var sm := StandardMaterial3D.new()
 	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	shadow_body.material_override = sm
@@ -145,7 +162,9 @@ func update_pose(RA: float) -> void:
 		shake = (1.0 if int(ceilf(a.hitShake)) % 2 == 1 else -1.0) * minf(3.0, a.hitShake * 0.5)
 	position = Vector3((x + shake) * S, 0.0, depth)
 	scale = Vector3(float(F.facing), 1.0, 1.0)
-	mat.set_shader_parameter("flash", clampf(a.hitFlash / 3.0, 0.0, 1.0) * 0.85)
+	var fl := clampf(a.hitFlash / 3.0, 0.0, 1.0) * 0.85
+	mat.set_shader_parameter("flash", fl)
+	refl_mat.set_shader_parameter("flash", fl)
 	_draw_ribbons(RA, interp)
 
 ## 发带（头带两条尾巴）：2D 里模拟的一串点，在人身后一点点画成带子

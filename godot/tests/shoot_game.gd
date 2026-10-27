@@ -12,6 +12,7 @@ func _init() -> void:
 	await process_frame
 	if mode != "attract":
 		m.start_match(mode, "hard")
+		m.ui.on_match_start()
 		m.sim.brains[0] = Brain.new(m.sim.p[0], "hard")
 		if mode == "pvp":
 			m.sim.brains[1] = Brain.new(m.sim.p[1], "hard")
