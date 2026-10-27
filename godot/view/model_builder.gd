@@ -302,55 +302,67 @@ func _neck_head() -> void:
 	var hb := [[Rig.HEAD, 1.0]]
 	var ax := hf.basis
 	var bald := of.kind == "seng"
-	# 头发（侠）：额头往后、耳朵往上包住；光头（僧）没有
+	# 头发（侠）：后脑勺、头顶、耳朵上面包住，额头一道发际线、鬓角往下一点；光头（僧）没有
 	var keep := func(d: Vector3) -> Array:
-		if not bald and (d.y > 0.12 - 0.55 * maxf(0.0, -d.x) or d.x < -0.55):
-			if d.x < 0.5 or d.y > 0.55:
-				return [Outfit.R.HAIR, 1.0]
-		return [Outfit.R.SKIN, 1.0 if d.y > -0.4 else 0.88]
-	ellipsoid(c, ax, R * 0.98, R * 1.06, R * 0.88, Outfit.R.SKIN, hb, 1.0, 10, 18, keep)
-	# 眼睛、眉毛（脸在 +X 那边）：侧面看得见，往两边放一点（参考图那种侧脸）
+		if not bald and d.y > _hairline(d.x):
+			return [Outfit.R.HAIR, 1.0]
+		return [Outfit.R.SKIN, 1.0 if d.y > -0.45 else 0.9]
+	ellipsoid(c, ax, R * 0.97, R * 1.06, R * 0.86, Outfit.R.SKIN, hb, 1.0, 14, 24, keep)
+	# 下巴：脸前下方一点点，脸不那么圆
+	ellipsoid(c + ax.x * (R * 0.42) + ax.y * (R * -0.62), ax, R * 0.5, R * 0.42, R * 0.62, Outfit.R.SKIN, hb, 0.94, 6, 12)
+	# 眼睛（细长）、剑眉：脸在 +X 那边，侧面看得见，往两边放一点（参考图那种侧脸）
 	for s: float in [-1.0, 1.0]:
-		var dir := Vector3(0.74, 0.1, s * 0.62).normalized()
-		var surf := Vector3(dir.x * R * 0.98, dir.y * R * 1.06, dir.z * R * 0.88)
+		var dir := Vector3(0.8, 0.05, s * 0.56).normalized()
+		var surf := Vector3(dir.x * R * 0.97, dir.y * R * 1.06, dir.z * R * 0.86)
 		var eb := Basis.looking_at(ax * dir, ax.y)       # 眼睛的扁的那一面朝外
 		var e: Vector3 = c + ax * surf
-		ellipsoid(e, eb, R * 0.2, R * 0.12, R * 0.07, Outfit.R.EYE, hb, 1.0, 4, 10)
-		var br: Vector3 = c + ax * (surf * 1.0) + ax.y * (R * 0.26)
-		ellipsoid(br, eb, R * 0.25, R * 0.06, R * 0.06, Outfit.R.HAIR, hb, 1.0, 4, 8)
+		ellipsoid(e, eb, R * 0.17, R * 0.065, R * 0.06, Outfit.R.EYE, hb, 1.0, 4, 10)
+		var br: Vector3 = c + ax * (surf * 1.01) + ax.y * (R * 0.22)
+		ellipsoid(br, eb.rotated(eb.z, s * 0.18), R * 0.24, R * 0.05, R * 0.06, Outfit.R.HAIR if not bald else Outfit.R.EYE, hb, 1.0, 4, 8)
 	# 鼻子
-	ellipsoid(c + ax.x * (R * 0.98) + ax.y * (R * -0.12), ax, R * 0.14, R * 0.2, R * 0.1, Outfit.R.SKIN, hb, 0.96, 4, 8)
+	ellipsoid(c + ax.x * (R * 0.96) + ax.y * (R * -0.16), ax, R * 0.13, R * 0.2, R * 0.1, Outfit.R.SKIN, hb, 0.96, 4, 8)
 	# 耳朵
+	var ear_k := 1.25 if bald else 1.0
 	for s: float in [-1.0, 1.0]:
-		ellipsoid(c + ax.z * (s * R * 0.86) + ax.y * (R * -0.02) + ax.x * (R * -0.05), ax, R * 0.16, R * 0.26, R * 0.08, Outfit.R.SKIN, hb, 0.9, 4, 8)
+		ellipsoid(c + ax.z * (s * R * 0.84) + ax.y * (R * -0.1) + ax.x * (R * -0.08), ax, R * 0.11 * ear_k, R * 0.2 * ear_k, R * 0.06, Outfit.R.SKIN, hb, 0.88, 4, 8)
 	if bald:
 		# 戒疤：头顶六个点
 		for i in 6:
 			var gx := -0.25 + 0.25 * (i % 3)
 			var gz := -0.13 + 0.26 * (i / 3)
 			var d := Vector3(gx, 1.0, gz).normalized()
-			ellipsoid(c + ax.x * (d.x * R * 0.98) + ax.y * (d.y * R * 1.06) + ax.z * (d.z * R * 0.88), ax, R * 0.06, R * 0.03, R * 0.06, Outfit.R.MOUTH, hb, 1.0, 3, 6)
-	else:
-		# 发髻：头顶偏后一个圆髻 + 一圈发带
-		var bun := c + ax.y * (R * 1.12) + ax.x * (R * -0.28)
-		ellipsoid(bun, ax, R * 0.36, R * 0.32, R * 0.36, Outfit.R.HAIR, hb, 1.0, 6, 12)
-		ellipsoid(bun + ax.y * (R * -0.2), ax, R * 0.3, R * 0.1, R * 0.3, Outfit.R.BAND, hb, 1.0, 4, 10)
-	# 头带：额头一圈（2D 版的头带，后脑勺打结，发带从那里飘出去）
-	var bandc := c + ax.y * (R * 0.42)
-	var rings := []
-	for k in 2:
-		var ring := []
-		var yy := (-0.1 if k == 0 else 0.13) * R
-		for j in 18:
-			var th := TAU * j / 18
-			var d := Vector3(cos(th), 0, sin(th))
-			var rr := 1.035 if d.x > -0.5 else 1.06
-			var p := bandc + ax.y * yy + ax.x * (d.x * R * 0.99 * rr) + ax.z * (d.z * R * 0.89 * rr)
-			ring.append(vert(p, ax.x * d.x + ax.z * d.z, Outfit.R.BAND, hb))
-		rings.append(ring)
-	stitch(rings)
-	# 结
-	ellipsoid(bandc + ax.x * (-R * 1.02) + ax.y * (R * 0.02), ax, R * 0.2, R * 0.16, R * 0.22, Outfit.R.BAND, hb, 0.9, 4, 8)
+			ellipsoid(c + ax.x * (d.x * R * 0.97) + ax.y * (d.y * R * 1.06) + ax.z * (d.z * R * 0.86), ax, R * 0.06, R * 0.03, R * 0.06, Outfit.R.MOUTH, hb, 1.0, 3, 6)
+		return
+	# 发髻：头顶偏后一个圆髻 + 一道发带箍着；后脑勺打个结（发带从那儿飘出去，2D 版的头带结）
+	var bun := c + ax.y * (R * 1.1) + ax.x * (R * -0.3)
+	ellipsoid(bun, ax, R * 0.34, R * 0.3, R * 0.34, Outfit.R.HAIR, hb, 1.0, 6, 12)
+	ellipsoid(bun + ax.y * (R * -0.18), ax, R * 0.3, R * 0.09, R * 0.3, Outfit.R.BAND, hb, 1.0, 4, 10)
+	ellipsoid(c + ax.x * (-R * 0.95) + ax.y * (R * 0.22), ax, R * 0.16, R * 0.14, R * 0.2, Outfit.R.BAND, hb, 0.9, 4, 8)
+	# 披在背后的长发：从后脑勺垂到背上，上面跟着头、下面跟着上背
+	var p0 := c + ax.x * (-R * 0.7) + ax.y * (R * 0.1)
+	var p1 := c + ax.x * (-R * 1.25) + ax.y * (-R * 2.3)
+	var hy := (p1 - p0).normalized()
+	var hx := (ax.x - hy * ax.x.dot(hy)).normalized()
+	var hframe := Transform3D(Basis(hx, hy, hx.cross(hy)), p0)
+	var hp := func(t: float) -> Array:
+		var w := R * lerpf(0.62, 0.16, clampf(t, 0.0, 1.0))
+		return [w * 0.45, w * 0.45, w]
+	var hw := func(t: float) -> Array:
+		var u := clampf(t, 0.0, 1.0)
+		return [[Rig.HEAD, 1.0 - 0.75 * u], [Rig.UPPER_CHEST, 0.75 * u]]
+	tube(hframe, (p1 - p0).length(), 0.0, 1.0, Vector3(1, 0, 0), hp, solid(Outfit.R.HAIR), hw, 6, 10, true, true)
+
+## 头发的边：头上某个方向（单位向量，x 朝脸、y 朝上）y 高过这条线就是头发 —— 后脑勺一直到脖子，前面到额头
+static func _hairline(x: float) -> float:
+	var pts := [[-1.0, -0.72], [-0.25, -0.62], [0.05, -0.12], [0.32, 0.3], [1.0, 0.42]]
+	if x <= pts[0][0]:
+		return pts[0][1]
+	for i in pts.size() - 1:
+		var a: Array = pts[i]
+		var b: Array = pts[i + 1]
+		if x <= b[0]:
+			return lerpf(a[1], b[1], (x - a[0]) / (b[0] - a[0]))
+	return pts[pts.size() - 1][1]
 
 func _arms() -> void:
 	for side in [["L", Rig.L_SHOULDER, Rig.L_UPPER_ARM, Rig.L_LOWER_ARM, Rig.L_HAND, "shF", "fe", "fh"],
@@ -491,7 +503,7 @@ func _shoe(fr: Transform3D, bone: int, shin: int) -> void:
 func _robe_skirt() -> void:
 	var hip: Vector3 = J3.hip
 	var top_y := hip.y + (bd.belt_at * bd.torso) * S
-	var hem := (34.0 if of.kind == "xia" else 27.0) * S
+	var hem := (46.0 if of.kind == "xia" else 40.0) * S
 	var bot_y := hip.y - hem
 	var nr := 7
 	for panel in [[Rig.R_UPPER_LEG, 1.0], [Rig.L_UPPER_LEG, -1.0]]:

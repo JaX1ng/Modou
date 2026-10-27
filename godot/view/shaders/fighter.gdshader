@@ -2,7 +2,8 @@ shader_type spatial;
 // 人物：每个顶点记着自己是哪一块（COLOR.r × 16 = 区域编号），按编号从颜色表取颜色；COLOR.g 明暗（缝里、底下暗一点）。
 // 打光（黄昏的庭院，照参考图）：主光是背后偏一侧的夕阳 —— 迎光面暖、背光面偏紫灰，过渡柔和（两档的卡通光 + 一点渐变）；
 // 轮廓上一道金色的逆光（夕阳从背后打过来，人的边亮一圈）。挨打时整个人白一下（flash）。
-render_mode cull_back, depth_draw_opaque;
+// 走透明那一趟（写 ALPHA）但照样写深度：这样画在人身后的特效层（render_priority 0、不比深度）先画，人（render_priority 1）盖在上面
+render_mode cull_back, depth_draw_always;
 
 uniform vec4 regions[16];
 uniform float flash = 0.0;
@@ -27,6 +28,7 @@ void fragment() {
 	ROUGHNESS = 0.92;
 	SPECULAR = 0.1;
 	EMISSION = flash_col * flash;
+	ALPHA = alpha;
 }
 
 void light() {

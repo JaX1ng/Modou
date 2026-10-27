@@ -424,7 +424,7 @@ func applyHit(A: Fighter, B: Fighter, how: String) -> void:
 	sim.freeze = stopF((d.stop if d.stop != 0.0 else 4.0) + (2.0 if label != "" else 0.0))
 	if d.shake != 0.0:
 		sim.ev.shake(d.shake)
-	sim.ev.fx("hit", A.idx, B.idx, {"kind": d.fx, "limb": d.limb, "power": d.power, "heavy": d.heavy, "big": d.launch != 0.0 or d.tier == "super"})
+	sim.ev.fx("hit", A.idx, B.idx, {"fxk": d.fx, "limb": d.limb, "power": d.power, "heavy": d.heavy, "big": d.launch != 0.0 or d.tier == "super"})
 	var relLabel: bool = beatVs != "" and label == Moves.TIER_NAME.get(d.tier, "") + "克" + Moves.TIER_NAME.get(beatVs, "")
 	if label != "" and not relLabel:
 		sim.ev.tag(label + " ×" + _num(lmul), A.idx, 21, B.idx, "head", -36, dir * 10.0)
@@ -593,7 +593,7 @@ func clash(A: Fighter, B: Fighter) -> void:
 	sim.ev.shake(6)
 	sim.ev.fx("clash", A.idx, B.idx)
 	cev("clash", A, B, {"name": ma.name, "by": mb.name})
-	sim.ev.tag("拼", [A.idx, B.idx], 40, -1, "mid", -56)
+	sim.ev.tag("拼", [A.idx, B.idx], 40, -1, "clash", -56)
 	sim.ev.snd("clash")
 
 ## 压：主系一样、起手克制。两边都打中，被压的 L 吃全额、被打退；压人的 W 只吃三成、小硬直，能接着打
@@ -629,7 +629,7 @@ func overpower(Wf: Fighter, L: Fighter) -> void:
 	L.kvx = dir * (mwdef.kb * 1.2 + 3.0)
 	sim.freeze = stopF(10.0)
 	sim.ev.shake(6)
-	sim.ev.fx("press", Wf.idx, L.idx, {"kind": mwdef.fx, "limb": mwdef.limb})
+	sim.ev.fx("press", Wf.idx, L.idx, {"fxk": mwdef.fx, "limb": mwdef.limb})
 	sim.ev.tag("压", Wf.idx, 36, L.idx, "contact", -56)
 	cev("press", Wf, L, {"name": mw.name, "by": ml.name})
 	Wf.info.why = "起手 %s克%s" % [Moves.TIER_NAME.get(leadW, ""), Moves.TIER_NAME.get(leadL, "")]
@@ -876,7 +876,7 @@ func slamDown(A: Fighter, B: Fighter, nm: String) -> void:
 		B.hp = 0.0
 	sim.freeze = stopF(8.0)
 	sim.ev.shake(7)
-	sim.ev.fx("slamFloor", B.idx, -1, {"big": true})
+	sim.ev.fx("slamFloor", B.idx, -1, {"big": true, "n": 9})
 	sim.ev.stamp("别腿摔" if trip else "抱腿摔", 28, A.idx)
 	sim.ev.snd("hit", 0.9)
 

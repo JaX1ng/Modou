@@ -34,6 +34,7 @@ static func make(kind: String, look_id: String) -> Outfit:
 	var pal := Pal.of(col)
 	var base := Color(col)
 	if kind == "xia":
+		o.skin = Color("#e6bf9a")
 		o.hair = Color("#121212")
 		o.pants = Color("#2f2c29")
 		o.shoe = Color("#151517")
@@ -55,13 +56,14 @@ static func make(kind: String, look_id: String) -> Outfit:
 			o.sash = base.darkened(0.45)
 			o.band = Color(pal.band)
 	else:
+		o.skin = Color("#c29a80")      # 僧：晒黑一点
 		o.hair = Color("#2a201a")
 		o.pants = Color("#3b3029")
 		o.shoe = Color("#1b1714")
 		o.wrap = Color("#e1d8c6")
 		o.beads = Color("#3c2416")
 		if look_id == "ochre":
-			o.robe = Color("#c98a2e")     # 赭：参考图右边那位的土黄僧袍
+			o.robe = Color("#c39434")     # 赭：参考图右边那位的土黄僧袍
 		else:
 			o.robe = _cloth(base)
 		o.robe_dark = o.robe.darkened(0.25)
@@ -80,8 +82,14 @@ static func _cloth(c: Color) -> Color:
 	s = clampf(s * 0.92, 0.0, 0.85)
 	return Color.from_hsv(h, s, v)
 
-## 着色器用的颜色表（按区域编号）
+## 着色器用的颜色表（按区域编号）。着色器里按线性颜色算光，这里先从 sRGB 转过去（不转的话整个人发白、发灰）
 func colors() -> PackedColorArray:
+	var a := colors_srgb()
+	for i in a.size():
+		a[i] = a[i].srgb_to_linear()
+	return a
+
+func colors_srgb() -> PackedColorArray:
 	var a := PackedColorArray()
 	a.resize(N_REGIONS)
 	a[R.SKIN] = skin

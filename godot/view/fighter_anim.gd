@@ -40,10 +40,17 @@ var fkL := {}
 var trail: Array = []           # 拳脚轨迹 [{x, y, life, max, f}]
 var ghosts: Array = []          # 残影 [{J, life, dash}]
 var ribbons: Array = []         # 发带（两条）：每条一串 {x, y, px, py}
+var rib_anchor := "knot"        # 发带从哪儿飘出来：knot 头带结（JS 原样）/ belt 腰后（僧：腰带垂下来的两条）
+var rib_wind := 1.0             # 风、重力的倍数（1 = JS 原样；腰带垂得多、飘得少）
+var rib_grav := 1.0
 var lastStep := -999
 var vp := {}                    # 上一步的样子（画面插值用）：{J, P3, rb}
 var hitFlash := 0.0
 var hitShake := 0.0
+var heat := 0.0                 # 连招的火有多旺（画面）
+var qiGlow := 0.0               # 身上的光
+var qx = null                   # 上一步在哪（火往哪边拖）
+var qlean := 0.0
 var on_qi: Callable             # (FighterAnim) 每一步：身上的气（特效层）
 var on_dust: Callable           # (x, y, n) 跑步落脚扬尘
 
@@ -66,12 +73,14 @@ func reset() -> void:
 	ghosts.clear()
 	hitFlash = 0.0
 	hitShake = 0.0
+	heat = 0.0
+	qiGlow = 0.0
 	fk()
 	ribbons = []
 	var f := float(F.facing)
 	for r in 2:
 		var pts := []
-		var a: Array = J.knot
+		var a: Array = J[rib_anchor]
 		for i in RIB_N:
 			var x: float = a[0] - f * i * RIB_SEG
 			var y: float = a[1] + i * 2.0
@@ -349,7 +358,18 @@ func keepPrev() -> void:
 		for q in pts:
 			r.append([q.x, q.y])
 		rb.append(r)
-	vp = {"J": cloneJ(J), "P3": cloneJ(P3), "ang": ang.duplicate(), "hipY": hipY, "rb": rb, "x": F.x, "facing": F.facing}
+	vp = {"J": cloneJ(J), "P3": cloneJ(P3), "ang": ang.duplicate(), "hipY": hipY, "rb": rb, "x": F.x, "facing": F.facing, "alt": F.alt}
+
+## 这一刻画在哪、离地多高（两步之间插值，和 JS viewOf 一样：差太远不插）
+func view_x(RA: float) -> float:
+	if RA < 1.0 and not vp.is_empty() and absf(float(vp.x) - F.x) <= 90.0:
+		return lerpf(vp.x, F.x, RA)
+	return F.x
+
+func view_alt(RA: float) -> float:
+	if RA < 1.0 and not vp.is_empty() and absf(float(vp.x) - F.x) <= 90.0:
+		return lerpf(vp.alt, F.alt, RA)
+	return F.alt
 
 # ---------- 拳脚停在对方身上（只是画面） ----------
 ## 出招时离得比射程近，照着姿势探身、伸直的拳脚会扎进对方身子里：先看身子扎进去了就整个人往回让；再看拳脚，过了对方迎面那一层超过 CONTACT_SINK 就往回收。
@@ -739,7 +759,7 @@ func updateRibbons() -> void:
 	var d2 := C.DT * C.DT
 	for k in ribbons.size():
 		var pts: Array = ribbons[k]
-		var a: Array = J.knot if k < 2 else J.belt
+		var a: Array = J[rib_anchor] if k < 2 else J.belt
 		pts[0].x = a[0]
 		pts[0].y = a[1] + (2.0 if k == 1 else 0.0)
 		var seg := RIB_SEG if k < 2 else 5.0
@@ -749,9 +769,9 @@ func updateRibbons() -> void:
 			var vy: float = (q.y - q.py) * dd
 			q.px = q.x
 			q.py = q.y
-			var wind: float = -f * RIB_WIND + sin(F.clock * 0.036 - i * 0.32 + k * 1.3) * RIB_GUST[0] + sin(F.clock * 0.014 + k * 2.1) * RIB_GUST[1]
+			var wind: float = (-f * RIB_WIND + sin(F.clock * 0.036 - i * 0.32 + k * 1.3) * RIB_GUST[0] + sin(F.clock * 0.014 + k * 2.1) * RIB_GUST[1]) * rib_wind
 			q.x += vx + wind * d2
-			q.y += vy + 0.24 * d2
+			q.y += vy + 0.24 * rib_grav * d2
 		for it in 3:
 			for i in range(1, pts.size()):
 				var a0: Dictionary = pts[i - 1]

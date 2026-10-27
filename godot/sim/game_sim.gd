@@ -37,6 +37,7 @@ const START_X := [800.0 - 180.0, 800.0 + 180.0]
 func _init() -> void:
 	combat = Combat.new(self)
 	ev.frame_fn = func() -> int: return frame
+	ev.pos_fn = func() -> Array: return [[p[0].x, p[0].facing, p[0].alt], [p[1].x, p[1].facing, p[1].alt]]
 	var F1 := Fighter.new(0, "ink", START_X[0], 1)
 	var F2 := Fighter.new(1, "indigo", START_X[1], -1)
 	F1.sim = self

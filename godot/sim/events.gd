@@ -7,12 +7,15 @@ var out: Array = []          # 画面层每帧取走：[{type, …}, …]
 var quiet := false           # 回滚重算时 true
 var online := false
 var frame_fn: Callable       # 当前步数（GameSim.frame）
+var pos_fn: Callable         # () -> [[x, 朝向, 离地], [x, 朝向, 离地]]：发事件那一刻两个人在哪（特效、字挂在哪按这个算，和 JS 当场取位置一样）
 var _log := {}               # 步数 → [签名…]（联机时记下放过什么）
 var _fresh = null            # 回滚重算时攒着的 [[步数, 签名, 事件], …]
 
 ## 发一个事件。sig：去重用的签名（种类 + 字）
 func emit(sig: String, ev: Dictionary) -> void:
 	var f: int = frame_fn.call()
+	if pos_fn.is_valid() and ev.type != "snd":
+		ev.p = pos_fn.call()
 	if quiet:
 		if _fresh != null:
 			_fresh.append([f, sig, ev])
@@ -60,14 +63,16 @@ func snd(k: String, p = null) -> void:
 	emit("S" + k, {"type": "snd", "k": k, "p": p})
 
 ## 飘字。text：字，或者分段 [[字, 谁的颜色(idx)], …]；own：谁的颜色（idx，或 [a, b] 两人各半，-1 = 墨色）；
-## who：挂在谁身上（idx，-1 = 场地上 x 处）；at：挂在哪（head 头顶 / sh 肩膀 / contact 打中的地方 / floor 地面上方 / mid 两人中间）；dy、dx：再偏多少（逻辑像素，往上为负）
+## who：挂在谁身上（idx，-1 = 场地上 x 处）；at：挂在哪，dy、dx：再偏多少（逻辑像素，往上为负）：
+##   head 头顶（x = 他的位置，y = 他的头）/ sh 肩膀 / contact 打中的地方（own 打 who，和 JS contactPoint 一样）/ floor 他脚下的地面上方 /
+##   mid 两人中间的地面上方 / clash 两人中间、两边打中的地方的平均高度
 func tag(text, own, size: float, who: int, at: String, dy: float, dx := 0.0, x := 0.0) -> void:
 	var s: String = text if text is String else _join(text)
 	emit("tag" + s, {"type": "tag", "text": text, "own": own, "size": size, "who": who, "at": at, "dy": dy, "dx": dx, "x": x})
 
-## 印章（招式名）：own 出招的人
-func stamp(text: String, size: float, own: int) -> void:
-	emit("stamp" + text, {"type": "stamp", "text": text, "size": size, "own": own})
+## 印章（招式名）：own 出招的人；盖在他头顶往身后 52（dx = -52，按朝向）、往上 46 —— 过肩摔是往身前 40
+func stamp(text: String, size: float, own: int, dx := -52.0) -> void:
+	emit("stamp" + text, {"type": "stamp", "text": text, "size": size, "own": own, "dx": dx})
 	snd("stamp")
 
 ## 画面正中的大字（回合、战、胜负已分、某某 胜……）；own = -1 墨色
@@ -77,7 +82,7 @@ func announce(text: String, sub: String, life: float, size: float, own := -1) ->
 ## 打击特效、动作特效：kind 种类，a 出招的人，b 挨打的人（-1 没有），data 别的
 func fx(kind: String, a: int, b := -1, data := {}) -> void:
 	var ev := {"type": "fx", "kind": kind, "a": a, "b": b}
-	ev.merge(data)
+	ev.merge(data)        # 不覆盖：data 里别用 type / kind / a / b 这几个名字
 	emit("fx" + kind, ev)
 
 func shake(v: float) -> void:

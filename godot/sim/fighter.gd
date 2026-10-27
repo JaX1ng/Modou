@@ -810,7 +810,7 @@ func attackStep(locked: bool) -> void:
 			throwOver()
 	if (m.name == "legCatch" or m.name == "scoop") and k == d.evSlam:
 		sim.ev.shake(7)
-		sim.ev.fx("slamFloor", o.idx)
+		sim.ev.fx("slamFloor", o.idx, -1, {"big": true, "n": 8})
 		sim.ev.snd("hit", 0.9)
 	if m.name == "burst" and k == d.evWave:
 		burstWave()
@@ -878,8 +878,8 @@ func throwOver() -> void:
 	sim.combat.noteGrab(self, dmg, "借力摔" if pt else "过肩摔")
 	sim.freeze = 7.0
 	sim.ev.shake(8)
-	sim.ev.fx("slamFloor", o.idx, -1, {"big": true})
-	sim.ev.stamp("借力摔" if pt else "过肩摔", 30, idx)
+	sim.ev.fx("slamFloor", o.idx, -1, {"big": true, "n": 10})
+	sim.ev.stamp("借力摔" if pt else "过肩摔", 30, idx, 40.0)
 	sim.ev.tag("-" + str(int(dmg)), idx, 18, o.idx, "floor", -120)
 	sim.ev.snd("hit", 1.0)
 

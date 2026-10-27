@@ -5,6 +5,7 @@ extends Node3D
 
 const S := Rig.S
 const FIGHTER_SHADER := preload("res://view/shaders/fighter.gdshader")
+const OUTLINE_SHADER := preload("res://view/shaders/fighter_outline.gdshader")
 const RIBBON_W := 4.0       # 发带画多宽（逻辑像素，和 2D 版一样）
 
 var F: Fighter
@@ -12,11 +13,14 @@ var anim: FighterAnim
 var outfit: Outfit
 var skel: Skeleton3D
 var body: MeshInstance3D
+var shadow_body: MeshInstance3D
 var mat: ShaderMaterial
+var line_mat: ShaderMaterial
 var ribbon_mesh: ImmediateMesh
 var ribbon_node: MeshInstance3D
 var ribbon_mat: StandardMaterial3D
 var depth := 0.0             # 两个人前后错开一点（不穿插得那么明显）
+var reduce_motion := false
 var kind := "xia"
 var look_id := ""
 var _frames: Array = []
@@ -36,9 +40,26 @@ func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 			skel.set_bone_parent(i, Rig.PARENT[i])
 	body = MeshInstance3D.new()
 	body.name = "Body"
+	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	skel.add_child(body)
+	# 影子另用一份（人走透明那一趟，透明的东西不投影）：同一个模型、只投影
+	shadow_body = MeshInstance3D.new()
+	shadow_body.name = "Shadow"
+	shadow_body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+	skel.add_child(shadow_body)
 	mat = ShaderMaterial.new()
 	mat.shader = FIGHTER_SHADER
+	mat.render_priority = 1
+	line_mat = ShaderMaterial.new()
+	line_mat.shader = OUTLINE_SHADER
+	line_mat.render_priority = 1
+	mat.next_pass = line_mat
+	# 僧：没有头带，飘的是腰后垂下来的两条（腰带的颜色）
+	if kind == "seng":
+		anim.rib_anchor = "belt"
+		anim.rib_wind = 0.75
+		anim.rib_grav = 1.7
+		anim.reset()
 	set_look(F.look)
 	# 发带：画在世界坐标里（不跟着镜像），一条一条的带子
 	ribbon_mesh = ImmediateMesh.new()
@@ -48,7 +69,10 @@ func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 	ribbon_mat = StandardMaterial3D.new()
 	ribbon_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	ribbon_mat.vertex_color_use_as_albedo = true
+	ribbon_mat.vertex_color_is_srgb = true
 	ribbon_mat.roughness = 0.9
+	ribbon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	ribbon_mat.render_priority = 1
 	ribbon_node.material_override = ribbon_mat
 	add_child(ribbon_node)
 
@@ -75,6 +99,12 @@ func _build() -> void:
 	body.skin = mb.skin()
 	body.skeleton = NodePath("..")
 	body.material_override = mat
+	shadow_body.mesh = body.mesh
+	shadow_body.skin = body.skin
+	shadow_body.skeleton = NodePath("..")
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	shadow_body.material_override = sm
 
 ## 这一帧画成什么样：RA = 在上一步和这一步之间走到哪了（0~1）
 func update_pose(RA: float) -> void:
@@ -108,9 +138,10 @@ func update_pose(RA: float) -> void:
 		var lt: Transform3D = fr[i] if p < 0 else (fr[p] as Transform3D).affine_inverse() * fr[i]
 		skel.set_bone_pose_position(i, lt.origin)
 		skel.set_bone_pose_rotation(i, lt.basis.get_rotation_quaternion())
+	# 挨打时左右抖（和 JS 一样：打中停顿里左右各抖一下，最多 3 像素）
 	var shake := 0.0
-	if a.hitShake > 0.0:
-		shake = sin(a.hitShake * 3.1) * a.hitShake * 0.35
+	if a.hitShake > 0.0 and not reduce_motion:
+		shake = (1.0 if int(ceilf(a.hitShake)) % 2 == 1 else -1.0) * minf(3.0, a.hitShake * 0.5)
 	position = Vector3((x + shake) * S, 0.0, depth)
 	scale = Vector3(float(F.facing), 1.0, 1.0)
 	mat.set_shader_parameter("flash", clampf(a.hitFlash / 3.0, 0.0, 1.0) * 0.85)
@@ -122,8 +153,9 @@ func _draw_ribbons(RA: float, interp: bool) -> void:
 	var a := anim
 	if a.ribbons.is_empty():
 		return
-	var col := outfit.band
-	var zb := depth - (6.0 if not a.J.turned else -6.0) * S * 0.0 - 0.02
+	var col := outfit.band if anim.rib_anchor == "knot" else outfit.sash
+	var rw := RIBBON_W if anim.rib_anchor == "knot" else RIBBON_W * 1.5
+	var zb := depth - 0.02
 	ribbon_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for r in a.ribbons.size():
 		var pts: Array = a.ribbons[r]
@@ -139,8 +171,8 @@ func _draw_ribbons(RA: float, interp: bool) -> void:
 		for i in P.size() - 1:
 			var d: Vector3 = (P[i + 1] - P[i])
 			var nrm := Vector3(-d.y, d.x, 0).normalized()
-			var w0 := RIBBON_W * S * 0.5 * (1.0 - 0.55 * float(i) / (P.size() - 1))
-			var w1 := RIBBON_W * S * 0.5 * (1.0 - 0.55 * float(i + 1) / (P.size() - 1))
+			var w0 := rw * S * 0.5 * (1.0 - 0.55 * float(i) / (P.size() - 1))
+			var w1 := rw * S * 0.5 * (1.0 - 0.55 * float(i + 1) / (P.size() - 1))
 			var a0: Vector3 = P[i] + nrm * w0
 			var b0: Vector3 = P[i] - nrm * w0
 			var a1: Vector3 = P[i + 1] + nrm * w1
