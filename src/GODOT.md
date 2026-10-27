@@ -56,12 +56,15 @@
 
 ## 正式人物模型（AI 生成的）
 
-Jack 出模型的流程：GPT 照原画出一张 A 字站姿的建模参考图（手臂离开身体、劲装、没有飘带长袍）→ Meshy 生成（智能拓扑 / 重拓扑到 3 万面上下、四边面）→ 绑骨（人形、Mixamo 骨架）→ 下载 GLB（Mixamo、单个文件），发给 Claude。Claude 这边：
+Jack 出模型的流程：GPT 照原画出一张 A 字站姿的建模参考图（手臂离开身体）→ Meshy 生成（重拓扑、四边面）→（可以不绑骨）→ 下载 GLB（单个文件，高度 1.8 米、原点在脚底），发给 Claude。Claude 这边：
 
-1. `python3 godot/tools/import_char.py 原文件.glb godot/assets/chars/名字 名字`：拆出网格 + 蒙皮（去掉贴图、动画）、贴图碎块之间的黑底填上旁边的颜色存 4K / 2K 两张 JPG、两只手各加三节「握拳骨」（Meshy 的骨骼没有手指）。
-2. 贴图的导入设置：4K 用 VRAM 压缩 + 高质量（桌面版）；2K 用有损（网页版，下载小、手机浏览器也能用）。export_presets 里网页版不带 `*_4k.jpg`、桌面版不带 `*_2k.jpg`。
-3. `godot/view/char_model.gd` 的 `MODELS`、`LOOKS` 加一行：哪个人物（侠 / 僧）、哪身颜色用它，放大多少（`scale`：和简易模型一样高）。
-4. 看效果：`tests/render_model.gd`（各个姿势、全部招式拍图）、`tests/shoot_variants.gd`（真的场景里拍，查画面问题）、`tests/model_info.gd`（量出来的身材和简易模型比）。
+0. **没绑骨的**（3.0.0-alpha.4 的侠就是）：Claude 自己绑 —— `godot/tools/rig_char.py`（用法、做法写在文件开头）。先用 `tools/ortho_view.gd` 拍正面、侧面正交图，`rig_char.py overlay` 画上网格对着量关节，写进 `tools/rigs/名字.json`；`rig_char.py rig` 出绑好的 GLB（Blender 的自动权重 + 胳膊的骨头只管胳膊，免得手把旁边的袍子扯走）；`rig_char.py wviz` 看权重。要 Blender 的 Python 模块（`pip install bpy`，单独一个环境）。长袍的下摆和 Meshy 绑的一样分给两条大腿和髋（踢腿时袍子跟着抬）。
+1. `python3 godot/tools/import_char.py 绑好骨的.glb godot/assets/chars/名字 名字 [palm=-1,1] [knuckle=0.075]`：拆出网格 + 蒙皮（去掉贴图、动画）、贴图碎块之间的黑底填上旁边的颜色存两张 JPG（`_desk` 原大给桌面版、`_web` 长宽各一半给网页版）、两只手各加三节「握拳骨」（Meshy 的骨骼没有手指）。看它打印的「手心朝」「指根」：护腕盖住手背、手指本来半弯着的模型会猜错，用 palm、knuckle 指定（rigs/名字.json 的 import 里记着）。
+2. 贴图的导入设置：`_desk` 用 VRAM 压缩 + 高质量（桌面版）；`_web` 用有损（网页版，下载小、手机浏览器也能用）。export_presets 里网页版不带 `*_desk.jpg`、桌面版不带 `*_web.jpg`。
+3. `godot/view/char_model.gd` 的 `MODELS`、`LOOKS` 加一行：哪个人物（侠 / 僧）、哪身颜色用它，放大多少（`scale`：腿长、胳膊长和简易模型对上，`tests/model_info.gd` 量）、握拳弯多少（`curl`）。
+4. 看效果：`tests/render_model.gd`（各个姿势、全部招式拍图）、`tests/shoot_light.gd`（真的场景里换几套光比）、`tests/shoot_variants.gd`（查画面问题）、`tests/model_info.gd`（量出来的身材和简易模型比）。桌面版的样子要用 Forward+ 拍：工作区没显卡就 `apt-get install mesa-vulkan-drivers`（lavapipe 软件渲染），`--rendering-driver vulkan`。
+
+打光（`view/shaders/fighter_tex.gdshader`，alpha.4 起）：颜色基本照贴图，场景的灯只算两成多（`light_k`），底子 `fill` 不跟灯走，背光面只暗一点，逆光金边很淡；不吃场景的天光和雾。正式模型不描墨线（AI 模型的头发、衣角碎，墨线是一圈黑毛刺）。之前那套卡通光（亮暗两档、紫灰暗面）在桌面版会把白衣服和脸冲成一片白。
 
 接法（`view/char_model.gd`）：动作还是原来那一套（FighterAnim / Rig 算关节，招式数据一个不动）；模型的每根 Mixamo 骨头跟着 Rig 的一根骨头走 —— 模型站姿时先按 Rig 的规矩算出「这个姿势下 Rig 该是什么样」，记下模型骨头相对它的偏差，以后每帧照着摆；模型自己的身材（骨头多长、肩多宽、脚踝多高）量成一个 BodyDef 交给 FighterAnim，拳脚够得着、脚踩在地上。骨骼是「平的」（没有父子关系），胳膊腿顺着骨头伸缩一点正好接上。
 
@@ -93,3 +96,8 @@ Jack 出模型的流程：GPT 照原画出一张 A 字站姿的建模参考图�
   - 正式模型不吃场景的雾（镜头离人 20 米上下，雾会把贴图里的藏青、墨色抬成灰的），墨线细一点（头发、手指那些细的地方粗线会起毛）；没有头带，发带不画。
   - 还没做：袍子下摆、马尾跟着动（现在是硬的：深弯腰的招 —— 抱腿摔、抄腿 —— 后摆会翘起来）；朝左时整个人是镜像（和街霸一样），衣服的交领会反过来。
 - 2026-10-27（Jack：以后不更新网页版，只更新软件版）：Windows 版 3.0.0-alpha.3（带正式模型，桌面版用 4K 贴图）。网页版停在 3.0.0-alpha.3。
+- 3.0.0-alpha.4（2026-10-27，只出 Windows 版）：
+  - 侠换成 Jack 重新用 Meshy 做的长袍侠（18.5 万面、2K 颜色贴图，另有一张 4K 金属度 / 粗糙度贴图暂时没用）。Meshy 那边没绑骨，Claude 用 `tools/rig_char.py` 绑的（关节 `tools/rigs/xia.json`）；放大 1.04（腿长、胳膊长和简易模型一样）；手指在站姿里本来半弯着，握拳弯得少一点（55° / 70° / 55°）。
+  - 打光改柔（Jack：光照不要那么明显）：见上面「打光」。正式模型不描墨线。
+  - 贴图文件名改成 `_desk` / `_web`（以前叫 4k / 2k，这次的贴图原大就是 2K）。
+  - 还没做：袍子下摆、马尾、前面两缕头发跟着动（现在是硬的）；金属度 / 粗糙度贴图（金饰反光）没用上。

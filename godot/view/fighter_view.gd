@@ -14,7 +14,9 @@ const REFLECT_TEX_SHADER := preload("res://view/shaders/fighter_reflect_tex.gdsh
 const OPEN_HANDS := {"chop": [0.0, 1.0], "palm": [1.0, 0.0], "shove": [1.0, 1.0], "grabHit": [1.0, 1.0],
 	"grab": [1.0, 1.0], "lowGrab": [1.0, 1.0], "hold": [1.0, 1.0], "knee": [1.0, 1.0],
 	"throwBack": [1.0, 1.0], "legCatch": [1.0, 1.0], "trip": [1.0, 1.0], "tackle": [1.0, 1.0], "scoop": [1.0, 1.0]}
-const MODEL_LINE_W := 0.0065   # 正式模型的墨线细一点（头发、手指这些细的地方粗线会起毛）
+## 正式模型不描墨线（3.0.0-alpha.4 起）：AI 模型的头发、衣角很碎，往外胀一圈的墨线在这些地方是一圈黑毛刺，看着脏
+## 正式模型的灯在网页版（Compatibility）要多算一点：网页版场景的主光暗（1.05，桌面版 1.7），乘上这个看上去才一样
+const MODEL_LIGHT_COMPAT := 1.6
 const RIBBON_W := 4.0       # 发带画多宽（逻辑像素，和 2D 版一样）
 
 var F: Fighter
@@ -158,13 +160,9 @@ func _use_model(key: String) -> void:
 	mmat.shader = FIGHTER_TEX_SHADER
 	mmat.render_priority = 1
 	mmat.set_shader_parameter("albedo_tex", p.tex)
-	if RenderingServer.get_current_rendering_method() != "gl_compatibility":
-		mmat.set_shader_parameter("gain", 1.12)
-	var lm := ShaderMaterial.new()
-	lm.shader = OUTLINE_SHADER
-	lm.render_priority = 1
-	lm.set_shader_parameter("width", MODEL_LINE_W)
-	mmat.next_pass = lm
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
+		var k: float = RenderingServer.shader_get_parameter_default(FIGHTER_TEX_SHADER.get_rid(), "light_k")
+		mmat.set_shader_parameter("light_k", k * MODEL_LIGHT_COMPAT)
 	mbody.material_override = mmat
 	mrefl_mat = ShaderMaterial.new()
 	mrefl_mat.shader = REFLECT_TEX_SHADER

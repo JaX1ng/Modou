@@ -1,10 +1,12 @@
 """把 Meshy 这类 AI 生成的人物模型（GLB：Mixamo 骨骼、一张贴图）整理成游戏用的：
   1. 网格 + 蒙皮另存一个 GLB（去掉贴图、动画，小很多）；
-  2. 贴图：碎块之间的黑底填上旁边的颜色（远看缩小采样时不渗黑边），存 4K（桌面版）和 2K（网页版）两张 JPG；
+  2. 贴图：碎块之间的黑底填上旁边的颜色（远看缩小采样时不渗黑边），存两张 JPG：原大（桌面版，desk）、长宽各一半（网页版，web）；
   3. 两只手各加三节「握拳骨」（Meshy 的骨骼没有手指）：四根手指按离手腕多远分给三节，游戏里三节一起弯，手指卷成拳头。
      拇指不动；手心朝哪边按拇指在哪边判断。握拳骨的 Z 轴就是弯的轴（绕 +Z 转 = 往手心弯，左右手一样）。
-用法：python3 tools/import_char.py Meshy导出的.glb 输出目录 名字
-  输出：名字.glb、名字_albedo_4k.jpg、名字_albedo_2k.jpg
+用法：python3 tools/import_char.py 绑好骨的.glb 输出目录 名字 [palm=左,右] [knuckle=米]
+  输出：名字.glb、名字_albedo_desk.jpg、名字_albedo_web.jpg
+  palm：手心朝手骨头的 +X（1）还是 −X（-1），左手、右手各一个，例如 palm=-1,1。不给就按拇指猜 —— 护腕盖住手背时会猜反，看打印的「手心朝」。
+  knuckle：指根离手腕多远（米，顺着手量）。不给就按拇指尖往上 3 厘米猜；手指本来就半弯着的模型会猜得太靠手腕。
 要 numpy、scipy、pillow。"""
 import json, struct, sys, os
 import numpy as np
@@ -12,6 +14,9 @@ from PIL import Image, ImageDraw
 from scipy import ndimage
 
 src, out_dir, name = sys.argv[1], sys.argv[2], sys.argv[3]
+opt = dict(a.split('=', 1) for a in sys.argv[4:])
+PALM = [float(s) for s in opt['palm'].split(',')] if 'palm' in opt else None
+KNUCKLE = float(opt['knuckle']) if 'knuckle' in opt else None
 
 data = open(src, 'rb').read()
 off = 12
@@ -75,8 +80,8 @@ a = np.asarray(im).copy()
 _, (iy, ix) = ndimage.distance_transform_edt(~m, return_indices=True)
 a = a[iy, ix]
 tex = Image.fromarray(a)
-tex.save(os.path.join(out_dir, name + '_albedo_4k.jpg'), quality=95, subsampling=0)
-tex.resize((TW // 2, TH // 2), Image.LANCZOS).save(os.path.join(out_dir, name + '_albedo_2k.jpg'), quality=95, subsampling=0)
+tex.save(os.path.join(out_dir, name + '_albedo_desk.jpg'), quality=95, subsampling=0)
+tex.resize((TW // 2, TH // 2), Image.LANCZOS).save(os.path.join(out_dir, name + '_albedo_web.jpg'), quality=95, subsampling=0)
 print('贴图', TW, 'x', TH, '用到', round(m.mean() * 100, 1), '%')
 
 # ---------- 握拳骨 ----------
@@ -105,11 +110,17 @@ for side in ['Left', 'Right']:
     fx = np.median(Lh[Lh[:, 1] > top - 0.04, 0])
     # 拇指：离手指的中线 X 远出 2.5 厘米、比指尖低的那些点；在哪边 = 手心在哪边
     far = (np.abs(L[:, 0] - fx) > 0.025) & (L[:, 1] < top - 0.04) & (L[:, 1] > 0.0) & hv
-    side_sign = np.sign(np.median(L[far, 0] - fx)) if far.sum() > 20 else -1.0
+    if PALM is not None:
+        side_sign = PALM[0 if side == 'Left' else 1]
+    else:
+        side_sign = np.sign(np.median(L[far, 0] - fx)) if far.sum() > 20 else -1.0
+    far &= np.sign(L[:, 0] - fx) == side_sign        # 拇指在手心那边（手背那边离得远的是护腕之类）
     # 指根（拇指尖那么高往下一点）：拇指的点最高到哪
     thumb_top = L[far, 1].max() if far.sum() > 20 else top * 0.68
     knuckle = min(thumb_top - 0.03, top * 0.58)
     knuckle = max(knuckle, top * 0.45)
+    if KNUCKLE is not None:
+        knuckle = KNUCKLE
     fl = top - knuckle
     piv_y = [knuckle + fl * k for k in CURL_AT]
     thumb = far & (L[:, 1] < thumb_top + 0.005)

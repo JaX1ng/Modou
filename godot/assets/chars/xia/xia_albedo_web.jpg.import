@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ci3ypubml661k"
-path="res://.godot/imported/xia_albedo_2k.jpg-82f3107759d90af5ede404b2068fc4f1.ctex"
+uid="uid://kht036u0fsby"
+path="res://.godot/imported/xia_albedo_web.jpg-4a25f94222330d5d62aa46ff233aaea8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/chars/xia/xia_albedo_2k.jpg"
-dest_files=["res://.godot/imported/xia_albedo_2k.jpg-82f3107759d90af5ede404b2068fc4f1.ctex"]
+source_file="res://assets/chars/xia/xia_albedo_web.jpg"
+dest_files=["res://.godot/imported/xia_albedo_web.jpg-4a25f94222330d5d62aa46ff233aaea8.ctex"]
 
 [params]
 

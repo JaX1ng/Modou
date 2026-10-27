@@ -2,3 +2,5 @@
 .godot/
 # 导出的东西放仓库根目录的 godot-web/，不放这里
 /build/
+# Python 跑工具时生成的缓存
+__pycache__/

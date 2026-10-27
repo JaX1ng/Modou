@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://be4todg52ad8t"
-path.bptc="res://.godot/imported/xia_albedo_4k.jpg-74e8c1a329149791f3bb2d5f4283a02c.bptc.ctex"
+uid="uid://ncxeb5inhwi7"
+path.bptc="res://.godot/imported/xia_albedo_desk.jpg-228a2d0fb201932135110d40f14a4b53.bptc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/chars/xia/xia_albedo_4k.jpg"
-dest_files=["res://.godot/imported/xia_albedo_4k.jpg-74e8c1a329149791f3bb2d5f4283a02c.bptc.ctex"]
+source_file="res://assets/chars/xia/xia_albedo_desk.jpg"
+dest_files=["res://.godot/imported/xia_albedo_desk.jpg-228a2d0fb201932135110d40f14a4b53.bptc.ctex"]
 
 [params]
 

@@ -13,10 +13,11 @@ extends RefCounted
 const S := Rig.S
 ## 哪个人物、哪身颜色用哪个模型（别的颜色还是代码做的简易模型）
 const LOOKS := {"xia": {"ink": "xia"}}
-## scene：只有网格 + 蒙皮的 GLB；tex：贴图（%s：网页版 2k、桌面版 4k）；scale：放大多少（和简易模型一样大：腿长、肩高对上）；
-## wrist：拳心在手腕往前多远（米，模型原大）
+## scene：只有网格 + 蒙皮的 GLB；tex：贴图（%s：网页版 web（长宽各一半）、桌面版 desk（原大））；scale：放大多少（和简易模型一样大：腿长、胳膊长对上）；
+## wrist：拳心在手腕往前多远（米，模型原大）；curl：握拳时三节握拳骨各弯多少度（模型站姿里手指本来就半弯着的，弯得少一点）
+## 侠（3.0.0-alpha.4 起）：Jack 用 Meshy 出的长袍侠，没绑骨，Claude 绑的（做法见 GODOT.md「正式人物模型」）
 const MODELS := {
-	"xia": {"scene": "res://assets/chars/xia/xia.glb", "tex": "res://assets/chars/xia/xia_albedo_%s.jpg", "scale": 1.08, "wrist": 0.045},
+	"xia": {"scene": "res://assets/chars/xia/xia.glb", "tex": "res://assets/chars/xia/xia_albedo_%s.jpg", "scale": 1.04, "wrist": 0.045, "curl": [55.0, 70.0, 55.0]},
 }
 ## 模型骨头（去掉 mixamorig_ 前缀）→ 跟着 Rig 的哪根骨头。髋跟着脊柱：整个骨盆随上身前倾，弯在腿根（模型的裙摆挂在髋上）
 const MAP := {
@@ -33,11 +34,12 @@ const STRETCH := {
 	"LeftUpLeg": [Rig.L_UPPER_LEG, Rig.L_LOWER_LEG, false, "LeftLeg"], "LeftLeg": [Rig.L_LOWER_LEG, Rig.L_FOOT, false, "LeftFoot"],
 	"RightUpLeg": [Rig.R_UPPER_LEG, Rig.R_LOWER_LEG, false, "RightLeg"], "RightLeg": [Rig.R_LOWER_LEG, Rig.R_FOOT, false, "RightFoot"],
 }
-## 握拳骨（tools/import_char.py 加的，手指卷成拳头）：挂在谁下面、弯多少（绕自己的 +Z 转 = 往手心弯）
+## 握拳骨（tools/import_char.py 加的，手指卷成拳头）：挂在谁下面、第几节（弯多少看 MODELS 的 curl，绕自己的 +Z 转 = 往手心弯）
 const FIST := {
-	"LeftFist1": ["LeftHand", 80.0], "LeftFist2": ["LeftFist1", 95.0], "LeftFist3": ["LeftFist2", 70.0],
-	"RightFist1": ["RightHand", 80.0], "RightFist2": ["RightFist1", 95.0], "RightFist3": ["RightFist2", 70.0],
+	"LeftFist1": ["LeftHand", 0], "LeftFist2": ["LeftFist1", 1], "LeftFist3": ["LeftFist2", 2],
+	"RightFist1": ["RightHand", 0], "RightFist2": ["RightFist1", 1], "RightFist3": ["RightFist2", 2],
 }
+const CURL_DEFAULT := [80.0, 95.0, 70.0]
 
 ## 一个模型量好的东西（两边用同一个模型时共用）
 class Proto:
@@ -77,8 +79,8 @@ static func proto(key: String) -> Proto:
 	p.mesh = mi.mesh
 	p.skin = mi.skin
 	root.free()
-	p.tex = load(String(info.tex) % ("2k" if OS.has_feature("web") else "4k"))
-	_measure(p, float(info.scale), float(info.wrist))
+	p.tex = load(String(info.tex) % ("web" if OS.has_feature("web") else "desk"))
+	_measure(p, float(info.scale), float(info.wrist), info.get("curl", CURL_DEFAULT))
 	_cache[key] = p
 	return p
 
@@ -95,7 +97,7 @@ static func _short(nm: String) -> String:
 	return nm.trim_prefix("mixamorig_").trim_prefix("mixamorig:")
 
 ## 量身材、算 C
-static func _measure(p: Proto, k: float, wrist: float) -> void:
+static func _measure(p: Proto, k: float, wrist: float, curl: Array) -> void:
 	var B := {}
 	for i in p.skin.get_bind_count():
 		var nm := String(p.skin.get_bind_name(i))
@@ -165,7 +167,7 @@ static func _measure(p: Proto, k: float, wrist: float) -> void:
 			p.par.append(bi[fz[0]])
 			var rel: Transform3D = (B[fz[0]] as Transform3D).affine_inverse() * (B[nm] as Transform3D)
 			p.K.append(rel)
-			p.curl.append(deg_to_rad(float(fz[1])))
+			p.curl.append(deg_to_rad(float(curl[fz[1]])))
 			p.hand.append(0 if nm.begins_with("Left") else 1)
 		else:
 			p.par.append(-1)
