@@ -15,7 +15,7 @@
 ## 已经定下的技术选择
 
 - **Godot 4.7.2 稳定版、普通版（不是 .NET 版）、GDScript。** C# 版导不出网页版。Claude 的工作区实测过：从 GitHub Releases 下载 Linux 版能跑（`--headless`）。Jack 电脑上也装同一个版本（godotengine.org 下载 Windows 普通版，解压双击就能用，不用安装）。
-- **渲染器选 Compatibility**（能导出网页版）。以后出高画质桌面版再切 Forward+（随时能改）。
+- **渲染器**：桌面 Forward+，网页版 Compatibility（project.godot 里 `rendering_method.web`）。
 - **网页版导出用单线程**（GitHub Pages 设不了 COOP / COEP 头，多线程版跑不起来）。导出要「导出模板」（GitHub Releases 上那个 `.tpz`，一个多 G），Claude 在工作区下载。
 - **放在哪**：仓库里新建 `godot/`（项目源码，全是文本文件：`project.godot`、`.gd`、`.tscn`、`.tres`），导出的网页版放 `godot-web/`，网址 https://jax1ng.github.io/Modou/godot-web/ 。现在的网页版（根目录 `index.html`、`src/`）一点不动，照常能玩。claude.ai Project 里也存一份 `godot/`（和 `modou/` 一样，二进制文件只放仓库）。
 - **版本号**：Godot 版从 **3.0.0** 起（NOTES 的规矩：引擎换了、存档和联机跟 2.x 整个不兼容 = 大版本）。搬家途中用 3.0.0-alpha.N。之后照 NOTES 的大.中.小走。
@@ -64,3 +64,14 @@
 ## 进度
 
 - 2026-10-26：定方向、写这份计划书。还没开始写代码。
+- 2026-10-26（Jack 给了参考图：黄昏的寺院庭院、白袍侠 vs 土黄僧袍的僧）：方向定成「照这张图的样子把 2.8.0 全部还原」，先不做教程、破招练习，训练场只要能打桩；场景先一个；音效先用原来的（Jack 以后给新的）。渲染：桌面 Forward+、网页 Compatibility。
+- 3.0.0-alpha.1：逻辑层（sim/）搬完，和 JS 版逐帧对照（`tests/js_ref/check.sh`：18 个场景、49 种招、全部状态）一模一样；动作层（view/fighter_anim.gd：姿势、拳脚停在对方身上、发带）对照误差 1e-11 像素；回滚联机（net/）用本机回环测过（延迟、抖动、丢包、乱序、断线）。
+- 3.0.0-alpha.2（第一个能玩的网页版）：
+  - 人物：3D 骨骼（Godot 人形骨骼名，照 JS 的关节算朝向，能转身、翻滚），代码做的简易模型 —— 侠（束发披发、白袍墨边、护腕长靴）、僧（光头戒疤、土黄僧袍、念珠、裹腿、腰后两条朱红带子），墨线描边。以后换模型只换 view/model_builder.gd / outfit.gd，骨骼和动作不动。
+  - 场景：参考图做的远景板（人身后那块用镜像补干净、往上接了一截天）+ 3D 湿石板地（倒映远景、铜纹章、枫叶）+ 夕阳光、落叶。
+  - 印章、飘字、数字、大字、血条、计时、训练面板都照参考图新做（黑漆、金边、朱砂、米金）；特效照 JS 的算法画。
+  - 界面全部搬了（菜单、五档难度、双人、联机、训练场工具条、暂停、结算、键位三套 + 冲刺怎么按 + 鼠标键、人物颜色、音量、全屏、触屏按钮）；没做：教程、破招练习、场景选择。
+  - 联机：网页里的 WebRTC（Trystero 房间码 / 手动连接码 / TURN 中继 / 邀请链接，web/net_bridge.js），游戏那一层在 Godot（回滚帧同步）。两个浏览器页面手动连接对打测过、不掉同步。APP_ID 和 2.x 分开（不会碰到一起）。软件版暂时不能联机。
+  - 声音：JS 的合成声音原样录成 wav（tools/render_sfx.mjs），音量曲线照 JS。
+  - 默认颜色：玩家一墨（白袍侠）、电脑 / 玩家二赭（土黄僧袍）。
+  - 导出：`godot/tools/build_web.sh` → `godot-web/`；字体裁剪 `godot/tools/make_fonts.py`（加了新字要跑）。

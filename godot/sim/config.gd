@@ -4,7 +4,7 @@ extends RefCounted
 ## 规矩（联机靠「同样输入 → 同样结果」）：逻辑层只用 float（64 位）和 int，不用 Vector2/3（32 位）、不用 Godot 的随机数、
 ## 不用 sin/pow 这类函数；四舍五入一律用 jsround()（JS 的 Math.round：.5 往大的方向取，Godot 的 round() 是往远离 0 取）。
 
-const VERSION := "3.0.0-alpha.1"
+const VERSION := "3.0.0-alpha.2"
 
 # ---------- 时间（2.6）：逻辑一秒 240 步，一帧 = 4 步，一步 = 0.25 帧 ----------
 const SIM_HZ := 240

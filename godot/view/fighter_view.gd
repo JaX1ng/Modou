@@ -57,8 +57,8 @@ func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 	# 僧：没有头带，飘的是腰后垂下来的两条（腰带的颜色）
 	if kind == "seng":
 		anim.rib_anchor = "belt"
-		anim.rib_wind = 0.75
-		anim.rib_grav = 1.7
+		anim.rib_wind = 0.9
+		anim.rib_grav = 1.4
 		anim.reset()
 	set_look(F.look)
 	# 发带：画在世界坐标里（不跟着镜像），一条一条的带子
@@ -70,6 +70,7 @@ func setup(fighter: Fighter, a: FighterAnim, outfit_kind: String) -> void:
 	ribbon_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	ribbon_mat.vertex_color_use_as_albedo = true
 	ribbon_mat.vertex_color_is_srgb = true
+	ribbon_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	ribbon_mat.roughness = 0.9
 	ribbon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
 	ribbon_mat.render_priority = 1
@@ -154,7 +155,7 @@ func _draw_ribbons(RA: float, interp: bool) -> void:
 	if a.ribbons.is_empty():
 		return
 	var col := outfit.band if anim.rib_anchor == "knot" else outfit.sash
-	var rw := RIBBON_W if anim.rib_anchor == "knot" else RIBBON_W * 1.5
+	var rw := RIBBON_W * 1.25 if anim.rib_anchor == "knot" else RIBBON_W * 2.6
 	var zb := depth - 0.02
 	ribbon_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
 	for r in a.ribbons.size():

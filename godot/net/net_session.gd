@@ -43,6 +43,8 @@ var reconnecting := false
 var via := ""
 var lastDiag := ""
 var _ping_at := 0.0
+var lost_at := 0.0                 # 对局中掉线是什么时候（画面上「还等几秒」）
+const RECONNECT_WAIT := 20000.0
 var hash_log := {}                 # 测试用：自己这边核对过的指纹（步号 → 指纹），keep_hashes 开着才记
 var keep_hashes := false
 
@@ -74,10 +76,16 @@ func process(dt: float) -> void:
 					on_ctl(e.m)
 			"in":
 				on_in(e.b)
+			"pair":
+				if e.get("again", false):
+					role = str(e.role)
+				else:
+					pair_start(str(e.role))
 			"lost":
 				open = false
 				linked = false
 				reconnecting = true
+				lost_at = tr.now_ms()
 				_cb(on_status)
 			"gone":
 				reconnecting = false
@@ -167,11 +175,14 @@ func on_ctl(m: Dictionary) -> void:
 			if int(m.e) == epoch:
 				check_hash(int(m.f), int(m.h), "r")
 		"bye":
+			# 对方说再见（JS closed(true)）：手动连接就断了；房间码留在房间里等下一个人
 			reconnecting = false
-			var was := open or rb != null
 			_reset()
-			tr.leave()
-			_cb(on_close, [was, false])
+			var stay := tr.is_room()
+			tr.drop_peer()
+			_cb(on_close, [true, stay])
+			if stay:
+				_cb(on_room, ["waiting"])
 		"look":
 			if role == "host":
 				looks.g = settle_look(looks.h, str(m.get("want", "")), looks.g)
@@ -364,6 +375,10 @@ func check_hash(f: int, h: int, side: String) -> void:
 ## 等对方的输入（画面上「等待对方…」）
 func waiting() -> bool:
 	return rb != null and stall > 30
+
+## 掉线了还等几秒
+func reconnect_left() -> int:
+	return maxi(0, ceili((lost_at + RECONNECT_WAIT - tr.now_ms()) / 1000.0))
 
 func leave() -> void:
 	send_ctl({"t": "bye"})

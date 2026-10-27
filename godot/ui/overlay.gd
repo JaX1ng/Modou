@@ -21,10 +21,13 @@ func _draw() -> void:
 		draw_rect(Rect2(0, 0, VW, VH), Color(0.96, 0.95, 0.92, main.fx.flash))
 	var sim: GameSim = main.sim
 	if sim.mode == "pve" or sim.mode == "online" or sim.mode == "train":
-		_offscreen(0, 1)
+		var me := main.local_idx()
+		_offscreen(me, 1 - me)
 	for e in main.fx.fx:
 		if e.type == "announce":
 			_announce(e, VW, VH, RA)
+	if sim.mode == "online" and main.net != null:
+		_net_status(VW, VH)
 
 func _announce(e: Dictionary, VW: float, VH: float, RA: float) -> void:
 	var L: float = e.life + (1.0 - RA) * DT
@@ -70,6 +73,40 @@ func _announce(e: Dictionary, VW: float, VH: float, RA: float) -> void:
 		draw_string_outline(BRUSH, sp, e.sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ss, 6, Color(0.08, 0.04, 0.03, 0.9 * a))
 		draw_string(BRUSH, sp, e.sub, HORIZONTAL_ALIGNMENT_LEFT, -1, ss, Color(0.86, 0.3, 0.18, a))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+## 联机的状态（对照 JS drawNetStatus）：掉线等人回来 / 等待对方… / 最下面一行延迟（不同步了就写红字）
+func _net_status(VW: float, VH: float) -> void:
+	var n: NetSession = main.net
+	if n.reconnecting:
+		var y0 := VH * 0.343
+		_plate(Rect2(VW / 2.0 - 190.0, y0, 380.0, 80.0))
+		_ctext(BRUSH, "对方掉线 · 重连中", Vector2(VW / 2.0, y0 + 30.0), 30, Color("#f3ead6"))
+		_ctext(UIF, "连回来就接着打（还等 %d 秒）" % n.reconnect_left(), Vector2(VW / 2.0, y0 + 60.0), 13, Color("#c2b5a0"))
+	elif n.stall > 30:
+		var y1 := VH * 0.36
+		_plate(Rect2(VW / 2.0 - 140.0, y1, 280.0, 60.0))
+		_ctext(BRUSH, "等待对方…", Vector2(VW / 2.0, y1 + 30.0), 30, Color("#f3ead6"))
+	var t := ""
+	if n.desync:
+		t = "联机不同步：双方画面可能不一致"
+	else:
+		var roll := ""
+		if n.rb != null and int(n.rb.stats.rollbacks) > 0:
+			roll = " · 回滚 %.1f 帧/次" % (float(n.rb.stats.frames) / C.SUB / maxf(1.0, float(n.rb.stats.rollbacks)))
+		t = "%s往返 %d 毫秒 · 输入延迟 %s 帧%s" % ["经中继 · " if n.via == "relay" else "", int(round(n.rtt)), str(snappedf(float(n.delay) / C.SUB, 0.01)), roll]
+	var col := Color("#e8735a") if n.desync else Color(0.95, 0.92, 0.85, 0.75)
+	_ctext(UIF, t, Vector2(VW / 2.0, VH - 22.0), 13, col, 4)
+
+func _plate(r: Rect2) -> void:
+	draw_rect(r, Color(Hud.LACQ, 0.85))
+	draw_rect(r, Hud.GOLD_D, false, 1.2)
+
+func _ctext(f: Font, s: String, c: Vector2, fs: int, col: Color, outline := 0) -> void:
+	var w := f.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var p := Vector2(c.x - w * 0.5, c.y + (f.get_ascent(fs) - f.get_descent(fs)) * 0.5)
+	if outline > 0:
+		draw_string_outline(f, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, outline, Color(Hud.LACQ, 0.8))
+	draw_string(f, p, s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col)
 
 ## 对手在画面外：画面边上一个他颜色的箭头 + 名字 + 离多远
 func _offscreen(me_i: int, op_i: int) -> void:

@@ -13,6 +13,7 @@ extends RefCounted
 ##   {t:"room", s:"waiting" | "error" | "busy" | "version" | "rejoining" | "resumed"}
 ##   {t:"closed", diag:"…"}        手动连接断了 / 没连上（diag = 卡在哪的说明）
 ##   {t:"via", v:"direct" | "relay"}  现在走直连还是中继
+##   {t:"pair", role, again}       配上一个人了（role：host / guest；again = 掉线后同一个人回来了）
 
 func send_ctl(_m: Dictionary) -> void:
 	pass
@@ -33,6 +34,10 @@ func set_hold(_on: bool) -> void:
 
 ## 断开、退房间
 func leave() -> void:
+	pass
+
+## 对方说再见：手动连接就断掉；房间码就不理他、留在房间里等下一个
+func drop_peer() -> void:
 	pass
 
 ## 房间码联机吗（不是就是手动连接码）

@@ -25,6 +25,7 @@ var fx_layer: CanvasLayer
 var ui: Node
 var pads := [Keys.Pad.new(), Keys.Pad.new()]
 var paused := false
+var net: NetSession              # 联机（界面的联机面板建的；网页版才连得上）
 var reduce_motion := false
 
 var _acc := 0.0
@@ -34,6 +35,8 @@ var _aligned := true
 var RA := 1.0
 var _rdt := C.FRAME_MS
 var _rng := 12345
+var _web_debug := false
+var _dbg_n := 0
 
 func _ready() -> void:
 	Keys.load_keys()
@@ -130,6 +133,9 @@ func _ready() -> void:
 		var ii := i
 		pads[i].key_dash = func() -> bool: return Keys.key_dash(ii, sim.mode)
 	_last = Time.get_ticks_usec() / 1000.0
+	# 网页版网址后面带 ?debug：每隔一会儿把状态写到 window.__modou（自动测试看游戏走到哪了）
+	if OS.has_feature("web"):
+		_web_debug = str(JavaScriptBridge.eval("location.search.indexOf('debug') >= 0 ? 'y' : ''", true)) == "y"
 	start_attract()
 	# 界面（菜单等）
 	var ui_script = load("res://ui/ui.gd")
@@ -175,6 +181,22 @@ func start_match(mode: String, diff := "normal", dummy := "stand") -> void:
 		sim.p[0].label = "玩家一"
 		sim.p[1].label = "玩家二"
 	_reset_camera()
+
+## 联机开一局（NetSession.begin 之后）：房主是玩家一。颜色两边商量好的
+func start_online(n: NetSession) -> void:
+	paused = false
+	for p in pads:
+		p.clear()
+	sim.startMatch("online", null, null)
+	apply_looks("online", n.looks)
+	var host := n.role == "host"
+	sim.p[0].label = "你" if host else "对手"
+	sim.p[1].label = "对手" if host else "你"
+	_reset_camera()
+
+## 本机是哪一边（联机时加入方是玩家二）
+func local_idx() -> int:
+	return 1 if (sim.mode == "online" and net != null and net.role == "guest") else 0
 
 func _reset_camera() -> void:
 	cam.camX = C.STAGE_W / 2.0
@@ -260,7 +282,10 @@ func _process(_delta: float) -> void:
 		_aligned = not _aligned
 	if _aligned and absf(dt - k * C.STEP_MS) < 1.2:
 		dt = k * C.STEP_MS
-	if not paused and not (ui != null and ui.has_method("blocks_sim") and ui.blocks_sim()):
+	if sim.mode == "online" and net != null:
+		net.process(dt)
+		RA = 1.0 if _aligned else clampf(net.acc / C.STEP_MS, 0.0, 1.0)
+	elif not paused and not (ui != null and ui.has_method("blocks_sim") and ui.blocks_sim()):
 		_acc += dt * sim.timeScale
 		var n := 0
 		while _acc >= C.STEP_MS - 1e-6 and n < 5 * C.SUB:
@@ -271,10 +296,19 @@ func _process(_delta: float) -> void:
 			_acc = 0.0
 		RA = clampf(_acc / C.STEP_MS, 0.0, 1.0) if (not _aligned or sim.timeScale < 1.0) else 1.0
 	render()
+	if _web_debug:
+		_dbg_n += 1
+		if _dbg_n % 20 == 0:
+			var d := {"fps": Engine.get_frames_per_second(), "mode": sim.mode, "phase": sim.phase, "frame": sim.frame, "ui": ui.cur if ui != null else "",
+				"x": [sim.p[0].x, sim.p[1].x], "hp": [sim.p[0].hp, sim.p[1].hp], "st": [sim.p[0].state, sim.p[1].state], "combo": sim.p[0].combo}
+			JavaScriptBridge.eval("window.__modou = " + JSON.stringify(d), true)
 
 ## 画一帧：两个人摆好、镜头跟上、特效层对上镜头
+## 画面按逻辑大小（project 的 1280×720，跟着窗口比例展开）摆，2D 的东西由引擎拉伸到窗口；身后特效那张图按真的像素画（不糊）
 func render() -> void:
 	var vs := get_viewport().get_visible_rect().size
+	var phys := Vector2(get_tree().root.size)
+	var pk := phys.x / maxf(1.0, vs.x)
 	cam.view_for(vs.x, vs.y)
 	cam.reduce_motion = reduce_motion
 	cam.shake = fx.shake
@@ -284,22 +318,22 @@ func render() -> void:
 		v.update_pose(RA)
 	var ax := _view_x(0)
 	var bx := _view_x(1)
-	var local := 0
+	var local := local_idx()
 	cam.follow(_rdt, sim.mode, ax, bx, local, maxf(sim.p[0].alt, sim.p[1].alt), int(sim.frame / C.SUB), rnd)
 	# 特效层：场地坐标 → 屏幕像素
 	var kpx := vs.x / cam.VW
 	var z := cam.zz()
 	var t := Transform2D(0.0, Vector2(z * kpx, z * kpx), 0.0, Vector2((cam.VW / 2.0 + cam.shX - cam.camX * z) * kpx, (cam.FY + cam.camLift * z + cam.shY - C.FLOOR * z) * kpx))
 	for d in [fx_front, fx_back, fx_stamps]:
-		d.transform = t
+		d.transform = t if d != fx_back else Transform2D(0.0, t.get_scale() * pk, 0.0, t.origin * pk)
 		d.RA = RA
 		d.frame = sim.frame
 		d.mode = sim.mode
 		d.reduce_motion = reduce_motion
 		d.queue_redraw()
 	# 身后那一层：图和屏幕一样大，板子放在人身后一点点、正好盖满镜头看到的那么大
-	if back_vp.size != Vector2i(vs):
-		back_vp.size = Vector2i(vs)
+	if back_vp.size != Vector2i(phys):
+		back_vp.size = Vector2i(phys)
 	var depth := cam.position.z + 0.35
 	var hh := 2.0 * depth * tan(deg_to_rad(cam.fov) / 2.0)
 	back_quad.position = Vector3(cam.position.x, cam.position.y, -0.35)
