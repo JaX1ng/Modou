@@ -4,7 +4,7 @@
 
 // 角色内部的输入：按住状态 + 带时间戳的按键缓冲
 class Input {
-  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.buf = []; this.keyDash = false; }
+  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false, heavy: false }; this.buf = []; this.keyDash = false; }
   press(a, t) { this.buf.push({ a, t }); if (this.buf.length > 12) this.buf.shift(); }
   clear() { this.buf.length = 0; for (const k in this.held) this.held[k] = false; }
 }
@@ -13,13 +13,15 @@ class Input {
 const HELD_ACTS = ['left', 'right', 'up', 'down', 'block'];
 const PRESS_ACTS = ['up', 'jab', 'heavy', 'kick', 'grab', 'dash'];
 const PRESS_SET = new Set(PRESS_ACTS);
-const HOLD = a => 1 << HELD_ACTS.indexOf(a);
-const TAP = a => 1 << (5 + PRESS_ACTS.indexOf(a));
 const DASH_KEY = 1 << (5 + PRESS_ACTS.length);   // 2.4：冲刺用冲刺键（这一位一直带着，联机时对面也知道这个人双击方向不冲刺）
-const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY;    // 输入里「按住」的那几位（不是这一帧新按的）：联机猜对方、step() 里一帧的前几步用（2.6 从 net.js 挪过来）
+// 2.9 迎春拳（Jack：重拳点一下是拍手，长按一直循环格挡动作）：「重」也要知道按没按住 —— 放在最上面一位（第 12 位），前面的位一个都不挪
+const HEAVY_HOLD = 1 << (6 + PRESS_ACTS.length);
+const HOLD = a => a === 'heavy' ? HEAVY_HOLD : 1 << HELD_ACTS.indexOf(a);
+const TAP = a => 1 << (5 + PRESS_ACTS.indexOf(a));
+const HELD_MASK = ((1 << HELD_ACTS.length) - 1) | DASH_KEY | HEAVY_HOLD;    // 输入里「按住」的那几位（不是这一帧新按的）：联机猜对方、step() 里一帧的前几步用（2.6 从 net.js 挪过来）
 
 class Pad {
-  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false }; this.pending = []; this.keyDash = null; }
+  constructor() { this.held = { left: false, right: false, up: false, down: false, block: false, heavy: false }; this.pending = []; this.keyDash = null; }
   down(a, repeat) {
     if (a in this.held) this.held[a] = true;
     if (PRESS_SET.has(a) && !repeat) this.pending.push(a);
@@ -28,6 +30,7 @@ class Pad {
   sample() {
     let v = 0;
     for (let i = 0; i < HELD_ACTS.length; i++) if (this.held[HELD_ACTS[i]]) v |= 1 << i;
+    if (this.held.heavy) v |= HEAVY_HOLD;
     for (const a of this.pending) v |= TAP(a);
     this.pending.length = 0;
     if (this.keyDash && this.keyDash()) v |= DASH_KEY;      // ui.js 接上：这一局用的那套键位选了「冲刺键」
@@ -41,6 +44,7 @@ function applyInput(F, v) {
   for (let i = 0; i < HELD_ACTS.length; i++) F.inp.held[HELD_ACTS[i]] = !!(v & (1 << i));
   for (let i = 0; i < PRESS_ACTS.length; i++) if (v & (1 << (5 + i))) F.inp.press(PRESS_ACTS[i], F.clock);
   F.inp.keyDash = !!(v & DASH_KEY);
+  F.inp.held.heavy = !!(v & HEAVY_HOLD);
 }
 
 // 键位（KeyboardEvent.code，不受输入法影响）

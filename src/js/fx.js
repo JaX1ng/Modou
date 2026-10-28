@@ -477,7 +477,7 @@ function hitFx(kind, c, A, B) {
     case 'whirl':
       addFx({ type: 'swirl', x: A.x, y: A.J.hip[1] - 8, r: 88, color: qi, life: 22, dir });
       impact(x, y, dir, 50, ink, 8, 0.9); sparks(x, y, dir, 14, 10, fx, 1.0); inkDrops(4, x, y, dir, 8, ink); flashTo(0.18); break;
-    case 'hammer':          // 泰山压顶
+    case 'hammer':          // 坠山击
       impact(x, y, dir, 46, ink, 8, 1.2); cracks(B.x, 4, 70, ink); sparks(x, y, dir, 12, 8, fx, 1.4, -0.2); dust(B.x, FLOOR, 6, true); flashTo(0.16); break;
     case 'airKick':
       for (let i = 0; i < 4; i++) { const o = rnd(-18, 18); streak(A.x - dir * rnd(60, 110), A.J.hip[1] + o - 26, A.x - dir * 8, A.J.hip[1] + o, 2.4, qi, 12); }
@@ -660,7 +660,7 @@ function dashInFx(F) {
    气：身上冒出半透明的火，夹几点火星。全是画面，用随机数没关系，不影响胜负。
    2.0.1：气是角色自己身体色的淡色 pal(F).qi（墨是灰黑的烟），火星用提亮的 pal(F).fx
    1.9.0 / 1.9.4 / 2.0.2：气跟着「连招」走 —— 3 连才起（只在拳脚上冒），越连越旺：4 连整个人冒火、身上发光、脚下亮一片，
-   5 连起火更大更浓；连招断了半秒多就退。泼墨、爆气、截拳（花气的招）、卸力那一下照旧有气
+   5 连起火更大更浓；连招断了半秒多就退。泼墨、爆气、截击（花气的招）、卸力那一下照旧有气
    2.1（Jack：气再多方位优化 —— 形状像火，不一定往上冒，可以身后斜着冒、或者周围一圈火，看场合）：
    · 火苗改成真的火舌：底宽上尖、边上带一两个小火叉，几种形状随机挑，一抖一抖；火舌的尖顺着它飘的方向（往上冒就朝上，往后斜着冒就朝后上）；
    · 往哪冒看场合（qiFlow）：站着连招 = 往上冒、略往后飘；跑、冲刺、出招往前冲、在空中飞 = 火往身后斜着拖（越快越斜、越长），飘一会儿再往上卷；
@@ -674,7 +674,7 @@ const comboHeat = n => n >= 3 ? Math.min(1.4, 0.4 + 0.25 * (n - 3)) : 0;
 function qiLevel(F) {
   const m = F.state === 'attack' ? F.move : null, d = m && m.def;
   let a = 0, glow = 0;
-  if (d && (d.cost || m.name === 'burst')) { a = 1; glow = 1; }                            // 花气的招：泼墨、爆气、截拳
+  if (d && (d.cost || m.name === 'burst')) { a = 1; glow = 1; }                            // 花气的招：泼墨、爆气、截击
   if (F.state === 'parry') { a = Math.max(a, 0.5); glow = Math.max(glow, 0.4); }             // 卸力那一下闪一下
   const h = F.heat || 0;                                                                     // 连招的火另外冒（emitQi），这里只管身上的光
   if (h > 0.5) glow = Math.max(glow, Math.min(1.45, (h - 0.5) * 1.6));                      // 4 连起发光，越连越亮
@@ -742,7 +742,7 @@ function emitQi(F) {
     const vx = bk * (rnd(0.1, 0.8) + L * rnd(2.2, 3.6)) + rnd(-0.3, 0.3), vy = -up * (1 - 0.55 * L);
     flame(F, P.qi, x, y, vx, vy, r * (1 + 0.15 * L), al, life * (1 - 0.25 * L), Object.assign({ buoy: 0.02 + 0.06 * L, drag: 0.975 - 0.02 * L }, extra));
   };
-  // 招式的气（泼墨、爆气、截拳、卸力）
+  // 招式的气（泼墨、爆气、截击、卸力）
   let n = a * (2 + 2.6 * a) * DT;
   while (n > 0 && a > 0.02) {
     if (n < 1 && vrnd() > n) break;

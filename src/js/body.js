@@ -123,6 +123,26 @@ function fistShape(H, ux, uy, g) {
   }
   return pts;
 }
+/* 2.9 掌（Jack：咏春有掌 —— 单独做一个五指并拢的掌）：H 是掌根（小臂接到这里），(dx, dy) 手指朝哪，s = 大拇指在哪一边（±1），g 胖瘦。
+   侧面看是一片：掌根圆、掌心略宽、四指并拢往指尖收、指尖圆；大拇指贴在掌边上、往指尖那边斜出去一小截（看得出是一只张开的手，不是一根棍） */
+const PALM = { len: 15.5, heel: 2.8, w: 3.15, tip: 2.6, thumb: 5.2 };
+const PALM_PTS = (() => {
+  const P = PALM, pts = [];
+  // 一边（v > 0）：掌根 → 掌心 → 指根 → 指尖；指尖绕半圈；另一边回到掌根；掌根绕半圈
+  const side = [[0, P.heel], [3.5, P.w], [8, P.w * 0.98], [11.5, P.w * 0.9], [P.len - P.tip, P.tip]];
+  for (const q of side) pts.push(q);
+  for (let i = 1; i < 6; i++) { const a = Math.PI / 2 - Math.PI * i / 6; pts.push([P.len - P.tip + Math.cos(a) * P.tip, Math.sin(a) * P.tip]); }
+  for (let i = side.length - 1; i >= 0; i--) pts.push([side[i][0], -side[i][1]]);
+  for (let i = 1; i < 6; i++) { const a = -Math.PI / 2 - Math.PI * i / 6; pts.push([Math.cos(a) * P.heel, Math.sin(a) * P.heel]); }
+  return pts;
+})();
+// 大拇指（v > 0 那一边）：从掌根往上、贴着掌边斜出去
+const THUMB_PTS = [[1.2, 2.2], [4.2, 3.6], [6.8, 4.9], [7.9, 5.0], [8.1, 4.0], [6.6, 2.6], [3.6, 1.2]];
+function palmShape(H, dx, dy, s, g) {
+  const nx = -dy * s, ny = dx * s, k = 1 + g / 3.2;
+  const P = q => [H[0] + dx * (q[0] * (1 + g / PALM.len) - g * 0.4) + nx * q[1] * k, H[1] + dy * (q[0] * (1 + g / PALM.len) - g * 0.4) + ny * q[1] * k];
+  return { palm: PALM_PTS.map(P), thumb: THUMB_PTS.map(P) };
+}
 // 鞋：脚踝 K 是原点，x 往脚尖、y 往鞋底。参考图那种圆头鞋：脚跟圆、鞋口盖住脚踝、鞋面往脚尖斜下去、鞋头圆（2.5.1 小了、薄了，鞋头矮一点）
 const FOOT_PTS = (() => {
   const Fo = BODY.foot, a = BODY.bone.ankle, top = a - Fo.h, H = Fo.heel, T = Fo.toe, th = Fo.toeH;
@@ -230,10 +250,21 @@ function bodyParts(J, g, only) {
     const aLo = side(M, E, R, arm ? 1 : -1);
     if (arm) {
       const ex = E[0] - M[0], ey = E[1] - M[1], el = Math.hypot(ex, ey) || 1e-3, ux = ex / el, uy = ey / el;
-      const W = [E[0] - ux * BODY.wrist, E[1] - uy * BODY.wrist];
+      // 2.9 掌：手的目标点是掌根，小臂一直接到掌根（拳头是拳心，小臂藏进拳头里一截）
+      const palm = (key === 'aF' ? J.fpm : J.bpm) >= 0.5, pd = key === 'aF' ? J.fpd : J.bpd;
+      const W = palm ? [E[0] - ux * 0.6, E[1] - uy * 0.6] : [E[0] - ux * BODY.wrist, E[1] - uy * BODY.wrist];
       if (nU) parts.push({ k: key + 'U', pts: limbShape(R, M, BODY.ua, aUp, g).pts, far, layer });
       if (nL) parts.push({ k: key + 'L', pts: limbShape(M, W, BODY.fa, aLo, g).pts, far, layer });
-      if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
+      if (nE && palm && pd) {
+        // 手指方向：和小臂折得太狠（手腕弯过 100°）就压回 100°（手腕折不了那么多）
+        let dx = pd[0], dy = pd[1];
+        const c = clamp(dx * ux + dy * uy, -1, 1), MAXB = 100 * D2R;
+        if (Math.acos(c) > MAXB) { const cr = ux * dy - uy * dx >= 0 ? 1 : -1, a = Math.atan2(uy, ux) + cr * MAXB; dx = Math.cos(a); dy = Math.sin(a); }
+        // 大拇指在「前上方」那一边（离镜头近的那只手、远的那只手都一样，看得出是张开的手）
+        const s0 = (-dy) * f * 0.55 + dx * -0.84 >= 0 ? 1 : -1, sh = palmShape(E, dx, dy, s0, g);
+        parts.push({ k: key + 'H', pts: sh.palm, far, layer, palm: true });
+        parts.push({ k: key + 'H', pts: sh.thumb, far, layer, palm: true, thumb: true });
+      } else if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）
       const kd = key === 'F' ? J.fkd : J.bkd, sg = f * (kd < 0 ? -1 : 1);

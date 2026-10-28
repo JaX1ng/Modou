@@ -13,30 +13,41 @@ const $b = id => document.getElementById(id);
 const PB = {
   tab: 'moves', sel: null, kind: 'move', frames: [], idx: 0, playing: false, acc: 0, raw: {}, rawPose: {},
   def: 'stand', dist: null, col: 'ink', bones: false, reach: true, sil: false, report: null,
+  style: 'trad',            // 2.9 看哪一派的招（传统格斗 / 迎春拳）
 };
-const PB_GROUPS = BENCH_GROUPS, PB_STATES = BENCH_STATES, PB_HIT_MOVES = BENCH_HIT_MOVES, PB_SEQ = BENCH_SEQ, PB_AIR = BENCH_AIR;
-const pbShowOp = () => PB.kind === 'move' && !(PB.def === 'none' && !PB_SEQ[PB.sel]);
-const pbOpts = () => ({ dist: PB.dist, def: PB.def, col: PB.col });
+// 2.9 这一派的招式表、出招底子（关键帧只写和它不一样的字段）、分组、要量碰没碰到的招、基础姿势
+const PBST = () => STYLES[PB.style], PBMV = () => PBST().moves, PBBASE = () => PBST().base || BASE;
+const PB_GROUPS_OF = () => PBST().benchGroups || BENCH_GROUPS;
+const PB_HIT_OF = () => PBST().benchHit ? new Set(PBST().benchHit) : BENCH_HIT_MOVES;
+const PB_POSES = () => Object.assign({}, POSE, PBST().poses || {});
+const PB_STATES = BENCH_STATES, PB_AIR = BENCH_AIR;
+const pbSeq = n => (PBST().benchSeq || {})[n] || BENCH_SEQ[n];
+const pbShowOp = () => PB.kind === 'move' && !(PB.def === 'none' && !pbSeq(PB.sel));
+const pbOpts = () => ({ dist: PB.dist, def: PB.def, col: PB.col, style: PB.style });
 
 /* ---------- 原样的关键帧（M() 换算成帧数以前的写法）：阶段 + 只写和 BASE 不一样的字段 ---------- */
-function poseDiff(p) {
-  const o = {};
-  for (const k of NUMK) if (Math.abs(p[k] - BASE[k]) > 1e-6) o[k] = +p[k].toFixed(2);
-  for (const k of ARRK) if (Math.abs(p[k][0] - BASE[k][0]) > 1e-6 || Math.abs(p[k][1] - BASE[k][1]) > 1e-6) o[k] = [+p[k][0].toFixed(2), +p[k][1].toFixed(2)];
+function poseDiff(p, base) {
+  const o = {}, B = base || PBBASE();
+  for (const k of NUMK) if (Math.abs(p[k] - B[k]) > 1e-6) o[k] = +p[k].toFixed(2);
+  for (const k of ARRK) if (Math.abs(p[k][0] - B[k][0]) > 1e-6 || Math.abs(p[k][1] - B[k][1]) > 1e-6) o[k] = [+p[k][0].toFixed(2), +p[k][1].toFixed(2)];
   return o;
 }
 const fmtPose = o => '{ ' + Object.entries(o).map(([k, v]) => `${k}: ${Array.isArray(v) ? '[' + v.join(', ') + ']' : v}`).join(', ') + ' }';
 function keysText(name) {
-  const d = MOVES[name], rows = d.keys.map(([t, p, e]) => `  [${+phaseOf(d, t).toFixed(3)}, ${fmtPose(poseDiff(p))}${e && e !== 'io' ? `, '${e}'` : ''}]`);
+  const d = PBMV()[name], rows = d.keys.map(([t, p, e]) => `  [${+phaseOf(d, t).toFixed(3)}, ${fmtPose(poseDiff(p))}${e && e !== 'io' ? `, '${e}'` : ''}]`);
   return '[\n' + rows.join(',\n') + '\n]';
 }
 function setKeys(name, arr) {
-  const d = MOVES[name];
+  const d = PBMV()[name];
   const at = d.script ? p => p * d.R : p => p <= 1 ? p * d.S : p <= 2 ? d.S + (p - 1) * d.A : d.S + d.A + (p - 2) * d.R;
-  d.keys = arr.map(([p, pose, e]) => [at(p), mk(pose), e || 'io']);
+  d.keys = arr.map(([p, pose, e]) => [at(p), mk(pose, PBBASE()), e || 'io']);
 }
-for (const n in MOVES) PB.raw[n] = MOVES[n].keys.map(([t, p, e]) => [t, mk(p), e]);
-for (const n in POSE) PB.rawPose[n] = mk(POSE[n]);
+// 原样存一份（「还原」用）：每一派各存各的
+for (const st of Object.keys(STYLES)) {
+  const MV = STYLES[st].moves, R = PB.raw[st] = {}, RP = PB.rawPose[st] = {};
+  for (const n in MV) R[n] = MV[n].keys.map(([t, p, e]) => [t, mk(p), e]);
+  for (const [n, p] of Object.entries(Object.assign({}, POSE, STYLES[st].poses || {}))) RP[n] = mk(p);
+}
 
 /* ---------- 用游戏引擎真打一遍（benchsim.js），按页面上选的距离、对手、颜色 ---------- */
 const pbMove = name => simulateMove(name, pbOpts());
@@ -80,9 +91,9 @@ function drawFrame(g, w, h, f, box, o) {
     ctx.translate(w / 2 - (box.x0 + box.x1) / 2 * s, (h + (box.y1 - box.y0) * s) / 2 - box.y1 * s); ctx.scale(s, s);
     ctx.strokeStyle = 'rgba(23,24,26,.35)'; ctx.lineWidth = 1.2 / s; ctx.beginPath(); ctx.moveTo(box.x0 - 200, FLOOR + 1); ctx.lineTo(box.x1 + 200, FLOOR + 1); ctx.stroke();
     const showOp = pbShowOp();
-    if (o.reach && f.mv && PB_HIT_MOVES.has(f.mv.name)) {
+    if (o.reach && f.mv && PB_HIT_OF().has(f.mv.name)) {
       // 射程：从出招的人中心往前 reach（判定那几帧是红的）
-      const d = MOVES[f.mv.name], y = FLOOR + 8;
+      const d = PBMV()[f.mv.name], y = FLOOR + 8;
       ctx.strokeStyle = f.mv.act ? '#b8321d' : 'rgba(23,24,26,.4)'; ctx.lineWidth = (f.mv.act ? 2.4 : 1.2) / s;
       ctx.beginPath(); ctx.moveTo(f.x1, y); ctx.lineTo(f.x1 + d.reach, y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(f.x1 + d.reach, y - 4); ctx.lineTo(f.x1 + d.reach, y + 4); ctx.stroke();
@@ -110,12 +121,12 @@ function drawStrip() {
   const el = $b('strip'); el.innerHTML = '';
   const fr = PB.frames; if (!fr.length) return;
   let picks;
-  if (PB.kind === 'move' && MOVES[PB.sel]) {
+  if (PB.kind === 'move' && PBMV()[PB.sel]) {
     // 每个阶段挑一帧：起手、前摇一半、出手（判定第一帧）、判定中、判定完、收招一半、收完
     const want = [0, 0.5, 1.05, 1.5, 2, 2.5, 3], m0 = fr.findIndex(f => f.mv && f.mv.name === PB.sel);
     picks = want.map(p => {
       let best = -1, bd = 1e9;
-      fr.forEach((f, i) => { if (!f.mv || f.mv.name !== PB.sel || i < m0) return; const d = MOVES[PB.sel], q = phaseOf(d, f.mv.t * (f.mv.S ? d.S / f.mv.S : 1)); if (Math.abs(q - p) < bd) { bd = Math.abs(q - p); best = i; } });
+      fr.forEach((f, i) => { if (!f.mv || f.mv.name !== PB.sel || i < m0) return; const d = PBMV()[PB.sel], q = phaseOf(d, f.mv.t * (f.mv.S ? d.S / f.mv.S : 1)); if (Math.abs(q - p) < bd) { bd = Math.abs(q - p); best = i; } });
       return [p, best];
     }).filter(([, i]) => i >= 0);
   } else picks = [0, 0.2, 0.4, 0.6, 0.8, 1].map(u => [u, Math.round(u * (fr.length - 1))]);
@@ -132,17 +143,17 @@ function drawStrip() {
 /* ---------- 碰没碰到（benchsim.js contactOf / contactAll） ---------- */
 function showReport() {
   const r = $b('report');
-  if (PB.kind !== 'move' || !PB_HIT_MOVES.has(PB.sel)) { r.textContent = ''; return; }
-  const c = contactOf(PB.frames, PB.sel);
+  if (PB.kind !== 'move' || !PB_HIT_OF().has(PB.sel)) { r.textContent = ''; return; }
+  const c = contactOf(PB.frames, PB.sel, PBMV());
   if (!c) { r.innerHTML = '这一下没出判定'; return; }
-  const good = contactGood(c), lb = MOVES[PB.sel].limb;
+  const good = contactGood(c), lb = PBMV()[PB.sel].limb;
   r.innerHTML = `${c.hit ? '打中了' : '没打中'} · 判定那一刻${lb.endsWith('h') ? '拳' : lb.endsWith('e') ? '肘' : lb === 'sh' ? '肩' : '脚'}离对方身子 <b class="${good ? 'ok' : 'bad'}">${c.gap > 0 ? '还差 ' + c.gap.toFixed(1) : '扎进去 ' + (-c.gap).toFixed(1)}</b> 像素（第 ${c.frame} 帧）`;
 }
 function pbContactAll() {
-  const rows = contactAll({ def: 'stand', col: PB.col });
+  const rows = contactAll({ def: 'stand', col: PB.col, style: PB.style });
   PB.report = rows;
   $b('allTable').innerHTML = '<table><tr><th>招</th><th>射程</th><th>打中</th><th>差多少</th></tr>' + rows.map(r =>
-    `<tr><td>${MOVES[r.n].label}</td><td>${Math.round(r.reach)}</td><td>${r.hit ? '✓' : '✗'}</td><td style="color:${r.ok ? 'var(--ok)' : 'var(--bad)'}">${r.gap == null ? '—' : r.gap.toFixed(1)}</td></tr>`).join('') + '</table>';
+    `<tr><td>${PBMV()[r.n].label}</td><td>${Math.round(r.reach)}</td><td>${r.hit ? '✓' : '✗'}</td><td style="color:${r.ok ? 'var(--ok)' : 'var(--bad)'}">${r.gap == null ? '—' : r.gap.toFixed(1)}</td></tr>`).join('') + '</table>';
   for (const b of document.querySelectorAll('#list .item')) { const row = rows.find(x => x.n === b.dataset.n); b.classList.toggle('warn', !!row && !row.ok); }
   open(PB.kind, PB.sel);
   return rows;
@@ -152,8 +163,8 @@ function pbContactAll() {
 function renderList() {
   const el = $b('list');
   $b('editBox').hidden = PB.tab === 'model'; $b('modelBox').hidden = PB.tab !== 'model';
-  if (PB.tab === 'moves') el.innerHTML = PB_GROUPS.map(([g, list]) => `<p class="grp">${g}</p>` + list.map(n => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="move" type="button">${MOVES[n].label}<small>${n}</small></button>`).join('')).join('');
-  else if (PB.tab === 'poses') el.innerHTML = '<p class="grp">基础姿势（pose.js POSE）</p>' + Object.keys(POSE).map(n => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="pose" type="button">${n}</button>`).join('') +
+  if (PB.tab === 'moves') el.innerHTML = PB_GROUPS_OF().map(([g, list]) => `<p class="grp">${g}</p>` + list.map(n => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="move" type="button">${PBMV()[n].label}<small>${n}</small></button>`).join('')).join('');
+  else if (PB.tab === 'poses') el.innerHTML = `<p class="grp">基础姿势（${PB.style === 'trad' ? 'pose.js POSE' : 'ying.js YPOSE，没写的照 POSE'}）</p>` + Object.keys(PB_POSES()).map(n => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="pose" type="button">${n}${PBST().poses && PBST().poses[n] ? '<small>' + PBST().name + '</small>' : ''}</button>`).join('') +
     '<p class="grp">动起来看</p>' + PB_STATES.map(([n, l]) => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="state" type="button">${l}<small>${n}</small></button>`).join('');
   else { el.innerHTML = '<p class="info">右边的滑块调完马上看得到；满意了点「复制」，把 BODY 表贴回 js/body.js。</p>'; renderModel(); }
 }
@@ -164,13 +175,13 @@ function open(kind, name) {
   PB.idx = kind === 'move' ? Math.max(0, mi) : 0;
   PB.box = figBounds(PB.frames, 0, PB.frames.length - 1);
   $b('frame').max = Math.max(0, PB.frames.length - 1); $b('frame').value = PB.idx;
-  const d = MOVES[name];
-  $b('title').textContent = kind === 'move' ? `${d.label}（${name}）` : kind === 'pose' ? `姿势 ${name}` : (PB_STATES.find(s => s[0] === name) || [, name])[1];
+  const d = kind === 'move' ? PBMV()[name] : null, PS = PB_POSES();
+  $b('title').textContent = kind === 'move' ? `${d.label}（${name}）${PB.style !== 'trad' ? ' · ' + PBST().name : ''}` : kind === 'pose' ? `姿势 ${name}` : (PB_STATES.find(s => s[0] === name) || [, name])[1];
   $b('meta').textContent = kind === 'move' ? (d.script ? `动作 ${d.R} 帧` : `前摇 ${d.S} · 判定 ${d.A} · 后摇 ${d.R} · 射程 ${d.reach}${d.lunge ? ' + 前冲 ' + d.lunge[2] : ''} · 用 ${d.limb || '—'} 打`) : '';
-  const dv = PB.dist != null ? PB.dist : PB_AIR[name] ? airDistOf(name) : PB_SEQ[name] ? PB_SEQ[name].dist : d && d.reach ? Math.round(effReachOf(name)) : 170;
+  const dv = PB.dist != null ? PB.dist : kind !== 'move' ? 170 : PB_AIR[name] ? airDistOf(name, PB.style) : pbSeq(name) ? pbSeq(name).dist : d.reach ? Math.round(effReachOf(name, PBMV())) : 170;
   $b('dLab').textContent = kind === 'move' ? dv : '';
   if (kind === 'move') $b('dist').value = dv;
-  $b('keys').value = kind === 'move' ? keysText(name) : kind === 'pose' ? fmtPose(poseDiff(POSE[name])) : '（动起来的状态没有关键帧：跑步在 fighter.js runPose、跳在 pose.js P_J*）';
+  $b('keys').value = kind === 'move' ? keysText(name) : kind === 'pose' ? fmtPose(poseDiff(PS[name], PBST().poses && PBST().poses[name] ? PBBASE() : BASE)) : '（动起来的状态没有关键帧：跑步在 fighter.js runPose、跳在 pose.js P_J*）';
   $b('keys').disabled = kind === 'state';
   $b('msg').textContent = '';
   try { history.replaceState(null, '', '#' + (kind === 'move' ? 'm=' : kind === 'pose' ? 'p=' : 's=') + name); } catch (e) {}
@@ -184,13 +195,14 @@ function applyEdit() {
     if (PB.kind === 'move') {
       if (!Array.isArray(v) || !v.every(r => Array.isArray(r) && typeof r[0] === 'number' && r[1] && typeof r[1] === 'object')) throw new Error('要写成 [[阶段, {姿势}, 缓动], …]');
       setKeys(PB.sel, v);
-    } else if (PB.kind === 'pose') copyPose(POSE[PB.sel], mk(v));
+    } else if (PB.kind === 'pose') { const own = PBST().poses && PBST().poses[PB.sel]; copyPose(own || POSE[PB.sel], mk(v, own ? PBBASE() : BASE)); }
     $b('msg').textContent = '已应用（只在这个页面里，刷新就没了 —— 满意了点「复制」贴回去）';
     const k = PB.kind, n = PB.sel, i = PB.idx; open(k, n); PB.idx = Math.min(i, PB.frames.length - 1); $b('frame').value = PB.idx; redraw();
   } catch (e) { $b('msg').textContent = '写错了：' + e.message; }
 }
 function copyText() {
-  const n = PB.sel, txt = PB.kind === 'move' ? `keys: ${keysText(n).replace(/\n/g, '\n    ')}` : PB.kind === 'pose' ? `${n}: mk(${fmtPose(poseDiff(POSE[n]))}),` : '';
+  const own = PBST().poses && PBST().poses[PB.sel], n = PB.sel;
+  const txt = PB.kind === 'move' ? `keys: ${keysText(n).replace(/\n/g, '\n    ')}` : PB.kind === 'pose' ? (own ? `${n}: ymk(${fmtPose(poseDiff(own, PBBASE()))}),` : `${n}: mk(${fmtPose(poseDiff(POSE[n], BASE))}),`) : '';
   try { navigator.clipboard.writeText(txt); $b('msg').textContent = '复制好了'; } catch (e) { $b('msg').textContent = '复制不了：自己选中文字复制'; }
   return txt;
 }
@@ -250,9 +262,16 @@ $b('col').addEventListener('change', e => { PB.col = e.target.value; if (PB.sel)
 $b('bApply').addEventListener('click', applyEdit);
 $b('keys').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); applyEdit(); } });
 $b('bReset').addEventListener('click', () => {
-  if (PB.kind === 'move') MOVES[PB.sel].keys = PB.raw[PB.sel].map(([t, p, e]) => [t, mk(p), e]);
-  else if (PB.kind === 'pose') copyPose(POSE[PB.sel], PB.rawPose[PB.sel]);
+  if (PB.kind === 'move') PBMV()[PB.sel].keys = PB.raw[PB.style][PB.sel].map(([t, p, e]) => [t, mk(p), e]);
+  else if (PB.kind === 'pose') copyPose((PBST().poses && PBST().poses[PB.sel]) || POSE[PB.sel], PB.rawPose[PB.style][PB.sel]);
   open(PB.kind, PB.sel);
+});
+// 2.9 换拳派：列表换成这一派的招，打开这一派的第一招（迎春拳打传统格斗的人）
+$b('style').innerHTML = Object.keys(STYLES).map(id => `<option value="${id}">${STYLES[id].name}</option>`).join('');
+$b('style').addEventListener('change', e => {
+  PB.style = e.target.value; PB.dist = null; renderList();
+  if (PB.tab === 'moves' || PB.kind === 'move') { PB.tab = 'moves'; for (const x of document.querySelectorAll('.tabs button')) x.setAttribute('aria-pressed', x.dataset.tab === 'moves'); renderList(); open('move', PB_GROUPS_OF()[0][1][0]); }
+  else open(PB.kind, PB.sel);
 });
 $b('bCopy').addEventListener('click', copyText);
 $b('bAll').addEventListener('click', () => { $b('allTable').textContent = '算着…'; setTimeout(pbContactAll, 30); });
@@ -276,7 +295,8 @@ let pbLast = performance.now();
   Sound.on = false;
   renderList();
   const h = location.hash.slice(1), [k, v] = h.split('=');
-  if (k === 'm' && MOVES[v]) open('move', v);
+  if (k === 'm' && !MOVES[v] && YMOVES[v]) { PB.style = 'ying'; $b('style').value = 'ying'; renderList(); }   // 迎春拳的招名直接打开迎春拳
+  if (k === 'm' && PBMV()[v]) open('move', v);
   else if (k === 'p' && POSE[v]) { PB.tab = 'poses'; renderList(); open('pose', v); }
   else if (k === 's') { PB.tab = 'poses'; renderList(); open('state', v); }
   else open('move', 'jab');

@@ -3,14 +3,14 @@
 
 const $ = id => document.getElementById(id);
 const menu = $('menu'), pauseEl = $('pause'), resultEl = $('result'), onlineEl = $('online'), keysEl = $('keysPanel');
-const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel'), stageEl = $('stagePanel');
+const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel'), stageEl = $('stagePanel'), styleEl = $('stylePanel');
 const drillEl = $('drillPanel'), introEl = $('drillIntro'), passEl = $('drillPass');   // 2.1 破招练习：选课、说明；2.2 过关
 const btnPause = $('btnPause'), btnSound = $('btnSound');
 const Desk = window.modouDesktop || null;          // 2.1 软件版（Steam）才有这个对象（desktop/preload.js 给的）；网页版是 null。见下面「软件版」
 
 function showOverlay(el) {
-  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl, passEl]) o.hidden = o !== el;
-  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl].includes(el));
+  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, styleEl, drillEl, introEl, passEl]) o.hidden = o !== el;
+  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, styleEl].includes(el));
   const t = el && el.querySelector('.ibtn:not([hidden])');
   if (t) setTimeout(() => t.focus({ preventScroll: true }), 0);
 }
@@ -364,14 +364,24 @@ Net.onOpen = () => {
   netView('lobby'); netErr('');
   $('netStatus').textContent = netStatusText();
   $('btnNetStart').hidden = Net.role !== 'host';
-  renderNetLooks(); renderNetStages();
+  renderNetLooks(); renderNetStages(); renderNetStyles();
 };
+// 2.9 联机大厅选拳派：各选各的（对方选了什么写在上面）
+function renderNetStyles() {
+  const me = Net.myKey(), th = me === 'h' ? 'g' : 'h';
+  styleRow('netStyles', Net.styles[me], { sm: true });
+  $('netOppStyle').textContent = '对方：' + STYLES[Net.styles[th]].name;
+}
+$('netStyles').addEventListener('click', e => {
+  const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return;
+  if (Net.pickStyle(b.dataset.style)) { Styles.solo.me = b.dataset.style; Styles.save(); showStyleName(); renderNetStyles(); }
+});
 // 联机选色：自己的亮着，对方占着的变暗点不了；房主说了算（net.js settleLook）
 function renderNetLooks() {
   const me = Net.role === 'host' ? 'h' : 'g', my = Net.looks[me], th = Net.looks[me === 'h' ? 'g' : 'h'];
   $('netLooks').innerHTML = PALETTE.map(p => swatch(p, { on: p.id === my, taken: p.id === th ? '对方' : '' })).join('');
 }
-Net.onLooks = () => { if (!$('netLobby').hidden) { renderNetLooks(); renderNetStages(); } };
+Net.onLooks = () => { if (!$('netLobby').hidden) { renderNetLooks(); renderNetStages(); renderNetStyles(); } };
 $('netLooks').addEventListener('click', e => {
   const b = e.target.closest('.sw'); if (!b || b.disabled) return;
   if (Net.pickLook(b.dataset.id)) { setMyLook(b.dataset.id); renderNetLooks(); }
@@ -546,6 +556,37 @@ $('soloCpu').addEventListener('click', e => {
   Looks.solo.cpu = b.dataset.id; Looks.save(); renderLookPanel();
   if (game.mode === 'attract') F2.setLook(b.dataset.id === 'random' ? cpuLook() : b.dataset.id);
 });
+/* ---------- 2.9 拳派：菜单「拳派」里选自己的、电脑的（人机、训练场、联机用），双人开打前两边选，联机大厅各选各的 ----------
+   每一派一张卡：架势小图（用这一派自己的架势画）+ 名字 + 一句话 */
+const STYLE_LINE = {
+  trad: '大开大合：重拳霸体、腿长、摔投',
+  ying: '快、小、连贯：越打越顺，化开再打',
+};
+function styleCard(id, o) {
+  const sm = !!o.sm, w = sm ? 52 : 92;
+  if (id === 'random') return `<button type="button" class="styl rand" data-style="random" aria-pressed="${!!o.on}"><span class="sicon"><i>?</i></span><b>随机</b>${sm ? '' : '<small>每局随机一派</small>'}</button>`;
+  return `<button type="button" class="styl" data-style="${id}" aria-pressed="${!!o.on}">${iconSlot({ pose: 'stance', style: id }, w, w, 'sicon')}<b>${STYLES[id].name}</b>` +
+    (sm ? '' : `<small>${STYLE_LINE[id] || ''}</small>`) + '</button>';
+}
+function styleRow(el, cur, o) {
+  o = o || {};
+  $(el).innerHTML = (o.rand ? styleCard('random', { on: cur === 'random', sm: o.sm }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === cur, sm: o.sm })).join('');
+  PoseIcon.fill($(el));
+}
+function showStyleName() { $('styleName').textContent = STYLES[Styles.solo.me].name; }
+function renderStylePanel() { styleRow('styleMe', Styles.solo.me); styleRow('styleCpu', Styles.solo.cpu, { rand: true }); }
+// 菜单背景里两个人就是预览：你选的拳派、电脑选的（随机就随便一派）
+function previewStyles() {
+  if (game.mode !== 'attract') return;
+  F1.style = Styles.solo.me; if (styleOk(Styles.solo.cpu)) F2.style = Styles.solo.cpu;
+  resetFighters();
+}
+$('btnStyle').addEventListener('click', () => { renderStylePanel(); previewStyles(); showOverlay(styleEl); });
+$('btnStyleDone').addEventListener('click', () => showOverlay(menu));
+$('styleMe').addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return; Styles.solo.me = b.dataset.style; Styles.save(); renderStylePanel(); showStyleName(); previewStyles(); });
+$('styleCpu').addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b) return; Styles.solo.cpu = b.dataset.style; Styles.save(); renderStylePanel(); previewStyles(); });
+showStyleName();
+
 /* ---------- 场景（2.0）：菜单「场景」里选（人机、双人用），双人开打前、联机大厅（房主选）也能换 ---------- */
 // 一排场景按钮：每个按钮一张小图（远景 + 中景缩小画的）+ 名字。sm = 小一号（双人、联机面板里）
 function stageButtons(cur, o) {
@@ -571,12 +612,14 @@ $('netStages').addEventListener('click', e => { const b = e.target.closest('.stg
 showStageName();
 
 // 双人：开打前两边选（A/D、←/→ 也能换）。对方选了的变暗
-let pvpDraft = null;
-function openPvp() { pvpDraft = Looks.pvp.slice(); renderPvp(); renderPvpStages(); showOverlay(pvpEl); }
+let pvpDraft = null, pvpStyleDraft = null;
+function openPvp() { pvpDraft = Looks.pvp.slice(); pvpStyleDraft = Styles.pvp.slice(); renderPvp(); renderPvpStages(); showOverlay(pvpEl); }
 function renderPvp() {
   for (const i of [0, 1]) $('pvpLook' + i).innerHTML = PALETTE.map(p => swatch(p, { on: p.id === pvpDraft[i], taken: p.id === pvpDraft[1 - i] ? (i ? '玩家一' : '玩家二') : '' })).join('');
+  for (const i of [0, 1]) styleRow('pvpStyle' + i, pvpStyleDraft[i], { sm: true });
   if (game.mode === 'attract') { F1.setLook(pvpDraft[0]); F2.setLook(pvpDraft[1]); }
 }
+function cyclePvpStyle(i, d) { const k = STYLE_IDS.indexOf(pvpStyleDraft[i]); pvpStyleDraft[i] = STYLE_IDS[(k + d + STYLE_IDS.length) % STYLE_IDS.length]; renderPvp(); }
 function cyclePvp(i, d) {
   let k = PALETTE.findIndex(p => p.id === pvpDraft[i]);
   do k = (k + d + PALETTE.length) % PALETTE.length; while (PALETTE[k].id === pvpDraft[1 - i]);
@@ -584,12 +627,15 @@ function cyclePvp(i, d) {
 }
 function pvpKey(e) {
   const k = { KeyA: [0, -1], KeyD: [0, 1], ArrowLeft: [1, -1], ArrowRight: [1, 1] }[e.code];
+  const ks = { KeyW: [0, -1], KeyS: [0, 1], ArrowUp: [1, -1], ArrowDown: [1, 1] }[e.code];   // 2.9 换拳派
   if (k) { e.preventDefault(); cyclePvp(k[0], k[1]); }
+  else if (ks) { e.preventDefault(); cyclePvpStyle(ks[0], ks[1]); }
   else if (e.code === 'Escape') closePvp();
 }
 function closePvp() { showOverlay(menu); applyLooks('attract'); }
 for (const i of [0, 1]) $('pvpLook' + i).addEventListener('click', e => { const b = e.target.closest('.sw'); if (!b || b.disabled) return; pvpDraft[i] = b.dataset.id; renderPvp(); });
-$('btnPvpGo').addEventListener('click', () => { Looks.pvp = pvpDraft.slice(); Looks.save(); showLooks(); startMatch('pvp'); });
+for (const i of [0, 1]) $('pvpStyle' + i).addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return; pvpStyleDraft[i] = b.dataset.style; renderPvp(); });
+$('btnPvpGo').addEventListener('click', () => { Looks.pvp = pvpDraft.slice(); Looks.save(); Styles.pvp = pvpStyleDraft.slice(); Styles.save(); showLooks(); startMatch('pvp'); });
 $('btnPvpBack').addEventListener('click', closePvp);
 showLooks();
 
@@ -720,7 +766,7 @@ const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
   if (game.mode === 'attract' || game.paused || keyWait || e.button > 4) return null;
-  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
+  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !styleEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
   const r = Keys.route('Mouse' + e.button, game.mode);           // 1.8.0：双人对战里鼠标也能用（谁绑了归谁）
   if (!r) return null;
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
@@ -840,6 +886,7 @@ window.addEventListener('keydown', e => {
   if (!lookEl.hidden) { if (e.code === 'Escape') closeLooks(); return; }
   if (!setEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeSettings(); return; }
   if (!stageEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
+  if (!styleEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
   if (!drillEl.hidden || !introEl.hidden || !passEl.hidden) { if (e.code === 'Escape' && !e.repeat) drillEsc(); return; }
   if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
   // 破招练习的演示里按 Esc：不看了，回到说明
@@ -955,7 +1002,7 @@ function boot(data) {
   openInvite();
   Ach.drills();
   if (document.fonts && document.fonts.load) {
-    document.fonts.load('40px "Ma Shan Zheng"', '墨斗靛朱赭松黛紫苍随机第一二三四五回合战胜负已分时间到平局决胜局连击崩拳冲天炮鞭腿旋风腿泰山压顶飞踢接腿摔擒拿连珠快拳后手直拳摆拳势破挡闪拆破招空中倒地久被两败俱伤本重打等待对方联机不同步拼克制化解霸体卸失衡推开震爆气满可泼墨寸劲转身蹬扫堂托天掌铁山靠过肩下段上蹲站要拳重腿对必杀压起手顶肘劈挂落步冲盖砸二起脚千斤坠闪背后不住迎击势桩练习回满打截踩抄抱提膝别挣脱借力滚身反绽住翻断挨着撞掉线栽葱朱日远山松崖飞瀑竹林夜月桃花园大漠孤烟练武场训地狱极难')
+    document.fonts.load('40px "Ma Shan Zheng"', '墨斗靛朱赭松黛紫苍随机第一二三四五回合战胜负已分时间到平局决胜局连击进步冲拳冲天炮鞭腿旋风腿坠山击飞踢接腿摔擒拿连珠快拳后手直拳摆拳势破挡闪拆破招空中倒地久被两败俱伤本重打等待对方联机不同步拼克制化解霸体卸失衡推开震爆气满可泼墨寸劲转身蹬扫堂托天掌沉肩靠过肩下段上蹲站要拳重腿对必杀压起手顶肘劈山落步冲盖砸二起脚坠山闪背后不住迎击势桩练习回满打截踩抄抱提膝别挣脱借力滚身反绽住翻断挨着撞掉线栽葱朱日远山松崖飞瀑竹林夜月桃花园大漠孤烟练武场训地狱极难')
       .catch(() => {});
   }
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });

@@ -36,7 +36,7 @@ function seq(...keys) {
     return st.i > 3 && me.actionable() && me.serial !== st.ser ? 'done' : 0;
   };
 }
-// 跳过来出空中招（'d:kick' = 千斤坠；null = 空跳）。站着按方向跳大约往前飞 70；千斤坠 diveAt 以内才踩（近了踩得陡）
+// 跳过来出空中招（'d:kick' = 坠山；null = 空跳）。站着按方向跳大约往前飞 70；坠山 diveAt 以内才踩（近了踩得陡）
 function jumpAtk(key, diveAt = 150) {
   return (st, me, op) => {
     if (st.i === 0) return TAP('up') | TW(me, op);
@@ -47,7 +47,7 @@ function jumpAtk(key, diveAt = 150) {
       if (go) { st.fired = 1; return (dive ? DWN : 0) | TAP(dive ? 'kick' : key); }
     }
     if (st.i > 8 && !me.airborne && me.actionable()) return 'done';
-    return me.state === 'jumpsquat' || me.airborne ? TW(me, op) : 0;    // 起跳那几帧、空中一直朝他按着（起跳时按着方向才跳得远；千斤坠不受方向键影响）
+    return me.state === 'jumpsquat' || me.airborne ? TW(me, op) : 0;    // 起跳那几帧、空中一直朝他按着（起跳时按着方向才跳得远；坠山不受方向键影响）
   };
 }
 // 冲刺进来（双击方向），冲刺第 DASH_CANCEL 帧起出招（冲势）；key = null 只冲不出
@@ -58,7 +58,7 @@ function dashAtk(key) {
     return st.i > 12 && me.actionable() ? 'done' : 0;
   };
 }
-// 跑起来（跑满了）到 at 那么近出招：'heavy' = 铁山靠；key = null 跑到跟前就停
+// 跑起来（跑满了）到 at 那么近出招：'heavy' = 沉肩靠；key = null 跑到跟前就停
 function runAtk(key, at) {
   return (st, me, op) => {
     const d = gap(me, op);
@@ -127,9 +127,9 @@ const DRILL_TOPICS = [
   ['rush', '连拳（连珠快拳）', '一串短拳压着你打'],
   ['upper', '冲天炮（拳拳重）', '拳拳接重，击倒，收招很长'],
   ['heavy', '重拳', '前摇长、有霸体，打中很疼'],
-  ['chop', '重拳接第二下', '重 重 = 劈挂掌（上段），重 + 蹲踢 = 扫堂腿（下段），二选一'],
+  ['chop', '重拳接第二下', '重 重 = 劈山掌（上段），重 + 蹲踢 = 扫堂腿（下段），二选一'],
   ['whirl', '旋风腿（重踢）', '重拳接腿，击倒'],
-  ['beng', '崩拳（拳重）', '短拳接重拳，冲击波把人打远'],
+  ['beng', '进步冲拳（拳重）', '短拳接重拳，冲击波把人打远'],
   ['whip', '鞭腿（拳踢）', '短拳接一记鞭腿'],
   ['backKick', '转身蹬（拳拳踢）', '两拳接转身一蹬，把人蹬远'],
   ['hammer', '盖步砸拳（踢重）', '腿接重拳往下砸，击倒'],
@@ -138,13 +138,13 @@ const DRILL_TOPICS = [
   ['twin', '二起脚（踢踢）', '两脚连踢，击倒'],
   ['sweep', '扫堂腿', '蹲着扫，下段、击倒，收招很长'],
   ['palm', '托天掌', '对空招：专打跳过来的人'],
-  ['airHeavy', '泰山压顶', '跳起来双拳往下砸（上段）'],
+  ['airHeavy', '坠山击', '跳起来双拳往下砸（上段）'],
   ['airKick', '飞踢', '跳起来一脚蹬过来（上段）'],
   ['airJab', '挥拳', '跳起来挥拳（上段，跳起来出的招里最快的）'],
-  ['dive', '千斤坠', '空中按住蹲再踢：先腾一下，再斜着踩下来'],
+  ['dive', '坠山', '空中按住蹲再踢：先腾一下，再斜着踩下来'],
   ['grab', '擒拿', '挡不住的抓'],
   ['lowGrab', '抄腿', '蹲下抱腿，专抓蹲着的'],
-  ['shoulder', '铁山靠', '跑起来按重：能硬吃两下拳，撞得远'],
+  ['shoulder', '沉肩靠', '跑起来按重：能硬吃两下拳，撞得远'],
   ['dash', '冲刺 · 冲势', '双击方向冲进来，冲刺里出招带冲势'],
   ['run', '跑过来', '全速跑过来的人'],
   ['guard', '站着挡', '木桩一直站着举手'],
@@ -152,7 +152,7 @@ const DRILL_TOPICS = [
   ['gwalk', '边挡边走', '举着手往你这边挪'],
   ['parry', '卸力', '木桩会卡准时机按挡，把你的招卸掉'],
   ['shove', '推挡', '木桩挡住就把你推开'],
-  ['jieQuan', '截拳', '木桩挡住就花气从格挡里打出一拳'],
+  ['jieQuan', '截击', '木桩挡住就花气从格挡里打出一拳'],
   ['catch', '接腿', '木桩专等你出腿，一伸手就接住'],
   ['slip', '闪身', '木桩按着挡从你身边钻过去'],
   ['burst', '爆气', '你连打它，它花半格气爆开'],
@@ -176,15 +176,15 @@ const DRILLS = [
     why: '推挡：挡住以后按拳，把对方推开并打断（不掉他的血）',
     demo: (st, me) => me.state === 'blockstun' ? BLK | TAP('jab') : BLK, win: R => R.my('shove'),
     miss: R => R.my('block') ? '挡住了 —— 还在硬直里再按 [拳]' : null },
-  { id: 'jab.jieQuan', topic: 'jab', name: '挡住打截拳', at: 82, act: seq('jab'), meQi: 60,
-    how: ['按住 [挡] 挡住他的拳', '还在挡的硬直里按 [重] —— 截拳（花 25 气）', '截拳出手前打不中你，直接从格挡里打出去'],
-    why: '截拳：挡住后按重，花 25 气从格挡里打出一拳，出手前打击无敌（这一课给你气）',
+  { id: 'jab.jieQuan', topic: 'jab', name: '挡住打截击', at: 82, act: seq('jab'), meQi: 60,
+    how: ['按住 [挡] 挡住他的拳', '还在挡的硬直里按 [重] —— 截击（花 25 气）', '截击出手前打不中你，直接从格挡里打出去'],
+    why: '截击：挡住后按重，花 25 气从格挡里打出一拳，出手前打击无敌（这一课给你气）',
     demo: (st, me) => me.state === 'blockstun' ? BLK | TAP('heavy') : BLK, win: R => R.my('hit', e => e.name === 'jieQuan'),
     miss: R => R.my('block') ? '挡住了 —— 还在硬直里再按 [重]' : null },
   /* —— 下盘拳 —— */
   { id: 'lowJab.block', topic: 'lowJab', name: '蹲着挡', at: 80, act: seq('d:jab'),
     how: ['按住 [蹲] + [挡]', '下盘拳是下段，站着挡不住，要蹲着挡'],
-    why: '高低：下段（下盘拳、扫堂腿）要蹲挡，上段（劈挂掌、空中招）要站挡，其他的站蹲都能挡',
+    why: '高低：下段（下盘拳、扫堂腿）要蹲挡，上段（劈山掌、空中招）要站挡，其他的站蹲都能挡',
     demo: () => BLK | DWN, win: R => R.my('block', e => e.name === 'lowJab' && e.low),
     miss: R => R.op('hit', e => e.wrong) ? '站着挡的 —— 下段要按住 [蹲] 再挡' : null },
   { id: 'lowJab.armor', topic: 'lowJab', name: '重拳霸体硬吃', at: 80, act: seq('d:jab'),
@@ -195,7 +195,7 @@ const DRILLS = [
   /* —— 连拳 —— */
   { id: 'rush.shove', topic: 'rush', name: '推挡打断', at: 82, act: seq('jab', 'jab', 'jab', 'jab'),
     how: ['按住 [挡] 挡住第一拳', '在挡的硬直里按 [拳] 推挡，把他推开，后面的拳就断了'],
-    why: '连段压制的破法：推挡、卸力、截拳、爆气',
+    why: '连段压制的破法：推挡、卸力、截击、爆气',
     demo: (st, me) => me.state === 'blockstun' ? BLK | TAP('jab') : BLK, win: R => R.my('shove') },
   { id: 'rush.burst', topic: 'rush', name: '挨打时爆气', at: 82, act: seq('jab', 'jab', 'jab', 'jab'), meQi: 60,
     how: ['这一课别挡，先挨两下', '挨打的时候按 [重] + [踢]（一起按）爆气 —— 花半格气', `爆开把他打倒，掉 ${BURST_DMG} 血`],
@@ -239,20 +239,20 @@ const DRILLS = [
     demo: parryAt(['heavy']), win: R => R.my('parry'),
     miss: R => R.my('block') ? '挡住了但没卸：按早了，等拳快到再按' : R.op('hit') ? '按晚了' : null },
   /* —— 重拳接第二下 —— */
-  { id: 'chop.high', topic: 'chop', name: '劈挂掌站着挡', at: 96, act: seq('heavy', 'heavy'),
-    how: ['按住 [挡] 挡重拳', '他接第二下劈挂掌（上段，从上往下劈）：站着挡，别蹲'],
-    why: '劈挂掌是上段：蹲着挡不住',
+  { id: 'chop.high', topic: 'chop', name: '劈山掌站着挡', at: 96, act: seq('heavy', 'heavy'),
+    how: ['按住 [挡] 挡重拳', '他接第二下劈山掌（上段，从上往下劈）：站着挡，别蹲'],
+    why: '劈山掌是上段：蹲着挡不住',
     demo: () => BLK, win: R => R.my('block', e => e.name === 'chop' && !e.low),
-    miss: R => R.op('hit', e => e.name === 'chop') ? '劈挂掌是上段，蹲着挡不住 —— 站着挡' : null },
+    miss: R => R.op('hit', e => e.name === 'chop') ? '劈山掌是上段，蹲着挡不住 —— 站着挡' : null },
   { id: 'chop.read', topic: 'chop', name: '看第二下换着挡', at: 96, act: either(seq('heavy', 'heavy'), seq('heavy', 'd:kick')),
-    how: ['按住 [挡] 挡重拳', '看他第二下：劈挂掌（往上抡）→ 站着挡；扫堂腿（往下蹲）→ 按住 [蹲] 挡', '两种他随便出，看清了再换'],
-    why: '重拳后面接劈挂掌（上段）还是扫堂腿（下段）是二选一的猜：看清了换着挡',
+    how: ['按住 [挡] 挡重拳', '看他第二下：劈山掌（往上抡）→ 站着挡；扫堂腿（往下蹲）→ 按住 [蹲] 挡', '两种他随便出，看清了再换'],
+    why: '重拳后面接劈山掌（上段）还是扫堂腿（下段）是二选一的猜：看清了换着挡',
     demo: (st, me, op) => {
       if (isMove(op, 'sweep')) st.low = 1; else if (isMove(op, 'chop')) st.low = 0;
       return BLK | (st.low ? DWN : 0);
     },
     win: R => R.my('block', e => e.name === 'chop' && !e.low) || R.my('block', e => e.name === 'sweep' && e.low),
-    miss: R => R.op('hit', e => e.wrong) ? '挡错了高低：劈挂掌站挡、扫堂腿蹲挡' : null },
+    miss: R => R.op('hit', e => e.wrong) ? '挡错了高低：劈山掌站挡、扫堂腿蹲挡' : null },
   /* —— 旋风腿 —— */
   { id: 'whirl.punish', topic: 'whirl', name: '挡住打收招', at: 100, act: seq('heavy', 'kick'),
     how: ['按住 [挡] 挡住重拳和旋风腿', '旋风腿是击倒招，被挡住收招长：一能动就 [拳] [拳] [重]'],
@@ -264,16 +264,16 @@ const DRILLS = [
     demo: (st, me, op) => isMove(op, 'whirl') && me.actionable() && !st.j ? (st.j = 1, TAP('jab')) : st.j ? 0 : BLK,
     win: R => R.my('hit', e => /拳克腿/.test(e.how) || (e.offBalance && e.bMove === 'whirl')),
     miss: R => R.op('hit', e => e.name === 'whirl') ? '慢了 —— 他一转身就出拳' : null },
-  /* —— 崩拳 / 鞭腿 / 转身蹬 / 盖步砸拳 / 下盘拳接扫堂腿 —— */
-  { id: 'beng.slip', topic: 'beng', name: '挡住第一拳，闪身躲崩拳', at: 84, act: seq('jab', 'heavy'),
-    how: ['按住 [挡] 挡住他的短拳', '他接崩拳（往后一拧身、重系的手上招），快打到的时候按着挡双击 [前] —— 闪身（挡住的硬直里也能闪）', '别闪太早（钻过去了它还没打出来）；钻到他身后自动回身一肘'],
-    why: '崩拳被挡住会把你冲开、收招短，挡完了打不着；闪身专躲重系的手上招（重拳、崩拳、劈挂掌、盖步砸拳、铁山靠）',
+  /* —— 进步冲拳 / 鞭腿 / 转身蹬 / 盖步砸拳 / 下盘拳接扫堂腿 —— */
+  { id: 'beng.slip', topic: 'beng', name: '挡住第一拳，闪身躲进步冲拳', at: 84, act: seq('jab', 'heavy'),
+    how: ['按住 [挡] 挡住他的短拳', '他接进步冲拳（往后一拧身、重系的手上招），快打到的时候按着挡双击 [前] —— 闪身（挡住的硬直里也能闪）', '别闪太早（钻过去了它还没打出来）；钻到他身后自动回身一肘'],
+    why: '进步冲拳被挡住会把你冲开、收招短，挡完了打不着；闪身专躲重系的手上招（重拳、进步冲拳、劈山掌、盖步砸拳、沉肩靠）',
     demo: (st, me, op) => {
       if (isMove(op, 'beng') && toHit(op) <= 8 && !st.s) { st.s = 1; st.q = [TW(me, op), 0, TW(me, op)]; }
       if (st.q && st.q.length) return BLK | st.q.shift();
       return BLK;
     },
-    win: R => R.my('slip'), miss: R => R.op('hit', e => e.name === 'beng') ? '挨了崩拳 —— 他一接崩拳就按着挡双击 [前]' : R.my('block', e => e.name === 'beng') ? '挡住了 —— 按着挡双击 [前] 才是闪身' : null },
+    win: R => R.my('slip'), miss: R => R.op('hit', e => e.name === 'beng') ? '挨了进步冲拳 —— 他一接进步冲拳就按着挡双击 [前]' : R.my('block', e => e.name === 'beng') ? '挡住了 —— 按着挡双击 [前] 才是闪身' : null },
   { id: 'whip.punish', topic: 'whip', name: '挡住打收招', at: 84, act: seq('jab', 'kick'),
     how: ['按住 [挡] 挡住短拳和鞭腿', '腿系被挡住收招长：一能动就 [拳] [拳] [重]'],
     why: '挡后反击：腿系的招被挡住收招长',
@@ -341,7 +341,7 @@ const DRILLS = [
     demo: onStart(['sweep'], DWN | TAP('grab'), 0), win: R => R.my('grab', e => e.kind === 'scoop'),
     miss: R => R.op('hit') ? '慢了 —— 他一蹲就 蹲+拿' : null },
   { id: 'sweep.jump', topic: 'sweep', name: '跳起躲开，空中砸它收招（破绽）', at: 110, act: seq('d:kick'),
-    how: ['他一蹲下要扫，马上朝他跳（按住 [前] 再 [跳]）', '扫堂腿从脚底下过去；在空中按 [重] —— 泰山压顶砸在他收招里', '击倒招打空了、收招里挨打 = 破绽 ×1.25（跳起出招还有 ×1.35）'],
+    how: ['他一蹲下要扫，马上朝他跳（按住 [前] 再 [跳]）', '扫堂腿从脚底下过去；在空中按 [重] —— 坠山击砸在他收招里', '击倒招打空了、收招里挨打 = 破绽 ×1.25（跳起出招还有 ×1.35）'],
     why: '下段打不到跳起来的人；扫堂腿收招很长，原地跳落下来就晚了，要朝他跳、空中出招',
     demo: (st, me, op) => {
       if (isMove(op, 'sweep') && !st.j) { st.j = 1; return TAP('up') | TW(me, op); }
@@ -358,22 +358,22 @@ const DRILLS = [
     demo: onStart(['sweep'], TAP('jab'), 1), win: R => R.my('hit', e => e.bMove === 'sweep' && (/拳克腿|破招/.test(e.how) || e.offBalance)),
     miss: R => R.op('hit') ? '慢了 —— 他一蹲就出拳' : null },
   /* —— 托天掌 —— */
-  { id: 'palm.dive', topic: 'palm', name: '千斤坠踩断对空', at: 200, react: true,
+  { id: 'palm.dive', topic: 'palm', name: '坠山踩断对空', at: 200, react: true,
     pose: (st, me, op) => op.airborne && gap(me, op) <= 150 && op.vz < 3 && !st.p ? (st.p = 1, DWN | TAP('heavy')) : (op.airborne ? 0 : (st.p = 0, 0)),
-    how: ['从远处朝他跳过去（按住 [前] 再 [跳]）', '他会出托天掌接你', '在空中按住 [蹲] 再按 [踢] —— 千斤坠，踩断托天掌'],
-    why: '千斤坠踩断对空：对空招打不到千斤坠，踩中托天掌 ×1.5 还踩倒',
+    how: ['从远处朝他跳过去（按住 [前] 再 [跳]）', '他会出托天掌接你', '在空中按住 [蹲] 再按 [踢] —— 坠山，踩断托天掌'],
+    why: '坠山踩断对空：对空招打不到坠山，踩中托天掌 ×1.5 还踩倒',
     trigger: 'jump',
     demo: (st, me, op) => {
       if (!st.j) { if (gap(me, op) > 210) return TW(me, op); if (gap(me, op) < 170 || !me.actionable()) return 0; st.j = 1; return TAP('up') | TW(me, op); }
       if (me.state === 'air' && !me.airUsed && gap(me, op) <= 150 && me.vz < 5) return DWN | TAP('kick');
       return me.state === 'jumpsquat' || me.airborne ? TW(me, op) : 0;
     },
-    win: R => R.my('hit', e => /踩断对空/.test(e.how)), miss: R => R.op('hit') ? '被托天掌打下来了 —— 跳到他头上之前就出千斤坠' : null },
+    win: R => R.my('hit', e => /踩断对空/.test(e.how)), miss: R => R.op('hit') ? '被托天掌打下来了 —— 跳到他头上之前就出坠山' : null },
   { id: 'palm.punish', topic: 'palm', name: '挡住打收招', at: 84, act: seq('d:heavy'),
     how: ['按住 [挡] 挡住托天掌', '托天掌被挡住收招很长：一能动就 [拳] [拳] [重]'],
     why: '挡后反击：托天掌是击倒招，挡住以后打它收招 ×1.5',
     demo: punishAfterBlock(), win: R => R.my('hit', e => /挡后反击/.test(e.how)) },
-  /* —— 泰山压顶 / 飞踢 / 挥拳（跳起来出的） —— */
+  /* —— 坠山击 / 飞踢 / 挥拳（跳起来出的） —— */
   ...['airHeavy', 'airKick', 'airJab'].flatMap(an => {
     const key = { airHeavy: 'heavy', airKick: 'kick', airJab: 'jab' }[an], nm = MOVES[an].label;
     const list = [
@@ -406,20 +406,20 @@ const DRILLS = [
         win: R => R.my('tumble'), miss: R => R.op('hit') ? '腿起晚了 —— 他一蹬腿你就踢' : null });
     return list;
   }),
-  /* —— 千斤坠 —— */
+  /* —— 坠山 —— */
   { id: 'dive.jab', topic: 'dive', name: '站着出拳迎（倒栽葱）', at: 140, act: jumpAtk('d:kick', 100),
-    how: ['他先往上腾一下（要踩了），这时候别蹲、别出托天掌', '站着等，他斜着踩下来快到你头顶时按 [拳]', '站着的拳迎面打中千斤坠 = 倒栽葱 ×1.4'],
-    why: '千斤坠怕站着的拳；对空招打不到它、反被踩倒',
+    how: ['他先往上腾一下（要踩了），这时候别蹲、别出托天掌', '站着等，他斜着踩下来快到你头顶时按 [拳]', '站着的拳迎面打中坠山 = 倒栽葱 ×1.4'],
+    why: '坠山怕站着的拳；对空招打不到它、反被踩倒',
     demo: (st, me, op) => isMove(op, 'dive') && !st.j && Drill.diveReady(me, op) ? (st.j = 1, TAP('jab')) : 0,
     win: R => R.my('hit', e => /倒栽葱/.test(e.how)), miss: R => R.op('hit') ? '拳出晚了（或者你蹲着）—— 他快踩到你头顶就出拳' : null },
   { id: 'dive.block', topic: 'dive', name: '站着挡', at: 200, act: jumpAtk('d:kick'),
-    how: ['他腾起来要踩，按住 [挡]（站着挡，千斤坠是上段）', '挡住了他往后翻回去五六个身位（2.8 起和被腿顶回去一样远）：你先动，但追不上，挡住就算破了'],
-    why: '千斤坠被站挡住，往后翻着飞回去',
+    how: ['他腾起来要踩，按住 [挡]（站着挡，坠山是上段）', '挡住了他往后翻回去五六个身位（2.8 起和被腿顶回去一样远）：你先动，但追不上，挡住就算破了'],
+    why: '坠山被站挡住，往后翻着飞回去',
     demo: (st, me, op) => BLK,
     win: R => R.my('block', e => e.name === 'dive'), miss: R => R.op('hit') ? '没挡住 —— 他腾起来就按住 [挡]，别蹲' : null },
   { id: 'dive.kick', topic: 'dive', name: '地上出腿顶回去', at: 210, act: jumpAtk('d:kick'),
     how: ['他先往上腾一下（要踩了）—— 一看见他腾起来就按 [踢]（腿前摇长，要提前）', '地上的腿迎上空中的腿：他翻滚回去'],
-    why: '地上出腿迎上千斤坠 = 顶得它翻滚回去（他悬着的那一下就要起腿）',
+    why: '地上出腿迎上坠山 = 顶得它翻滚回去（他悬着的那一下就要起腿）',
     demo: (st, me, op) => isMove(op, 'dive') && op.move.t >= 2 && op.move.t <= 6 && !st.k ? (st.k = 1, TAP('kick')) : 0,
     win: R => R.my('tumble'), miss: R => R.op('hit') ? '腿起晚了' : null },
   /* —— 擒拿 —— */
@@ -455,20 +455,20 @@ const DRILLS = [
     how: ['他一蹲身要抄，马上按 [拳]', '抄腿前摇慢，短拳先打到'],
     why: '打击克擒拿：抄腿也一样',
     demo: onStart(['lowGrab'], TAP('jab'), 1), win: R => R.my('hit', e => e.bMove === 'lowGrab') },
-  /* —— 铁山靠 —— */
+  /* —— 沉肩靠 —— */
   { id: 'shoulder.kick', topic: 'shoulder', name: '腿迎上去', at: 260, act: runAtk('heavy', 134),
-    how: ['他跑过来的时候，估计着他快进你腿的射程就按 [踢]（提前一点按，他跑得快）', '腿克重：铁山靠是重系；打在全速跑过来的人身上还有迎击 ×1.2'],
+    how: ['他跑过来的时候，估计着他快进你腿的射程就按 [踢]（提前一点按，他跑得快）', '腿克重：沉肩靠是重系；打在全速跑过来的人身上还有迎击 ×1.2'],
     why: '腿克重 + 迎击：腿射程长，正好迎上去',
     demo: (st, me, op) => (op.state === 'run' || isMove(op, 'shoulder')) && !st.k && gap(me, op) - Math.abs(op.vxRun || 6.5) * (MOVES.kick.S - 2) <= effR('kick') ? (st.k = 1, TAP('kick')) : 0,
-    win: R => R.my('hit', e => MOVES[e.name] && MOVES[e.name].tier === 'kick'), miss: R => R.op('hit') ? '腿出晚了 —— 他还没到就要按' : R.opWhiff('shoulder') ? '他的铁山靠打空了 —— 下回迎上去' : null },
+    win: R => R.my('hit', e => MOVES[e.name] && MOVES[e.name].tier === 'kick'), miss: R => R.op('hit') ? '腿出晚了 —— 他还没到就要按' : R.opWhiff('shoulder') ? '他的沉肩靠打空了 —— 下回迎上去' : null },
   { id: 'shoulder.grab', topic: 'shoulder', name: '擒拿比它快', at: 260, act: runAtk('heavy', 134),
-    how: ['他跑过来一扛肩膀（铁山靠前摇），马上按 [拿]', '擒拿比铁山靠快；霸体只防拳，不防擒拿'],
-    why: '霸体（重拳、铁山靠）的破法：腿系、擒拿、连打',
+    how: ['他跑过来一扛肩膀（沉肩靠前摇），马上按 [拿]', '擒拿比沉肩靠快；霸体只防拳，不防擒拿'],
+    why: '霸体（重拳、沉肩靠）的破法：腿系、擒拿、连打',
     demo: onStart(['shoulder'], TAP('grab'), 1), win: R => R.my('grab', e => e.bMove === 'shoulder'),
     miss: R => R.op('hit') ? '抓晚了 —— 他一扛肩就按 [拿]' : null },
   { id: 'shoulder.punish', topic: 'shoulder', name: '挡住打收招', at: 260, act: runAtk('heavy', 134),
-    how: ['按住 [挡] 挡住铁山靠（会被撞开一点）', '一能动就冲过去打他收招'],
-    why: '挡后反击：铁山靠被挡住收招长',
+    how: ['按住 [挡] 挡住沉肩靠（会被撞开一点）', '一能动就冲过去打他收招'],
+    why: '挡后反击：沉肩靠被挡住收招长',
     demo: (st, me, op) => {
       if (me.state === 'blockstun') { st.b = 1; return BLK; }
       if (st.b && me.actionable()) { if (gap(me, op) > effR('jab')) return TW(me, op); if (!st.c) st.c = chain(['jab', 'jab', 'heavy']); }
@@ -512,11 +512,11 @@ const DRILLS = [
     why: '蹲挡怕抄腿和上段',
     demo: (st, me, op) => gap(me, op) > 80 ? TW(me, op) : st.g ? 0 : (st.g = 1, DWN | TAP('grab')),
     win: R => R.my('grab', e => e.kind === 'tackle'), miss: R => R.my('grabMiss') ? '站着抓的抓不到蹲着的 —— 蹲 + 拿' : null },
-  { id: 'crouch.high', topic: 'crouch', name: '打上段（劈挂掌）', react: true, pose: () => BLK | DWN, at: 94,
-    how: ['他蹲着挡：上段打得穿', '[重] 接着再按 [重] —— 劈挂掌（上段，从上往下劈）', '跳起来打的空中招也是上段'],
-    why: '蹲挡怕上段（劈挂掌、空中招）',
+  { id: 'crouch.high', topic: 'crouch', name: '打上段（劈山掌）', react: true, pose: () => BLK | DWN, at: 94,
+    how: ['他蹲着挡：上段打得穿', '[重] 接着再按 [重] —— 劈山掌（上段，从上往下劈）', '跳起来打的空中招也是上段'],
+    why: '蹲挡怕上段（劈山掌、空中招）',
     demo: (st, me, op) => gap(me, op) > 94 ? TW(me, op) : (st.c = st.c || chain(['heavy', 'heavy']))(st, me, op),
-    win: R => R.my('hit', e => e.height === 'high'), miss: () => '重 重 第二下是劈挂掌（上段）' },
+    win: R => R.my('hit', e => e.height === 'high'), miss: () => '重 重 第二下是劈山掌（上段）' },
   { id: 'gwalk.grab', topic: 'gwalk', name: '擒拿', react: true, pose: (st, me, op) => BLK | (gap(me, op) > 70 ? TW(me, op) : 0), at: 140,
     how: ['他举着手往你这边挪', '等他进了擒拿的距离按 [拿]（擒拿挡不住）'],
     why: '边挡边走也是在挡：擒拿、下段（站着挡的时候）都破得了',
@@ -551,10 +551,10 @@ const DRILLS = [
     why: '推挡只防打击，擒拿照样抓',
     demo: (st, me, op) => gap(me, op) > 76 ? TW(me, op) : st.g ? (isMove(me, 'hold') ? TAP('kick') : 0) : (st.g = 1, TAP('grab')),
     win: R => R.my('grab', e => e.kind === 'grab') },
-  /* —— 截拳 —— */
+  /* —— 截击 —— */
   { id: 'jieQuan.grab', topic: 'jieQuan', name: '擒拿', react: true, pose: 'jieQuan', at: 80, opQi: 100,
-    how: ['别往他格挡上打（打了他就截拳）', '贴近了直接 [拿]'],
-    why: '截拳是从格挡里打出来的，你不打他就出不了；擒拿挡不住',
+    how: ['别往他格挡上打（打了他就截击）', '贴近了直接 [拿]'],
+    why: '截击是从格挡里打出来的，你不打他就出不了；擒拿挡不住',
     demo: (st, me, op) => gap(me, op) > 76 ? TW(me, op) : st.g ? (isMove(me, 'hold') ? TAP('heavy') : 0) : (st.g = 1, TAP('grab')),
     win: R => R.my('grab', e => e.kind === 'grab') },
   /* —— 接腿（木桩专等你出腿）—— */
@@ -627,7 +627,7 @@ const DRILL_POSE = {
     if ((st.cool = (st.cool || 0) - 1) <= 0 && me.state === 'block' && gap(me, op) <= 125 && gap(me, op) > MOVES.shove.reach + 2) { st.cool = 70; return BLK | TAP('jab'); }
     return me.state === 'blockstun' ? BLK | TAP('jab') : BLK;
   },
-  // 截拳：一直举着手，挡住了就按重截拳
+  // 截击：一直举着手，挡住了就按重截击
   jieQuan: (st, me) => me.state === 'blockstun' ? BLK | TAP('heavy') : BLK,
   // 接腿：看你一出腿（站着出的腿）就伸手
   catch: (st, me, op) => isMove(op, 'kick', 'whip', 'backKick', 'twinKick') && st.cs !== op.move.serial ? (st.cs = op.move.serial, TAP('grab')) : 0,
@@ -710,6 +710,7 @@ const Drill = {
   start(id, demo) {
     const def = this.byId(id); if (!def) return;
     if (game.mode !== 'train') startMatch('train');
+    F1.style = F2.style = 'trad';                        // 2.9 破招练习：两边都是传统格斗（练的是破传统格斗的招，破法也是传统格斗的招）
     resetFighters(); game.phase = 'fight'; game.paused = false;
     F2.maxHp = DUMMY_HP; F2.hp = F2.lagHp = DUMMY_HP;
     this.cur = { def, demo: !!demo, ok: 0, tries: 0, rep: null, last: null, lastT: -999, passed: false, demoReps: 0, frame: 0, ds: {}, count: null, goAt: -999, passAt: -1 };
@@ -721,7 +722,7 @@ const Drill = {
   },
   stop() {
     this.cur = null; CEV.on = null;
-    if (game.mode === 'train') { game.brains = [null, new Dummy(F2, game.dummyMode)]; }
+    if (game.mode === 'train') { game.brains = [null, new Dummy(F2, game.dummyMode)]; applyStyles('train'); }   // 回到自由练：换回自己选的拳派（叫的地方接着 resetFighters）
   },
   // 战斗事件 → 记进这一遍。actor：这件事是谁「做成」的（打中的人、挡住的人、卸力的人……）
   ev(type, A, B, x) {
@@ -881,7 +882,7 @@ const Drill = {
     const cx = clamp((F1.x + F2.x) / 2, WALL_L + d / 2 + 60, WALL_R - d / 2 - 60), s = F1.x <= F2.x ? 1 : -1;
     F1.x = cx - s * d / 2; F2.x = cx + s * d / 2; F1.kvx = F2.kvx = 0;
   },
-  // 千斤坠：现在出拳能不能正好迎上（演示用；和电脑 diveHit 一样算）
+  // 坠山：现在出拳能不能正好迎上（演示用；和电脑 diveHit 一样算）
   diveReady(me, op) {
     const om = op.move, J = MOVES.jab, k = J.S + 1, hover = Math.max(0, om.S - om.t);
     if (hover >= k) return false;

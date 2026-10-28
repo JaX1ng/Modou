@@ -116,7 +116,7 @@ function drawFighter(F, V) {
       ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
     }
   }
-  // 运气时身上一层半透明的光：爆气 / 泼墨 / 截拳 / 卸力 / 连招。只画模糊的影子、不画实心的边，所以是一团光而不是描边。
+  // 运气时身上一层半透明的光：爆气 / 泼墨 / 截击 / 卸力 / 连招。只画模糊的影子、不画实心的边，所以是一团光而不是描边。
   // 1.9.4 连招的光：越连光越宽越亮（连得多再加一层更大的光晕），一胀一缩。2.0.1：自己的气的颜色（身体色的淡色），
   // 光比身子淡得多，身子的边照样清楚。2.0.2 连到后面光更宽更亮（气盛得明显）
   if (F.qiGlow > 0.04 && !reduceMotion) {
@@ -434,7 +434,7 @@ function hpBar(F, side) {
   ctx.fillStyle = C.ink; ctx.fillRect(qx + ql / 2 - 1, qy - 2, 2, qh + 4);
   ctx.textBaseline = 'middle'; ctx.textAlign = side < 0 ? 'left' : 'right';
   ctx.font = `15px ${BRUSH}`; ctx.fillStyle = half ? F.color : '#55564f';
-  ctx.fillText(full ? '气满 · 可泼墨' : half ? '气 · 可爆气' : '气', dir > 0 ? qx + ql + 8 : qx - 8, qy + 3);
+  ctx.fillText(full ? '气满 · 可' + F.moves.super.label : half ? '气 · 可爆气' : '气', dir > 0 ? qx + ql + 8 : qx - 8, qy + 3);   // 2.9 迎春拳的大招是连环寸拳
   // 名字
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = side < 0 ? 'left' : 'right';
@@ -442,7 +442,7 @@ function hpBar(F, side) {
   ctx.fillText(F.name, x0 + dir * 2, 78);
   const nmW = ctx.measureText(F.name).width;
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f';
-  ctx.fillText(F.label, x0 + dir * (nmW + 10), 74);
+  ctx.fillText(F.label ? F.label + ' · ' + styleOf(F).name : styleOf(F).name, x0 + dir * (nmW + 10), 74);   // 2.9 带上拳派
   ctx.textAlign = 'center';
   // 回合胜点（五局三胜：三个点；训练场没有回合，不画）
   for (let i = 0; i < (game.mode === 'train' ? 0 : WIN_ROUNDS); i++) {
@@ -699,7 +699,7 @@ function drawTrainPanel() {
    人机 / 联机 / 打桩：镜头放大到 ZOOM、跟着自己。两人放得下就照中间；放不下就让自己靠边、朝对手那边多留地方，
    对手在画面外时画面边上画个箭头指着他。镜头只是画面，不进战斗逻辑（联机两边各看各的） */
 // 2.0：画面比 2:1 宽 / 高时按实际画面宽 VW 算；画面高（地线往下挪了）再放大一点 zoomBoost。
-// 镜头上抬 camLift（2.0）：有人跳得高（千斤坠腾起来）时镜头往上挪一点，头不顶到血条；只是画面
+// 镜头上抬 camLift（2.0）：有人跳得高（坠山腾起来）时镜头往上挪一点，头不顶到血条；只是画面
 let camX = STAGE_W / 2, camZ = ZOOM, camLift = 0;
 const localIdx = () => game.mode === 'online' && typeof Net !== 'undefined' && Net.role === 'guest' ? 1 : 0;
 function camGoal(mode, a, b, local) {

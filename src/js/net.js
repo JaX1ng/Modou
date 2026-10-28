@@ -287,6 +287,7 @@ const Net = {
   rb: null, acc: 0, stall: 0, adv: 0, holdN: 0,
   hashes: new Map(), desync: false, hashChecks: 0,
   looks: { h: 'ink', g: 'indigo' },
+  styles: { h: 'trad', g: 'trad' },   // 2.9 两边的拳派：各选各的（每边自己说了算，开打的 start 里房主把两边的一起发过去，两边按同一份开打）
   // 房间码联机（1.9.0）
   room: null, code: '', peerId: null, linkRelay: null, reconnecting: false, reconnectUntil: 0, lostAt: 0, kind: '',
   busy: null, busyIds: new Set(), versionBad: false,
@@ -316,6 +317,7 @@ const Net = {
   pairStart(role) {
     this.role = role; this.versionBad = false; this.peerVersion = '';
     this.looks = { h: role === 'host' ? Looks.solo.me : null, g: null };
+    this.styles = { h: 'trad', g: 'trad' }; this.styles[role === 'host' ? 'h' : 'g'] = Styles.solo.me;
     if (role === 'host') Stage.online = Stage.pref;               // 2.0 场景：房主先用自己菜单里选的那张，大厅里还能换
   },
 
@@ -510,6 +512,7 @@ const Net = {
     }
     // 选色：房主先用自己存的颜色；加入方在 hello 里说想要什么，房主定了发回去
     if (this.role === 'host') { this.looks.g = settleLook(this.looks.h, m.want, this.looks.g); this.sendLooks(); this.sendStage(); }
+    this.sendStyle();
     this.onOpen();
   },
   badVersion(v) {
@@ -530,6 +533,13 @@ const Net = {
     this.sendCtl({ t: 'look', want: id }); return true;
   },
   sendLooks() { this.sendCtl({ t: 'looks', h: this.looks.h, g: this.looks.g }); },
+  // 2.9 拳派：自己点了就换，告诉对方
+  myKey() { return this.role === 'host' ? 'h' : 'g'; },
+  pickStyle(id) {
+    if (!styleOk(id)) return false;
+    this.styles[this.myKey()] = id; this.sendStyle(); this.onLooks(); return true;
+  },
+  sendStyle() { this.sendCtl({ t: 'style', id: this.styles[this.myKey()] }); },
   // 2.0 场景：房主说了算。房主在大厅里点一张，发给加入方；开打的 start 里也带着（只是画面，不影响同步）
   pickStage(id) {
     if (this.role !== 'host' || !STAGE_PICK.includes(id)) return false;
@@ -576,13 +586,14 @@ const Net = {
         if (!m.got) this.sendHello();
         this.linkUp(m);
         break;
-      case 'start': this.begin(m.delay, m.epoch, m.looks, m.stage); break;
+      case 'start': this.begin(m.delay, m.epoch, m.looks, m.stage, m.styles); break;
       case 'h': if (m.e === this.epoch) this.checkHash(m.f, m.h, 'r'); break;
       case 'bye': this.reconnecting = false; this.closed(true); break;
       // 选色：加入方要颜色 → 房主定了发回去；加入方收到房主定的结果
       case 'look': if (this.role === 'host') { this.looks.g = settleLook(this.looks.h, m.want, this.looks.g); this.sendLooks(); this.onLooks(); } break;
       case 'looks': if (this.role === 'guest' && lookOf(m.h) && lookOf(m.g)) { this.looks = { h: m.h, g: m.g }; this.onLooks(); } break;
       case 'stage': if (this.role === 'guest' && STAGE_PICK.includes(m.id)) { Stage.online = m.id; this.onLooks(); } break;
+      case 'style': if (styleOk(m.id)) { this.styles[this.myKey() === 'h' ? 'g' : 'h'] = m.id; this.onLooks(); } break;
     }
   },
   // 输入延迟：有回滚，只要单程延迟的一半左右（1~3 帧）；按键基本没有延迟感
@@ -592,12 +603,13 @@ const Net = {
     if (this.role !== 'host' || !this.open) return;
     const d = this.pickDelay(), e = (this.epoch + 1) & 255;
     this.looks.g = settleLook(this.looks.h, this.looks.g, null);
-    const looks = [this.looks.h, this.looks.g];
-    this.sendCtl({ t: 'start', delay: d, epoch: e, looks, stage: Stage.online });
-    this.begin(d, e, looks, Stage.online);
+    const looks = [this.looks.h, this.looks.g], styles = [this.styles.h, this.styles.g];
+    this.sendCtl({ t: 'start', delay: d, epoch: e, looks, stage: Stage.online, styles });
+    this.begin(d, e, looks, Stage.online, styles);
   },
-  begin(delay, epoch, looks, stage) {
+  begin(delay, epoch, looks, stage, styles) {
     if (looks && lookOf(looks[0]) && lookOf(looks[1])) this.looks = { h: looks[0], g: looks[1] };
+    if (styles && styleOk(styles[0]) && styleOk(styles[1])) this.styles = { h: styles[0], g: styles[1] };   // 房主发来的这一份（两边一样才同步）
     if (STAGE_PICK.includes(stage)) Stage.online = stage;
     this.delay = delay; this.epoch = epoch;
     this.hashes.clear(); this.acc = 0; this.desync = false; this.hashChecks = 0; this.stall = 0; this.adv = 0; this.holdN = 0;

@@ -1,8 +1,8 @@
 'use strict';
-/* 平衡报告（1.8.0；1.9.0 加了千斤坠、拳迎千斤坠 / 腿顶飞踢）：双击 balance.html 跑，大约三四分钟（2.6 起一帧四步）。不进游戏，只是开发时查平衡用。
+/* 平衡报告（1.8.0；1.9.0 加了坠山、拳迎坠山 / 腿顶飞踢）：双击 balance.html 跑，大约三四分钟（2.6 起一帧四步）。不进游戏，只是开发时查平衡用。
    一、中立局「同时下决定」的收益矩阵 → 求均衡混合策略（博弈论里的纳什均衡，用遗憾匹配迭代）。
       每个选项 = 开局前 45 帧照计划按（出什么招 / 挡 / 跳 / 冲刺 / 跑过去…）；之后双方都按「好玩家」反应：
-      打中就接连招、挡住 / 卸力后够得着就惩罚、踩腿 / 截拳这类反制有就用；看招再挡的人反应 REACT 帧。
+      打中就接连招、挡住 / 卸力后够得着就惩罚、踩腿 / 截击这类反制有就用；看招再挡的人反应 REACT 帧。
       收益 = 打掉的血 - 掉的血 + 击倒 ±KD。
       看两样：均衡里每个选项占多少（某一项长期占一大半 = 太强）；「对随便出的对手平均赚多少」（越高越容易被滥用）。
    二、电脑（困难）对电脑（困难）打 40 回合，数每招用了几次、谁打出的击倒最多。
@@ -43,7 +43,7 @@ const OPTIONS = {
     if (me.state === 'air' && !me.airUsed && !st.fired && Math.abs(op.x - me.x) <= MOVES.airHeavy.reach + 6 && me.vz < 3) { st.fired = 1; return TAP('heavy'); }
     return 0;
   }, route: [] },
-  // 1.9.0 千斤坠：跳过去，离对手 50~150 时出；踩中落地接二起脚
+  // 1.9.0 坠山：跳过去，离对手 50~150 时出；踩中落地接二起脚
   jumpDive: { plan: (i, me, op, st) => {
     if (i === 0) return TAP('up') | tw(me, op);
     if (i < 4) return tw(me, op);
@@ -63,7 +63,7 @@ const OPTIONS = {
   reactBlock: { plan: (i, me, op, st) => reactDef(me, op, st, false), route: [], gc: true, react: true },
   // 看招再挡 + 对空：对方跳过来就托天掌
   reactAA: { plan: (i, me, op, st) => reactDef(me, op, st, true), route: [], gc: true, react: true },
-  // 1.9.0 看招再挡 + 拳迎千斤坠：看见千斤坠就站着等，进了拳的射程出短拳（倒栽葱）；对方跳过来出飞踢就地上出腿顶回去
+  // 1.9.0 看招再挡 + 拳迎坠山：看见坠山就站着等，进了拳的射程出短拳（倒栽葱）；对方跳过来出飞踢就地上出腿顶回去
   reactPunch: { plan: (i, me, op, st) => reactDef(me, op, st, 'punch'), route: [], gc: true, react: true },
   // 2.0 闪身：一上来就按着挡朝对手双击，从他身边钻过去（躲过拳的话接短拳连招）
   slip: { plan: (i, me, op) => i < 3 ? BLOCK_B | (i === 1 ? 0 : tw(me, op)) : 0, route: [] },
@@ -101,7 +101,7 @@ function reactDef(me, op, st, aa) {
 function punisher(me, op, blockedByMe) {
   const m = op.move;
   let left;
-  if (op.state === 'land' && op.landT > 4) left = op.landT - op.t;   // 1.9.0：空中招被挡 / 打空的落地硬直也打（以前漏了，千斤坠被挡算成不亏）
+  if (op.state === 'land' && op.landT > 4) left = op.landT - op.t;   // 1.9.0：空中招被挡 / 打空的落地硬直也打（以前漏了，坠山被挡算成不亏）
   else {
     if (op.state !== 'attack' || !m || m.def.script) return null;
     left = m.S + m.def.A + m.def.R + (m.pen || 0) - m.t;     // 对方还要多少帧才收完（2.1 含被挡住多出来的收招）
@@ -126,7 +126,7 @@ function makeBot(opt, side) {
     let v = 0;
     // 2.0 闪身的双击（按着挡：按 → 松 → 按），挡住的硬直里也要按完
     if (st.slipSeq && st.slipSeq.length) { const k = st.slipSeq.shift(); return BLOCK_B | (k ? tw(me, op) : 0); }
-    // 挡住踩腿 / 截拳（1.8.0）
+    // 挡住踩腿 / 截击（1.8.0）
     if (me.state === 'blockstun') {
       if (HAS('stomp') && me.stompReady && me.stompReady()) return DOWN_B | TAP('kick');
       if (HAS('jieQuan') && O.gc && me.qi >= GC_COST && op.move && op.state === 'attack') return TAP('heavy');
@@ -137,7 +137,7 @@ function makeBot(opt, side) {
     if (st.elbowFollow === 1 && me.actionable() && op.stagger) { st.elbowFollow = 2; st.route = ['jab', 'heavy']; return TAP('jab') | tw(me, op); }
     // 卸力成功：反打
     if (me.state === 'parry') { st.route = ['kick']; return TAP('heavy'); }
-    // 千斤坠踩中：落地接二起脚（1.9.0）
+    // 坠山踩中：落地接二起脚（1.9.0）
     if (me.move && me.move.name === 'dive' && me.move.hit) st.diveFollow = 1;
     if (st.diveFollow && me.actionable()) { st.diveFollow = 0; return TAP('kick') | tw(me, op); }
     // 打中了：接连招
@@ -319,8 +319,8 @@ window.runOki = runOki; window.simulateOki = simulateOki;
 // 报告里选项的中文名
 const OPT_NAME = { jab: '短拳', heavy: '重拳', kick: '腿踢', sweep: '扫堂腿', lowJab: '下盘拳', palm: '托天掌', grab: '擒拿', lowGrab: '抄腿',
   block0: '站挡', block7: '站挡·第7帧按（卸力）', block11: '站挡·第11帧按（卸力）', cblock0: '蹲挡', cblock8: '蹲挡·第8帧按（卸力）',
-  jumpKick: '跳起飞踢', jumpHeavy: '跳起泰山压顶', jumpDive: '跳起千斤坠', reactPunch: '看招再挡+拳迎千斤坠', dashJab: '冲刺短拳', dashHeavy: '冲刺重拳', backDash: '往后冲', wait: '不动',
-  runJab: '跑过去短拳', runGrab: '跑过去擒拿', runShoulder: '铁山靠', reactBlock: '看招再挡', reactAA: '看招再挡+对空',
+  jumpKick: '跳起飞踢', jumpHeavy: '跳起坠山击', jumpDive: '跳起坠山', reactPunch: '看招再挡+拳迎坠山', dashJab: '冲刺短拳', dashHeavy: '冲刺重拳', backDash: '往后冲', wait: '不动',
+  runJab: '跑过去短拳', runGrab: '跑过去擒拿', runShoulder: '沉肩靠', reactBlock: '看招再挡', reactAA: '看招再挡+对空',
   slip: '闪身', reactSlip: '看招：重拳闪身、别的挡', gwalkBack: '边挡边退',
   meatyJab: '压起身·短拳', meatyGrab: '压起身·擒拿', meatyHeavy: '压起身·重拳', guessRoll: '赌他往后滚·冲过去打', reactHit: '看清怎么起再打', waitBlock: '站着等',
   standBlock: '原地起·站挡', crouchBlock: '原地起·蹲挡', wakeJab: '原地起·出拳', rollTo: '往对手那边滚', rollAway: '往后滚' };

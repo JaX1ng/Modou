@@ -16,8 +16,8 @@ const PoseIcon = {
   F: null,
   fig() { return this.F || (this.F = new Fighter(0, { look: 'ink', x: 0, facing: 1 })); },
   // 一招在第 ph 阶段的样子（0 起手 → 1 出手 → 2 判定完 → 3 收完；script 动作的 ph 是整段进度 0~1）
-  poseAt(name, ph) {
-    const d = MOVES[name];
+  poseAt(name, ph, MV) {
+    const d = (MV || MOVES)[name];
     const t = d.script ? ph * d.R : ph <= 1 ? ph * d.S : ph <= 2 ? d.S + (ph - 1) * d.A : d.S + d.A + (ph - 2) * d.R;
     return copyPose(mk(), evalKeys(d.keys, t));
   },
@@ -26,21 +26,23 @@ const PoseIcon = {
     copyPose(F.disp, pose); F.alt = alt || 0; F.vz = 0; F.x = 0; F.facing = 1; F.state = 'idle'; F.J = null; F.ikS = null;
     F.fk(); return cloneJ(F.J);
   },
-  // spec：{ move: 招名, ph: 阶段（默认出手那一下）, alt: 离地高 } 或 { pose: POSE 里的名字 } 或 { run: true }
+  // spec：{ move: 招名, ph: 阶段（默认出手那一下）, alt: 离地高 } 或 { pose: POSE 里的名字 } 或 { run: true }；
+  // 2.9 style：哪一派（'ying' = 迎春拳的招、迎春拳的架势），不写是传统格斗
   build(s) {
     let pose, trail = null;
+    const ST = s.style && STYLES[s.style], MV = ST ? ST.moves : MOVES, PS = ST && ST.poses || POSE;
     if (s.move) {
-      const d = MOVES[s.move], ph = s.ph != null ? s.ph : d.script ? 0.5 : 1.35;
-      pose = this.poseAt(s.move, ph);
+      const d = MV[s.move], ph = s.ph != null ? s.ph : d.script ? 0.5 : 1.35;
+      pose = this.poseAt(s.move, ph, MV);
       if (d.limb && !d.script && s.trail) {                 // 拳脚走过的那一道（默认不画：小图里看着像拿了根棍子）
         trail = [];
-        for (const p of [0.62, 0.74, 0.84, 0.92, 1, 1.1, 1.2]) if (p < ph) trail.push(this.joints(this.poseAt(s.move, p), s.alt)[d.limb]);   // 只画最后那一截（看得出往哪打，不像拿着根棍子）
+        for (const p of [0.62, 0.74, 0.84, 0.92, 1, 1.1, 1.2]) if (p < ph) trail.push(this.joints(this.poseAt(s.move, p, MV), s.alt)[d.limb]);   // 只画最后那一截（看得出往哪打，不像拿着根棍子）
       }
     } else if (s.run) { const F = this.fig(); F.walkPhase = 0.32; F.runT = 20; pose = F.runPose(mk()); }
-    else pose = copyPose(mk(), POSE[s.pose] || POSE.stance);
+    else pose = copyPose(mk(), PS[s.pose] || POSE[s.pose] || POSE.stance);
     if (s.rot) pose.rot = s.rot;
     const J = this.joints(pose, s.alt);
-    if (trail) trail.push(J[MOVES[s.move].limb]);
+    if (trail) trail.push(J[MV[s.move].limb]);
     return { J, trail };
   },
   // 画到一块新画布上（w × h 是 CSS 像素）。flip：面朝左；col：身体色
@@ -124,16 +126,16 @@ const G_COMBOS = [
     { keys: ['jab', 'jab', 'jab'], name: '摆拳', moves: ['jab2', 'jab3'] },
     { keys: ['jab'], times: '×4~5', name: '连珠快拳', moves: ['rushL', 'rushR'], tag: '一串快拳' },
     { keys: ['jab'], times: '×6', name: '寸劲', moves: ['rushEnd'], tag: '收势，把人打远' },
-    { keys: ['jab', 'heavy'], name: '崩拳', moves: ['jab', 'beng'], tag: '冲击波' },
+    { keys: ['jab', 'heavy'], name: '进步冲拳', moves: ['jab', 'beng'], tag: '冲击波' },
     { keys: ['jab', 'jab', 'heavy'], name: '冲天炮', moves: ['jab2', 'upper'], tag: '把人打上天', ko: true },
     { keys: ['jab', 'kick'], name: '鞭腿', moves: ['jab', 'whip'] },
     { keys: ['jab', 'jab', 'kick'], name: '转身蹬', moves: ['jab2', 'backKick'], tag: '把人蹬远' },
   ] },
   { group: '重起手', note: '重拳打中了接，被挡住接也照样出', list: [
     { keys: ['heavy', 'jab'], name: '顶肘', moves: ['heavy', 'elbow'], tag: '贴身' },
-    { keys: ['heavy', 'heavy'], name: '劈挂掌', moves: ['heavy', 'chop'], tag: '上段，要站着挡' },
+    { keys: ['heavy', 'heavy'], name: '劈山掌', moves: ['heavy', 'chop'], tag: '上段，要站着挡' },
     { keys: ['heavy', 'kick'], name: '旋风腿', moves: ['heavy', 'whirl'], tag: '转身一腿扫倒', ko: true },
-    { keys: ['heavy', 'd:kick'], name: '重拳接扫堂腿', moves: ['heavy', 'sweep'], tag: '下段 —— 和劈挂掌二选一，让他猜' },
+    { keys: ['heavy', 'd:kick'], name: '重拳接扫堂腿', moves: ['heavy', 'sweep'], tag: '下段 —— 和劈山掌二选一，让他猜' },
   ] },
   { group: '腿起手', list: [
     { keys: ['kick', 'jab'], name: '落步冲拳', moves: ['kick', 'stepPunch'] },
@@ -147,11 +149,11 @@ const G_COMBOS = [
 const G_TECH = [
   { group: '防守', list: [
     { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害；被挡的那个「势破」，下一记短拳慢 ${SLOW_JAB_ADD} 帧。`,
-      more: ['下段（下盘拳、扫堂腿）要按住 [蹲] 挡', '上段（劈挂掌、空中招）要站着挡', '背对着挡不住'] },
+      more: ['下段（下盘拳、扫堂腿）要按住 [蹲] 挡', '上段（劈山掌、空中招）要站着挡', '背对着挡不住'] },
     { name: '卸力', how: '快挨打的一瞬间刚按下 [挡]', icon: { pose: 'parry' }, desc: `按下挡的 ${PARRY_WIN} 帧内被打中：不掉血，对面失衡；接着打中 ×${PARRY_MUL}。`,
       more: [`两次按挡要隔 ${PARRY_LOCK} 帧以上才有卸力，乱按没用`, '卸力后按 [拿] = 借力摔'] },
     { name: '推挡', how: '挡住以后按 [拳]', icon: { move: 'shove' }, desc: '把对面推开，打断他接下来的招（不掉他的血）。' },
-    { name: '截拳', how: '挡住以后按 [重]', icon: { move: 'jieQuan' }, desc: `花 ${GC_COST} 气从格挡里打出一拳，出手前打不中你。` },
+    { name: '截击', how: '挡住以后按 [重]', icon: { move: 'jieQuan' }, desc: `花 ${GC_COST} 气从格挡里打出一拳，出手前打不中你。` },
     { name: '踩腿', how: '蹲挡住扫堂腿，马上 [蹲] + [踢]', icon: { move: 'stomp' }, desc: `一脚踩倒，算挡后反击 ×${PUNISH_KD_MUL}。` },
     { name: '挣脱', how: '被抓住马上按 [拿]', icon: { pose: 'pulled' }, desc: '擒住刚开始那一下按就挣开。接腿摔、抄腿摔、借力摔挣不脱。' },
   ] },
@@ -175,7 +177,7 @@ const G_TECH = [
     { name: '压起身', how: '他站起来那一下按 [拳]', icon: { move: 'jab' }, desc: '短拳算好时机打在起身硬直里必中；重拳、腿太慢，要提前出。' },
   ] },
   { group: '空中交手', list: [
-    { name: '倒栽葱', how: '空中出招被克它的招打中', icon: { pose: 'fall', alt: 30 }, desc: `摔下来倒地更久。托天掌打空中招、站着的拳迎千斤坠（×${DIVE_PUNCH_MUL}）都是。` },
+    { name: '倒栽葱', how: '空中出招被克它的招打中', icon: { pose: 'fall', alt: 30 }, desc: `摔下来倒地更久。托天掌打空中招、站着的拳迎坠山（×${DIVE_PUNCH_MUL}）都是。` },
     { name: '翻滚回去', how: '空中的腿撞上地上的腿', icon: { pose: 'tuck', alt: 40 }, desc: '空中那个只吃一半伤害，高高地往后翻出五六个身位；落地时两边一起能动，重新来过。' },
   ] },
 ];
@@ -189,19 +191,19 @@ const G_MULS = [
   ['卸力后打中', '卸掉以后趁他失衡打', '×' + PARRY_MUL],
   ['破绽', '击倒招打空了，打它的收招', '×' + WHIFF_KD_MUL],
   ['截住闪身', '他钻过来时被短拳、腿、下段、擒拿打中', '×' + SLIP_CAUGHT_MUL],
-  ['拳迎千斤坠', '站着的拳迎面打中千斤坠（倒栽葱）', '×' + DIVE_PUNCH_MUL],
-  ['踩蹲 / 踩断对空', '千斤坠踩中蹲着的 / 正在出托天掌的', `×${DIVE_CROUCH_MUL} / ×${DIVE_AA_MUL}`],
+  ['拳迎坠山', '站着的拳迎面打中坠山（倒栽葱）', '×' + DIVE_PUNCH_MUL],
+  ['踩蹲 / 踩断对空', '坠山踩中蹲着的 / 正在出托天掌的', `×${DIVE_CROUCH_MUL} / ×${DIVE_AA_MUL}`],
   ['格挡', '挡住了只吃', Math.round(BLOCK_KEEP * 10) + ' 成'],
 ];
 const G_RULES = [
   ['胜负', `血量 ${MAX_HP}，五局三胜。人机、联机每回合 ${ROUND_FRAMES / 3600} 分钟；双人对战、训练场不限时。`],
   ['交手', '两边同时打中：先比主系 —— 克制的一方「克」，单方面打中；主系一样再比起手 —— 克制的一方「压」，被压的吃全额、被打退，压人的只吃三成还能接着打；都一样 = 拼招，各掉五成、互相震退。'],
-  ['起手和主系', '单招两者一样；连招的起手是第一下、主系是最后一下。比如 拳→重 的崩拳 = 起手拳、主系重。'],
-  ['高低', '中段站着、蹲着都能挡；下段（下盘拳、扫堂腿）要蹲着挡；上段（劈挂掌、空中招）要站着挡。'],
+  ['起手和主系', '单招两者一样；连招的起手是第一下、主系是最后一下。比如 拳→重 的进步冲拳 = 起手拳、主系重。'],
+  ['高低', '中段站着、蹲着都能挡；下段（下盘拳、扫堂腿）要蹲着挡；上段（劈山掌、空中招）要站着挡。'],
   ['连击衰减', '同一套里每多挨一下，硬直更短、被推得更远、伤害更低 —— 连四五下就断。'],
   ['势破', `被挡住的那个人，下一记短拳前摇 +${SLOW_JAB_ADD} 帧（头上一个「势」字）。`],
   ['朝向', '按着方向不出招就是跑，马上朝那边跑（没有后退）。不按左右、格挡时自动面向对手；出招时对手在近身范围内一律朝他打，乱按方向也不打空。'],
-  ['气', `挨打、格挡、打中都会涨，挨打涨得最多。半格（${QI_BURST}）能爆气，满格（${QI_MAX}）能泼墨，截拳花 ${GC_COST}。`],
+  ['气', `挨打、格挡、打中都会涨，挨打涨得最多。半格（${QI_BURST}）能爆气，满格（${QI_MAX}）能泼墨，截击花 ${GC_COST}。`],
   ['擒拿', '挡不住，但站着的擒拿抓不到蹲着的（要用抄腿，抄腿又抓不到站着的）；对面出腿时擒拿 = 接腿摔。'],
   ['跳', `跳起出招 ×${AIR_BONUS}，每跳一招；落地前来不及出完，就变成落地后马上出。蹲下能躲飞踢。`],
 ];
@@ -213,7 +215,48 @@ const G_TIPS = [
   '挡住他一下以后，他还在收招 —— 马上 拳拳重 打回去（挡后反击）。',
   '被打倒了，起身时按住方向滚开，别在原地站起来挨打。',
   '训练场里的「破招练习」能一招一招练怎么破对面。',
+  '菜单「拳派」能换成迎春拳（快、小、连贯，靠连和反打）—— 教程最后一页「迎春拳」单独讲。',
 ];
+
+/* ---------- 2.9 迎春拳（菜单「拳派」里换）：一页单独讲 —— 五个键、连招、顺和反打、和传统格斗打 ---------- */
+const YG_KEYS = [
+  { name: '冲拳 · 立掌', how: '[拳]，一直按', icon: { style: 'ying', move: 'yJabR' }, desc: '左右手交替的冲拳、立掌，拳掌结合。连得越多越「顺」：出手越快、越疼，第 8 下寸拳打倒。[蹲] + [拳] = 下冲拳（下段）。' },
+  { name: '拍手 · 盘手 · 耕手', how: '点 [重] · 按住 [重] · [蹲] + [重]', icon: { style: 'ying', move: 'yPat', ph: 1.5 }, desc: '点一下 = 拍手：拍开打过来的拳、掌（空中的拳脚也拍得开），他失衡、你先打。按住 = 盘手：一直盘，打过来的拳脚黏住挡下，马上能打回去，按着方向还能往前压。蹲着按 = 耕手：耕开地上的腿和下段。连招里的重 = 摊打 → 拍打 → 蝴蝶掌。' },
+  { name: '正撑脚 · 截膝', how: '[踢] · [蹲] + [踢]', icon: { style: 'ying', move: 'yKick' }, desc: '近、快、伤害小，踢法多：拳后接 = 侧撑，踢后接 = 连环撑 → 踩膝，摊打、拍打后接 = 转马撑。截膝是下段，专截地上的腿（交手时克腿），踢中他失衡。' },
+  { name: '拉手 · 截腿', how: '[拿] · [蹲] + [拿]', icon: { style: 'ying', move: 'grab', ph: 1.6 }, desc: '正好在他出拳、出掌的时候伸手 = 拉住他的手，他往你怀里扑，接一整套；也能擒住站着的人。拉不住腿。蹲着按 = 截腿：接住地上的腿（扫堂腿也接），抓蹲着的。' },
+  { name: '立掌挡', how: '按住 [挡]', icon: { style: 'ying', pose: 'block' }, desc: '两只掌竖起来挡。卸力和传统格斗一样，卸开以后接迎春的一整套。挡住的硬直里按 [拳] = 截打，按 [重] = 拍手（不要气）。' },
+  { name: '连环寸拳', how: '气满 [重] + [踢]', icon: { style: 'ying', move: 'super' }, desc: '第一拳打中就是一串连环寸拳把人钉住，最后一记寸劲打飞（霸体也挡不住）。第一拳被挡就停了，收招很长。' },
+];
+const YG_COMBOS = [
+  { keys: ['jab'], times: '×8', name: '连环冲拳', moves: ['yJabR', 'yPalmF', 'yInch'], tag: '一直按拳，越打越顺，第 8 下寸拳打倒', ko: true },
+  { keys: ['jab', 'heavy', 'heavy', 'heavy'], name: '摊打 · 拍打 · 蝴蝶掌', moves: ['yTan', 'yPak', 'yButterfly'], tag: '一手化一手打，左右交叉的拳加掌', ko: true },
+  { keys: ['jab', 'kick', 'kick', 'kick'], name: '侧撑 · 连环撑 · 踩膝', moves: ['ySideKick', 'yKick2', 'yStompKnee'], tag: '拳接腿、腿接腿', ko: true },
+  { keys: ['kick', 'kick', 'kick'], name: '正撑脚 · 连环撑 · 踩膝', moves: ['yKick', 'yKick2', 'yStompKnee'], ko: true },
+  { keys: ['jab', 'heavy', 'kick'], name: '摊打接转马撑', moves: ['yJab', 'yTan', 'yTurnKick'], tag: '转马借劲一腿撑倒', ko: true },
+  { keys: ['d:kick', 'jab', 'jab'], name: '截膝接冲拳', moves: ['yLowKick', 'yJabF', 'yJabR'], tag: '下段起手，踢中他失衡，接着连' },
+];
+const YG_RULES = [
+  ['顺', `拳、掌、摊打、腿每打中一下顺一级（最多 ${FLOW_MAX} 级）：下一招出手快一点、伤害 +${Math.round(FLOW_DMG * 100)}%、他的硬直更长。打空、被挡、挨打、停手就断了。`],
+  ['刚起手有空', '刚起手的第 2、3 下之间有一点空：他一直按着挡就挡得住。这时候换拉手（抓挡着的人）、下冲拳（打站着挡的人），让他猜。'],
+  ['反打', `拍开、耕开、拉住、卸开、盘手黏住以后（还有压起身）：第一下就顺 ${FLOW_COUNTER} 级，后面跑不掉 —— 一整套打满。`],
+  ['一串最多 8 下', '第 8 下按什么都是那一键的收势：寸拳、蝴蝶掌、踩膝。'],
+  ['拍手、耕手要卡时机', '判定只有一小段：他打到的那一下正好落在里面才化得开。拍空、耕空了收招长，他打得到你。'],
+  ['盘手', '挡得住中段、上段的拳脚（只吃三成），挡不住下段和擒拿。'],
+];
+const YG_VS = [
+  ['迎春拳打传统格斗', '他的重拳、腿慢：看见重拳就拍手，看见起腿就耕手、截膝，或者一拳打在他单脚站着的时候。他贴身连拳就盘手，黏住了马上打回去。他老举着手挡，就拉手抓他。'],
+  ['传统格斗打迎春拳', '别在他面前乱出重拳、腿（会被拍开、耕开）。他拍手、盘手的时候擒拿抓他、打下段；耕手蹲着，用中段的拳或者抄腿。拍空、耕空了打他收招。被他连环冲拳打中马上按住挡，第 3 下就挡得住了。'],
+];
+const YG_FRAMES = ['yJab', 'yJabR', 'yPalmF', 'yInch', 'yLowJab', 'yPat', 'yRoll', 'yGaun', 'yTan', 'yPak', 'yButterfly', 'yKick', 'yLowKick', 'ySideKick', 'yKick2', 'yStompKnee', 'yTurnKick',
+  'grab', 'lowGrab', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'stomp', 'slipElbow', 'super'];
+function yFrameTableHtml() {
+  const rows = YG_FRAMES.map(k => {
+    const d = YMOVES[k], guard = d.kind === 'guard';
+    const dmg = guard ? '—' : d.kind === 'grab' ? '摔' : k === 'super' ? `${d.dmg} + 连环` : Math.round(d.dmg * (d.air ? AIR_BONUS : 1));
+    return `<tr><td>${d.label}</td><td>${guard ? '化' : TIER_NAME[d.lead] || '—'}</td><td>${guard ? '化' : TIER_NAME[d.tier] || '—'}</td><td>${HN[d.height]}</td><td>${fmtF(d.S)}</td><td>${d.dive ? '到地' : d.loop ? '按住一直盘' : fmtF(d.A)}</td><td>${fmtF(d.R)}</td><td>${dmg}</td><td>${guard ? '—' : d.reach + (d.lunge ? Math.max(0, d.lunge[2]) : 0)}</td></tr>`;
+  }).join('');
+  return `<table class="frames"><thead><tr><th>招式</th><th>起手</th><th>主系</th><th>段</th><th>前摇</th><th>判定</th><th>后摇</th><th>伤害</th><th>射程</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
 
 /* ---------- 克制总表、破解表、帧数表（都读 MOVES，改了数值自己变） ---------- */
 function relTableHtml() {
@@ -257,7 +300,7 @@ const keyCaps = (set, acts) => acts[0] === 'dash' ? dashCaps(set) : acts.map(a =
 /* ============================================================
    网页版：游戏下面的「教程」，分页
    ============================================================ */
-const GUIDE_TABS = [['start', '上手'], ['moves', '招式'], ['combos', '连招'], ['tech', '攻防'], ['rules', '规则'], ['charts', '查表']];
+const GUIDE_TABS = [['start', '上手'], ['moves', '招式'], ['combos', '连招'], ['tech', '攻防'], ['rules', '规则'], ['charts', '查表'], ['ying', '迎春拳']];
 const Guide = {
   el: null, tab: 'start',
   init() {
@@ -345,6 +388,18 @@ const Guide = {
         <p class="g-note">几种加成可以叠在一起（比如冲势 + 破招）。</p></article>
       <article class="g-card"><h3>规矩</h3><dl class="g-dl">${G_RULES.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></article></div>`;
   },
+  /* 2.9 迎春拳：五个键、连招、顺和反打、和传统格斗打、帧数表 */
+  p_ying() {
+    return `<p class="g-lead">迎春拳：快、小、连贯 —— 一下一下都轻，靠连；化开对面的招以后一整套打满。菜单「拳派」里换。按键：<span class="g-keys">${['拳', '重', '踢', '拿', '挡', '蹲'].map(c => gKbd(c)).join(' ')}</span></p>
+      <section class="g-sec"><h3>五个键</h3><div class="g-grid tech">${YG_KEYS.map(t =>
+        `<article class="g-tech">${iconSlot(t.icon, 84, 90)}<div class="gt-body"><h4>${t.name}</h4><div class="gt-how">${gText(t.how)}</div><p>${gText(t.desc)}</p></div></article>`).join('')}</div></section>
+      <section class="g-sec"><h3>连招<small>打中以后马上按下一键；一串最多 8 下</small></h3><div class="g-grid combos">${YG_COMBOS.map(c =>
+        `<article class="g-combo${c.ko ? ' ko' : ''}"><div class="gc-strip">${c.moves.map(m => iconSlot({ style: 'ying', move: m }, 86, 92)).join('<i class="gc-arrow">›</i>')}</div>
+          <div class="gc-body"><div class="gc-keys">${comboKeys(c.keys, c.times)}</div><h4>${c.name}</h4>${c.tag ? `<p>${c.tag}</p>` : ''}</div></article>`).join('')}</div></section>
+      <div class="g-rules"><article class="g-card"><h3>顺和反打</h3><dl class="g-dl">${YG_RULES.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></article>
+        <article class="g-card"><h3>两派对打</h3><dl class="g-dl">${YG_VS.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl></article></div>
+      <section class="g-sec"><h3>迎春拳帧数表</h3><div class="scrollx">${yFrameTableHtml()}</div><p class="g-note">${FRAME_NOTE}「化」= 拍手、盘手、耕手这些化开对面招的手法，不打人。</p></section>`;
+  },
   /* 查表：组合克制总表、破解表、帧数表 */
   p_charts() {
     return `<section class="g-sec"><h3>组合克制总表<small>行是你的招，列是对手同时出的招；名字是「起手 + 主系」</small></h3><div class="scrollx">${relTableHtml()}</div><p class="g-note">${relLegend}</p></section>
@@ -359,7 +414,7 @@ const Guide = {
    ============================================================ */
 const MANUAL_CH = [
   ['start', '一', '上手'], ['moves', '二', '招式'], ['combos', '三', '连招'], ['tech', '四', '攻防技巧'],
-  ['rules', '五', '规则与加成'], ['rel', '六', '克制总表'], ['counters', '七', '破解表'], ['frames', '八', '帧数表'],
+  ['rules', '五', '规则与加成'], ['rel', '六', '克制总表'], ['counters', '七', '破解表'], ['frames', '八', '帧数表'], ['ying', '九', '迎春拳'],
 ];
 const Manual = {
   el: null, ch: 'start', back: null,
@@ -446,7 +501,17 @@ const Manual = {
     return `<h3>伤害加成</h3><table class="mn-t"><thead><tr><th>名字</th><th>什么时候</th><th class="num">倍率</th></tr></thead><tbody>${G_MULS.map(([a, b, c]) => `<tr><th>${a}</th><td>${b}</td><td class="num">${c}</td></tr>`).join('')}</tbody></table>
       <p class="mn-dim">几种加成可以叠在一起。</p><h3>规矩</h3><table class="mn-t"><tbody>${G_RULES.map(([a, b]) => `<tr><th>${a}</th><td>${b}</td></tr>`).join('')}</tbody></table>`;
   },
-  c_rel() { return `<p class="mn-p">两边同时出招时谁占便宜。行是你的招，列是对手的招；名字是「起手 + 主系」，比如「拳重」= 拳起手、重收尾（崩拳）。鼠标停在名字上能看到包含哪些招。</p><div class="scrollx">${relTableHtml()}</div><p class="mn-dim">${relLegend}</p>`; },
+  c_rel() { return `<p class="mn-p">两边同时出招时谁占便宜。行是你的招，列是对手的招；名字是「起手 + 主系」，比如「拳重」= 拳起手、重收尾（进步冲拳）。鼠标停在名字上能看到包含哪些招。</p><div class="scrollx">${relTableHtml()}</div><p class="mn-dim">${relLegend}</p>`; },
   c_counters() { return `<p class="mn-p">每一种招、每一种技术都有破法。训练场的「破招练习」里能一条一条对着木桩练（木桩照着出那一招，有说明和演示）。</p><table class="mn-t counters"><thead><tr><th>对手的招</th><th>怎么破</th></tr></thead><tbody>${COUNTERS.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</tbody></table>`; },
   c_frames() { return `<div class="scrollx">${frameTableHtml()}</div><p class="mn-dim">${FRAME_NOTE}</p>`; },
+  c_ying() {
+    return `<p class="mn-p">迎春拳：快、小、连贯 —— 一下一下都轻，靠连；化开对面的招以后一整套打满。菜单「拳派」里换（双人对战开打前、联机大厅里各选各的）。</p>
+      <h3>五个键</h3><table class="mn-t tech"><colgroup><col style="width:76px"><col style="width:150px"><col style="width:260px"><col></colgroup><tbody>${YG_KEYS.map(t =>
+        `<tr><td class="ic">${iconSlot(t.icon, 56, 60)}</td><th>${t.name}</th><td class="how">${gText(t.how)}</td><td>${gText(t.desc)}</td></tr>`).join('')}</tbody></table>
+      <h3>连招</h3><table class="mn-t combos"><thead><tr><th>按法</th><th>连招</th><th>特点</th><th>样子</th></tr></thead><tbody>${YG_COMBOS.map(c =>
+        `<tr><td class="ck">${comboKeys(c.keys, c.times)}</td><th>${c.name}${c.ko ? '<small>击倒</small>' : ''}</th><td>${c.tag || ''}</td><td class="strip">${c.moves.map(m => iconSlot({ style: 'ying', move: m }, 58, 62)).join('')}</td></tr>`).join('')}</tbody></table>
+      <h3>顺和反打</h3><table class="mn-t"><tbody>${YG_RULES.map(([a, b]) => `<tr><th>${a}</th><td>${b}</td></tr>`).join('')}</tbody></table>
+      <h3>两派对打</h3><table class="mn-t"><tbody>${YG_VS.map(([a, b]) => `<tr><th>${a}</th><td>${b}</td></tr>`).join('')}</tbody></table>
+      <h3>帧数表</h3><div class="scrollx">${yFrameTableHtml()}</div><p class="mn-dim">${FRAME_NOTE}「化」= 拍手、盘手、耕手这些化开对面招的手法，不打人。</p>`;
+  },
 };

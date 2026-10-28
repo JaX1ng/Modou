@@ -18,7 +18,9 @@ const BENCH_HIT_MOVES = new Set(BENCH_GROUPS.slice(0, 4).flatMap(g => g[1]).conc
 // 打中那一刻拳脚离对方身子：最多扎进去 12、最多还差 1 像素，看着就是打在身上（不是隔空打中，也不是整只拳头没进身子里）
 const CONTACT_OK = [-12, 1];
 // 最远射程（射程 + 前冲）。量的时候少放半个像素：前冲一帧一帧加上去有零点几的浮点误差，正好卡在边上会差 1e-13 打不中
-const effReachOf = n => MOVES[n].reach + (MOVES[n].lunge && !MOVES[n].script ? Math.max(0, MOVES[n].lunge[2]) : 0) - 0.5;
+// 2.9 MV：哪一派的招式表（不写 = 传统格斗；迎春拳传 YMOVES，或者 o.style = 'ying'）
+const benchMoves = o => (o && o.style && STYLES[o.style] ? STYLES[o.style].moves : MOVES);
+const effReachOf = (n, MV) => { const d = (MV || MOVES)[n]; return d.reach + (d.lunge && !d.script ? Math.max(0, d.lunge[2]) : 0) - 0.5; };
 const benchKind = d => ['jab', 'heavy', 'kick', 'grab'].includes(d.kind) ? d.kind : null;
 // 第 t 帧是这一招的第几「阶段」（0 起手 → 1 出手 → 2 判定完 → 3 收完；script 动作 0~1）
 function phaseOf(d, t) {
@@ -38,8 +40,10 @@ function benchRecord(frames) {
   });
 }
 // 摆好场子：玩家一在 700 面朝右，玩家二离他 dist（def：stand 站着 / crouch 蹲着 / block 站挡 / none 不要对手，放到很远）
-function benchSetup(dist, def, col) {
+// 2.9 style：玩家一是哪一派（不写 = 传统格斗）；opStyle：玩家二
+function benchSetup(dist, def, col, style, opStyle) {
   startMatch('pvp'); game.phase = 'fight'; game.paused = true; game.brains = [null, null];
+  F1.style = style || STYLE_DEFAULT; F2.style = opStyle || STYLE_DEFAULT;
   if (col) { F1.setLook(col); F2.setLook(col === 'indigo' ? 'vermil' : 'indigo'); }
   const far = def === 'none';
   F1.x = far ? 500 : 700; F2.x = far ? 1500 : 700 + dist; F1.facing = 1; F2.facing = -1;
@@ -63,7 +67,7 @@ const BENCH_SEQ = {
   slipElbow: { dist: 80, min: 30, op: i => i === 3 ? TAP('heavy') : 0,
     me: (i, F) => F.move && F.move.name === 'slipElbow' ? 0 : i >= 13 && i <= 15 ? HOLD('block') | (i === 14 ? 0 : HOLD('right')) : HOLD('block') },
 };
-// 跳起来出的招：真跳 —— 按住前跳起来，快到最高点按招（千斤坠按住蹲再踢）。最远多远起跳还打得中，现找一遍（记下来）
+// 跳起来出的招：真跳 —— 按住前跳起来，快到最高点按招（坠山按住蹲再踢）。最远多远起跳还打得中，现找一遍（记下来）
 const BENCH_AIR = { airJab: 'jab', airHeavy: 'heavy', airKick: 'kick', dive: 'kick' };
 const airSeq = name => ({ air: true, me: (i, F) => {
   const k = BENCH_AIR[name], down = name === 'dive';
@@ -72,17 +76,18 @@ const airSeq = name => ({ air: true, me: (i, F) => {
   return F.state === 'jumpsquat' || F.airborne ? HOLD('right') | (down && F.move && F.move.name === 'dive' ? HOLD('down') : 0) : 0;
 } });
 const benchAirDist = {};
-function airDistOf(name) {
-  if (benchAirDist[name]) return benchAirDist[name];
-  const d = MOVES[name]; let best = d.reach + 60;
+function airDistOf(name, style) {
+  const key = (style || STYLE_DEFAULT) + ':' + name;
+  if (benchAirDist[key]) return benchAirDist[key];
+  const d = benchMoves({ style })[name]; let best = d.reach + 60;
   for (let x = d.reach + 240; x >= d.reach + 20; x -= 6) {
-    const fr = runSeq(name, airSeq(name), x, 'stand');
+    const fr = runSeq(name, airSeq(name), x, 'stand', null, style);
     if (fr.some(f => f.mv && f.mv.name === name && f.mv.hit)) { best = x; break; }
   }
-  return (benchAirDist[name] = best);
+  return (benchAirDist[key] = best);
 }
-function runSeq(name, seq, dist, def, col) {
-  const dIn = benchSetup(dist, def, col), frames = [];
+function runSeq(name, seq, dist, def, col, style, opStyle) {
+  const dIn = benchSetup(dist, def, col, style, opStyle), frames = [];
   benchRecord(frames);
   let idle = 0;
   for (let i = 0; i < 220; i++) {
@@ -97,18 +102,18 @@ function runSeq(name, seq, dist, def, col) {
 // 打一招，返回每一帧。o.dist：离多远（不写 = 最远射程；跳起来的招 = 最远还打得中的地方）；o.def：对手怎么站；o.col：玩家一的颜色
 function simulateMove(name, o) {
   o = o || {};
-  const d = MOVES[name], def0 = o.def || 'stand';
-  if (BENCH_AIR[name]) return runSeq(name, airSeq(name), o.dist != null ? o.dist : airDistOf(name), def0, o.col);
-  const seq = BENCH_SEQ[name];
-  const dist = o.dist != null ? o.dist : seq ? seq.dist : d.reach ? effReachOf(name) : 170;   // 冲刺、闪身这些没有射程的：站远一点看
+  const MV = benchMoves(o), d = MV[name], def0 = o.def || 'stand';
+  if (BENCH_AIR[name]) return runSeq(name, airSeq(name), o.dist != null ? o.dist : airDistOf(name, o.style), def0, o.col, o.style, o.opStyle);
+  const seq = (o.style && STYLES[o.style] && STYLES[o.style].benchSeq || {})[name] || BENCH_SEQ[name];
+  const dist = o.dist != null ? o.dist : seq ? seq.dist : d.reach ? effReachOf(name, MV) : 170;   // 冲刺、闪身这些没有射程的：站远一点看
   const def = seq && seq.def ? seq.def : def0;
-  const dIn = benchSetup(dist, def, o.col);
+  const dIn = benchSetup(dist, def, o.col, o.style, o.opStyle);
   const frames = [];
   benchRecord(frames);
   if (!seq) {
     if (d.air) { F1.state = 'air'; F1.alt = d.dive ? 92 : 64; F1.vz = d.dive ? 2 : 0.5; F1.vx = 0; F1.airUsed = false; F1.fk(); }
     if (d.script) { F1.startScript(name); }
-    else F1.beginMove(name, benchKind(d));
+    else F1.beginMove(name, d.guard ? null : benchKind(d));
   }
   let idle = 0;
   for (let i = 0; i < 220; i++) {
@@ -124,10 +129,10 @@ function simulateMove(name, o) {
 // 一个姿势（POSE 里的）摆一帧；动起来的状态（BENCH_STATES：跑、跳、起身……）照真的按法走一遍
 function simulateState(name, o) {
   o = o || {};
-  benchSetup(400, 'none', o.col);
-  const frames = [];
-  if (POSE[name] && !BENCH_STATES.some(x => x[0] === name)) {
-    copyPose(F1.disp, POSE[name]); F1.state = 'idle'; F1.J = null; F1.ikS = null; F1.fk();
+  benchSetup(400, 'none', o.col, o.style);
+  const frames = [], PS = o.style && STYLES[o.style] && STYLES[o.style].poses || {};   // 2.9 这一派自己的架势（没写的照 POSE）
+  if ((PS[name] || POSE[name]) && !BENCH_STATES.some(x => x[0] === name)) {
+    copyPose(F1.disp, PS[name] || POSE[name]); F1.state = 'idle'; F1.J = null; F1.ikS = null; F1.fk();
     for (let i = 0; i < 30; i++) { F1.updateRibbons(); }
     benchRecord(frames);
     return frames;
@@ -147,8 +152,8 @@ function simulateState(name, o) {
 }
 /* 碰没碰到：打中那一帧（没打中就判定第一帧）出招的拳 / 脚 / 肘 / 肩离对方身子还差多少（gap，负 = 扎进去）、
    往前过了对方迎面那一层多远（pen：离得近时看拳头是不是整个穿过去了） */
-function contactOf(frames, name) {
-  const d = MOVES[name]; if (!d || !d.limb) return null;
+function contactOf(frames, name, MV) {
+  const d = (MV || MOVES)[name]; if (!d || !d.limb) return null;
   let at = frames.findIndex(f => f.mv && f.mv.name === name && f.mv.hit);
   const first = frames.findIndex(f => f.mv && f.mv.name === name && f.mv.act);
   if (at < 0) at = first;
@@ -160,10 +165,10 @@ function contactOf(frames, name) {
 const contactGood = c => !!c && c.hit && c.gap >= CONTACT_OK[0] && c.gap <= CONTACT_OK[1];
 // 每一招在最远射程打站着的人：[{ n 招名, reach 最远射程, hit 打中没有, gap 差多少 }]
 function contactAll(o) {
-  const rows = [];
-  for (const n of BENCH_HIT_MOVES) {
-    const c = contactOf(simulateMove(n, o), n);
-    rows.push({ n, reach: BENCH_AIR[n] ? airDistOf(n) : effReachOf(n), hit: !!(c && c.hit), gap: c ? +c.gap.toFixed(1) : null, ok: contactGood(c) });
+  const rows = [], MV = benchMoves(o), list = o && o.style && STYLES[o.style] && STYLES[o.style].benchHit ? STYLES[o.style].benchHit : BENCH_HIT_MOVES;
+  for (const n of list) {
+    const c = contactOf(simulateMove(n, o), n, MV);
+    rows.push({ n, reach: BENCH_AIR[n] ? airDistOf(n, o && o.style) : effReachOf(n, MV), hit: !!(c && c.hit), gap: c ? +c.gap.toFixed(1) : null, ok: contactGood(c) });
   }
   return rows;
 }

@@ -4,6 +4,7 @@
 
 const TESTS = [];
 Looks.solo = { me: 'ink', cpu: 'random' }; Looks.pvp = ['ink', 'indigo'];   // 测试不读这台电脑存的颜色
+Styles.solo = { me: 'trad', cpu: 'trad' }; Styles.pvp = ['trad', 'trad'];     // 2.9 拳派也一样（老测试都是传统格斗打传统格斗；迎春拳的测试自己换）
 const T = (name, fn) => TESTS.push({ name, fn });
 function eq(a, b, msg) {
   const A = JSON.stringify(a), B = JSON.stringify(b);
@@ -161,7 +162,7 @@ T('空中松开方向会慢下来；没方向起跳、空中再按只能小幅�
   arena(500); tick(TAP('up'), 0); tick(0, 0, 3); eq(F1.vx, 0);
   tick(RIGHT, 0, 20); ok(F1.vx > 0 && F1.vx <= AIR_DRIFT + 0.01, '空中小幅 ' + F1.vx.toFixed(2));
 });
-T('千斤坠：空中按蹲+踢，先往上腾一下（从高处起），再斜着往前下方直线踩下去', () => {
+T('坠山：空中按蹲+踢，先往上腾一下（从高处起），再斜着往前下方直线踩下去', () => {
   arena(300); tick(TAP('up')); tick(0, 0, 14);
   const a0 = F1.alt; tick(DOWN | TAP('kick'));
   eq(F1.move && F1.move.name, 'dive');
@@ -169,7 +170,7 @@ T('千斤坠：空中按蹲+踢，先往上腾一下（从高处起），再斜�
   ok(top > a0 + 10, `应该先往上腾：${a0.toFixed(0)} → ${top.toFixed(0)}`);
   tick(0, 0, 2); ok(F1.vz <= -DIVE_VZ + 0.01 && F1.vx >= DIVE_VX - 0.01, `出脚后斜着往前下：vx ${F1.vx.toFixed(1)} vz ${F1.vz.toFixed(1)}`);
 });
-T('千斤坠：从对手前方斜着踩下去，站着的人会被踩中；站挡挡得住', () => {
+T('坠山：从对手前方斜着踩下去，站着的人会被踩中；站挡挡得住', () => {
   for (const blk of [false, true]) {
     arena(120); const v2 = blk ? BLOCK : 0;
     tick(TAP('up'), v2); tick(0, v2, 12); tick(DOWN | TAP('kick'), v2); tick(0, v2, 40);
@@ -180,13 +181,13 @@ T('千斤坠：从对手前方斜着踩下去，站着的人会被踩中；站�
 /* ---------- 连招 ---------- */
 T('短拳连按：刺拳 → 后手直拳 → 摆拳 → 连珠快拳', () => { arena(80); eq(combo(['jab', 'jab', 'jab', 'jab']), ['jab', 'jab2', 'jab3', 'rushR']); });
 T('一串最多 6 拳：第 6 拳是收势「寸劲」，之后重新起算', () => { arena(80); eq(combo(['jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab']), ['jab', 'jab2', 'jab3', 'rushR', 'rushL', 'rushEnd', 'jab']); });
-T('拳起手：拳重 = 崩拳，拳踢 = 鞭腿，拳拳重 = 冲天炮（击倒），拳拳踢 = 转身蹬', () => {
+T('拳起手：拳重 = 进步冲拳，拳踢 = 鞭腿，拳拳重 = 冲天炮（击倒），拳拳踢 = 转身蹬', () => {
   arena(85); eq(combo(['jab', 'heavy']), ['jab', 'beng']);
   arena(85); eq(combo(['jab', 'kick']), ['jab', 'whip']);
   arena(80); eq(combo(['jab', 'jab', 'heavy']), ['jab', 'jab2', 'upper']); tick(0, 0, 20); eq(F2.state, 'down');
   arena(80); eq(combo(['jab', 'jab', 'kick']), ['jab', 'jab2', 'backKick']);
 });
-T('重起手：重拳 = 顶肘，重重 = 劈挂掌，重踢 = 旋风腿（击倒）', () => {
+T('重起手：重拳 = 顶肘，重重 = 劈山掌，重踢 = 旋风腿（击倒）', () => {
   arena(85); eq(combo(['heavy', 'jab']), ['heavy', 'elbow']);
   arena(90); eq(combo(['heavy', 'heavy']), ['heavy', 'chop']);
   arena(95); eq(combo(['heavy', 'kick']), ['heavy', 'whirl']); tick(0, 0, 20); eq(F2.state, 'down');
@@ -196,11 +197,11 @@ T('腿起手：踢拳 = 落步冲拳，踢重 = 盖步砸拳（击倒），踢�
   arena(115); eq(combo(['kick', 'heavy']), ['kick', 'hammer']); tick(0, 0, 20); eq(F2.state, 'down');
   arena(115); eq(combo(['kick', 'kick']), ['kick', 'twinKick']); tick(0, 0, 20); eq(F2.state, 'down');
 });
-T('蹲 + 拳 / 踢 / 重 = 下盘拳 / 扫堂腿 / 托天掌；跑起来按重 = 铁山靠', () => {
+T('蹲 + 拳 / 踢 / 重 = 下盘拳 / 扫堂腿 / 托天掌；跑起来按重 = 沉肩靠', () => {
   for (const [k, name] of [['jab', 'lowJab'], ['kick', 'sweep'], ['heavy', 'palm']]) { arena(200); tick(DOWN | TAP(k)); eq(F1.move && F1.move.name, name, k); }
   arena(400); tick(RIGHT, 0, 12); tick(RIGHT | TAP('heavy')); eq(F1.move && F1.move.name, 'shoulder');
 });
-T('每招都有起手和主系（崩拳 = 起手拳、主系重）', () => {
+T('每招都有起手和主系（进步冲拳 = 起手拳、主系重）', () => {
   eq([MOVES.beng.lead, MOVES.beng.tier], ['light', 'heavy']); eq([MOVES.whirl.lead, MOVES.whirl.tier], ['heavy', 'kick']);
   eq([MOVES.hammer.lead, MOVES.hammer.tier], ['kick', 'heavy']); eq([MOVES.jab.lead, MOVES.jab.tier], ['light', 'light']);
 });
@@ -209,7 +210,7 @@ T('每招都有起手和主系（崩拳 = 起手拳、主系重）', () => {
 T('关系表：主系克 = 克；主系同、起手克 = 压；都一样 = 平；九种组合两两都有结果', () => {
   eq(relation(MOVES.jab, MOVES.kick), 1, '拳克腿'); eq(relation(MOVES.kick, MOVES.heavy), 1, '腿克重'); eq(relation(MOVES.heavy, MOVES.jab), 1, '重克拳');
   eq(relation(MOVES.whip, MOVES.kick), 0.5, '鞭腿(拳腿) 压 腿踢(腿腿)'); eq(relation(MOVES.whirl, MOVES.whip), 0.5, '旋风腿(重腿) 压 鞭腿(拳腿)');
-  eq(relation(MOVES.elbow, MOVES.jab), 0.5, '顶肘(重拳) 压 短拳(拳拳)'); eq(relation(MOVES.chop, MOVES.beng), 0.5, '劈挂(重重) 压 崩拳(拳重)');
+  eq(relation(MOVES.elbow, MOVES.jab), 0.5, '顶肘(重拳) 压 短拳(拳拳)'); eq(relation(MOVES.chop, MOVES.beng), 0.5, '劈山(重重) 压 进步冲拳(拳重)');
   eq(relation(MOVES.jab, MOVES.jab2), 0, '平'); eq(relation(MOVES.chop, MOVES.heavy), 0, '平');
   const T3 = ['light', 'heavy', 'kick'];
   for (const a of T3) for (const b of T3) for (const c of T3) for (const d of T3) eq(relation({ lead: a, tier: b }, { lead: c, tier: d }), -relation({ lead: c, tier: d }, { lead: a, tier: b }), '对称');
@@ -297,7 +298,7 @@ T('爆气（2.1）：挨打时按「重+踢」，花 ' + QI_BURST + ' 气爆开 
   }
   ok(burst, '没爆气'); ok(F2.qi < 60 - QI_BURST + 5, '气 ' + F2.qi);
   ok(down, '对方要被炸倒'); eq(lost(F1), BURST_DMG, '爆气伤害');
-  // 格挡硬直里按重 + 踢：不是爆气（重 = 截拳）
+  // 格挡硬直里按重 + 踢：不是爆气（重 = 截击）
   arena(80); F2.qi = 60; tick(0, BLOCK, 3); let b2 = false;
   run(40, i => { if (F2.move && F2.move.name === 'burst') b2 = true; return [i === 0 ? TAP('jab') : 0, F2.state === 'blockstun' ? BLOCK | TAP('heavy') | TAP('kick') : BLOCK]; });
   ok(!b2, '格挡硬直里不该能爆气');
@@ -339,9 +340,9 @@ T('下段：站着挡不住扫堂腿，蹲着挡得住', () => {
   arena(110); tick(0, BLOCK | DOWN, 10); tick(DOWN | TAP('kick'), BLOCK | DOWN); tick(0, BLOCK | DOWN, 30);
   eq(F2.stats.blocks, 1, '蹲挡'); ok(F2.state !== 'down');
 });
-T('上段：蹲着挡不住劈挂掌和泰山压顶，站着挡得住', () => {
+T('上段：蹲着挡不住劈山掌和坠山击，站着挡得住', () => {
   arena(90); tick(0, BLOCK | DOWN, 10); combo(['heavy', 'heavy'], BLOCK | DOWN); tick(0, BLOCK | DOWN, 30);
-  eq(F2.stats.blocks, 1, '重拳挡住，劈挂挡不住'); ok(lost(F2) > MOVES.chop.dmg / 2);
+  eq(F2.stats.blocks, 1, '重拳挡住，劈山挡不住'); ok(lost(F2) > MOVES.chop.dmg / 2);
   arena(95); tick(TAP('up'), BLOCK | DOWN, 1); tick(0, BLOCK | DOWN, 12); tick(TAP('heavy'), BLOCK | DOWN); tick(0, BLOCK | DOWN, 40);
   eq(F2.stats.blocks, 0, '蹲挡'); ok(F2.hp < MAX_HP);
   arena(95); tick(TAP('up'), BLOCK, 1); tick(0, BLOCK, 12); tick(TAP('heavy'), BLOCK); tick(0, BLOCK, 40);
@@ -386,11 +387,11 @@ T('空中招：同一个距离，起跳后什么时候出都打得到（太晚�
     eq(miss, [], k + ' 这些时机没打中');
   }
 });
-T('空中招出手时整个人往前下方倾，千斤坠斜着踩（身子斜过 35°）', () => {
+T('空中招出手时整个人往前下方倾，坠山斜着踩（身子斜过 35°）', () => {
   for (const k of ['airJab', 'airHeavy', 'airKick']) { const d = MOVES[k]; ok(evalKeys(d.keys, d.S + 1).rot >= 10, d.label + ' 出手没往前倾'); }
-  ok(evalKeys(MOVES.dive.keys, MOVES.dive.S + 2).rot <= -35, '千斤坠不够斜');
+  ok(evalKeys(MOVES.dive.keys, MOVES.dive.S + 2).rot <= -35, '坠山不够斜');
 });
-T('过肩摔、千斤坠、空中招这些新动作，同样的输入两次结果一样（联机不会不同步）', () => {
+T('过肩摔、坠山、空中招这些新动作，同样的输入两次结果一样（联机不会不同步）', () => {
   const once = () => {
     arena(70); const hs = [];
     const plan = i => i === 0 ? [TAP('grab'), 0] : i > 6 && i < 40 ? [LEFT, 0] : i === 90 ? [TAP('up'), TAP('up')] : i === 103 ? [DOWN | TAP('kick'), TAP('heavy')] : i === 160 ? [TAP('up'), 0] : i === 175 ? [TAP('kick'), 0] : [0, 0];
@@ -407,11 +408,11 @@ T('空中招前摇没出完就落地：落地后马上在地上出（按了一�
   k = 0; while (k++ < 12 && !(F1.move && !F1.move.air)) tick();
   eq(F1.move && F1.move.name, 'heavy', '落地后应该出地面重拳');
 });
-T('2.1 飞踢、泰山压顶（Jack：打电脑像「版本答案」）：前摇长了、整个动作也长了，出手前那一下看得清', () => {
+T('2.1 飞踢、坠山击（Jack：打电脑像「版本答案」）：前摇长了、整个动作也长了，出手前那一下看得清', () => {
   eq([MOVES.airKick.base.S, MOVES.airHeavy.base.S], [9, 10], '基准前摇');
-  ok(MOVES.airKick.S >= 11 && MOVES.airHeavy.S >= 12, `前摇 飞踢 ${MOVES.airKick.S} · 泰山压顶 ${MOVES.airHeavy.S}`);
+  ok(MOVES.airKick.S >= 11 && MOVES.airHeavy.S >= 12, `前摇 飞踢 ${MOVES.airKick.S} · 坠山击 ${MOVES.airHeavy.S}`);
   for (const k of ['airKick', 'airHeavy']) { const d = MOVES[k]; ok(d.S + d.A + d.R >= 35, d.label + ' 整个动作 ' + (d.S + d.A + d.R) + ' 帧'); }
-  ok(MOVES.airJab.S < MOVES.airKick.S && MOVES.airKick.S < MOVES.airHeavy.S, '挥拳最快、泰山压顶最慢');
+  ok(MOVES.airJab.S < MOVES.airKick.S && MOVES.airKick.S < MOVES.airHeavy.S, '挥拳最快、坠山击最慢');
 });
 T('跳起攻击伤害 ×' + AIR_BONUS, () => {
   arena(95); tick(TAP('up')); tick(0, 0, 12);
@@ -485,7 +486,7 @@ T('核对：除了泼墨，每一招都有能「克」它和「压」它的招',
 });
 T('核对：破解表覆盖所有系别和技术', () => {
   const keys = COUNTERS.map(c => c[0]).join('|');
-  for (const w of ['拳系', '重系', '腿系', '扫堂腿', '击倒招', '对空', '空中招', '千斤坠', '下段', '上段', '擒拿', '抄腿', '接腿摔', '挣脱', '格挡', '卸力', '推挡', '截拳', '踩腿', '借力摔', '霸体', '冲刺', '冲势', '连段', '爆气', '泼墨', '滚身起'])
+  for (const w of ['拳系', '重系', '腿系', '扫堂腿', '击倒招', '对空', '空中招', '坠山', '下段', '上段', '擒拿', '抄腿', '接腿摔', '挣脱', '格挡', '卸力', '推挡', '截击', '踩腿', '借力摔', '霸体', '冲刺', '冲势', '连段', '爆气', '泼墨', '滚身起'])
     ok(keys.includes(w), '破解表缺：' + w);
   for (const [k, v] of COUNTERS) ok(v.length > 8, k + ' 没写破法');
 });
@@ -598,17 +599,17 @@ T('踩腿：蹲挡住扫堂腿后按踢，一脚踩倒（远近都踩得到）�
   arena(80); tick(0, BLOCK | DOWN, 3); run(40, i => [i === 0 ? DOWN | TAP('jab') : 0, (BLOCK | DOWN) | (F2.state === 'blockstun' ? TAP('kick') : 0)]);
   ok(!F2.move || F2.move.name !== 'stomp', '下盘拳（拳）踩不到');
 });
-T('截拳：挡住以后按重，花 ' + GC_COST + ' 气从格挡里打出去，打对方收招算挡后反击', () => {
+T('截击：挡住以后按重，花 ' + GC_COST + ' 气从格挡里打出去，打对方收招算挡后反击', () => {
   arena(80); F2.qi = 40; tick(0, BLOCK, 3);
   let used = false;
   run(60, i => { if (F2.move && F2.move.name === 'jieQuan') used = true; return [i === 0 ? TAP('heavy') : 0, used ? 0 : F2.state === 'blockstun' ? TAP('heavy') : BLOCK]; });
-  ok(used, '没出截拳'); ok(F2.qi < 40 - GC_COST + 6, '没花气：' + F2.qi);
+  ok(used, '没出截击'); ok(F2.qi < 40 - GC_COST + 6, '没花气：' + F2.qi);
   eq(lost(F1), Math.round(MOVES.jieQuan.dmg * PUNISH_MUL));
   arena(80); F2.qi = 10; tick(0, BLOCK, 3); used = false;
   run(40, i => { if (F2.move && F2.move.name === 'jieQuan') used = true; return [i === 0 ? TAP('heavy') : 0, F2.state === 'blockstun' ? TAP('heavy') : BLOCK]; });
   ok(!used, '气不够不能出');
 });
-T('截拳出手前打击无敌：对方接着打的那一拳打不中它', () => {
+T('截击出手前打击无敌：对方接着打的那一拳打不中它', () => {
   arena(80); F2.qi = 40; tick(0, BLOCK, 3);
   let used = false, hpAt = 0;
   run(50, i => {
@@ -616,7 +617,7 @@ T('截拳出手前打击无敌：对方接着打的那一拳打不中它', () =>
     const v1 = i === 0 || (F1.move && F1.move.name === 'jab' && (F1.canCancel('jab') || soonCancel(F1, 'jab'))) ? TAP('jab') : 0;
     return [v1, used ? 0 : F2.state === 'blockstun' ? TAP('heavy') : BLOCK];
   });
-  ok(used, '没出截拳'); eq(F2.hp, hpAt, '截拳出手前被打中了'); ok(lost(F1) >= MOVES.jieQuan.dmg, '截拳没打中');
+  ok(used, '没出截击'); eq(F2.hp, hpAt, '截击出手前被打中了'); ok(lost(F1) >= MOVES.jieQuan.dmg, '截击没打中');
 });
 T('卸力后反打 ×' + PARRY_MUL + '；卸力后按拿 = 借力摔（' + PARRY_THROW_DMG + ' 伤害，挣不脱）', () => {
   const pb = MOVES.heavy.S - 4;
@@ -706,7 +707,7 @@ T('挣脱：被擒住马上按拿就挣开，不掉血；按晚了挣不开', ()
   run(60, i => { const v2 = F2.grabbed && !pressed && F2.clock - F2.heldAt >= HOLD_ESC + 1 ? (pressed = true, TAP('grab')) : 0; return [i === 0 ? TAP('grab') : 0, v2]; });
   eq(F2.stats.escapes, 0); ok(F2.hp < MAX_HP, '按晚了应该挣不开');
 });
-T('1.8.0 新动作（擒住后续、挣脱、截拳、踩腿、抄腿、滚身起）同样的输入两次结果一样', () => {
+T('1.8.0 新动作（擒住后续、挣脱、截击、踩腿、抄腿、滚身起）同样的输入两次结果一样', () => {
   const once = () => {
     arena(150); F1.qi = 60; F2.qi = 60;
     let s = 777; const rand = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296;
@@ -723,8 +724,8 @@ T('1.8.0 新动作（擒住后续、挣脱、截拳、踩腿、抄腿、滚身�
   eq(once(), once());
 });
 
-/* ---------- 1.9.0：千斤坠、空中交手 ---------- */
-// 玩家一往右跳、第 p 帧出千斤坠；follow = 千斤坠踩中后第一时间按的键；v2(i) = 玩家二的输入
+/* ---------- 1.9.0：坠山、空中交手 ---------- */
+// 玩家一往右跳、第 p 帧出坠山；follow = 坠山踩中后第一时间按的键；v2(i) = 玩家二的输入
 function diveRun(dist, p, v2, follow, n = 110) {
   arena(dist); const r = { hitAt: -1, freeAt: -1, b2free: -1, free2: 0, names: [], crash: false, down2: false };
   let sent = false;
@@ -742,26 +743,26 @@ function diveRun(dist, p, v2, follow, n = 110) {
   }
   return r;
 }
-T('千斤坠（1.9.0）：前摇更慢（≥ 15 帧，在高处悬一下，看得见）；踩中站着的人，落地后你先动 ≥ 8 帧', () => {
+T('坠山（1.9.0）：前摇更慢（≥ 15 帧，在高处悬一下，看得见）；踩中站着的人，落地后你先动 ≥ 8 帧', () => {
   ok(MOVES.dive.S >= 15, '前摇 ' + MOVES.dive.S); eq(MOVES.dive.tier, 'dive');
   const r = diveRun(140, 10);
   ok(r.hitAt > 0, '没踩中'); eq(lost(F2), Math.round(MOVES.dive.dmg * AIR_BONUS)); ok(r.b2free - r.freeAt >= 8, '帧差 ' + (r.b2free - r.freeAt));
 });
-T('千斤坠踩中后接腿的连招（这一下算腿起手）：踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳，都是真连', () => {
+T('坠山踩中后接腿的连招（这一下算腿起手）：踢 = 二起脚、重 = 盖步砸拳、拳 = 落步冲拳，都是真连', () => {
   for (const [k, name] of [['kick', 'twinKick'], ['heavy', 'hammer'], ['jab', 'stepPunch']]) {
     const r = diveRun(150, 10, null, k);
     eq(r.names, ['dive', name], k); eq(F1.stats.hits, 2, k + ' 没接上'); eq(r.free2, 0, k + ' 中间挨打方能动');
   }
 });
-T('千斤坠专破蹲着的：踩蹲着、蹲挡 ×' + DIVE_CROUCH_MUL + '；托天掌打不到它，反被踩倒 ×' + DIVE_AA_MUL, () => {
+T('坠山专破蹲着的：踩蹲着、蹲挡 ×' + DIVE_CROUCH_MUL + '；托天掌打不到它，反被踩倒 ×' + DIVE_AA_MUL, () => {
   const base = MOVES.dive.dmg * AIR_BONUS;
   for (const v of [DOWN, DOWN | BLOCK]) { diveRun(150, 10, () => v); eq(lost(F2), Math.round(base * DIVE_CROUCH_MUL)); eq(F2.info === null || F2.stats.blocks === 0, true, '蹲挡挡住了'); }
   for (const q of [12, 16, 20]) {
     const r = diveRun(150, 10, i => i === q ? DOWN | TAP('heavy') : 0);
-    eq(F1.hp, MAX_HP, '托天掌@' + q + ' 打到了千斤坠'); eq(lost(F2), Math.round(base * DIVE_AA_MUL), '托天掌@' + q); ok(r.down2, '没踩倒');
+    eq(F1.hp, MAX_HP, '托天掌@' + q + ' 打到了坠山'); eq(lost(F2), Math.round(base * DIVE_AA_MUL), '托天掌@' + q); ok(r.down2, '没踩倒');
   }
 });
-T('千斤坠怕站着的拳：迎着打 = 倒栽葱（×' + DIVE_PUNCH_MUL + '、倒地 ' + LIE_CRASH + ' 帧）；站挡挡得住，落地后摇长', () => {
+T('坠山怕站着的拳：迎着打 = 倒栽葱（×' + DIVE_PUNCH_MUL + '、倒地 ' + LIE_CRASH + ' 帧）；站挡挡得住，落地后摇长', () => {
   for (const [k, q] of [['jab', 24], ['heavy', 18]]) {
     const r = diveRun(150, 10, i => i === q ? TAP(k) : 0);
     ok(r.crash, k + ' 没打出倒栽葱'); eq(lost(F1), Math.round(MOVES[k].dmg * DIVE_PUNCH_MUL), k); eq(F2.hp, MAX_HP);
@@ -792,7 +793,7 @@ T('对空招打下飞踢 = 倒栽葱，倒地 ' + LIE_CRASH + ' 帧（以前和�
   flyKick(170, 12, 14, DOWN | TAP('heavy'));
   eq(F2.info && F2.info.how, '倒栽葱'); eq(F1.lieT, LIE_CRASH); eq(F2.hp, MAX_HP);
 });
-T('1.9.0 新规则（千斤坠接连招、倒栽葱、翻滚、朝向吸附）同样的输入两次结果一样', () => {
+T('1.9.0 新规则（坠山接连招、倒栽葱、翻滚、朝向吸附）同样的输入两次结果一样', () => {
   const once = () => {
     arena(160); const hs = [];
     let s = 4242; const rand = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296;
@@ -825,10 +826,10 @@ T('1.9.2：讲规则的字（谁克谁、该站挡还是蹲挡）不飘在人身
       arenaIn(mode, 60); run(30, i => [DOWN | (i === 2 ? TAP('jab') : 0), BLOCK]);                      // 站挡挨下盘拳
       ok(!has(/要蹲挡|要站挡/), mode + '：不飘「要蹲挡」：' + seen); eq(F1.info.why, '下段：站着挡不住');
     }
-    // Jack 说的：训练场里木桩蹲挡，重 重（劈挂掌，上段）打中 → 不飘「要站挡」，面板写「上段：蹲着挡不住」
+    // Jack 说的：训练场里木桩蹲挡，重 重（劈山掌，上段）打中 → 不飘「要站挡」，面板写「上段：蹲着挡不住」
     arenaIn('train', 80);
     const names = combo(['heavy', 'heavy'], DOWN | BLOCK); tick(0, DOWN | BLOCK, 20);
-    eq(names[1], 'chop'); eq([F1.info.label, F1.info.blocked], ['劈挂掌', false], '劈挂掌该打中蹲挡'); ok(!has(/要站挡/), '不飘「要站挡」：' + seen);
+    eq(names[1], 'chop'); eq([F1.info.label, F1.info.blocked], ['劈山掌', false], '劈山掌该打中蹲挡'); ok(!has(/要站挡/), '不飘「要站挡」：' + seen);
     eq(F1.info.why, '上段：蹲着挡不住');
   } finally { FX.push = push; }
 });
@@ -1144,7 +1145,7 @@ T('房间码：去掉空格、英文不分大小写；邀请链接带着房间�
   eq(await parseInvite('#ABC'), { code: 'abc', relay: null });
 });
 
-/* ---------- 1.9.4：出招朝向（千斤坠近身反向踩）、出招不冲过人、连招的火 ---------- */
+/* ---------- 1.9.4：出招朝向（坠山近身反向踩）、出招不冲过人、连招的火 ---------- */
 // 玩家一 sched 那样跳 / 跑，第 p 帧出 key；判定那几帧对手在背后（翻过来就够得着、高度也打得到）还打空了 = 打背身打空
 function backWhiff(dist, p, key, sched) {
   arena(dist); let back = false, landed = false, seen = false;
@@ -1164,7 +1165,7 @@ function backWhiff(dist, p, key, sched) {
   }
   return seen && back && !landed;
 }
-T('1.9.4 千斤坠：跳着往前、离对手近的时候按，不再转身往反方向踩 —— 出脚那一帧重新瞄，近了踩得陡，总踩在对手身上', () => {
+T('1.9.4 坠山：跳着往前、离对手近的时候按，不再转身往反方向踩 —— 出脚那一帧重新瞄，近了踩得陡，总踩在对手身上', () => {
   const miss = [];
   for (let d = 20; d <= 120; d += 20) for (const p of [5, 8, 11, 14, 17, 20]) {
     arena(d); let hit = false;
@@ -1176,7 +1177,7 @@ T('1.9.4 千斤坠：跳着往前、离对手近的时候按，不再转身往�
   }
   eq(miss, [], '这些没踩中');
 });
-T('1.9.4 千斤坠：对手就在正下方也踩得中（直着往下踩），踩中后落在他面前，接二起脚还是真连', () => {
+T('1.9.4 坠山：对手就在正下方也踩得中（直着往下踩），踩中后落在他面前，接二起脚还是真连', () => {
   arena(0); F2.x = F1.x + 1;
   let hitAt = -1, sent = false, free2 = 0, dvx = null;
   for (let i = 0; i < 110; i++) {
@@ -1191,11 +1192,11 @@ T('1.9.4 千斤坠：对手就在正下方也踩得中（直着往下踩），�
   ok(hitAt > 0, '没踩中'); ok(dvx !== null && dvx < 1, '近身应该直着往下踩：' + dvx);
   eq(F1.stats.hits, 2, '二起脚没接上'); eq(free2, 0, '中间挨打方能动');
 });
-T('1.9.4 出招朝向：跳着往前冲、跑着贴脸出招，判定时对手不会跑到背后打空（拳 / 重 / 腿 / 空中招 / 千斤坠都查）', () => {
+T('1.9.4 出招朝向：跳着往前冲、跑着贴脸出招，判定时对手不会跑到背后打空（拳 / 重 / 腿 / 空中招 / 坠山都查）', () => {
   const bad = [];
   const jumpFwd = i => (i === 0 ? TAP('up') : 0) | RIGHT, runIn = () => RIGHT;
-  for (const [nm, key, sched] of [['挥拳', TAP('jab'), jumpFwd], ['泰山压顶', TAP('heavy'), jumpFwd], ['飞踢', TAP('kick'), jumpFwd], ['千斤坠', DOWN | TAP('kick'), jumpFwd],
-    ['跑着短拳', TAP('jab'), runIn], ['跑着重（铁山靠）', TAP('heavy'), runIn], ['跑着踢', TAP('kick'), runIn], ['跑着扫堂腿', DOWN | TAP('kick'), runIn]])
+  for (const [nm, key, sched] of [['挥拳', TAP('jab'), jumpFwd], ['坠山击', TAP('heavy'), jumpFwd], ['飞踢', TAP('kick'), jumpFwd], ['坠山', DOWN | TAP('kick'), jumpFwd],
+    ['跑着短拳', TAP('jab'), runIn], ['跑着重（沉肩靠）', TAP('heavy'), runIn], ['跑着踢', TAP('kick'), runIn], ['跑着扫堂腿', DOWN | TAP('kick'), runIn]])
     for (let d = 20; d <= 160; d += 20) for (let p = 4; p <= 22; p += 3) if (backWhiff(d, p, key, sched)) bad.push(`${nm}·距离${d}·第${p}帧`);
   eq(bad, [], '打背身打空');
 });
@@ -1222,7 +1223,7 @@ T('1.9.4 出招朝向：对手在面前起跳（往我这边跳 / 原地跳）�
     }
   eq(bad, [], '对手还在面前就转身往后打');
 });
-T('1.9.4 出招不冲过人：跑着贴脸按重（铁山靠），前冲停在对手身上、打得中，不会冲到他身后', () => {
+T('1.9.4 出招不冲过人：跑着贴脸按重（沉肩靠），前冲停在对手身上、打得中，不会冲到他身后', () => {
   let shoulders = 0;
   for (const d of [30, 40]) for (let p = 9; p <= 14; p++) {
     arena(d); let passed = false, used = false;
@@ -1231,9 +1232,9 @@ T('1.9.4 出招不冲过人：跑着贴脸按重（铁山靠），前冲停在�
       return [RIGHT | (i === p ? TAP('heavy') : 0), 0];
     });
     if (used) shoulders++;
-    ok(!passed, `离 ${d}、第 ${p} 帧按：铁山靠冲到身后去了`); ok(F2.hp < MAX_HP, `离 ${d}、第 ${p} 帧按：没打中`);
+    ok(!passed, `离 ${d}、第 ${p} 帧按：沉肩靠冲到身后去了`); ok(F2.hp < MAX_HP, `离 ${d}、第 ${p} 帧按：没打中`);
   }
-  ok(shoulders >= 6, '跑起来按重应该是铁山靠：' + shoulders);
+  ok(shoulders >= 6, '跑起来按重应该是沉肩靠：' + shoulders);
 });
 T('1.9.4 连招的火：越连越旺（3 连起每打中一下炸一圈气浪、越往后越大）；2.0.1 火是自己的气的颜色；2.0.2 头两下没有火，3 连才起', () => {
   for (let n = 2; n < 7; n++) ok(comboHeat(n + 1) > comboHeat(n), n + ' 连到 ' + (n + 1) + ' 连没变旺');
@@ -1526,7 +1527,7 @@ T('2.0 全屏画面：屏幕比 2:1 窄（16:9、16:10）就往上下多露、�
   ok(viewFor(2560, 1080).vw > 1400, '带鱼屏左右多露');
 });
 
-/* ---------- 2.0.2：气跟着连招起、千斤坠朝向、头带腰带颜色、站姿、印章、电脑「地狱」 ---------- */
+/* ---------- 2.0.2：气跟着连招起、坠山朝向、头带腰带颜色、站姿、印章、电脑「地狱」 ---------- */
 const qiOf = i => QI.filter(q => q.f === i).length;
 T('2.0.2 气：站着、气满了站着、出头一下（拳 / 重 / 踢）、连两下，身上都不冒气；3 连才起火，越连越旺；连招断了半秒多就退干净', () => {
   arena(200); QI.length = 0; F1.qi = QI_MAX; let mx = 0;
@@ -1558,7 +1559,7 @@ T('2.0.2 气：站着、气满了站着、出头一下（拳 / 重 / 踢）、�
   ok(!born.some(i => i > 40), '连招断了 40 帧以后还在冒火：第 ' + born.filter(i => i > 40).slice(0, 3) + ' 帧');
   eq(F1.heat, 0, '60 帧以后火还没退干净');
 });
-// 2.0.2 千斤坠 / 空中招从头顶过来，底下的人第 q 帧按 key：返回结果（转没转、判定开始或挨打那一刻对手离「我按的时候站的地方」多远、挨没挨打）
+// 2.0.2 坠山 / 空中招从头顶过来，底下的人第 q 帧按 key：返回结果（转没转、判定开始或挨打那一刻对手离「我按的时候站的地方」多远、挨没挨打）
 function overheadPress(style, d, p, q, key, airKick) {
   const [hold, runup] = style, RIGHT = HOLD('right');
   arena(d + runup * 5);
@@ -1585,7 +1586,7 @@ function overheadPress(style, d, p, q, key, airKick) {
   }
   return r;
 }
-T('2.0.2 千斤坠在头顶上（Jack：还没跳到身后就往身后打，打空）：底下的人什么时候按拳 / 重 / 腿 / 擒拿 / 扫堂腿，它还在面前就不转身；踩到身后才转身迎它；飞踢已经踢过来了也不背过身去挨', () => {
+T('2.0.2 坠山在头顶上（Jack：还没跳到身后就往身后打，打空）：底下的人什么时候按拳 / 重 / 腿 / 擒拿 / 扫堂腿，它还在面前就不转身；踩到身后才转身迎它；飞踢已经踢过来了也不背过身去挨', () => {
   const keys = [['短拳', TAP('jab')], ['重拳', TAP('heavy')], ['腿踢', TAP('kick')], ['擒拿', TAP('grab')], ['扫堂腿', DOWN | TAP('kick')]];
   const bad = []; let n = 0;
   for (const [sn, style, ds] of [['按住前跳', [true, 0], [40, 100]], ['跑着跳', [true, 10], [40, 100]], ['原地跳', [null, 0], [0, 20]]])
@@ -1832,9 +1833,9 @@ function aiPatternRaw(level, name, frames) {
   close(); game.brains = [null, null];
   return { att, rate: won / Math.max(1, att), net: net / Math.max(1, att) };
 }
-T('2.1 所有难度：泰山压顶、飞踢跳进来不会白吃（以前要么蹲着挡、要么等看见空中招才动，泰山压顶常常打中）', () => {
+T('2.1 所有难度：坠山击、飞踢跳进来不会白吃（以前要么蹲着挡、要么等看见空中招才动，坠山击常常打中）', () => {
   // 2.2 入门最松（看反应慢、常蹲不对）；2.7（Jack：入门要让乱打的打掉八成血、入门简单别那么多破招）：入门不查，简单放宽
-  // 2.7 每一种跑四个种子取平均（以前一个种子从头跑到尾：终极被泰山压顶 12 个种子平均 2.6 是 10%、2.7 是 11%，单跑一次 0 ~ 26% 都有）
+  // 2.7 每一种跑四个种子取平均（以前一个种子从头跑到尾：终极被坠山击 12 个种子平均 2.6 是 10%、2.7 是 11%，单跑一次 0 ~ 26% 都有）
   const cap = { easy: 0.8, normal: 0.25, hard: 0.2, hell: 0.15 }, seeds = [11, 12, 13, 14];
   for (const lv of LEVEL_IDS.filter(l => l !== 'novice')) for (const pn of ['jumpHeavy', 'jumpKick']) {
     let rate = 0, att = 99;
@@ -2070,7 +2071,7 @@ T('2.3 训练场面板（Jack：最底下一排字穿出方框、上面的字把
     eq(e.ty, y0, '盖下去以后不跟着人跳');
     // 正好在头顶上的：挪下去会压到头 → 少挪，印章底边还在头顶上面
     FX.length = 0;
-    stamp(F1.J.head[0], F1.J.head[1] - 130, '千斤坠', 30, F1); render();
+    stamp(F1.J.head[0], F1.J.head[1] - 130, '坠山击', 30, F1); render();   // 三个字的印章（2.9 改名以前是「千斤坠」，字数一样、印章一样高）
     e = FX.find(x => x.type === 'stamp');
     ok(e.ty + hh <= F1.J.head[1] - 16 + 1e-6, `印章压到头了：${e.ty + hh} > ${F1.J.head[1] - 16}`);
     // 别的模式照旧：印章在镜头里画、不挪
@@ -2719,7 +2720,7 @@ T('2.7.1 翻滚回去（Jack）：翻回去五六个身位（一个身位 = 身�
   // 地上那一腿收招里接不了别的招（不然先收完招跑过去等着打）
   const r2 = tumbleRun(1000, 170, 12, 4, 30); ok(F2.move && F2.move.tumbled && !F2.canCancel('jab') && !F2.canCancel('kick'), '顶回去那一腿还能接招');
 });
-// 千斤坠被站挡住：玩家二在 x1 + dist 一直站挡；玩家一跳过去第 p 帧千斤坠。chase：挡的人能动以后追过去第几帧按什么（看打不打得到它落地前）
+// 坠山被站挡住：玩家二在 x1 + dist 一直站挡；玩家一跳过去第 p 帧坠山。chase：挡的人能动以后追过去第几帧按什么（看打不打得到它落地前）
 function diveBlockRun(x1, dist, p, chase) {
   arena(dist); F1.x = x1; F2.x = x1 + dist;
   const r = { at: -1, alt0: 0, x0: 0, x1: null, top: 0, freeA: -1, freeB: -1, punished: false };
@@ -2739,7 +2740,7 @@ function diveBlockRun(x1, dist, p, chase) {
   }
   return r;
 }
-T('2.8 千斤坠被站挡住翻回去（Jack：别的翻回去都和被腿顶回去一样远，再翻高一点）：和同样高度被顶回去飞得一样远（五六个身位）、一样高；挡的人照旧早 ' + DIVE_BLOCK_ADV + ' 帧能动，可是追过去打不到它', () => {
+T('2.8 坠山被站挡住翻回去（Jack：别的翻回去都和被腿顶回去一样远，再翻高一点）：和同样高度被顶回去飞得一样远（五六个身位）、一样高；挡的人照旧早 ' + DIVE_BLOCK_ADV + ' 帧能动，可是追过去打不到它', () => {
   let n = 0;
   for (const [d, p] of [[150, 10], [120, 10], [180, 12], [150, 14], [200, 16]]) {
     const r = diveBlockRun(900, d, p);
@@ -2877,7 +2878,7 @@ T('2.7 腿不扭（Jack：二起脚的腿扭着，不同距离下手臂、腿怪
   const kk = at(1.05).J1, shin = [kk.ff[0] - kk.fk[0], kk.ff[1] - kk.fk[1]];
   ok(shin[1] > 0 && Math.abs(shin[0]) < Math.abs(shin[1]) * 0.7, '收着的那条腿小腿要往下垂：' + shin.map(v => v.toFixed(1)));
 });
-T('2.7.1 → 2.8 铁山靠（Jack：腿别交叉、手也别交叉，就是半蹲着靠过去；2.8 肩膀撞过去、人侧着一点，不是头撞过去）：只侧过来一点、头在肩膀后面；最远、80、50 打中前后两条腿不交叉、两只手不交叉；打中时半蹲（髋比站着低一截）', () => {
+T('2.7.1 → 2.9 沉肩靠（Jack：腿别交叉、手也别交叉，就是半蹲着靠过去；2.8 肩膀撞过去、不是头撞过去；2.9 人再侧一点、头低下来一点）：侧过来 20° ~ 30°、头不往后仰、头收在前肩后面；最远、80、50 打中前后两条腿不交叉、两只手不交叉；打中时半蹲（髋比站着低一截）', () => {
   const segX = (a, b, c, d) => {                         // 两条线段真的交叉（端点挨着不算）
     const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
     return o(c, d, a) * o(c, d, b) < -1e-6 && o(a, b, c) * o(a, b, d) < -1e-6;
@@ -2889,17 +2890,21 @@ T('2.7.1 → 2.8 铁山靠（Jack：腿别交叉、手也别交叉，就是半�
     return Math.hypot(p[0] - a[0], p[1] - a[1]) > 6 && Math.hypot(p[0] - c[0], p[1] - c[1]) > 6;
   };
   const d = MOVES.shoulder, bad = []; let low = 99, n = 0;
-  ok(d.keys.every(k => !(Math.abs(k[1].spin || 0) > 30)), '铁山靠只侧过来一点（转过 30° 两条腿就从对面的大腿根出来，交叉成 X）');
-  // 2.8（Jack：是肩膀撞过去，不是头撞过去）：打中那几帧头在前肩后面，肩膀先到
-  let headOut = 0;
+  ok(d.keys.every(k => !(Math.abs(k[1].spin || 0) > 30)), '沉肩靠侧过来不超过 30°（转过 30° 两条腿就从对面的大腿根出来，交叉成 X）');
+  // 2.9（Jack：人稍微侧着点过去，头低下来一点，用肩膀撞）：打中那几帧侧过来 20° 以上、头不往后仰（上身 + 头 ≥ -2°，2.8 是 -20°），
+  // 头的前沿还在领头的那个肩膀（前肩、大臂、身子最靠前的地方）后面 —— 肩膀先到
+  const hitPose = evalKeys(d.keys, d.S + 1);
+  ok(hitPose.spin >= 20, '打中时侧过来 ' + hitPose.spin + '°（要 20° 以上）');
+  ok(hitPose.tor + hitPose.head >= -2, `头往后仰着：上身 ${hitPose.tor}° + 头 ${hitPose.head}°`);
+  let headOut = -99;
   for (const f of simulateMove('shoulder', {})) {
     if (!f.mv || f.mv.name !== 'shoulder' || !f.mv.hit) continue;
     const ph = phaseOf(d, f.mv.t); if (ph < 1 || ph > 2) continue;
-    const J = f.J1, fc = J.facing, head = (J.head[0] - f.x1) * fc + BODY.bone.head, sh = Math.max((J.shF[0] - f.x1) * fc, (J.shB[0] - f.x1) * fc);
-    headOut = Math.max(headOut, head - sh);
+    const J = f.J1, fc = J.facing, parts = bodyParts(J, 0).parts;
+    const front = ks => Math.max(...parts.filter(q => ks.includes(q.k)).flatMap(q => q.pts.map(v => (v[0] - f.x1) * fc)));
+    headOut = Math.max(headOut, front(['head']) - front(['aFU', 'aBU', 'torso']));
   }
-  // 前肩外沿 = 肩关节往前一个大臂根的粗细（BODY.ua 第一节）：头的前沿至少比它靠后 3
-  ok(headOut <= BODY.ua[0][1] - 3, '打中时头没在前肩后面：头前沿 - 肩关节 = ' + headOut.toFixed(1));
+  ok(headOut <= 0.5, '打中时头没收在肩膀后面：头前沿比领头的肩膀还靠前 ' + headOut.toFixed(1));
   for (const dist of [null, 80, 50]) {
     const fr = simulateMove('shoulder', dist == null ? {} : { dist });
     for (const f of fr) {
@@ -2940,17 +2945,266 @@ T('2.7.1 拳派铺垫（Jack：以后还会做更多和这个一样完整的拳�
   } finally { delete STYLES.test; delete MATCHUPS['trad|test']; F1.style = F2.style = 'trad'; }
 });
 
+/* ============================================================
+   2.9 迎春拳（Jack：新拳派 —— 快、小、连贯；拳掌结合左右交替、点重拍手 / 按住重盘手、腿近快小、拉手、立掌挡；
+   反打收益大、刚起手两三下有空、倒地以后连得紧；两派要平衡）
+   ============================================================ */
+// 迎春拳打传统格斗（不写就是 P1 迎春、P2 传统）
+function yArena(dist, s1, s2) {
+  const keep = Styles.pvp; Styles.pvp = [s1 || 'ying', s2 || 'trad'];
+  try { arena(dist); } finally { Styles.pvp = keep; }
+}
+// 完美输入：第一键能动的时候按，后面的在能接的第一步按；v2(n) 是 P2 的输入。返回打出来的招名
+function yChain(keys, v2, maxN) {
+  const names = []; let i = 0, last = -1, pressed = -9;
+  for (let n = 0; n < (maxN || 600); n++) {
+    let v1 = 0;
+    if (i < keys.length) {
+      const k = keys[i], kind = k.replace('d:', '');
+      const can = i === 0 ? (F1.actionable() || F1.state === 'parry' || (!!F1.move && (!!F1.move.def.trapPull || !!F1.move.def.loop))) : F1.state === 'attack' && F1.canCancel(kind);
+      if (can && pressed !== n - 1) { v1 = (k.startsWith('d:') ? HOLD('down') : 0) | TAP(kind); i++; pressed = n; }
+    }
+    step([v1, v2 ? v2(n) : 0]);
+    if (F1.move && F1.move.serial !== last) { last = F1.move.serial; names.push(F1.move.name); }
+    if (i >= keys.length && F1.actionable() && F2.state !== 'hit') break;
+  }
+  return names;
+}
+const YJ8 = ['jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab'];
+// 看着打中、挡住、拍开……这些事（CEV）
+function yWatch(fn) { const ev = []; CEV.on = (type, A, B, x) => ev.push(Object.assign({ type, a: A.idx, b: B.idx }, x)); try { fn(); } finally { CEV.on = null; } return ev; }
+// 对面出一记 key，我按 my（第 at 帧按、按住的话一直按着）；出了拍开 / 拉住 / 打中 / 挡住这些事就停（停在那一帧，好看两边的样子）。返回事件
+function yVs(dist, key, my, at, holdMy) {
+  yArena(dist);
+  const stop = e => ['handParry', 'grab', 'hit', 'guard', 'parry'].includes(e.type);
+  return yWatchUntil(stop, 90, i => [(i === at ? my : 0) | (holdMy && i >= at ? holdMy : 0), i === 0 ? key : 0]);
+}
+// 一帧一帧走，出了 stop(事件) 那样的事就停
+function yWatchUntil(stop, maxN, sched) {
+  const ev = []; let done = false;
+  CEV.on = (type, A, B, x) => { const e = Object.assign({ type, a: A.idx, b: B.idx }, x); ev.push(e); if (stop(e)) done = true; };
+  try { for (let i = 0; i < maxN && !done; i++) step(sched(i)); } finally { CEV.on = null; }
+  return ev;
+}
+
+T('2.9 迎春拳是一整套自己的招：自己的招式表、架势（两只手是掌）、连招变招、交手规矩；和传统格斗打有专门的规矩', () => {
+  eq(STYLES.ying.name, '迎春拳'); ok(STYLES.ying.moves === YMOVES, '招式表');
+  ok(!!MATCHUPS['trad|ying'], '传统格斗 × 迎春拳的规矩写了');
+  for (const n of ['grab', 'lowGrab', 'hold', 'knee', 'trip', 'throwBack', 'grabHit', 'scoop', 'tackle', 'legCatch', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'stomp', 'dash', 'slip', 'slipElbow', 'burst', 'super'])
+    ok(!!YMOVES[n] && YMOVES[n].keys && YMOVES[n].keys.length, '战斗里按名字找的招都要有：' + n);
+  ok(!YMOVES.sweep && !YMOVES.palm && !YMOVES.heavy && !YMOVES.kick && !YMOVES.jab, '没有照搬传统格斗的招');
+  for (const [n, d] of Object.entries(YMOVES)) ok(d.style === 'ying', n + ' 是迎春拳的招');
+  const P = YPOSE.stance; ok(P.fp === 1 && P.bp === 1, '待机两只手都是掌（問手、護手）');
+  ok(YPOSE.block.fpa < -80 && YPOSE.block.bpa < -80, '挡的时候两只掌竖着（手指朝上）');
+  // 变招：拳一直按是 Y_CHAIN；重：单出拍手、蹲着耕手、连招里摊打 → 拍打 → 蝴蝶掌；踢：单出正撑脚、拳后侧撑、踢后连环撑 → 踩膝、摊打后转马撑；拿：拉手、蹲着截腿
+  const V = STYLES.ying.variant, seq = [];
+  for (let i = 0, ch = []; i < 8; i++) { const n = V('jab', ch, false, ''); seq.push(n); ch.push('jab'); }
+  eq(seq, Y_CHAIN, '拳一串');
+  eq([V('heavy', [], false, ''), V('heavy', ['pc'], false, ''), V('heavy', ['jab'], false, ''), V('heavy', ['jab', 'heavy'], false, ''), V('heavy', ['jab', 'heavy', 'heavy'], false, ''), V('heavy', [], false, 'down')],
+    ['yPat', 'yTan', 'yTan', 'yPak', 'yButterfly', 'yGaun']);
+  eq([V('kick', [], false, ''), V('kick', ['jab'], false, ''), V('kick', ['kick'], false, ''), V('kick', ['kick', 'kick'], false, ''), V('kick', ['jab', 'heavy'], false, ''), V('kick', [], false, 'down')],
+    ['yKick', 'ySideKick', 'yKick2', 'yStompKnee', 'yTurnKick', 'yLowKick']);
+  eq([V('grab', [], false, ''), V('grab', [], false, 'down'), V('jab', ['pc'], false, '')], ['grab', 'lowGrab', 'yJabR'], '拉手、截腿；拍开以后的拳是后手冲拳');
+  // 交手：截膝截地上的腿，摊打化拳
+  eq(yRelation(YMOVES.yLowKick, MOVES.kick), 1, '截膝截住地上的腿'); eq(MATCHUPS['trad|ying'].relation(MOVES.kick, YMOVES.yLowKick), -1, '跨派也是');
+  eq(MATCHUPS['trad|ying'].relation(MOVES.jab, YMOVES.yTan), -1, '摊打一手化一手打，克拳');
+});
+T('2.9 迎春拳 · 连环冲拳：一直按拳打八下（冲拳、后手冲拳、立掌……第 8 下寸拳打倒）；越连越「顺」—— 出手越来越快、越来越疼', () => {
+  yArena(80);
+  const S = [], ev = yWatch(() => { const names = yChain(YJ8, null); eq(names, Y_CHAIN, '一串八下'); });
+  const hits = ev.filter(e => e.type === 'hit' && e.a === 0);
+  eq(hits.length, 8, '八下都打中'); ok(F2.state === 'down' || F2.state === 'rise', '寸拳打倒');
+  ok(hits[6].dmg >= hits[1].dmg, '越打越疼（连击衰减只算一半，顺一级 +' + Math.round(FLOW_DMG * 100) + '%）');
+  ok(lost(F2) >= 40, '一整套 40 血以上：' + lost(F2));
+  // 出手越来越快：后面的冲拳前摇比前面的短
+  yArena(80); const names = []; let last = -1;
+  run(200, i => { if (F1.move && F1.move.serial !== last) { last = F1.move.serial; names.push([F1.move.name, F1.move.S]); } return [F1.state === 'attack' && F1.canCancel('jab') || F1.actionable() ? TAP('jab') : 0, 0]; });
+  ok(names.length >= 7 && names[6][1] < names[1][1], '第 7 下比第 2 下出手快：' + names.map(x => x[1]).join(' '));
+  // 打空就断：隔得远打空，顺清零
+  yArena(260); run(30, i => [i === 0 ? TAP('jab') : 0, 0]); eq(F1.flow, 0, '打空了顺是 0');
+});
+T('2.9 迎春拳 · 刚起手有空：挨了头两下一直按着挡，第 3 下挡得住（Jack：前两三下对面有机会）；反打（拍开、拉住、黏住、卸开）、压起身以后的一整套跑不掉', () => {
+  for (const keys of [YJ8, ['jab', 'jab', 'jab', 'heavy', 'heavy', 'heavy'], ['jab', 'kick', 'kick', 'kick'], ['kick', 'kick', 'kick'], ['d:kick', 'jab', 'jab', 'jab']]) {
+    yArena(keys[0] === 'kick' ? 96 : 80); F2.noParry = true;
+    let got = false;
+    const ev = yWatch(() => yChain(keys, () => { if (F2.state === 'hit') got = true; return got ? HOLD('block') : 0; }));
+    const mine = ev.filter(e => e.a === 0 && (e.type === 'hit' || e.type === 'guard'));
+    eq(mine.slice(0, 3).map(e => e.type), ['hit', 'hit', 'guard'], keys.join(' ') + '：第 3 下挡住');
+  }
+  // 拍开对面一拳以后：连环冲拳一整套，他一直按着挡也挡不住
+  yArena(80); F2.noParry = true;
+  yWatchUntil(e => e.type === 'handParry', 40, i => [i === 1 ? TAP('heavy') : 0, i === 0 ? TAP('jab') : 0]);
+  eq(F1.state, 'parry', '拍开了'); eq(F2.reelKind, 'pat');
+  let got = false;
+  const ev = yWatch(() => yChain(YJ8, () => { if (F2.state === 'hit') got = true; return got ? HOLD('block') : 0; }));
+  eq(ev.filter(e => e.a === 0 && e.type === 'guard').length, 0, '反打的一整套挡不住');
+  ok(ev.filter(e => e.a === 0 && e.type === 'hit').length === 8 && (F2.state === 'down' || F2.state === 'rise'), '八下打满、打倒');
+});
+T('2.9 迎春拳 · 拍手（点重）拍开手上的招、耕手（蹲 + 重）耕开地上的腿：他失衡、你先打；拍手拍不到腿，耕手耕不到中段的拳；拍空了收招长', () => {
+  let ev = yVs(100, TAP('heavy'), TAP('heavy'), 9);
+  ok(ev.some(e => e.type === 'handParry' && e.guard === 'pat' && e.name === 'heavy'), '拍开重拳');
+  eq(F2.state, 'hit'); eq(F2.reelKind, 'pat'); eq(F1.state, 'parry'); eq(F1.chain, ['pc'], '拍开以后按拳 = 后手冲拳、按重 = 摊打');
+  ev = yVs(118, TAP('kick'), DOWN | TAP('heavy'), 11, DOWN);
+  ok(ev.some(e => e.type === 'handParry' && e.guard === 'gaun' && e.name === 'kick'), '耕开腿');
+  eq(F2.reelKind, 'gaun');
+  ev = yVs(118, TAP('kick'), TAP('heavy'), 11);
+  ok(!ev.some(e => e.type === 'handParry') && ev.some(e => e.type === 'hit' && e.a === 1), '拍手拍不到腿：挨踢');
+  ev = yVs(86, TAP('jab'), DOWN | TAP('heavy'), 0, DOWN);
+  ok(!ev.some(e => e.type === 'handParry') && ev.some(e => e.type === 'hit' && e.a === 1), '耕手耕不到中段的拳');
+  // 拍空：收招里挨打
+  yArena(84); run(5, i => [i === 0 ? TAP('heavy') : 0, 0]);
+  ev = yWatch(() => run(40, i => [0, i === 8 ? TAP('jab') : 0]));
+  ok(ev.some(e => e.type === 'hit' && e.a === 1), '拍空了的收招里挨打');
+});
+T('2.9 迎春拳 · 拉手：他出拳、出掌的时候伸手 = 把他的手拉过来（失衡、接一整套）；他出腿的时候伸手 = 挨踢；站着不动的人照样擒住', () => {
+  let ev = yVs(86, TAP('jab'), TAP('grab'), 0);
+  ok(ev.some(e => e.type === 'grab' && e.kind === 'trap'), '拉住短拳'); eq(F2.reelKind, 'trap');
+  ok(F1.move && F1.move.name === 'yTrap', '拉回来的动作');
+  const names = yChain(YJ8, null); ok(names.length >= 8 && (F2.state === 'down' || F2.state === 'rise'), '拉住以后一整套打倒：' + names.join(' '));
+  ev = yVs(100, TAP('heavy'), TAP('grab'), 6);
+  ok(ev.some(e => e.type === 'grab' && e.kind === 'trap'), '拉住重拳');
+  ev = yVs(110, TAP('kick'), TAP('grab'), 8);
+  ok(!ev.some(e => e.type === 'grab' && e.kind === 'trap') && ev.some(e => e.type === 'hit' && e.a === 1), '拉不住腿：伸手挨踢');
+  ev = yVs(76, 0, TAP('grab'), 0);
+  ok(ev.some(e => e.type === 'grab' && e.kind === 'grab'), '抓站着的人 = 擒住');
+});
+T('2.9 迎春拳 · 盘手（按住重）：一直盘，打过来的拳脚黏住挡下，马上打回去算「黏打」；下段、擒拿挡不住', () => {
+  yArena(86);
+  let ev = yWatchUntil(e => e.type === 'guard', 60, i => [i === 0 ? TAP('heavy') | HOLD('heavy') : HOLD('heavy'), i === 20 ? TAP('jab') : 0]);
+  ok(F1.move && F1.move.name === 'yRoll', '按住重 = 盘手（一直盘着）');
+  ok(ev.some(e => e.type === 'guard' && e.stick && e.b === 0), '黏住短拳');
+  ev = yWatch(() => run(30, i => [i === 0 ? TAP('jab') | HOLD('heavy') : 0, 0]));
+  ok(ev.some(e => e.type === 'hit' && e.a === 0 && e.how === '黏打'), '黏住马上打回去 = 黏打：' + ev.filter(e => e.type === 'hit').map(e => e.how).join(','));
+  yArena(80); ev = yWatch(() => run(50, i => [i === 0 ? TAP('heavy') | HOLD('heavy') : HOLD('heavy'), i === 20 ? DOWN | TAP('jab') : i > 20 ? DOWN : 0]));
+  ok(ev.some(e => e.type === 'hit' && e.a === 1), '下段盘不住');
+  yArena(76); ev = yWatch(() => run(50, i => [i === 0 ? TAP('heavy') | HOLD('heavy') : HOLD('heavy'), i === 20 ? TAP('grab') : 0]));
+  ok(ev.some(e => e.type === 'grab' && e.a === 1 && e.kind === 'grab'), '擒拿抓得住盘手的人');
+});
+T('2.9 迎春拳 · 连环寸拳（气满 重 + 踢）：第一拳打中就一串打满、最后寸劲打倒（和泼墨差不多疼）；第一拳被挡就停', () => {
+  yArena(84); F1.qi = QI_MAX;
+  let down = false; run(300, i => { if (F2.state === 'down') down = true; return [i === 0 ? TAP('heavy') | TAP('kick') : 0, 0]; });
+  ok(down, '打倒'); ok(lost(F2) >= 40 && lost(F2) <= 56, '一整串 40~56 血（泼墨 ' + MOVES.super.dmg + '）：' + lost(F2));
+  yArena(84); F1.qi = QI_MAX; F2.noParry = true;
+  run(120, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, HOLD('block')]);
+  ok(lost(F2) <= 6, '挡住第一拳就停了，只掉一点：' + lost(F2));
+});
+T('2.9 迎春拳 · 跟传统格斗交手：同一套「拳 > 腿 > 重 > 拳」，截膝截腿、摊打化拳；传统格斗的重拳霸体吃得住迎春的拳，吃不住寸拳', () => {
+  yArena(80); F1.beginMove('yLowKick', 'kick'); F2.beginMove('kick', 'kick');
+  eq(clashRelation(F1, F2), 1, '截膝截住传统格斗的腿');
+  yArena(80); F1.beginMove('yTan', 'heavy'); F2.beginMove('jab', 'jab');
+  eq(clashRelation(F1, F2), 1, '摊打克短拳');
+  yArena(80); F1.beginMove('yJab', 'jab'); F2.beginMove('heavy', 'heavy');
+  eq(clashRelation(F1, F2), -1, '重克拳（跨派照旧）');
+  ok(!YMOVES.yJab.pierce && YMOVES.yInch.pierce && YMOVES.super.pierce, '寸拳、连环寸拳霸体吃不住，别的拳吃得住');
+});
+T('2.9 迎春拳进存档（联机回滚）：顺、拉手、盘手、连环寸拳中途存档再读档，接着算出来一模一样；同样的输入两次结果一样', () => {
+  const gen = seed => {
+    let s = seed >>> 0; const rand = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296;
+    const out = [], hold = [0, 0];
+    for (let i = 0; i < 2400; i++) {
+      const v = [0, 0];
+      for (let p = 0; p < 2; p++) {
+        if (rand() < 0.06) hold[p] = [0, BLOCK, LEFT, RIGHT, DOWN, HOLD('heavy'), HOLD('heavy') | RIGHT, BLOCK | DOWN][(rand() * 8) | 0];
+        v[p] = hold[p] | (rand() < 0.16 ? [TAP('jab'), TAP('jab'), TAP('heavy'), TAP('kick'), TAP('grab'), DOWN | TAP('kick'), DOWN | TAP('heavy'), TAP('heavy') | TAP('kick')][(rand() * 8) | 0] : 0);
+      }
+      out.push(v);
+    }
+    return out;
+  };
+  const ins = gen(29), prep = () => { yArena(150); F1.qi = F2.qi = QI_MAX * 0.6; };
+  const once = () => { prep(); const hs = []; ins.forEach((v, i) => { step(v); if (i % 200 === 0) hs.push(stateHash()); }); return hs.concat([F1.stats, F2.stats]); };
+  const A = once(); eq(once(), A);
+  let flowMax = 0, rolls = 0; prep(); ins.forEach(v => { step(v); flowMax = Math.max(flowMax, F1.flow); if (F1.move && F1.move.name === 'yRoll') rolls++; });
+  ok(flowMax >= 2 && rolls > 20, `随机输入里要真的出现这些：顺 ${flowMax} 级、盘手 ${rolls} 帧`);
+  const want = (prep(), ins.forEach(v => step(v)), fullState());
+  prep(); const junk = gen(5);
+  ins.forEach((v, i) => { if (i === 900) { const snap = saveState(); for (const j of junk.slice(0, 300)) step(j); loadState(snap); } step(v); });
+  eq(fullState(), want, '存档漏了迎春拳的字段');
+});
+T('2.9 选拳派：人机、训练场、双人、联机各按自己选的开打；电脑选「随机」每局换；破招练习两边都是传统格斗', () => {
+  const keep = JSON.parse(JSON.stringify({ solo: Styles.solo, pvp: Styles.pvp }));
+  try {
+    Styles.solo = { me: 'ying', cpu: 'trad' };
+    startMatch('pve'); eq([F1.style, F2.style], ['ying', 'trad'], '人机');
+    ok(F1.moves === YMOVES, '迎春拳的人出招查迎春拳的表');
+    Styles.solo.cpu = 'ying'; startMatch('pve'); eq(F2.style, 'ying', '电脑也能是迎春拳');
+    Styles.solo.cpu = 'random'; const seen = new Set(); for (let i = 0; i < 30; i++) { startMatch('pve'); seen.add(F2.style); }
+    eq([...seen].sort(), ['trad', 'ying'], '随机：两派都会出现');
+    startMatch('train'); eq([F1.style, F2.style], ['ying', 'trad'], '训练场：木桩是传统格斗（电脑选了随机）');
+    Drill.start(DRILLS[0].id, false); eq([F1.style, F2.style], ['trad', 'trad'], '破招练习两边都是传统格斗');
+    Drill.stop(); eq(F1.style, 'ying', '回到自由练换回自己的拳派');
+    Styles.pvp = ['ying', 'trad']; startMatch('pvp'); eq([F1.style, F2.style], ['ying', 'trad'], '双人');
+    Net.styles = { h: 'trad', g: 'ying' }; applyStyles('online'); eq([F1.style, F2.style], ['trad', 'ying'], '联机：房主是 P1');
+    const r = Net.role; Net.role = 'host'; Net.onCtl({ t: 'style', id: 'trad' }); eq(Net.styles.g, 'trad', '加入方换了拳派，房主这边记下'); Net.onCtl({ t: 'style', id: 'x' }); eq(Net.styles.g, 'trad', '不认识的不收'); Net.role = r;
+  } finally { Styles.solo = keep.solo; Styles.pvp = keep.pvp; Drill.stop(); startMatch('pvp'); }
+});
+T('2.9 电脑会用迎春拳（拍手、耕手、拉手、一串连环冲拳），也会打迎春拳（被连环冲拳打中按住挡、少出会被化开的重拳和腿）；同一档两派差不多强', () => quietly(() => seededRandom(9, () => {
+  const ev = { pat: 0, gaun: 0, trap: 0, guard: 0, hits: [0, 0] }, dmg = { trad: 0, ying: 0 };
+  for (const order of [['ying', 'trad'], ['trad', 'ying']]) {
+    const keep = Styles.pvp; Styles.pvp = order; startMatch('pvp'); Styles.pvp = keep;
+    game.paused = false; game.endless = true; game.brains = [makeBrain(F1, 'hard'), makeBrain(F2, 'hard')];
+    CEV.on = (type, A, B, x) => {
+      if (type === 'handParry') ev[x.guard]++;
+      if (type === 'grab' && x.kind === 'trap') ev.trap++;
+      if (type === 'guard' && B.style === 'trad' && A.style === 'ying') ev.guard++;
+      if (type === 'hit') dmg[A.style] += x.dmg;
+    };
+    try { for (let i = 0; i < 9000; i++) { step([0, 0]); if (game.phase === 'over') { game.wins = [0, 0]; startRound(); } } }
+    finally { CEV.on = null; game.brains = [null, null]; }
+  }
+  ok(ev.pat > 0 && ev.gaun > 0, `迎春拳的电脑会拍手、耕手：拍 ${ev.pat}、耕 ${ev.gaun}、拉 ${ev.trap}`);
+  ok(ev.guard > 20, '传统格斗的电脑挡得住迎春拳：' + ev.guard);
+  const share = dmg.ying / (dmg.ying + dmg.trad);
+  ok(share > 0.38 && share < 0.62, `困难对困难，迎春拳打掉的血占 ${(share * 100).toFixed(0)}%（要差不多一半）`);
+})));
+T('2.9 迎春拳的招打中那一刻拳脚也落在身上（最远射程 -12 ~ +1）；贴身打拳、踢腿也不穿过去', () => {
+  const rows = contactAll({ style: 'ying' }), bad = rows.filter(r => !r.ok);
+  ok(rows.length >= 20, '量了 ' + rows.length + ' 招');
+  ok(!bad.length, bad.map(r => `${YMOVES[r.n].label}（${r.n}）${r.hit ? (r.gap > 0 ? '还差 ' : '扎进去 ') + Math.abs(r.gap) : '没打中'}`).join('；'));
+  const close = [];
+  for (const [n, d] of [['yJab', 50], ['yJabR', 50], ['yPalmF', 50], ['yInch', 50], ['yTan', 52], ['yButterfly', 56], ['yKick', 60], ['ySideKick', 60], ['yTurnKick', 62]]) {
+    const c = contactOf(simulateMove(n, { style: 'ying', dist: d }), n, YMOVES);
+    if (!c || !c.hit) { close.push(n + ' 没打中'); continue; }
+    if (c.pen > CONTACT_SINK + 1) close.push(`${YMOVES[n].label} 离 ${d}：过了 ${c.pen.toFixed(1)}`);
+  }
+  ok(!close.length, close.join('；'));
+});
+T('2.9 迎春拳的电脑也一档比一档难：乱换招的木头玩家（传统格斗）打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，和传统格斗的电脑差不多（入门 ≥ 78%、简单 ≥ 62%、中等 ≥ 38%、终极 ≥ 18%）', () => {
+  const sh = {}, seeds = [5, 6, 7, 8], keep = Styles.pvp;
+  try {
+    Styles.pvp = ['trad', 'ying'];
+    for (const lv of LEVEL_IDS) { let t = 0; for (const sd of seeds) t += seededRandom(sd, () => mixedPlayer(lv, 20000)); sh[lv] = t / seeds.length; }
+  } finally { Styles.pvp = keep; }
+  const txt = LEVEL_IDS.map(l => `${LEVEL_NAME[l]} ${(sh[l] * 100).toFixed(1)}%`).join(' · ');
+  for (let i = 1; i < LEVEL_IDS.length; i++) ok(sh[LEVEL_IDS[i - 1]] > sh[LEVEL_IDS[i]], '有两档反过来了：' + txt);
+  ok(sh.novice >= 0.78 && sh.easy >= 0.62 && sh.normal >= 0.38 && sh.hell >= 0.18, txt);
+  console.log('迎春拳五档：' + txt);
+});
+T('2.9 招名不带别的拳派（Jack）：铁山靠 → 沉肩靠、寸功 → 寸劲、泰山压顶 → 坠山击、千斤坠 → 坠山、劈挂掌 → 劈山掌（印章也改）；崩拳 → 进步冲拳、截拳 → 截击', () => {
+  eq([MOVES.shoulder.label, MOVES.shoulder.stamp], ['沉肩靠', '沉肩靠']);
+  eq([MOVES.rushEnd.label, MOVES.rushEnd.stamp], ['寸劲', '寸劲']);
+  eq([MOVES.airHeavy.label, MOVES.airHeavy.stamp], ['坠山击', '坠山击']);
+  eq([MOVES.dive.label, MOVES.dive.stamp], ['坠山', '坠山']);
+  eq([MOVES.chop.label, MOVES.chop.stamp], ['劈山掌', '劈山']);
+  eq([MOVES.beng.label, MOVES.jieQuan.label], ['进步冲拳', '截击']);
+  const old = /铁山靠|寸功|泰山压顶|千斤坠|劈挂|崩拳|截拳/;
+  for (const T of [MOVES, YMOVES]) for (const [n, d] of Object.entries(T)) ok(!old.test([d.label, d.stamp, d.tag].join(' ')), n + ' 还是旧名字');
+});
+
 (async function runAll() {
   const list = document.getElementById('list');
   let pass = 0;
   const results = [];
-  for (const t of TESTS) {
+  // 只跑名字里带某几个字的测试：tests.html#only=沉肩靠（调某一条用，平时全跑）
+  const only = decodeURIComponent((location.hash.match(/only=([^&]*)/) || [])[1] || '');
+  for (const t of only ? TESTS.filter(x => x.name.includes(only)) : TESTS) {
     const li = document.createElement('li');
     try { await t.fn(); li.className = 'ok'; li.textContent = '✓ ' + t.name; pass++; results.push({ name: t.name, ok: true }); }
     catch (e) { li.className = 'bad'; li.textContent = '✗ ' + t.name + ' — ' + e.message; results.push({ name: t.name, ok: false, err: e.message }); }
     list.appendChild(li);
   }
-  document.getElementById('sum').innerHTML = `版本 <code>${VERSION}</code> · 通过 ${pass} / ${TESTS.length}` + (pass === TESTS.length ? ' · 全部正常' : ' · 有失败项');
+  const total = results.length;
+  document.getElementById('sum').innerHTML = `版本 <code>${VERSION}</code> · 通过 ${pass} / ${total}` + (pass === total ? ' · 全部正常' : ' · 有失败项') + (only ? `（只跑了带「${only}」的）` : '');
   startAttract();
-  window.__results = { pass, total: TESTS.length, results };
+  window.__results = { pass, total, results };
 })();

@@ -13,11 +13,15 @@
    ============================================================ */
 // 出招时的底子（招式关键帧没写的部分都从这里来）：和站姿差不多、略低一点 —— 前手在肩前、后手护着下巴，两脚前后分开
 const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 71, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
+  fp: 0, bp: 0, fpa: -90, bpa: -90,
   fh: [26, -2], bh: [7, -6], ff: [25, 0], bf: [-30, 0] };
-const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo'];
+// 2.9 掌（Jack：咏春有掌，单独做一个五指并拢的掌）：fp / bp 前手 / 后手是拳（0）还是掌（1，过了一半就画成掌）；
+//     fpa / bpa 掌的手指朝哪（度，和 fh / bh 一样是姿势的坐标：0 往前、-90 朝上、90 朝下、180 往后）。拳头的时候不管这两个
+const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo', 'fp', 'bp', 'fpa', 'bpa'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
-function mk(o) {
-  const p = Object.assign({}, BASE, o || {});
+// base：这一招的底子（不写 = 传统格斗的 BASE；2.9 迎春拳的招用迎春拳自己的底子 YBASE，见 ying.js）
+function mk(o, base) {
+  const p = Object.assign({}, base || BASE, o || {});
   for (const k of ARRK) p[k] = p[k].slice();
   return p;
 }

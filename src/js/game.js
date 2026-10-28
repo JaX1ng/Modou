@@ -30,6 +30,32 @@ function applyLooks(mode) {
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
+/* ---------- 2.9 拳派（传统格斗 / 迎春拳）：进战斗逻辑（招式表、架势、连招全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
+   solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的。
+   训练场的木桩：电脑选了哪一派就是哪一派（随机的话是传统格斗）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
+   菜单背景里两个电脑互打：每次随机 */
+const STYLE_IDS = ['trad', 'ying'];
+const styleOk = id => STYLE_IDS.includes(id);
+const Styles = {
+  solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'],
+  load() {
+    try {
+      const v = JSON.parse(localStorage.getItem('modou.styles') || 'null') || {};
+      if (v.solo && styleOk(v.solo.me)) this.solo.me = v.solo.me;
+      if (v.solo && (v.solo.cpu === 'random' || styleOk(v.solo.cpu))) this.solo.cpu = v.solo.cpu;
+      if (Array.isArray(v.pvp) && styleOk(v.pvp[0]) && styleOk(v.pvp[1])) this.pvp = v.pvp.slice(0, 2);
+    } catch (e) {}
+  },
+  save() { try { localStorage.setItem('modou.styles', JSON.stringify({ solo: this.solo, pvp: this.pvp })); } catch (e) {} },
+};
+Styles.load();
+const randStyle = () => STYLE_IDS[(Math.random() * STYLE_IDS.length) | 0];
+function cpuStyle() { return styleOk(Styles.solo.cpu) ? Styles.solo.cpu : randStyle(); }
+function applyStyles(mode) {
+  const st = mode === 'pvp' ? Styles.pvp : mode === 'online' ? [Net.styles.h, Net.styles.g] : mode === 'attract' ? [randStyle(), randStyle()]
+    : mode === 'train' ? [Styles.solo.me, styleOk(Styles.solo.cpu) ? Styles.solo.cpu : 'trad'] : [Styles.solo.me, cpuStyle()];
+  F1.style = styleOk(st[0]) ? st[0] : STYLE_DEFAULT; F2.style = styleOk(st[1]) ? st[1] : STYLE_DEFAULT;
+}
 
 const START_X = [STAGE_W / 2 - START_GAP / 2, STAGE_W / 2 + START_GAP / 2];
 const F1 = new Fighter(0, { look: 'ink', x: START_X[0], facing: 1 });
@@ -61,7 +87,7 @@ function resetFighters() {
 function startAttract() {
   game.mode = 'attract'; game.phase = 'attract'; game.phaseT = 0; game.paused = false; game.endless = false;
   game.brains = [new Brain(F1, 'normal'), new Brain(F2, 'normal')];
-  F1.label = ''; F2.label = ''; F2.maxHp = MAX_HP; applyLooks('attract');
+  F1.label = ''; F2.label = ''; F2.maxHp = MAX_HP; applyLooks('attract'); applyStyles('attract');
   resetFighters();
 }
 function startMatch(mode) {
@@ -70,7 +96,7 @@ function startMatch(mode) {
   game.mode = mode;
   game.endless = mode === 'pvp' || mode === 'train';
   const train = mode === 'train';
-  F2.maxHp = train ? DUMMY_HP : MAX_HP; applyLooks(mode);
+  F2.maxHp = train ? DUMMY_HP : MAX_HP; applyLooks(mode); applyStyles(mode);
   game.brains = mode === 'pve' ? [null, makeBrain(F2, game.diff)] : train ? [null, new Dummy(F2, game.dummyMode)] : [null, null];
   if (mode === 'pve') { F1.label = '玩家'; F2.label = LABEL[game.diff]; }
   else if (train) { F1.label = '练习'; F2.label = '木桩'; }
@@ -236,7 +262,7 @@ function loadState(s) {
 function stateHash() {
   const s = [game.round, game.timer, game.phase, game.wins[0], game.wins[1], game.freeze];
   for (const F of game.p) s.push(F.hp, F.x.toFixed(3), F.alt.toFixed(3), F.state, F.move ? F.move.name + ':' + F.move.t : '-', F.stunT, F.slowJab, F.qi, F.comboTaken, F.runT, F.facing, F.vx.toFixed(3),
-    F.grabbed ? 1 : 0, F.rollDir, F.guardOn, F.stompFor, F.move && F.move.pick || '', F.slipGot ? 1 : 0, F.stagger ? 1 : 0, F.t);
+    F.grabbed ? 1 : 0, F.rollDir, F.guardOn, F.stompFor, F.move && F.move.pick || '', F.slipGot ? 1 : 0, F.stagger ? 1 : 0, F.t, F.style, F.flow);
   const str = s.join('|');
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
