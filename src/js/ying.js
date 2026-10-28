@@ -30,10 +30,15 @@ const ymk = o => mk(o, YBASE);
 function YM(o) { o.pb = YBASE; o.style = 'ying'; return M(o); }
 
 // 常用片段（拳 = fp/bp 0，掌 = 1；fpa/bpa 手指朝哪：-90 朝上、0 往前、90 朝下）
-const Y_PF = { tor: 6, dx: 8, hy: 68, tw: 24, fh: [55, -5], fp: 0, bh: [20, 0], bpa: -80, ff: [32, 0], bf: [-30, 0] };          // 前手冲拳（日字拳）、后手護在胸口
-const Y_PR = { tor: 6, dx: 9, hy: 68, tw: -22, bh: [55, -5], bp: 0, fh: [22, 2], fpa: -80, ff: [32, 0], bf: [-30, 0] };          // 后手冲拳、前手收回来護在胸口
-const Y_MF = { tor: 8, dx: 9, hy: 68, tw: 26, fh: [53, -3], fpa: -74, bh: [18, 3], bp: 0, ff: [32, 0], bf: [-30, 0] };           // 前手立掌（掌根打出去）、后手握拳收在胸口
-const Y_MR = { tor: 8, dx: 9, hy: 68, tw: -24, bh: [53, -3], bpa: -76, fh: [18, 3], fp: 0, ff: [32, 0], bf: [-30, 0] };          // 后手立掌、前手握拳收在胸口
+// 2.9.1（Jack：要叶问打桩那种左右交叉，不是一上一下）：两只手都走中线、同一个高度（胸口 -4），肩不拧（tw 小），
+// 收回来的那只手顺着打出去那只手的小臂底下抽回来 —— 换手那一帧（0.5）两只拳头在半路交错（Y_X）
+const Y_LINE = -4;
+const Y_PF = { tor: 6, dx: 8, hy: 68, tw: 6, fh: [56, Y_LINE], fp: 0, bh: [26, Y_LINE], bp: 0, ff: [32, 0], bf: [-30, 0] };     // 前手冲拳（日字拳）、后手拳收在前手肘底下
+const Y_PR = { tor: 6, dx: 9, hy: 68, tw: -6, bh: [56, Y_LINE], bp: 0, fh: [26, Y_LINE], fp: 0, ff: [32, 0], bf: [-30, 0] };    // 后手冲拳、前手收回来
+const Y_MF = { tor: 8, dx: 9, hy: 68, tw: 6, fh: [54, Y_LINE], fpa: -74, bh: [26, Y_LINE], bp: 0, ff: [32, 0], bf: [-30, 0] };   // 前手立掌（掌根打出去）、后手握拳收回来
+const Y_MR = { tor: 8, dx: 9, hy: 68, tw: -6, bh: [54, Y_LINE], bpa: -76, fh: [26, Y_LINE], fp: 0, ff: [32, 0], bf: [-30, 0] };  // 后手立掌、前手握拳收回来
+// 换手的半路：出去的那只到 40、回来的那只到 38，两条小臂擦着过（o：出去的是前手 'f' 还是后手 'b'）
+const Y_X = (o, pf) => o === 'f' ? { tw: 0, dx: 6, fh: [40, Y_LINE + 1], fp: pf === undefined ? 0 : pf, bh: [38, Y_LINE - 1], bp: 0 } : { tw: 0, dx: 6, bh: [40, Y_LINE + 1], bp: pf === undefined ? 0 : pf, fh: [38, Y_LINE - 1], fp: 0 };
 const Y_LOW = { hy: 52, tor: 18, head: -4, tw: 20, ff: [28, 0], bf: [-26, 0], fh: [34, -2], bh: [18, 4] };                     // 蹲着：两只掌还竖着护在前面
 const YJ = (base, o) => Object.assign({}, base, o);
 
@@ -42,22 +47,22 @@ const YMOVES = {
   // 冲拳（单出、起手）：前手从護手的位置直直冲出去，拳头竖着（日字拳），后手留在胸口护着中线
   yJab: YM({ kind: 'jab', label: '冲拳', open: true, flow: true, S: 3, A: 3, R: 7, dmg: 4, reach: 84, stun: 8, bstun: 6, kb: 1.4, stop: 3, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 3, 6],
-    keys: [[0, {}], [0.5, { fh: [40, -6], fp: 0, tw: 28 }], [1, Y_PF, 'back'], [2, Y_PF], [2.5, YJ(Y_PF, { dx: 4, fh: [38, -6] })], [3, {}]] }),
+    keys: [[0, {}], [0.5, { fh: [40, Y_LINE], fp: 0, tw: 8, bh: [30, Y_LINE], bp: 0 }], [1, Y_PF, 'back'], [2, Y_PF], [2.5, YJ(Y_PF, { dx: 4, fh: [40, Y_LINE] })], [3, {}]] }),
   // 连环冲拳里的前手、后手：越连越快（顺）
   yJabR: YM({ kind: 'jab', label: '冲拳', flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 2, bstun: 6, kb: 1.2, stop: 3, power: .3,
     limb: 'bh', fx: 'rush', lunge: [1, 3, 7],
-    keys: [[0, YJ(Y_PF, { fh: [44, -6], fp: 1, dx: 6 })], [0.45, { tw: 4, bh: [34, -4], bp: 0, fh: [30, 0], dx: 6 }], [1, Y_PR, 'back'], [2, Y_PR], [3, YJ(Y_PR, { dx: 5, bh: [30, -4] })]] }),
+    keys: [[0, YJ(Y_PF, { fh: [48, Y_LINE], dx: 6 })], [0.5, Y_X('b')], [1, Y_PR, 'back'], [2, Y_PR], [3, YJ(Y_PR, { dx: 5, bh: [40, Y_LINE] })]] }),
   // （前手这一拳往前跟一步：踢完接拳也够得着）
   yJabF: YM({ kind: 'jab', label: '冲拳', flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 2, bstun: 6, kb: 1.2, stop: 3, power: .3,
     limb: 'fh', fx: 'rush', lunge: [1, 3, 12],
-    keys: [[0, YJ(Y_PR, { bh: [44, -6], bp: 1, dx: 6 })], [0.45, { tw: 4, fh: [34, -4], fp: 0, bh: [30, 0], dx: 6 }], [1, Y_PF, 'back'], [2, Y_PF], [3, YJ(Y_PF, { dx: 5, fh: [30, -4] })]] }),
+    keys: [[0, YJ(Y_PR, { bh: [48, Y_LINE], dx: 6 })], [0.5, Y_X('f')], [1, Y_PF, 'back'], [2, Y_PF], [3, YJ(Y_PF, { dx: 5, fh: [40, Y_LINE] })]] }),
   // 立掌：掌根往前推出去（拳掌结合）
   yPalmF: YM({ kind: 'jab', label: '立掌', flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 2, bstun: 6, kb: 1.3, stop: 3, power: .35,
     limb: 'fh', fx: 'rush', lunge: [1, 3, 7],
-    keys: [[0, YJ(Y_PR, { bh: [44, -6], dx: 6 })], [0.45, { tw: 4, fh: [32, -2], bh: [30, 2], bp: 0, dx: 6 }], [1, Y_MF, 'back'], [2, Y_MF], [3, YJ(Y_MF, { dx: 5, fh: [30, -2] })]] }),
+    keys: [[0, YJ(Y_PR, { bh: [48, Y_LINE], dx: 6 })], [0.5, Y_X('f', 1)], [1, Y_MF, 'back'], [2, Y_MF], [3, YJ(Y_MF, { dx: 5, fh: [40, Y_LINE] })]] }),
   yPalmR: YM({ kind: 'jab', label: '立掌', flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 2, bstun: 6, kb: 1.3, stop: 3, power: .35,
     limb: 'bh', fx: 'rush', lunge: [1, 3, 7],
-    keys: [[0, YJ(Y_PF, { fh: [44, -6], dx: 6 })], [0.45, { tw: 4, bh: [32, -2], fh: [30, 2], fp: 0, dx: 6 }], [1, Y_MR, 'back'], [2, Y_MR], [3, YJ(Y_MR, { dx: 5, bh: [30, -2] })]] }),
+    keys: [[0, YJ(Y_PF, { fh: [48, Y_LINE], dx: 6 })], [0.5, Y_X('b', 1)], [1, Y_MR, 'back'], [2, Y_MR], [3, YJ(Y_MR, { dx: 5, bh: [40, Y_LINE] })]] }),
   // 寸拳（第 8 下收势）：身子往下一沉、后手拳贴着胸口，一寸一寸地炸出去 —— 劲大，霸体也挡不住（pierce），打倒
   yInch: YM({ kind: 'jab', label: '寸拳', stamp: '寸拳', flow: true, pierce: true, S: 4, A: 3, R: 12, dmg: 10, reach: 88, stun: 14, bstun: 10, kb: 6, stop: 9, shake: 7, power: 1,
     limb: 'bh', fx: 'rushEnd', ghost: true, lunge: [1, 4, 10], launch: 4.5, ender: true, noCancel: true,
@@ -90,23 +95,24 @@ const YMOVES = {
     keys: [[0, Y_LOW], [1, YJ(Y_LOW, { hy: 54, tor: 14, dx: 4, tw: 30, fh: [44, 26], fpa: 64, bh: [22, -6] }), 'out'],
       [1.5, YJ(Y_LOW, { hy: 54, tor: 16, dx: 6, tw: 34, fh: [48, 32], fpa: 80, bh: [22, -6] })], [2, YJ(Y_LOW, { hy: 54, tor: 14, dx: 4, tw: 30, fh: [44, 28], fpa: 70, bh: [22, -6] })], [3, Y_LOW]] }),
   // 摊打（连招里、拍开以后按重）：前手摊开（掌心朝上往前托，化开对方的手）、同时后手一拳打进去 —— 一手化一手打（cross：交手时克对方的拳系）
+  // 2.9.1：摊着的那只手和打出去的拳在同一条线上（胸口），打桩那样 —— 摊手搭在前面一点，拳从它旁边打过去；换手那一帧两条小臂交叉
   yTan: YM({ kind: 'heavy', label: '摊打', tag: '摊打', flow: true, cross: true, lead: 'light', S: 3, A: 3, R: 8, dmg: 6, reach: 86, stun: 3, bstun: 7, kb: 1.8, stop: 4, shake: 2, power: .5,
     limb: 'bh', fx: 'jab2', lunge: [1, 3, 8],
-    keys: [[0, YJ(Y_PF, { fh: [44, -8], fp: 1 })], [0.5, { tw: 12, fh: [36, -10], fpa: -50, bh: [16, 2], bp: 0, dx: 4 }],
-      [1, { tor: 8, dx: 10, hy: 67, tw: -14, fh: [40, -18], fpa: -32, bh: [55, -2], bp: 0, ff: [32, 0], bf: [-30, 0] }, 'back'],
-      [2, { tor: 8, dx: 10, hy: 67, tw: -14, fh: [40, -18], fpa: -32, bh: [55, -2], bp: 0, ff: [32, 0], bf: [-30, 0] }], [3, YJ(Y_PR, { fh: [30, -10], fp: 1 })]] }),
-  // 拍打（摊打以后再按重）：后手往下一拍（压住对方的手），前手立掌打出去 —— 左右换过来
+    keys: [[0, YJ(Y_PF, { fh: [46, Y_LINE], fp: 1, fpa: -40 })], [0.5, { tw: 0, dx: 6, fh: [42, Y_LINE - 1], fp: 1, fpa: -10, bh: [38, Y_LINE + 1], bp: 0 }],
+      [1, { tor: 8, dx: 10, hy: 67, tw: -6, fh: [40, Y_LINE - 2], fp: 1, fpa: 0, bh: [56, Y_LINE], bp: 0, ff: [32, 0], bf: [-30, 0] }, 'back'],
+      [2, { tor: 8, dx: 10, hy: 67, tw: -6, fh: [40, Y_LINE - 2], fp: 1, fpa: 0, bh: [56, Y_LINE], bp: 0, ff: [32, 0], bf: [-30, 0] }], [3, YJ(Y_PR, { fh: [34, Y_LINE], fp: 1, fpa: -30 })]] }),
+  // 拍打（摊打以后再按重）：后手往前一拍（压住对方的手），前手立掌打出去 —— 左右换过来（2.9.1：拍的手也在这条线上，掌心朝下）
   yPak: YM({ kind: 'heavy', label: '拍打', tag: '拍打', flow: true, cross: true, lead: 'light', S: 3, A: 3, R: 8, dmg: 6, reach: 86, stun: 5, bstun: 7, kb: 1.8, stop: 4, shake: 2, power: .5,
     limb: 'fh', fx: 'jab', lunge: [1, 3, 8],
-    keys: [[0, YJ(Y_PR, { fh: [30, -6], fp: 1 })], [0.5, { tw: -4, bh: [38, -8], bp: 1, bpa: -10, fh: [20, 0], dx: 4 }],
-      [1, { tor: 9, dx: 10, hy: 67, tw: 28, bh: [36, 8], bpa: 14, fh: [55, -6], fpa: -78, ff: [32, 0], bf: [-30, 0] }, 'back'],
-      [2, { tor: 9, dx: 10, hy: 67, tw: 28, bh: [36, 8], bpa: 14, fh: [55, -6], fpa: -78, ff: [32, 0], bf: [-30, 0] }], [3, {}]] }),
-  // 蝴蝶掌（拍打以后再按重）：上一步，两只掌一上一下一起推出去（上面那只手指朝上、下面那只手指朝下）—— 打倒
+    keys: [[0, YJ(Y_PR, { bh: [46, Y_LINE], bp: 1, bpa: 10 })], [0.5, { tw: 0, dx: 6, bh: [42, Y_LINE - 1], bp: 1, bpa: 20, fh: [38, Y_LINE + 1], fp: 1, fpa: -60 }],
+      [1, { tor: 9, dx: 10, hy: 67, tw: 6, bh: [40, Y_LINE + 2], bp: 1, bpa: 30, fh: [56, Y_LINE], fpa: -78, ff: [32, 0], bf: [-30, 0] }, 'back'],
+      [2, { tor: 9, dx: 10, hy: 67, tw: 6, bh: [40, Y_LINE + 2], bp: 1, bpa: 30, fh: [56, Y_LINE], fpa: -78, ff: [32, 0], bf: [-30, 0] }], [3, {}]] }),
+  // 蝴蝶掌（拍打以后再按重）：上一步，两只掌并排一起推出去（2.9.1：同一个高度，不再一上一下；侧面看两只掌叠在一起）—— 打倒
   yButterfly: YM({ kind: 'heavy', label: '蝴蝶掌', stamp: '蝴蝶掌', flow: true, cross: true, lead: 'light', S: 5, A: 4, R: 13, dmg: 11, reach: 92, stun: 14, bstun: 11, kb: 7, stop: 9, shake: 7, power: 1, heavy: true,
     limb: 'fh', fx: 'shove', ghost: true, lunge: [1, 5, 16], launch: 5, ender: true, noCancel: true,
-    keys: [[0, {}], [0.55, { tor: 0, dx: -4, hy: 66, tw: 8, fh: [24, -6], bh: [20, 12], bpa: 70 }],
-      [1, { tor: 14, dx: 18, hy: 64, tw: 6, fh: [54, -10], fpa: -84, bh: [52, 14], bpa: 80, ff: [44, 0], bf: [-34, 0] }, 'back'],
-      [2, { tor: 14, dx: 18, hy: 64, tw: 6, fh: [54, -10], fpa: -84, bh: [52, 14], bpa: 80, ff: [44, 0], bf: [-34, 0] }], [3, {}]] }),
+    keys: [[0, {}], [0.55, { tor: 0, dx: -4, hy: 66, tw: 0, fh: [24, Y_LINE - 2], fpa: -86, bh: [22, Y_LINE + 2], bpa: -80 }],
+      [1, { tor: 14, dx: 18, hy: 64, tw: 0, fh: [55, Y_LINE - 3], fpa: -84, bh: [53, Y_LINE + 3], bpa: -80, ff: [44, 0], bf: [-34, 0] }, 'back'],
+      [2, { tor: 14, dx: 18, hy: 64, tw: 0, fh: [55, Y_LINE - 3], fpa: -84, bh: [53, Y_LINE + 3], bpa: -80, ff: [44, 0], bf: [-34, 0] }], [3, {}]] }),
 
   /* ---- 踢：近、快、伤害小，踢法多 ---- */
   // 正撑脚（单出）：前腿提膝、脚跟往前直直地撑出去（中段），两只手还护着
@@ -284,7 +290,7 @@ const YMOVES = {
       [1, YJ(Y_PF, { dx: 12, hy: 64, fh: [56, -4] }), 'back'], [2, YJ(Y_PF, { dx: 12, hy: 64, fh: [56, -4] })], [3, {}]] }),
 };
 // 连环寸拳打中以后那一串：左右手交替（fighter.js target 按第几拳在这两个之间换）；最后一记寸劲用 yInch 打中的样子
-const Y_FLURRY = [ymk(YJ(Y_PF, { dx: 14, hy: 64, tor: 10, fh: [56, -6] })), ymk(YJ(Y_PR, { dx: 14, hy: 64, tor: 10, bh: [56, -6] }))];
+const Y_FLURRY = [ymk(YJ(Y_PF, { dx: 14, hy: 64, tor: 10 })), ymk(YJ(Y_PR, { dx: 14, hy: 64, tor: 10 }))];
 const Y_FLURRY_END = ymk({ tor: 16, dx: 20, hy: 62, head: -2, tw: -36, bh: [58, -2], bp: 0, fh: [30, -3], fpa: -86, ff: [46, 0], bf: [-30, 0] });
 
 /* 迎春拳自己的架势（fighter.js target 用；没写的照传统格斗的 POSE：跑、跳、挨打、躺……） */
