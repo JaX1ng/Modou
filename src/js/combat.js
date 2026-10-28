@@ -281,7 +281,8 @@ function applyHit(A, B, how) {
   }
   if (flowMove) {
     A.flow = Math.min(FLOW_MAX, A.flow + 1);
-    if (A.flow === FLOW_COUNTER && !game.quiet) tag(A.x, A.J.head[1] - 74, '顺', A, 26);   // 顺到跑不掉了：头上一个「顺」
+    // 顺到跑不掉了（这一下打中时已经顺 FLOW_COUNTER 级：后面没有空）：头上一个「顺」
+    if (A.flow === FLOW_COUNTER + 1 && !game.quiet) tag(A.x, A.J.head[1] - 74, '顺', A, 26);
     if (B.state === 'down' || B.state === 'ko') A.flow = 0;          // 打倒了：这一串完了（他起身的时候压上去，又是反打，第一下就顺）
   }
   if (d.dive) {
