@@ -53,7 +53,10 @@ const BODY = {
   belt: { at: 0.11, h: 6 },                    // 腰带：在脊柱上的位置（参考图那样系得低，在胯上）、宽
   // 阴影：亮边的颜色（往纸色混多少 —— 参考图里亮边只比本色亮一点点）、躯干 / 腿 / 鞋的亮边多宽、胳膊和拳的亮边多宽、
   // 近侧手脚叠在身上那道亮线多宽、亮边往上偏多少（侧面的亮边顺带一点上沿）
-  shade: { tone: 0.11, rim: 1.3, rimArm: 1.05, line: 1.3, up: 0.3 },
+  // 2.10.1 远侧那条胳膊整条淡一点点（far：往纸色混多少 —— 墨色的人暗不下去，所以是「远的淡」，水墨画远处就是淡的）、
+  // 肘关节和肩膀那一小块再淡一点点（farJoint）—— 两条胳膊交叉的时候看得出哪条在里哪条在外
+  // （Jack：用稍微一点点的阴影表示左右，在肘关节、手臂和肩膀那一点点位置，不要太多阴影）；farR 肘上那一块多大、farRs 肩上那一块多大
+  shade: { tone: 0.11, rim: 1.3, rimArm: 1.05, line: 1.3, up: 0.3, far: 0.07, farJoint: 0.12, farR: 5.2, farRs: 5.6 },
 };
 // 以前的名字（别的文件、测试还在用）：头半径、大臂、小臂、大腿、小腿、躯干、脖子
 const BONE = { torso: BODY.bone.torso, neck: BODY.bone.neck, head: BODY.bone.head, ua: BODY.bone.ua, fa: BODY.bone.fa, th: BODY.bone.th, sh: BODY.bone.sh };
@@ -64,7 +67,7 @@ const bodyMix = (a, b, k) => { const A = bodyRgb(a), B = bodyRgb(b); return '#' 
 const BODY_TONES = {};
 function bodyTones(col) {
   if (BODY_TONES[col]) return BODY_TONES[col];
-  return (BODY_TONES[col] = { base: col, hl: bodyMix(col, C.paper, BODY.shade.tone) });
+  return (BODY_TONES[col] = { base: col, hl: bodyMix(col, C.paper, BODY.shade.tone), far: bodyMix(col, C.paper, BODY.shade.far), farJ: bodyMix(col, C.paper, BODY.shade.farJoint) });
 }
 
 /* ---------- 外形 ---------- */
@@ -454,11 +457,11 @@ function drawBody(J, col, band) {
     ctx.save(); ctx.clip(path);
     paint(T.base, path);
     // 亮边：这几块合起来涂亮色，再往 n 的反方向挪 w 涂回本色 —— n 那一侧剩下一道 w 宽的亮边
-    const rim = (list, n, w) => {
+    const rim = (list, n, w, base) => {
       if (!list.length || w <= 0) return;
       const p = list.length === parts.length ? path : polysPath(list);
       ctx.save(); ctx.clip(p); paint(T.hl, p);
-      ctx.translate(-n[0] * w, -n[1] * w); paint(T.base, p); ctx.restore();
+      ctx.translate(-n[0] * w, -n[1] * w); paint(base || T.base, p); ctx.restore();
     };
     if (L === 'torso') {
       // 躯干前后两侧的亮边都只到腰带：腰带底下是裆（裤子），和两条大腿长在一起。
@@ -467,7 +470,18 @@ function drawBody(J, col, band) {
       rim(parts, nrm(-f, -S.up), S.rim);
       if (tr) { const a = tr.at(tb, 0), b = tr.at(tb + 1, 0), l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1; paint(T.base, halfPlane(a, (b[0] - a[0]) / l, (b[1] - a[1]) / l)); }
     }
-    else if (arm) rim(parts, [0, -1], S.rimArm);
+    else if (arm) {
+      const far = L === 'farArm';
+      rim(parts, [0, -1], S.rimArm, far ? T.far : T.base);     // 2.10.1 远侧的胳膊整条暗一点点（亮边照旧）
+      if (far) {                                                 // 肘关节、肩膀那一小块再暗一点点（都在这条胳膊的外形里面）
+        const el = key === 'F' ? J.fe : J.be, sh0 = key === 'F' ? J.shF : J.shB;
+        const ex = el[0] - sh0[0], ey = el[1] - sh0[1], el2 = Math.hypot(ex, ey) || 1;
+        const pj = new Path2D();
+        pj.arc(el[0], el[1], S.farR, 0, Math.PI * 2);
+        pj.moveTo(sh0[0] + ex / el2 * 5 + S.farRs, sh0[1] + ey / el2 * 5); pj.arc(sh0[0] + ex / el2 * 5, sh0[1] + ey / el2 * 5, S.farRs, 0, Math.PI * 2);
+        paint(T.farJ, pj);
+      }
+    }
     else if (leg) {
       const s = key === 'F' ? sF : -sF;
       rim(parts.filter(p => !p.foot), nrm(s * f, -S.up), S.rim);

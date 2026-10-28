@@ -170,10 +170,10 @@ const neutralMove = (F, a) => F.style === 'wc' && W_KEY[a] ? W_KEY[a] : styleOf(
 const J8 = ['jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab'];
 const Jn = n => J8.slice(0, n);
 // 咏春拳的电脑看穿招、化招的机会打个折：咏春拳化开一招就是一整套（拍开、黏住进搭手），同一档难度两派要差不多强（电脑对电脑量出来的）
-const W_READ = { novice: 1, easy: 1, normal: 0.5, hard: 0.5, hell: 0.8 };
+const W_READ = { novice: 1, easy: 1, normal: 0.45, hard: 0.4, hell: 0.65 };   // 2.10.1 反打、搭手更疼了，看穿再折一点
 const wcReadMul = L => W_READ[L.id] || 1;
 // 咏春拳的电脑举手挡的机会也打个折：咏春拳挡住（黐手黏住）就是一整套，比传统格斗挡住再罚赚得多（量出来的：对乱打的木头玩家一档一档拉得开）
-const W_GUARD = { novice: 1, easy: 1, normal: 0.45, hard: 0.5, hell: 0.55 };
+const W_GUARD = { novice: 1, easy: 1, normal: 0.45, hard: 0.42, hell: 0.45 };
 const wcGuardMul = L => W_GUARD[L.id] || 1;
 // 两派电脑对打调平用的几个数（电脑对电脑量出来的；改了重新量，见 NOTES「量难度」）
 const AI_TUNE = {
@@ -181,7 +181,8 @@ const AI_TUNE = {
   wcStopGrab: 0.25,         // 被挡住以后改拉手扣他的机会
   escK: 0.6, escB: 0.05,    // 打咏春拳：被连环冲拳刚起手打中，一直按着挡的机会 = 挡的本事 × escK + escB
   ctrW: [0.05, 0.4],        // 被黏住时打算反拿的分量 = a + b × 搭手的本事
-  wcLow: 0.1, wcGrabBlk: 0.22,   // 咏春拳对着站挡的人：打下段、拉手的机会（传统格斗是 0.05、0.12）
+  wcLow: 0.1, wcGrabBlk: 0.2,   // 咏春拳对着站挡的人：打下段、拉手的机会（传统格斗是 0.05、0.12）
+  vsWcGrab: 0.14,           // 传统格斗对着黐手的人（站着按住挡）：抓的机会（擒拿克黐手，比抓普通挡的人多一点）
 };
 // 搭手、甩手直冲以后接着按拍子连几下（难度越高连得越长）
 const W_AFTER = { novice: 3, easy: 3, normal: 3, hard: 5, hell: 5 };
@@ -348,11 +349,11 @@ class Brain {
   }
 
   /* ---------- 2.10 咏春拳：拍子、搭手、黐手破连 ---------- */
-  // 连环冲拳按拍子：算出下一拍的拍点（和 wingchun.js 的 wcRhythm 一个算法），在拍点上按（离拍点差多少看 beatSd）。
-  // 每一拳想一次接不接（一串很长，每一下接下去的机会高一点）；被挡住了，聪明的停手（挡住了顺就断了）或者收完招拉手扣他
+  // 一串按拍子（拳接拳、拳接踢、踢接拳）：算出下一拍的拍点（和 wingchun.js 的 wcRhythm 一个算法），在拍点上按（离拍点差多少看 beatSd）。
+  // 每一下想一次接不接（一串很长，每一下接下去的机会高一点）；被挡住了，聪明的停手（挡住了顺就断了）或者收完招拉手扣他
   beatPress(m, dist, press) {
-    const f = this.f, L = this.L, R = Math.random;
-    if (m.qn) return;                                                   // 下一拳已经排上了
+    const f = this.f, L = this.L, R = Math.random, kk = kindOf(this.plan[0]);
+    if (m.qn) return;                                                   // 下一下已经排上了
     if (this.beatFor !== m.serial) {
       this.beatFor = m.serial;
       this.beatJit = gauss() * L.beatSd;
@@ -371,7 +372,7 @@ class Brain {
       if (r < stop + AI_TUNE.wcStopGrab && dist <= this.mvOf('grab').reach + 4) { this.plan = ['grab']; return; }
     }
     if (!this.beatGo) { this.plan = []; return; }
-    if (m.t >= wcBeatAt(f, m) - 1 + this.beatJit) press(this.plan.shift());
+    if (m.t >= wcBeatAt(f, m, kk) - 1 + this.beatJit) press(this.plan.shift());
   }
   // 搭手里手上的反应：feel 帧（再晚一两帧）
   feelDelay() { return this.L.feel + (Math.random() * 3 | 0); }
@@ -609,8 +610,8 @@ class Brain {
         return;
       }
       if (!this.plan.length) return;
-      // 咏春拳的连环冲拳：按拍子接（拳在连环拳里随时按得下去，按不准就是抢拍、过拍）
-      if (this.K.wc && d.beat && kindOf(this.plan[0]) === 'jab') { this.beatPress(m, dist, press); return; }
+      // 咏春拳的一串：拳、踢都按拍子接（一串里随时按得下去，按不准就是抢拍、过拍；2.10.1 踢也一样）
+      if (this.K.wc && (d.beat || d.link) && (kindOf(this.plan[0]) === 'jab' || kindOf(this.plan[0]) === 'kick')) { this.beatPress(m, dist, press); return; }
       if (f.canCancel(kindOf(this.plan[0]))) {
         // 咏春拳一串很长，每一下接下去的机会高一点
         if (R() < (this.K.wc ? 1 - (1 - L.combo) * (L.combo < 0.8 ? 0.15 : 0.3) : L.combo)) press(this.plan.shift()); else this.plan = [];
@@ -795,7 +796,7 @@ class Brain {
     // 气满：对手收招或硬直时放泼墨
     if (f.qi >= QI_MAX && dist <= (this.K.wc ? 102 : 130) && !s.down && !s.air && (s.phase === 'r' || s.stun) && R() < L.sup * 0.25) { pair(); return; }
     // 对手龟缩：站挡就擒拿或下段，蹲挡就抄腿或打上段（跳）
-    if (s.blocking && !s.lowBlock && dist <= 84 && R() < L.grabBlock * (this.K.wc || o.style === 'wc' ? AI_TUNE.wcGrabBlk : 0.12)) { press('grab'); return; }   // 咏春拳拉手扣住挡着的人（进搭手）；打咏春拳的人抓黐手
+    if (s.blocking && !s.lowBlock && dist <= 84 && R() < L.grabBlock * (this.K.wc ? AI_TUNE.wcGrabBlk : o.style === 'wc' ? AI_TUNE.vsWcGrab : 0.12)) { press('grab'); return; }   // 咏春拳拉手扣住挡着的人（进搭手）；打咏春拳的人抓黐手
     if (s.blocking && s.lowBlock && dist <= 88 && R() < L.grabBlock * 0.1) { press('d:grab'); return; }
     if (s.blocking && !s.lowBlock && dist <= 120 && R() < L.low * (this.K.wc ? AI_TUNE.wcLow : 0.05)) { press(dist <= 88 ? 'd:jab' : 'd:kick'); return; }
     // 被贴身压着：闪步拉开，或者偶尔闪到对手身后

@@ -11,34 +11,44 @@
    挡的时候被打到 / 挨打时被打到（defend）、我打中他（strike）、两边的招撞上（clash）、抓到人（grab）、算硬直（stunOf）、画架势（target）、画搭手的提示（drawCue）
    ============================================================ */
 
-/* ---------- 底子：问手 + 护手，两只掌竖着、掌心朝里（Jack：手掌内翻一定要看得出来是往里翻的） ---------- */
-const WBASE = { rot: 0, spin: 0, tor: 2, head: 2, hy: 69, dx: 0, air: 0, fe: 1, be: 1, tw: 30, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 1, bp: 1, fpa: -84, bpa: -78, fpr: 1, bpr: 1, fh: [48, -10], bh: [22, -2], ff: [28, 0], bf: [-32, 0] };
+/* ---------- 底子：问手 + 护手，两只掌竖着、掌心朝里（Jack：手掌内翻一定要看得出来是往里翻的）。
+   2.10.1 照 ref/wc_dummy_rolling.jpg：两只手在胸口到肩这一段高度、往前斜伸，肘尖朝下收在身前（不是举在脸前） ---------- */
+const WBASE = { rot: 0, spin: 0, tor: 2, head: 2, hy: 69, dx: 0, air: 0, fe: 1, be: 1, tw: 24, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
+  fp: 1, bp: 1, fpa: -30, bpa: -40, fpr: 1, bpr: 1, fh: [45, 8], bh: [23, 12], ff: [28, 0], bf: [-32, 0] };
 const wmk = o => mk(o, WBASE);
 function WM(o) { o.pb = WBASE; o.style = 'wc'; return M(o); }
 const WJ = (base, o) => Object.assign({}, base, o);
 
-// 连环冲拳（2.9.1 照叶问打桩摆的左右交错）：两只手都走中线、同一个高度，收回来的拳从打出去那条胳膊的肘底下抽回
-const W_LINE = -4;
-const W_PF = { tor: 6, dx: 8, hy: 68, tw: 6, fh: [56, W_LINE], fp: 0, bh: [26, W_LINE], bp: 0, ff: [32, 0], bf: [-30, 0] };     // 前手冲拳、后手拳收在前手肘底下
-const W_PR = { tor: 6, dx: 9, hy: 68, tw: -6, bh: [56, W_LINE], bp: 0, fh: [26, W_LINE], fp: 0, ff: [32, 0], bf: [-30, 0] };    // 后手冲拳
+// 连环冲拳（照叶问打桩摆的左右交错）：两只拳都走中线、同一个高度；打出去的那条伸直，收着的那只拳在胸口中线、打出去那条胳膊的肘底下，肘沉着 ——
+// 两只拳都看得见。2.10.1 换手那一下两条小臂一里一外交错（左右：远侧那条胳膊暗一点点，body.js），不是一上一下
+const W_LINE = -1;
+const W_PF = { tor: 6, dx: 8, hy: 68, tw: 10, fh: [58, W_LINE], fp: 0, bh: [22, W_LINE + 3], bp: 0, be: 1, ff: [32, 0], bf: [-30, 0] };     // 前手冲拳、后手拳收在胸口
+const W_PR = { tor: 6, dx: 9, hy: 68, tw: -8, bh: [58, W_LINE], bp: 0, fh: [22, W_LINE + 3], fp: 0, fe: 1, ff: [32, 0], bf: [-30, 0] };    // 后手冲拳
 // 立掌（正掌）：掌根往前推，掌心朝前 —— 侧面看是掌边，掌心微微朝里（fpr 0.35）
-const W_MF = { tor: 8, dx: 9, hy: 68, tw: 6, fh: [54, W_LINE], fpa: -74, fpr: 0.35, bh: [26, W_LINE], bp: 0, ff: [32, 0], bf: [-30, 0] };
-const W_MR = { tor: 8, dx: 9, hy: 68, tw: -6, bh: [54, W_LINE], bpa: -76, bpr: 0.35, fh: [26, W_LINE], fp: 0, ff: [32, 0], bf: [-30, 0] };
-// 换手的半路：出去的那只到 40、回来的那只到 38，两条小臂擦着过
-const W_X = (o, pf) => o === 'f' ? { tw: 0, dx: 6, fh: [40, W_LINE + 1], fp: pf === undefined ? 0 : pf, bh: [38, W_LINE - 1], bp: 0 } : { tw: 0, dx: 6, bh: [40, W_LINE + 1], bp: pf === undefined ? 0 : pf, fh: [38, W_LINE - 1], fp: 0 };
+const W_MF = { tor: 8, dx: 9, hy: 68, tw: 10, fh: [56, W_LINE], fpa: -74, fpr: 0.35, bh: [22, W_LINE + 3], bp: 0, be: 1, ff: [32, 0], bf: [-30, 0] };
+const W_MR = { tor: 8, dx: 9, hy: 68, tw: -8, bh: [56, W_LINE], bpa: -76, bpr: 0.35, fh: [22, W_LINE + 3], fp: 0, fe: 1, ff: [32, 0], bf: [-30, 0] };
+// 换手的半路：出去的那只到 42、回来的那只到 34，两条小臂一里一外擦着交错过（同一个高度，差两像素是让两只拳都露出来）
+const W_X = (o, pf) => o === 'f' ? { tw: 2, dx: 7, fh: [42, W_LINE], fp: pf === undefined ? 0 : pf, bh: [34, W_LINE + 2], bp: 0 } : { tw: -2, dx: 7, bh: [42, W_LINE], bp: pf === undefined ? 0 : pf, fh: [34, W_LINE + 2], fp: 0 };
 const W_LOW = { hy: 52, tor: 18, head: -4, tw: 20, ff: [28, 0], bf: [-26, 0], fh: [34, -2], bh: [18, 4] };   // 蹲着：两只掌还竖着护在前面
 
-/* ---------- 黐手、搭手的手型（前手；后手跟着配：前手摊的时候后手伏，前手膀的时候后手护） ----------
-   摊：掌心朝上、肘沉、小臂往前托（侧面看是掌边）；膀：肘抬到肩高、小臂斜着横在身前、掌心朝外朝下；伏：掌心朝下压、手腕弯 */
+/* ---------- 黐手、搭手的手型（前手；后手护着）—— 2.10.1 照参考图：两只手都在胸口到肩这一段、肘尖都朝下（膀手也不抬肘）
+   摊：掌心朝上、小臂往前托；膀：小臂横在中线上、掌心朝外朝下；伏：掌心朝下压 */
 const W_SHAPE = {
-  '': { fh: [44, -10], fpa: -66, fpr: 1, fe: 1, bh: [22, -3], bpa: -80, bpr: 1 },                                   // 问手（没翻）
-  tan: { fh: [44, -3], fpa: -14, fpr: 0.2, fe: 1, bh: [30, -9], bpa: 6, bpr: 0.55, tw: 26 },                         // 摊（后手伏）
-  bong: { fh: [44, 10], fpa: 80, fpr: -0.35, fe: -1, bh: [12, 10], bpa: -70, bpr: 1, tw: 40 },                       // 膀（肘往前上提、小臂往下斜、掌心朝外下；后手护胸）
-  fook: { fh: [44, 2], fpa: 26, fpr: 0.7, fe: 1, bh: [22, -6], bpa: -80, bpr: 1, tw: 24 },                           // 伏（后手护）
+  '': { fh: [44, 7], fpa: -36, fpr: 1, fe: 1, bh: [24, 12], bpa: -46, bpr: 1, be: 1, tw: 10 },                      // 问手（没翻）
+  tan: { fh: [50, 9], fpa: -8, fpr: 0.3, fe: 1, bh: [26, 11], bpa: -46, bpr: 1, be: 1, tw: 16 },                   // 摊
+  bong: { fh: [46, 15], fpa: 36, fpr: -0.35, fe: 1, bh: [22, 9], bpa: -46, bpr: 1, be: 1, tw: 12 },                  // 膀（肘沉着、掌心翻朝外下）
+  fook: { fh: [48, 11], fpa: 28, fpr: 0.7, fe: 1, bh: [26, 9], bpa: -46, bpr: 1, be: 1, tw: 14 },                   // 伏
 };
-// 拍手：后手往前下方一拍（掌心朝前下）
-const W_PAT = { tor: 4, dx: 3, hy: 68, tw: 30, bh: [42, -4], bpa: 18, bpr: 0.45, fh: [44, -12], fpa: -70 };
+// 盘手（按住挡没按方向时一直翻；照 ref/wc_dummy_rolling.jpg）：两只掌同一个高度带、一里一外换位，换的那一下两条小臂交叉；肘一直朝下
+const W_ROLL = [
+  { fh: [50, 7], fpa: -14, fpr: 0.5, fe: 1, bh: [30, 12], bpa: -40, bpr: 1, be: 1, tw: 14 },    // 前手在外（掌心朝上一点）、后手在里
+  { fh: [41, 9], fpa: -30, fpr: 0.9, fe: 1, bh: [40, 11], bpa: -32, bpr: 0.9, be: 1, tw: 4 },   // 换位：两条小臂交叉
+  { bh: [50, 7], bpa: -14, bpr: 0.5, be: 1, fh: [30, 12], fpa: -40, fpr: 1, fe: 1, tw: -6 },    // 后手在外、前手在里
+  { bh: [41, 9], bpa: -30, bpr: 0.9, be: 1, fh: [40, 11], fpa: -32, fpr: 0.9, fe: 1, tw: 4 },   // 换回来
+];
+const W_GUARD_BACK = { fh: [34, 10], fpa: -50, fpr: 1, fe: 1, bh: [22, 15], bpa: -54, bpr: 1, be: 1, tw: 6 };        // 按住挡 + 后：两只手收回来护着
+// 拍手：后手往前下方一拍（掌心朝前下）；前手留在问手的位置
+const W_PAT = { tor: 4, dx: 3, hy: 68, tw: 18, bh: [46, 11], bpa: 22, bpr: 0.45, be: 1, fh: [34, 5], fpa: -40, fpr: 1, fe: 1 };
 
 const WMOVES = {
   /* ---- 拳：连环冲拳（beat：按拍子接，见下面「拍子」）。flow：打中了顺加一级 ---- */
@@ -103,27 +113,27 @@ const WMOVES = {
       [1, { hy: 46, tor: 34, dx: 20, head: -6, tw: -30, bh: [17, -4], bp: 0, be: 1, fh: [28, 8], fpa: -40, ff: [42, 0], bf: [-24, 0] }, 'back'],
       [2, { hy: 46, tor: 34, dx: 20, head: -6, tw: -30, bh: [17, -2], bp: 0, be: 1, fh: [28, 8], fpa: -40, ff: [42, 0], bf: [-24, 0] }], [3, W_LOW]] }),
 
-  /* ---- 踢：撑脚一家，近、快、伤害小 ---- */
+  /* ---- 踢：撑脚一家，近、快、伤害小。link：一串里的踢也按拍子接（拳接踢、踢接拳、踢接踢都走 wcRhythm；2.10.1 Jack：拳踢来回乱按不能没有空） ---- */
   // 正撑脚：前腿提膝、脚跟往前直直撑出去（中段），两只手还护着
-  wKick: WM({ kind: 'kick', label: '正撑脚', open: true, flow: true, S: 6, A: 4, R: 9, dmg: 7, reach: 100, stun: 12, bstun: 7, kb: 1.2, stop: 5, shake: 3, power: .6,
+  wKick: WM({ kind: 'kick', label: '正撑脚', open: true, flow: true, link: true, S: 6, A: 4, R: 9, dmg: 7, reach: 100, stun: 12, bstun: 6, kb: 1.2, stop: 5, shake: 3, power: .6,
     limb: 'ff', fx: 'kick', lunge: [2, 6, 8],
     keys: [[0, {}], [0.55, { ff: [26, 42], tor: 0, hy: 71, dx: 2, bf: [-26, 0] }],
       [1, { tor: -10, head: 6, dx: 14, hy: 73, tw: 22, ff: [92, 46], ft: 34, bf: [-26, 0] }, 'back'], [2, { tor: -10, head: 6, dx: 14, hy: 73, tw: 22, ff: [92, 46], ft: 34, bf: [-26, 0] }],
       [2.45, { ff: [32, 34], tor: -2, dx: 6, hy: 72, bf: [-26, 0] }], [3, {}]] }),
   // 截脚（蹲 + 踢）：身子一侧，前腿往前下方一截，脚掌横着踩在他膝盖、小腿上（下段）。撞上他地上的出腿 = 截住（stopKick，交手克腿）；踢中他失衡
-  wLowKick: WM({ kind: 'kick', label: '截脚', open: true, flow: true, stopKick: true, height: 'low', S: 5, A: 3, R: 10, dmg: 5, reach: 96, stun: 11, bstun: 7, kb: 2, stop: 5, shake: 3, power: .55,
+  wLowKick: WM({ kind: 'kick', label: '截脚', open: true, flow: true, link: true, stopKick: true, height: 'low', S: 5, A: 3, R: 10, dmg: 5, reach: 96, stun: 11, bstun: 6, kb: 2, stop: 5, shake: 3, power: .55,
     limb: 'ff', fx: 'low', lunge: [1, 5, 8], reelHit: true,
     keys: [[0, {}], [0.55, { spin: 10, ff: [22, 26], tor: 0, hy: 68, bf: [-28, 0] }],
       [1, { spin: 18, tor: -8, head: 4, dx: 10, hy: 66, ff: [80, 18], ft: 24, bf: [-28, 0] }, 'back'], [2, { spin: 18, tor: -8, head: 4, dx: 10, hy: 66, ff: [80, 18], ft: 24, bf: [-28, 0] }],
       [2.5, { spin: 6, ff: [32, 14], hy: 68, dx: 4 }], [3, {}]] }),
   // 侧撑脚（拳后接踢）：侧过身、前腿往前横着撑出去，把人撑开
-  wSideKick: WM({ kind: 'kick', label: '侧撑脚', tag: '侧撑脚', flow: true, S: 4, A: 4, R: 10, dmg: 7, reach: 102, stun: 6, bstun: 8, kb: 4.5, stop: 5, shake: 4, power: .7,
+  wSideKick: WM({ kind: 'kick', label: '侧撑脚', tag: '侧撑脚', flow: true, link: true, S: 4, A: 4, R: 10, dmg: 7, reach: 102, stun: 6, bstun: 6, kb: 4.5, stop: 5, shake: 4, power: .7,
     limb: 'ff', fx: 'kick', lunge: [1, 4, 10],
     keys: [[0, {}], [0.5, { spin: 34, ff: [22, 44], tor: 2, hy: 71, bf: [-24, 0] }],
       [1, { spin: 40, tor: -24, head: 10, dx: 20, hy: 74, ff: [100, 48], ft: 12, bf: [-24, 0] }, 'back'], [2, { spin: 40, tor: -24, head: 10, dx: 20, hy: 74, ff: [100, 48], ft: 12, bf: [-24, 0] }],
       [2.5, { spin: 16, ff: [30, 30], tor: -4, dx: 6, hy: 72 }], [3, {}]] }),
   // 连环撑（踢接踢）：换后腿再撑一脚
-  wKick2: WM({ kind: 'kick', label: '连环撑', tag: '连环撑', flow: true, S: 4, A: 4, R: 10, dmg: 6, reach: 100, stun: 6, bstun: 8, kb: 3, stop: 5, shake: 3, power: .65,
+  wKick2: WM({ kind: 'kick', label: '连环撑', tag: '连环撑', flow: true, link: true, S: 4, A: 4, R: 10, dmg: 6, reach: 100, stun: 6, bstun: 6, kb: 3, stop: 5, shake: 3, power: .65,
     limb: 'bf', fx: 'kick', lunge: [1, 4, 12],
     keys: [[0, { ff: [30, 20] }], [0.5, { bf: [8, 40], ff: [26, 0], tor: 0, hy: 71 }],
       [1, { tor: -12, head: 6, dx: 18, hy: 73, tw: -16, bf: [92, 44], bt: 34, ff: [-2, 0] }, 'back'], [2, { tor: -12, head: 6, dx: 18, hy: 73, tw: -16, bf: [92, 44], bt: 34, ff: [-2, 0] }],
@@ -307,7 +317,7 @@ const WPOSE = {
   crouch: wmk(W_LOW),
   block: wmk(WJ(W_SHAPE[''], { hy: 68 })),                    // 黐手（手型见 wcTarget）
   cblock: wmk({ hy: 50, tor: 16, head: 6, tw: 10, ff: [26, 0], bf: [-25, 0], fh: [36, 16], fpa: 56, fpr: 0.6, bh: [18, -4], bpa: -84 }),   // 耕手：前手斜着往下护住下盘
-  parry: wmk({ tor: -2, head: 6, dx: -4, hy: 69, tw: 30, fh: [46, -14], fpa: -50, bh: [22, -2] }),          // 拍开以后：前手还往外拨着
+  parry: wmk({ tor: -2, head: 6, dx: -4, hy: 69, tw: 20, fh: [48, 4], fpa: -18, bh: [24, 10] }),             // 拍开以后：前手还往外拨着
   win: wmk({ tor: 0, head: -6, hy: 74, tw: 0, fh: [22, -8], fp: 0, bh: [24, -8], bpa: -90, ff: [20, 0], bf: [-24, 0] }),   // 抱拳
 };
 
@@ -328,43 +338,66 @@ const wcDir = F => wcDirVs(F, F.opp, false);
    拍子（连环冲拳）：这一拳判定开始以后再过一拍，下一拳的判定就该到了
    ============================================================ */
 const wcBeat = flow => Math.max(WC_BEAT_MIN, WC_BEAT - WC_BEAT_STEP * flow);
-// 下一拳出哪一招：两只手轮流（上一拳是后手 → 这一拳前手），每三拳的第三拳是立掌；第 8 下（ci 7）寸拳收势
+// 下一拳出哪一招：两只手轮流（上一拳是后手 → 这一拳前手），每三拳的第三拳是立掌；第 8 下（ci 7）寸拳收势。
+// 2.10.1（Jack：换手照传统格斗的普通攻击那样，连下去就两只手轮流）：一串里夹着踢也算，踢记着上一拳是哪只手（m.hand），踢完接的拳换另一只
 function beatNext(prevLimb, ci) {
   if (ci >= 7) return 'wCunEnd';
   const front = prevLimb === 'bh' || prevLimb === 'be', palm = ci % 3 === 2;
   return front ? (palm ? 'wPalmF' : 'wJabF') : (palm ? 'wPalmR' : 'wJabR');
 }
-// 冲拳打中以后他的硬直（引擎 applyHit 问 stunOf）：按拍子算 —— 起手那拳、顺 ≥ 2：正好接得上下一拍（多 WC_MARGIN）；
-// 第 2 拳（顺 1）、没翻手的直冲：比拍子短 WC_GAP —— 一直按着挡的人下一拳挡得住（Jack：只有两三招的时候对面有机会）
+const chainHand = m => m.def.kind === 'jab' ? m.def.limb : (m.hand || 'bh');     // 这一招以后该换哪只手：拳看自己是哪只手，踢看它记着的
+// 一串里按踢出哪一脚：拳后侧撑脚、踢后连环撑；第 3 脚、第 8 下踩膝收势
+function kickNext(m, ci) {
+  const kc = m.def.kind === 'kick' ? (m.kc || 1) + 1 : 1;
+  return [kc >= 3 || ci >= 7 ? 'wStompKnee' : m.def.kind === 'kick' ? 'wKick2' : 'wSideKick', kc];
+}
+// 一串打出去的招从哪来（算收益用，2.10.1 Jack：反打、贴脸最高，主动进攻降一降）：中立起手 neutral ×WC_NEUTRAL_MUL、拍开 / 耕开以后 counter ×WC_COUNTER_MUL、搭手里 touch ×WC_TOUCH_MUL
+const SRC_MUL = { neutral: WC_NEUTRAL_MUL, counter: WC_COUNTER_MUL, touch: WC_TOUCH_MUL };
+// 第一下打中的时候定这一串从哪来（搭手里、拍开以后按的在起招时就记了；拍开以后收完招再按的、打在失衡 / 踉跄 / 起身硬直里的也算反打）
+function chainMul(A, B, m) {
+  if (m.src === undefined) m.src = A.chain[0] === 'pc' || B.state === 'rise' || (B.state === 'hit' && ((B.reel && B.reelBy === A.idx && B.reelKind !== 'knee') || B.stagger)) ? 'counter' : 'neutral';
+  if (m.dmgMul === undefined) m.dmgMul = SRC_MUL[m.src];
+}
+// 一串里的招打中以后他的硬直（引擎 applyHit 问 stunOf）：按拍子算 —— 起手那一下、顺 ≥ 2：正好接得上下一拍（多 WC_MARGIN）；
+// 第 2 下（顺 1）、没翻手的直冲：比拍子短 WC_GAP —— 一直按着挡的人第 3 下挡得住（Jack：只有两三招的时候对面有机会）。
+// 2.10.1：踢（link）也一样 —— 第 2 下是踢，第 3 下也挡得住；起手的踢（正撑脚、截脚）自己的硬直更长就用自己的
 function wcStun(A, B, m, n, dflt) {
   const d = m.def;
-  if (!d.beat || d.ender) return dflt;
+  if (!(d.beat || d.link) || d.ender) return dflt;
   const I = wcBeat(Math.min(FLOW_MAX, A.flow + (m.noFlowUp ? 0 : 1)));
-  if (A.flow >= 2 || (A.flow === 0 && (d.open || d.chainStart || m.chainStart))) return I + WC_MARGIN;
+  if (A.flow >= 2) return I + WC_MARGIN;
+  if (A.flow === 0 && (d.open || m.chainStart)) return d.link ? Math.max(dflt, I + WC_MARGIN) : I + WC_MARGIN;
   return Math.max(2, I - WC_GAP);
 }
-// 冲拳排在拍子上：在拍点前 WC_EARLY 帧到后 WC_LATE 帧按 = 在拍子上（按早的等到拍点出，按晚的出手快一点补上）；
-// 更早 = 抢拍（晚 WC_EARLY_LAG 帧出、顺不涨）；更晚 = 过拍（顺清零，等这一拳收完变回起手的冲拳）
-// 拍点：这一拳的时间 m.t 走到这里按下一拳，下一拳的判定正好落在拍子上（wcRhythm 和电脑都用这个算）
-function wcBeatAt(F, m) {
-  const next = beatNext(m.def.limb, (m.ci || 0) + 1);
-  return m.S + 1 + wcBeat(F.flow) - F.moves[next].S - 1;
+// 一串里的下一下排在拍子上（拳接拳、拳接踢、踢接拳、踢接踢都一样）：在拍点前 WC_EARLY 帧到后 WC_LATE 帧按 = 在拍子上
+// （按早的等到拍点出，按晚的出手快一点补上）；更早 = 抢拍（晚 WC_EARLY_LAG 帧出、顺不涨）；
+// 更晚 = 过拍（顺清零，等这一下收完，缓冲里的键变回起手的冲拳 / 正撑脚 —— 慢）
+// 拍点：这一下的时间 m.t 走到这里按，下一下的判定正好落在拍子上（wcRhythm 和电脑都用这个算）
+function nextOf(F, m, kk) {
+  const ci = (m.ci || 0) + 1;
+  if (kk === 'kick') { const [n, kc] = kickNext(m, ci); return { name: n, ci, kc }; }
+  return { name: beatNext(chainHand(m), ci), ci, kc: 0 };
 }
-function wcRhythm(F, m) {
-  if (m.qn) return false;                                   // 下一拳已经排上了：多按的不算
-  const ci = (m.ci || 0) + 1, next = beatNext(m.def.limb, ci), Sn = F.moves[next].S;
-  const P = wcBeatAt(F, m);
+function wcBeatAt(F, m, kk) {
+  const next = nextOf(F, m, kk || 'jab');
+  return m.S + 1 + wcBeat(F.flow) - F.moves[next.name].S - 1;
+}
+function wcRhythm(F, m, kk) {
+  if (m.qn) return false;                                   // 下一下已经排上了：多按的不算
+  const next = nextOf(F, m, kk), Sn = F.moves[next.name].S;
+  const P = wcBeatAt(F, m, kk);
   const t = m.t;
-  if (t < P - WC_EARLY) { m.qn = next; m.qt = P + WC_EARLY_LAG; m.qb = 0; m.qci = ci; beatTag(F, '抢拍'); cev('beat', F, F.opp, { kind: 'early' }); return false; }
-  if (t <= P) { m.qn = next; m.qt = P; m.qb = 1; m.qci = ci; return false; }
-  if (t <= P + WC_LATE) return wcFire(F, m, next, ci, 1, Math.max(1, Sn - (t - P)));
-  if (!m.late) { m.late = true; F.flow = 0; beatTag(F, '过拍'); cev('beat', F, F.opp, { kind: 'late' }); }
-  return null;                                              // 过拍：这一下留在缓冲里，收完招变成起手的冲拳
+  if (t < P - WC_EARLY) { m.qn = next.name; m.qt = P + WC_EARLY_LAG; m.qb = 0; m.qci = next.ci; m.qk = kk; m.qkc = next.kc; beatTag(F, '抢拍'); cev('beat', F, F.opp, { kind: 'early', key: kk }); return false; }
+  if (t <= P) { m.qn = next.name; m.qt = P; m.qb = 1; m.qci = next.ci; m.qk = kk; m.qkc = next.kc; return false; }
+  if (t <= P + WC_LATE) return wcFire(F, m, next.name, next.ci, 1, Math.max(1, Sn - (t - P)), kk, next.kc);
+  if (!m.late) { m.late = true; F.flow = 0; beatTag(F, '过拍'); cev('beat', F, F.opp, { kind: 'late', key: kk }); }
+  return null;                                              // 过拍：这一下留在缓冲里，收完招变成起手的招
 }
-function wcFire(F, m, name, ci, onBeat, S) {
-  if (m.def.flow && !m.hit) F.flow = 0;                     // 这一拳打空了、被挡了：顺断了（照样能按着拍子接着打）
-  if (!F.beginMove(name, 'jab', S !== undefined ? { S } : null)) return false;
-  const nm = F.move; nm.ci = ci; if (!onBeat) nm.noFlowUp = true;
+function wcFire(F, m, name, ci, onBeat, S, kind, kc) {
+  if (m.def.flow && !m.hit) F.flow = 0;                     // 这一下打空了、被挡了：顺断了（照样能按着拍子接着打）
+  const hand = chainHand(m), src = m.src;
+  if (!F.beginMove(name, kind || 'jab', S !== undefined ? { S } : null)) return false;
+  const nm = F.move; nm.ci = ci; nm.kc = kc || 0; nm.hand = hand; nm.src = src; if (!onBeat) nm.noFlowUp = true;
   return true;
 }
 function beatTag(F, text) { if (!game.quiet && F.J) tag(F.J.head[0] + F.facing * 18, F.J.head[1] - 30, text, F, 15); }
@@ -389,10 +422,9 @@ function wcCanCancel(F, kind) {
   const m = F.move;
   if (!m || m.air || m.def.script || m.def.noCancel || m.tumbled) return false;
   const d = m.def, after = m.t + DT - 1 - m.S, conf = m.hit || m.blocked || m.absorbed, win = after >= 1 && after < d.A + 13;
-  if (d.beat && kind === 'jab') return true;                // 连环拳里拳随时能按（按不准就是抢拍、过拍）
+  if ((d.beat || d.link) && (kind === 'jab' || kind === 'kick')) return true;   // 一串里拳、踢随时能按（按不准就是抢拍、过拍）
   if (!conf || !win) return false;
-  if (d.beat) return kind === 'heavy' || kind === 'kick' || (kind === 'grab' && m.hit);
-  if (d.kind === 'kick') return kind === 'kick' || kind === 'jab' || kind === 'heavy';
+  if (d.beat || d.link) return kind === 'heavy' || (kind === 'grab' && m.hit);
   if (d.kind === 'heavy') return kind === 'jab' || kind === 'kick';
   return false;
 }
@@ -400,20 +432,19 @@ function wcCanCancel(F, kind) {
 function wcPress(F, m, kk) {
   const d = m.def;
   if (m.air || d.script || d.noCancel || m.tumbled) return null;
-  if (d.beat && kk === 'jab') return wcRhythm(F, m);
+  if ((d.beat || d.link) && (kk === 'jab' || kk === 'kick')) return wcRhythm(F, m, kk);
   if (!wcCanCancel(F, kk)) return null;
   const ci = (m.ci || 0) + 1;
-  if (kk === 'heavy') return wcChain(F, 'wCunEnd', 'heavy', 7, 0);
-  if (kk === 'grab') return wcChain(F, 'grab', 'grab', ci, 0);
-  if (kk === 'kick') {
-    const kc = d.kind === 'kick' ? (m.kc || 1) + 1 : 1;
-    return wcChain(F, d.kind === 'kick' ? (kc >= 3 || ci >= 7 ? 'wStompKnee' : 'wKick2') : ci >= 7 ? 'wStompKnee' : 'wSideKick', 'kick', ci, kc);
-  }
-  return wcChain(F, beatNext(d.kind === 'kick' ? 'bh' : d.limb, ci), 'jab', ci, 0);   // 踢完、寸拳完接拳：轮到哪只手出哪只
+  if (kk === 'heavy') return wcChain(F, m, 'wCunEnd', 'heavy', 7, 0);
+  if (kk === 'grab') return wcChain(F, m, 'grab', 'grab', ci, 0);
+  if (kk === 'kick') { const [n, kc] = kickNext(m, ci); return wcChain(F, m, n, 'kick', ci, kc); }
+  return wcChain(F, m, beatNext(chainHand(m), ci), 'jab', ci, 0);
 }
-function wcChain(F, name, kind, ci, kc) {
+// 不看拍子接的（寸拳收势、拉手、寸拳以后接拳踢）：记着是一串里的第几下、哪只手、从哪来
+function wcChain(F, m, name, kind, ci, kc) {
+  const hand = m ? chainHand(m) : 'bh', src = m ? m.src : undefined;
   if (!F.beginMove(name, kind)) return false;
-  F.move.ci = ci; F.move.kc = kc; F.move.chainStart = 1;
+  F.move.ci = ci; F.move.kc = kc; F.move.hand = hand; F.move.src = src; F.move.chainStart = 1;
   return true;
 }
 // 寸拳按住 = 蓄劲：前摇走到六成停住（拳收在胸口），最多 WC_CHARGE 帧；蓄的时候、松开以后都没有霸体。松开越蓄越疼，蓄满 = 寸劲破体
@@ -441,7 +472,7 @@ function wcInput(F, where, locked) {
     if (!k) return false;
     F.facing = F.opp.x >= F.x ? 1 : -1; F.chain = ['pc'];
     if (!F.beginMove({ jab: 'wJabR', heavy: 'wCun', kick: 'wKick', grab: 'grab' }[k], k)) return false;
-    F.move.ci = 0; F.move.chainStart = 1;
+    F.move.ci = 0; F.move.chainStart = 1; F.move.src = 'counter';
     return true;
   }
   if (where !== 'attack') return false;
@@ -450,7 +481,7 @@ function wcInput(F, where, locked) {
   if (d.lap) return lapStep(F, m, k);
   if (m.name === 'tLat') return latStep(F, m, locked);
   if (d.charge) wcCharge(F, m, locked);
-  if (m.qn && m.t >= m.qt) return wcFire(F, m, m.qn, m.qci, m.qb, undefined);
+  if (m.qn && m.t >= m.qt) return wcFire(F, m, m.qn, m.qci, m.qb, undefined, m.qk, m.qkc);
   if (!locked) {
     const kk = F.takePress(['jab', 'heavy', 'kick', 'grab'], true);
     if (kk) { const r = wcPress(F, m, kk); if (r !== null) { F.takePress([kk]); return r; } }
@@ -523,6 +554,7 @@ function wcDefend(A, B, c, I) {
 // 引擎 applyHit：A（咏春）打中 B 的那一刻。标指正好插在他出手的那只胳膊上 = 把手挑开，进搭手
 function wcStrike(A, B, c, I) {
   const d = I.d, bm = I.bm;
+  if (d.flow && (d.beat || d.link)) chainMul(A, B, I.m);     // 一串里的招：按从哪来算收益（中立起手打折）
   if (!d.biu || !bm || bm.air || bm.def.script || !handLimb(bm.def) || (bm.def.kind !== 'jab' && bm.def.kind !== 'heavy') || bm.def.tier === 'super') return false;
   if (bm.t >= bm.S + bm.def.A + 1) return false;            // 他已经收招了：照常打中
   I.m.done = true; I.m.hit = true;
@@ -672,7 +704,7 @@ function touchStrike(L, m, F, shape) {
 function touchFire(L, F, name, kind) {
   F.stunT = Math.max(F.stunT, L.moves[name].S + 4);          // 打到他之前他还被黏着
   if (!L.beginMove(name, kind)) return false;
-  L.move.ci = 0;
+  L.move.ci = 0; L.move.src = 'touch';
   return true;
 }
 function touchFlip(L, F, fs) {
@@ -700,7 +732,7 @@ function touchShake(L, F) {
 function latStep(L, m, locked) {
   if (m.latT > 0) {
     m.latT = Math.max(0, m.latT - DT);
-    if (!locked && L.takePress(['jab'])) { L.beginMove('tLatChung', 'jab'); L.move.ci = 0; L.move.chainStart = 1; return true; }
+    if (!locked && L.takePress(['jab'])) { L.beginMove('tLatChung', 'jab'); L.move.ci = 0; L.move.chainStart = 1; L.move.src = 'counter'; return true; }
   }
   return false;
 }
@@ -806,23 +838,26 @@ for (const s of W_SHAPES) {
   const sh = W_SHAPE[s];
   WTCH[s] = wmk(WJ(W_TCH_BASE, WJ(sh, { fh: [sh.fh[0] + (s === 'bong' ? 2 : 6), sh.fh[1] + 1] })));   // 搭上了：前手再往前伸一点（膀手伸直了就不是膀了）
 }
-const WTCH_LAP = wmk(WJ(W_TCH_BASE, { tor: 2, dx: -2, tw: 18, fh: [34, 0], fp: 0, bh: [22, -4], bpa: -80 }));   // 扣着手腕往回带
+const WTCH_LAP = wmk(WJ(W_TCH_BASE, { tor: 2, dx: -2, tw: 18, fh: [36, 6], fp: 0, fe: 1, bh: [24, 8], bpa: -50, be: 1 }));   // 扣着手腕往回带
 const WPAT = wmk(W_PAT);
 // 动作台（poses.html）、教程小图也看得到这些手型：黐手 chi*、搭手 tch*、扣着手腕 tchLap、拍手 pat
 const W_SHAPE_KEY = { '': '', tan: 'Tan', bong: 'Bong', fook: 'Fook' };
 for (const s of W_SHAPES) { WPOSE['chi' + W_SHAPE_KEY[s]] = WCHI[s]; WPOSE['tch' + W_SHAPE_KEY[s]] = WTCH[s]; }
 WPOSE.tchLap = WTCH_LAP; WPOSE.pat = WPAT;
-const W_ROLL_SEQ = ['tan', 'bong', 'fook'], W_ROLL_T = 13;   // 黐手没按方向：摊 → 膀 → 伏 一直翻，一个手型 13 帧
+const WROLL = W_ROLL.map(o => wmk(WJ(W_CHI_BASE, o))), WROLL_T = 10;   // 盘手：四步一圈，一步 10 帧
+const WGUARD_BACK = wmk(WJ(W_CHI_BASE, W_GUARD_BACK));
+W_ROLL.forEach((o, i) => { WPOSE['roll' + i] = WROLL[i]; });   // 动作台、教程小图：盘手的四步
 function wcTarget(F, t) {
   const st = F.state, ck = F.clock;
   if (st === 'block') {
     if (F.lowBlock) return copyPose(t, WPOSE.cblock);
     if (ck - F.blockPress < 9 && F.parryOK) return copyPose(t, WPAT);          // 刚按下挡：拍手
     const dc = wcDir(F);
-    if (dc === 1 || dc === 2) copyPose(t, WCHI[W_SHAPES[dc]]);
+    if (dc === 1) copyPose(t, WCHI.tan);                                        // 按着前：摊手往前压
+    else if (dc === 2) copyPose(t, WGUARD_BACK);                                // 按着后：收回来护着，慢慢退
     else {
-      const p = (ck % (W_ROLL_T * 3)) / W_ROLL_T, i = Math.floor(p);
-      lerpPose(WCHI[W_ROLL_SEQ[i]], WCHI[W_ROLL_SEQ[(i + 1) % 3]], EASE.io(clamp((p - i) * 1.6 - 0.3, 0, 1)), t, false);
+      const p = (ck % (WROLL_T * 4)) / WROLL_T, i = Math.floor(p);               // 盘手：一里一外换位（照参考图）
+      lerpPose(WROLL[i], WROLL[(i + 1) % 4], EASE.io(clamp((p - i) * 1.5 - 0.25, 0, 1)), t, false);
     }
     if (F.gwalk) {                                                              // 按着挡走：脚下小碎步（和传统格斗的边挡边走一样）
       const ph = F.walkPhase * TAU, s = Math.sin(ph), c = Math.cos(ph);
