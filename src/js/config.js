@@ -6,7 +6,7 @@
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.9.1';
+const VERSION = '2.10.0';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -196,18 +196,28 @@ const QI_PER_HP = 1 / 6;                 // 掉 / 打掉多少血换多少气（
 const BURST_RANGE = 180, BURST_DMG = 21, BURST_KB = 7, BURST_LIE = TFH(25);   // 爆气炸到多远、伤害（2.6：18 → 21）、把人炸飞的力度、对方躺多久（2.7 ×0.9：TFH(28) → TFH(25)）
 const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着格挡：只吃三成、被推开一点、几乎不硬直，爆气方的后摇就能被打
 
-/* 2.9 迎春拳（ying.js；Jack：快、小、连贯，靠控制、连贯、反击吃饭）—— 规则里用到的数：
-   · 顺（flow）：迎春拳的拳、掌、摊打、腿每打中一下顺一级（最多 FLOW_MAX）。顺一级：下一招前摇少 FLOW_S 帧（最少 FLOW_S_MIN）、
-     伤害 +FLOW_DMG、挨打的人硬直多 FLOW_STUN 帧；连击衰减只算一半（FLOW_DECAY），硬直不衰减 —— 越连越顺、越连越疼。
-     刚起手顺得少，第 2 下打中只给一点点硬直：第 3 下来之前一直按着挡的人挡得住（Jack：只有两三招的时候对面有机会）；顺到 3 级以后一拳接一拳跑不掉。
-     打断了（被挡、被打、对方逃出硬直）顺就清零。
-   · 反打（拍开、耕开、拉住、卸开的人，挨了转马掌踉跄的人，起身硬直里的人）：第一下就算顺了 FLOW_COUNTER 级（Jack：反击收益大大提高、对面难以反制它的连贯性）
-   · 拍手 / 耕手拍开、耕开：打的人失衡 Y_PAT_STUN / Y_GAUN_STUN 帧（耕开的是腿，单脚站着失衡更久）；拉手拉住：失衡 Y_TRAP_STUN 帧，拽回来第 Y_TRAP_CANCEL 帧起能接招
-   · 盘手：按着往前压 Y_ROLL_WALK；黏住一下以后 Y_STICK_WIN 帧之内打出去 = 黏打（顺 2 级起） */
-const FLOW_MAX = 8, FLOW_COUNTER = 2, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.06, FLOW_STUN = 1.25, FLOW_DECAY = 0.5;
-const Y_PAT_STUN = TFH(19), Y_GAUN_STUN = TFH(21), Y_TRAP_STUN = TFH(19), Y_TRAP_CANCEL = 3, Y_TRAP_DMG = 3, Y_REEL_HIT = TFH(14);
-const Y_TRAP_EARLY = TF(4);                // 拉手要卡时机：他那一拳离打出来还剩 Y_TRAP_EARLY 帧以内（或者正在打）才拉得住；早了就是普通的抓
-const Y_ROLL_WALK = 1.2 / TEMPO, Y_STICK_WIN = TF(12), Y_STICK_MUL = 1.2, Y_FLOW_IDLE = 6;   // 停手（不在出招）超过 Y_FLOW_IDLE 帧：顺断了
+/* 2.10 咏春拳（wingchun.js，设计稿 WINGCHUN.md；2.9 叫迎春拳）—— 规则里用到的数：
+   · 顺（flow）：一直打中、按在拍子上、搭手里翻对手型都涨一级（最多 FLOW_MAX）。顺一级：伤害 +FLOW_DMG；连击衰减只算一半（FLOW_DECAY）；
+     不按拍子的招（腿、肘……）顺一级前摇少 FLOW_S 帧（最少 FLOW_S_MIN）、他的硬直多 FLOW_STUN 帧。
+     打空、被挡、过拍、挨打、停手超过 FLOW_IDLE 帧：清零。反打（拍开、耕开、拉手反击、标指挑开、黐手破连、转马掌、起身硬直）第一下就顺 FLOW_COUNTER 级。
+   · 拍子（连环冲拳）：这一拳判定开始以后再过 WC_BEAT 帧，下一拳打出去；顺一级快 WC_BEAT_STEP，最快 WC_BEAT_MIN（越打越快）。
+     按在拍点前 WC_EARLY 帧到后 WC_LATE 帧 = 在拍子上（按早了等到拍点、按晚了出手快一点补上，正好打在拍点上）；
+     更早 = 抢拍（晚 WC_EARLY_LAG 帧才出，顺不涨，他有空挡）；更晚 = 过拍（连断、顺清零，变回起手的冲拳）
+   · 冲拳的硬直按拍子算（wingchun.js wcStun）：起手那拳正好接得上第 2 拳；第 2 拳（顺 1）短 WC_GAP 帧 —— 一直按着挡的人第 3 拳挡得住；
+     顺 ≥ 2 起一拳接一拳，比拍子多 WC_MARGIN 帧
+   · 拍手、耕手：打的人失衡 WC_PAT_STUN / WC_GAUN_STUN 帧。拉手拉住打过来的手：他那一拳离打出来还剩 WC_TRAP_EARLY 帧以内（或者正在打）才拉得住
+   · 寸拳：按住重蓄劲（前摇走到 WC_CHARGE_AT 那么多的时候停住，拳收在胸口），最多蓄 WC_CHARGE 帧；蓄满 = 寸劲破体（霸体吃不住、打倒）
+   · 搭手：开头 WC_TOUCH_OPEN 帧里要按第一下；翻一次手 WC_ROLL 帧，翻完以后 WC_STEP 帧里要按下一步（翻手的最后 WC_ROLL_PRE 帧就能按）；
+     被黏住的人头 WC_TOUCH_GRACE 帧什么都按不了；两人中心离 WC_TOUCH_GAP；拉手扣手腕要 WC_LAP 帧（这几帧他还甩得开）；
+     最多翻 WC_ROLL_MAX 次。他甩手以后 WC_LAT_WIN 帧里按拳 = 甩手直冲
+   · 黐手破连按错方向：这一下 ×WC_WRONG_MUL */
+const FLOW_MAX = 8, FLOW_COUNTER = 2, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.06, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
+const WC_BEAT = 8, WC_BEAT_STEP = 0.25, WC_BEAT_MIN = 6.5, WC_EARLY = 3, WC_LATE = 2, WC_EARLY_LAG = 3, WC_GAP = 2, WC_MARGIN = 1.5;
+const WC_PAT_STUN = TFH(19), WC_GAUN_STUN = TFH(21), WC_TRAP_EARLY = TF(4), WC_TRAP_DMG = 3, WC_REEL_HIT = TFH(14);
+const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：黐手慢慢往前压、往后退
+const WC_CHARGE = 20, WC_CHARGE_AT = 0.6;
+const WC_TOUCH_OPEN = 16, WC_STEP = 8, WC_ROLL = 6, WC_ROLL_PRE = 3, WC_ROLL_MAX = 3, WC_TOUCH_GRACE = 4, WC_TOUCH_GAP = 66, WC_LAP = 6, WC_LAT_WIN = 10;
+const WC_WRONG_MUL = 1.3;
 
 // 联机（P2P）
 const NET = {

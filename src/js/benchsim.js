@@ -18,7 +18,7 @@ const BENCH_HIT_MOVES = new Set(BENCH_GROUPS.slice(0, 4).flatMap(g => g[1]).conc
 // 打中那一刻拳脚离对方身子：最多扎进去 12、最多还差 1 像素，看着就是打在身上（不是隔空打中，也不是整只拳头没进身子里）
 const CONTACT_OK = [-12, 1];
 // 最远射程（射程 + 前冲）。量的时候少放半个像素：前冲一帧一帧加上去有零点几的浮点误差，正好卡在边上会差 1e-13 打不中
-// 2.9 MV：哪一派的招式表（不写 = 传统格斗；迎春拳传 YMOVES，或者 o.style = 'ying'）
+// 2.9 MV：哪一派的招式表（不写 = 传统格斗；别的派传那一派的表，或者 o.style = 拳派的 id）
 const benchMoves = o => (o && o.style && STYLES[o.style] ? STYLES[o.style].moves : MOVES);
 const effReachOf = (n, MV) => { const d = (MV || MOVES)[n]; return d.reach + (d.lunge && !d.script ? Math.max(0, d.lunge[2]) : 0) - 0.5; };
 const benchKind = d => ['jab', 'heavy', 'kick', 'grab'].includes(d.kind) ? d.kind : null;

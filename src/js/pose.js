@@ -13,13 +13,15 @@
    ============================================================ */
 // 出招时的底子（招式关键帧没写的部分都从这里来）：和站姿差不多、略低一点 —— 前手在肩前、后手护着下巴，两脚前后分开
 const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 71, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 0, bp: 0, fpa: -90, bpa: -90,
+  fp: 0, bp: 0, fpa: -90, bpa: -90, fpr: 1, bpr: 1,
   fh: [26, -2], bh: [7, -6], ff: [25, 0], bf: [-30, 0] };
 // 2.9 掌（Jack：咏春有掌，单独做一个五指并拢的掌）：fp / bp 前手 / 后手是拳（0）还是掌（1，过了一半就画成掌）；
 //     fpa / bpa 掌的手指朝哪（度，和 fh / bh 一样是姿势的坐标：0 往前、-90 朝上、90 朝下、180 往后）。拳头的时候不管这两个
-const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo', 'fp', 'bp', 'fpa', 'bpa'];
+// 2.10 fpr / bpr 掌心朝哪（Jack：手掌内翻一定要看得出来是往里翻的）：1 = 掌心朝里（朝中线，问手、护手），0 = 侧着（掌心朝前、朝上下，看见的是掌边），-1 = 朝外。
+//     侧面看：朝里 = 大拇指在靠身子那一边；朝外 = 大拇指在前面；侧着 = 掌窄一点、大拇指藏在后面（body.js palmShape）
+const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo', 'fp', 'bp', 'fpa', 'bpa', 'fpr', 'bpr'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
-// base：这一招的底子（不写 = 传统格斗的 BASE；2.9 迎春拳的招用迎春拳自己的底子 YBASE，见 ying.js）
+// base：这一招的底子（不写 = 传统格斗的 BASE；别的拳派的招用自己的底子，比如咏春拳的 WBASE，见 wingchun.js）
 function mk(o, base) {
   const p = Object.assign({}, base || BASE, o || {});
   for (const k of ARRK) p[k] = p[k].slice();
@@ -109,6 +111,18 @@ const POSE = {
   // 起身硬直（2.0）：从蹲着站起来、两手还垂在下面没护住 —— 一看就知道「现在打得着他」
   rise: mk({ hy: 56, tor: 18, head: -2, dx: -2, tw: 0, ff: [26, 0], bf: [-28, 0], fh: [22, 14], bh: [10, 20] }),
   win: mk({ tor: -2, head: -14, hy: 74, tw: 10, fh: [6, -54], bh: [10, -4], ff: [22, 0], bf: [-26, 0] }),
+  /* 2.10 被咏春拳黏住（搭手里被黏住的那一方，不管是哪一派）：打过来的那只手 / 那条腿还伸着、被搭住了，身子往前倾着收不回来
+     stuckL 前手被黏住、stuckR 后手被黏住、stuckK 腿被搭住（单脚站着） */
+  stuckL: mk({ tor: 12, head: 2, dx: 4, hy: 69, tw: 34, fh: [44, -4], bh: [12, -8], ff: [30, 0], bf: [-32, 0] }),
+  stuckR: mk({ tor: 14, head: 2, dx: 6, hy: 68, tw: -26, bh: [46, -4], fh: [18, -10], ff: [32, 0], bf: [-32, 0] }),
+  stuckK: mk({ tor: -10, head: 6, dx: 6, hy: 74, tw: 12, ff: [60, 34], ft: 10, bf: [-24, 0], fh: [22, -14], bh: [8, -8] }),
+  // 甩手：把被黏住的手一甩、往后撤半步
+  shake: mk({ tor: -8, head: -6, dx: -10, hy: 71, tw: -10, fh: [18, -20], fe: -1, bh: [4, -8], ff: [26, 0], bf: [-36, 0] }),
+  // 被拉手跪马拽倒：手被人扣住往前下方拽，整个人往前扑（整个人转多少 rot 按拽的进度算，见 wingchun.js）
+  dragged: mk({ tor: 20, head: 14, dx: 4, hy: 64, tw: 24, fh: [50, 10], bh: [14, 22], ff: [20, 0], bf: [-30, 4] }),
+  draggedLow: mk({ tor: 12, head: 10, dx: 2, hy: 80, tw: 10, fh: [44, -18], fe: -1, bh: [30, -16], be: -1, ff: [4, 0], bf: [-8, 2] }),   // 快扑到地上了：腿伸直、两手往前伸
+  // 趴着（被拽倒、脸朝下）：整个人往前转 90°，两手撑在头前面的地上
+  lieProne: mk({ rot: 90, tor: 2, head: 10, hy: 83.5, air: 0, tw: 0, ff: [-6, -2], bf: [-8, 2], fh: [14, -40], bh: [22, -38], fe: -1, be: -1 }),
 };
 /* 被回身肘打在背上（2.0.2）：背对着出肘的人往前踉跄 —— u 是踉跄的进度（0 ~ 1）。
    先是背上挨了一下：胸口往前一挺、头往后一仰、两手往后甩；接着往前扑、一脚往前跨出去接住身子、两手往前乱抓；最后慢慢站稳 */
@@ -119,6 +133,13 @@ const STAGGER_KEYS = [
   [0.6, mk({ tor: 34, head: 12, dx: 12, hy: 62, tw: 0, fh: [30, 16], bh: [-16, -14], ff: [42, 0], bf: [-14, 8] }), 'io'],
   [0.82, mk({ tor: 16, head: 4, dx: 4, hy: 68, tw: 10, fh: [26, 4], bh: [10, 6], ff: [32, 0], bf: [-24, 0] }), 'io'],
   [1, POSE.stance, 'io'],
+];
+// 2.10 趴着起身（被拉手跪马拽倒的）：两手一撑、跪起来 → 蹲着 → 起身硬直
+const PRONE_GETUP_KEYS = [
+  [0, POSE.lieProne, 'io'],
+  [GETUP * 0.42, mk({ rot: 48, tor: 30, hy: 36, head: 6, tw: 0, ff: [8, 0], bf: [-30, 0], fh: [30, 30], bh: [24, 32] }), 'io'],
+  [GETUP * 0.8, mk({ hy: 44, tor: 30, head: -6, tw: 0, ff: [28, 0], bf: [-28, 0], fh: [24, 14], bh: [10, 20] }), 'io'],
+  [GETUP, POSE.rise, 'io'],
 ];
 // 起身（2.0：20 帧 → GETUP 13 帧左右）：躺着 → 撑起来坐着 → 蹲着；接着起身硬直（RISE）从蹲着站起来（fighter.js target 'rise'）
 const GETUP_KEYS = [

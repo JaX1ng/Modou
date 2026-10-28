@@ -434,7 +434,7 @@ function hpBar(F, side) {
   ctx.fillStyle = C.ink; ctx.fillRect(qx + ql / 2 - 1, qy - 2, 2, qh + 4);
   ctx.textBaseline = 'middle'; ctx.textAlign = side < 0 ? 'left' : 'right';
   ctx.font = `15px ${BRUSH}`; ctx.fillStyle = half ? F.color : '#55564f';
-  ctx.fillText(full ? '气满 · 可' + F.moves.super.label : half ? '气 · 可爆气' : '气', dir > 0 ? qx + ql + 8 : qx - 8, qy + 3);   // 2.9 迎春拳的大招是连环寸拳
+  ctx.fillText(full ? '气满 · 可' + F.moves.super.label : half ? '气 · 可爆气' : '气', dir > 0 ? qx + ql + 8 : qx - 8, qy + 3);   // 咏春拳的大招是连环寸拳
   // 名字
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = side < 0 ? 'left' : 'right';
@@ -753,6 +753,7 @@ function render() {
   Stage.drawGround(ctx);
   const order = (b.state === 'attack' && a.state !== 'attack') ? [[a, va], [b, vb]] : [[b, vb], [a, va]];
   drawFighter(...order[0]); drawFighter(...order[1]);
+  for (const [F, V] of order) { const ST = styleOf(F); if (ST.drawCue) ST.drawCue(ctx, F, V); }   // 2.10 拳派自己的提示（咏春拳：搭手的拍子圈、手型字）
   drawFx();
   const train = game.mode === 'train';
   if (!train) drawStamps();

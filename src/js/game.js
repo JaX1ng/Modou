@@ -30,17 +30,17 @@ function applyLooks(mode) {
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
-/* ---------- 2.9 拳派（传统格斗 / 迎春拳）：进战斗逻辑（招式表、架势、连招全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
+/* ---------- 2.9 拳派（传统格斗 / 咏春拳；2.9 咏春拳叫「迎春拳」，id 'ying'，2.10 改 'wc'）：进战斗逻辑（招式表、架势、按键语法全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
    solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的。
    训练场的木桩：电脑选了哪一派就是哪一派（随机的话是传统格斗）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
    菜单背景里两个电脑互打：每次随机 */
-const STYLE_IDS = ['trad', 'ying'];
+const STYLE_IDS = ['trad', 'wc'];
 const styleOk = id => STYLE_IDS.includes(id);
 const Styles = {
   solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'],
   load() {
     try {
-      const v = JSON.parse(localStorage.getItem('modou.styles') || 'null') || {};
+      const v = JSON.parse((localStorage.getItem('modou.styles') || 'null').replace(/"ying"/g, '"wc"')) || {};
       if (v.solo && styleOk(v.solo.me)) this.solo.me = v.solo.me;
       if (v.solo && (v.solo.cpu === 'random' || styleOk(v.solo.cpu))) this.solo.cpu = v.solo.cpu;
       if (Array.isArray(v.pvp) && styleOk(v.pvp[0]) && styleOk(v.pvp[1])) this.pvp = v.pvp.slice(0, 2);
@@ -233,7 +233,7 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'vp', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'ikS', 'holdPose', 'fkL']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose']);
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};
@@ -262,7 +262,8 @@ function loadState(s) {
 function stateHash() {
   const s = [game.round, game.timer, game.phase, game.wins[0], game.wins[1], game.freeze];
   for (const F of game.p) s.push(F.hp, F.x.toFixed(3), F.alt.toFixed(3), F.state, F.move ? F.move.name + ':' + F.move.t : '-', F.stunT, F.slowJab, F.qi, F.comboTaken, F.runT, F.facing, F.vx.toFixed(3),
-    F.grabbed ? 1 : 0, F.rollDir, F.guardOn, F.stompFor, F.move && F.move.pick || '', F.slipGot ? 1 : 0, F.stagger ? 1 : 0, F.t, F.style, F.flow);
+    F.grabbed ? 1 : 0, F.rollDir, F.guardOn, F.stompFor, F.move && F.move.pick || '', F.slipGot ? 1 : 0, F.stagger ? 1 : 0, F.t, F.style, F.flow,
+    F.stuck ? 1 : 0, F.move && F.move.shape || '', F.move && F.move.rollT || 0, F.move && F.move.lap ? 1 : 0);   // 2.10 搭手
   const str = s.join('|');
   let h = 2166136261;
   for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }

@@ -14,7 +14,7 @@ const HELD_ACTS = ['left', 'right', 'up', 'down', 'block'];
 const PRESS_ACTS = ['up', 'jab', 'heavy', 'kick', 'grab', 'dash'];
 const PRESS_SET = new Set(PRESS_ACTS);
 const DASH_KEY = 1 << (5 + PRESS_ACTS.length);   // 2.4：冲刺用冲刺键（这一位一直带着，联机时对面也知道这个人双击方向不冲刺）
-// 2.9 迎春拳（Jack：重拳点一下是拍手，长按一直循环格挡动作）：「重」也要知道按没按住 —— 放在最上面一位（第 12 位），前面的位一个都不挪
+// 2.9「重」也要知道按没按住（2.10 咏春拳：按住重 = 寸拳蓄劲）—— 放在最上面一位（第 12 位），前面的位一个都不挪
 const HEAVY_HOLD = 1 << (6 + PRESS_ACTS.length);
 const HOLD = a => a === 'heavy' ? HEAVY_HOLD : 1 << HELD_ACTS.indexOf(a);
 const TAP = a => 1 << (5 + PRESS_ACTS.indexOf(a));

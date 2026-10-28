@@ -138,10 +138,12 @@ const PALM_PTS = (() => {
 })();
 // 大拇指（v > 0 那一边）：从掌根往上、贴着掌边斜出去
 const THUMB_PTS = [[1.2, 2.2], [4.2, 3.6], [6.8, 4.9], [7.9, 5.0], [8.1, 4.0], [6.6, 2.6], [3.6, 1.2]];
-function palmShape(H, dx, dy, s, g) {
+// 2.10 r：掌心朝哪（pose.js fpr / bpr）—— 1 朝里（看见整个掌面，大拇指贴在 s 那一边）…… 0 侧着（看见掌边：掌窄、大拇指藏在后面）
+function palmShape(H, dx, dy, s, g, r) {
+  const a = Math.min(1, Math.abs(r === undefined ? 1 : r)), ws = 0.6 + 0.4 * a;
   const nx = -dy * s, ny = dx * s, k = 1 + g / 3.2;
-  const P = q => [H[0] + dx * (q[0] * (1 + g / PALM.len) - g * 0.4) + nx * q[1] * k, H[1] + dy * (q[0] * (1 + g / PALM.len) - g * 0.4) + ny * q[1] * k];
-  return { palm: PALM_PTS.map(P), thumb: THUMB_PTS.map(P) };
+  const P = (q, w) => [H[0] + dx * (q[0] * (1 + g / PALM.len) - g * 0.4) + nx * q[1] * k * w, H[1] + dy * (q[0] * (1 + g / PALM.len) - g * 0.4) + ny * q[1] * k * w];
+  return { palm: PALM_PTS.map(q => P(q, ws)), thumb: a < 0.3 ? null : THUMB_PTS.map(q => P(q, ws * (0.82 + 0.18 * a))) };
 }
 // 鞋：脚踝 K 是原点，x 往脚尖、y 往鞋底。参考图那种圆头鞋：脚跟圆、鞋口盖住脚踝、鞋面往脚尖斜下去、鞋头圆（2.5.1 小了、薄了，鞋头矮一点）
 const FOOT_PTS = (() => {
@@ -260,10 +262,12 @@ function bodyParts(J, g, only) {
         let dx = pd[0], dy = pd[1];
         const c = clamp(dx * ux + dy * uy, -1, 1), MAXB = 100 * D2R;
         if (Math.acos(c) > MAXB) { const cr = ux * dy - uy * dx >= 0 ? 1 : -1, a = Math.atan2(uy, ux) + cr * MAXB; dx = Math.cos(a); dy = Math.sin(a); }
-        // 大拇指在「前上方」那一边（离镜头近的那只手、远的那只手都一样，看得出是张开的手）
-        const s0 = (-dy) * f * 0.55 + dx * -0.84 >= 0 ? 1 : -1, sh = palmShape(E, dx, dy, s0, g);
+        // 2.10（Jack：手掌内翻一定要看得出来是往里翻的）：掌心朝里 = 大拇指在靠身子那一边（侧面看，不管手指朝哪都是 -f 那边：
+        //     手指朝上 → 拇指在后，手指朝前 → 拇指在上，手指朝下 → 拇指在前）；朝外反过来。2.9 一律画在「前上方」，竖着的掌看着就是往外翻的
+        const rr = key === 'aF' ? J.fpr : J.bpr, r = rr === undefined ? 1 : rr;
+        const s0 = (r >= 0 ? -1 : 1) * f, sh = palmShape(E, dx, dy, s0, g, r);
         parts.push({ k: key + 'H', pts: sh.palm, far, layer, palm: true });
-        parts.push({ k: key + 'H', pts: sh.thumb, far, layer, palm: true, thumb: true });
+        if (sh.thumb) parts.push({ k: key + 'H', pts: sh.thumb, far, layer, palm: true, thumb: true });
       } else if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）

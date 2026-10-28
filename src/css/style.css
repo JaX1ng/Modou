@@ -92,6 +92,12 @@ kbd{display:inline-grid;place-items:center;min-width:26px;height:26px;padding:0 
 .g-head h2{display:flex;align-items:center;gap:10px;margin:0;font:400 46px/1 var(--brush);letter-spacing:.06em}
 .g-head h2 .seal{width:28px;height:28px;font-size:19px}
 .g-head p{margin:0;color:var(--ink-soft);font-size:14px}
+/* 2.10 书：通用 / 各派（朱砂底的印章样）；下面一排页 */
+.g-books{display:flex;flex-wrap:wrap;gap:6px;margin-left:8px}
+.g-books button{font:400 22px/1 var(--brush);color:var(--cinnabar);background:transparent;border:1.5px solid rgba(184,50,29,.45);border-radius:3px;padding:8px 14px 7px;cursor:pointer;transition:background .15s,color .15s}
+.g-books button:hover{background:rgba(184,50,29,.08)}
+.g-books button[aria-selected="true"]{background:var(--cinnabar);border-color:var(--cinnabar);color:var(--paper)}
+.g-books button:focus-visible,.mn-books button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .g-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-left:auto}
 .g-tabs button{font:400 23px/1 var(--brush);color:var(--ink-soft);background:transparent;border:0;border-radius:2px;padding:10px 17px 9px;cursor:pointer;transition:background .15s,color .15s}
 .g-tabs button:hover{color:var(--ink);background:rgba(23,24,26,.07)}
@@ -120,6 +126,17 @@ kbd.kc.dir span{font-weight:500;color:var(--ink-soft)}
 /* 上手 */
 .g-start{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:18px}
 .g-start .tips{grid-column:1/-1}
+.g-start.tri3 .g-card .g-dl{margin-top:8px}
+.g-start .schools{grid-column:span 2}
+.g-books-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.g-books-list li{display:flex;gap:12px;align-items:center}
+.g-books-list li div{display:grid;gap:2px}
+.g-books-list b{font:400 24px/1.1 var(--brush)}
+.g-books-list span{font-size:14px;color:var(--ink-soft)}
+.g-books-list .g-link{justify-self:start}
+.g-mul.touch td.how{white-space:nowrap}
+.g-mul.touch th{white-space:nowrap}
+.counters dd.ex{color:var(--ink-soft);font-size:12.5px;margin-top:1px}
 .krows{display:grid;gap:7px}
 .kr{display:grid;grid-template-columns:3.2em auto 1fr;align-items:center;gap:10px}
 .kr .kn{font:400 19px/1 var(--brush)}
@@ -212,7 +229,7 @@ table.frames th:first-child,table.frames td:first-child{text-align:left}
 table.frames td:first-child{font:400 18px/1 var(--brush)}
 table.frames tbody tr:hover td{background:rgba(23,24,26,.04)}
 @media (max-width:1180px){.g-start{grid-template-columns:1fr 1fr}.g-start .keys{grid-column:1/-1}.g-start .krows{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));column-gap:24px}.g-rules{grid-template-columns:1fr}}
-@media (max-width:720px){.g-start{grid-template-columns:1fr}.g-tabs{margin-left:0}.g-tabs button{font-size:19px;padding:8px 12px 7px}.g-head h2{font-size:38px}
+@media (max-width:720px){.g-start{grid-template-columns:1fr}.g-start .schools{grid-column:auto}.g-tabs,.g-books{margin-left:0}.g-tabs button{font-size:19px;padding:8px 12px 7px}.g-head h2{font-size:38px}
   .g-grid.moves,.g-grid.tech,.g-grid.combos{grid-template-columns:1fr}.guide{font-size:14px}}
 @media (prefers-reduced-motion:reduce){.g-tabs button{transition:none}}
 /* 软件版 / 网页全屏：教程面板 */
@@ -221,6 +238,10 @@ table.frames tbody tr:hover td{background:rgba(23,24,26,.04)}
 .mn-brand{display:flex;align-items:center;gap:8px;margin:0 6px 18px;font:400 40px/1 var(--brush)}
 .mn-brand .seal{width:26px;height:26px;font-size:18px}
 .mn-brand small{font:400 22px/1 var(--brush);color:var(--paper-dim);margin-left:4px}
+.mn-books{display:flex;flex-wrap:wrap;gap:5px;margin:0 4px 12px}
+.mn-books button{font:400 19px/1 var(--brush);color:var(--paper-dim);background:transparent;border:1.5px solid var(--silk-line);border-radius:3px;padding:7px 10px 6px;cursor:pointer}
+.mn-books button:hover{color:var(--paper)}
+.mn-books button[aria-selected="true"]{background:var(--cinnabar);border-color:var(--cinnabar);color:var(--paper)}
 .mn-chs{display:grid;gap:3px}
 .mn-chs button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:400 23px/1.2 var(--brush);color:var(--paper-dim);background:transparent;border:0;border-radius:3px;padding:10px 12px;cursor:pointer}
 .mn-chs button i{font-style:normal;width:1.2em;text-align:center;color:var(--cinnabar)}

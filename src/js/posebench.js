@@ -13,7 +13,7 @@ const $b = id => document.getElementById(id);
 const PB = {
   tab: 'moves', sel: null, kind: 'move', frames: [], idx: 0, playing: false, acc: 0, raw: {}, rawPose: {},
   def: 'stand', dist: null, col: 'ink', bones: false, reach: true, sil: false, report: null,
-  style: 'trad',            // 2.9 看哪一派的招（传统格斗 / 迎春拳）
+  style: 'trad',            // 2.9 看哪一派的招（传统格斗 / 咏春拳）
 };
 // 2.9 这一派的招式表、出招底子（关键帧只写和它不一样的字段）、分组、要量碰没碰到的招、基础姿势
 const PBST = () => STYLES[PB.style], PBMV = () => PBST().moves, PBBASE = () => PBST().base || BASE;
@@ -164,7 +164,7 @@ function renderList() {
   const el = $b('list');
   $b('editBox').hidden = PB.tab === 'model'; $b('modelBox').hidden = PB.tab !== 'model';
   if (PB.tab === 'moves') el.innerHTML = PB_GROUPS_OF().map(([g, list]) => `<p class="grp">${g}</p>` + list.map(n => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="move" type="button">${PBMV()[n].label}<small>${n}</small></button>`).join('')).join('');
-  else if (PB.tab === 'poses') el.innerHTML = `<p class="grp">基础姿势（${PB.style === 'trad' ? 'pose.js POSE' : 'ying.js YPOSE，没写的照 POSE'}）</p>` + Object.keys(PB_POSES()).map(n => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="pose" type="button">${n}${PBST().poses && PBST().poses[n] ? '<small>' + PBST().name + '</small>' : ''}</button>`).join('') +
+  else if (PB.tab === 'poses') el.innerHTML = `<p class="grp">基础姿势（${PB.style === 'trad' ? 'pose.js POSE' : PBST().name + '的架势，没写的照 POSE'}）</p>` + Object.keys(PB_POSES()).map(n => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="pose" type="button">${n}${PBST().poses && PBST().poses[n] ? '<small>' + PBST().name + '</small>' : ''}</button>`).join('') +
     '<p class="grp">动起来看</p>' + PB_STATES.map(([n, l]) => `<button class="item${PB.sel === n ? ' on' : ''}" data-n="${n}" data-k="state" type="button">${l}<small>${n}</small></button>`).join('');
   else { el.innerHTML = '<p class="info">右边的滑块调完马上看得到；满意了点「复制」，把 BODY 表贴回 js/body.js。</p>'; renderModel(); }
 }
@@ -266,7 +266,7 @@ $b('bReset').addEventListener('click', () => {
   else if (PB.kind === 'pose') copyPose((PBST().poses && PBST().poses[PB.sel]) || POSE[PB.sel], PB.rawPose[PB.style][PB.sel]);
   open(PB.kind, PB.sel);
 });
-// 2.9 换拳派：列表换成这一派的招，打开这一派的第一招（迎春拳打传统格斗的人）
+// 2.9 换拳派：列表换成这一派的招，打开这一派的第一招（别的拳派打传统格斗的人）
 $b('style').innerHTML = Object.keys(STYLES).map(id => `<option value="${id}">${STYLES[id].name}</option>`).join('');
 $b('style').addEventListener('change', e => {
   PB.style = e.target.value; PB.dist = null; renderList();
@@ -295,7 +295,7 @@ let pbLast = performance.now();
   Sound.on = false;
   renderList();
   const h = location.hash.slice(1), [k, v] = h.split('=');
-  if (k === 'm' && !MOVES[v] && YMOVES[v]) { PB.style = 'ying'; $b('style').value = 'ying'; renderList(); }   // 迎春拳的招名直接打开迎春拳
+  if (k === 'm' && !MOVES[v]) { const id = STYLE_IDS.find(i => STYLES[i].moves[v]); if (id) { PB.style = id; $b('style').value = id; renderList(); } }   // 别的拳派的招名直接打开那一派
   if (k === 'm' && PBMV()[v]) open('move', v);
   else if (k === 'p' && POSE[v]) { PB.tab = 'poses'; renderList(); open('pose', v); }
   else if (k === 's') { PB.tab = 'poses'; renderList(); open('state', v); }

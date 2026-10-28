@@ -111,7 +111,7 @@
         </details>
         <div class="netbox" id="netLobby" hidden>
           <p class="status" id="netStatus">已连接</p>
-          <p class="step">选你的拳派（<span id="netOppStyle">对方：传统格斗</span>）</p>
+          <p class="step">选你的拳派 · <span id="netOppStyle">对方：传统格斗</span></p>
           <div class="styles sm" id="netStyles"></div>
           <p class="step">选你的颜色（对方选了的那个会变暗，点不了）</p>
           <div class="swatches" id="netLooks"></div>
@@ -178,10 +178,11 @@
     <div class="overlay dim scroll" id="stylePanel" hidden>
       <div class="panel looks">
         <p class="big sm">拳派</p>
-        <p class="hint">人机、训练场、联机时用（双人对战开打前两边另选）。点一下就记住。</p>
+        <p class="hint">人机、训练场、联机用这里选的；双人对战开打前两边另选。点一下就记住。</p>
         <p class="step">你的拳派</p>
         <div class="styles" id="styleMe"></div>
-        <p class="step">电脑的拳派（训练场里是木桩的；选「随机」每局换）</p>
+        <p class="step">电脑的拳派</p>
+        <p class="hint">训练场里就是木桩的拳派。选「随机」每局换一派。</p>
         <div class="styles" id="styleCpu"></div>
         <div class="row"><button class="ibtn" id="btnStyleDone" type="button">确认</button></div>
       </div>
@@ -199,7 +200,7 @@
     <div class="overlay dim scroll" id="pvpPanel" hidden>
       <div class="panel looks">
         <p class="big sm">双人对战</p>
-        <p class="hint">玩家一按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd>、玩家二按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd> 换颜色（<kbd class="lt">W</kbd> <kbd class="lt">S</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换拳派），也可以直接点。两边颜色不能一样。</p>
+        <p class="hint">玩家一按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd>、玩家二按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd> 换颜色，<kbd class="lt">W</kbd> <kbd class="lt">S</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换拳派，也可以直接点。两边颜色不能一样。</p>
         <p class="step">玩家一</p>
         <div class="swatches" id="pvpLook0"></div>
         <div class="styles sm" id="pvpStyle0"></div>
@@ -323,11 +324,11 @@
   </div>
   </div>
 
-  <!-- 2.2 教程（js/guide.js 填内容）：网页版在游戏下面分页看；软件版、网页全屏时用 #manual 面板 -->
+  <!-- 2.2 教程（js/guide.js 填内容）：网页版在游戏下面分页看；软件版、网页全屏时用 #manual 面板。2.10 按拳派分书：通用一本、每一派一本 -->
   <section class="guide" id="guide" aria-label="教程">
     <header class="g-head">
       <h2>教程<i class="seal">谱</i></h2>
-      <p>先看「上手」就能打，别的页随时翻</p>
+      <nav class="g-books" role="tablist" aria-label="选哪一本：通用或者哪一派"></nav>
       <nav class="g-tabs" role="tablist" aria-label="教程分页"></nav>
     </header>
     <div class="g-page"></div>
@@ -338,7 +339,7 @@
 <script src="js/body.js"></script>
 <script src="js/pose.js"></script>
 <script src="js/moves.js"></script>
-<script src="js/ying.js"></script>
+<script src="js/wingchun.js"></script>
 <script src="js/input.js"></script>
 <script src="js/fx.js"></script>
 <script src="js/fighter.js"></script>

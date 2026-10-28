@@ -560,7 +560,7 @@ $('soloCpu').addEventListener('click', e => {
    每一派一张卡：架势小图（用这一派自己的架势画）+ 名字 + 一句话 */
 const STYLE_LINE = {
   trad: '大开大合：重拳霸体、腿长、摔投',
-  ying: '快、小、连贯：越打越顺，化开再打',
+  wc: '按拍子连环冲拳，手搭上了在手上做文章',
 };
 function styleCard(id, o) {
   const sm = !!o.sm, w = sm ? 52 : 92;
