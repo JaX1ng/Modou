@@ -3525,6 +3525,75 @@ T('2.10.1 收益分层（Jack：反打、贴脸最高，主动进攻降一降）
   ok(full >= 52 && full <= 64, '搭手里翻满再打：' + full);
   ok(neutral < counter && neutral < straight && straight < full, `主动进攻 ${neutral} < 反打 ${counter}、搭手 ${straight} < 翻满 ${full}`);
 });
+// 2.10.2 一串连环冲拳一步一步走，每一步记下骨骼（离得远打空：没有击退、顿帧掺进来，拳照样按拍子接）
+function wChainSteps(n) {
+  wArena(400);
+  const out = []; let pressed = 0, doneFor = -1;
+  for (let i = 0; i < 200 && !(pressed >= n && F1.actionable() && i > 20); i++) {
+    let v1 = 0; const m = F1.move;
+    if (pressed === 0 && F1.actionable()) { v1 = TAP('jab'); pressed++; }
+    else if (pressed > 0 && pressed < n && m && m.def.beat && !m.qn && m.serial !== doneFor && pressT(m) >= wcBeatAt(F1, m) - 1) { v1 = TAP('jab'); pressed++; doneFor = m.serial; }
+    const v = [v1, 0], h = [v1 & HELD_MASK, 0];
+    do {
+      simTick((game.frame + 1) % SUB === 0 ? v : h);
+      const mm = F1.move;
+      out.push({ name: mm ? mm.name : F1.state, serial: mm ? mm.serial : -1, t: mm ? mm.t : 0, S: mm ? mm.S : 0, A: mm ? mm.def.A : 0, x: F1.x, f: F1.facing, J: cloneJ(F1.J), tor: F1.disp.tor });
+    } while (game.frame % SUB);
+  }
+  return out;
+}
+// 肘那里的夹角（度）：180 = 伸直
+const elbowDeg = (s, e, h) => { const a = [s[0] - e[0], s[1] - e[1]], b = [h[0] - e[0], h[1] - e[1]]; return Math.acos(clamp((a[0] * b[0] + a[1] * b[1]) / (Math.hypot(...a) * Math.hypot(...b) || 1), -1, 1)) / D2R; };
+T('2.10.2 日字冲拳照项目书那六格（Jack：一拳打出去就是这个顺序、两只手轮流）：到头胳膊也留一点弯、肘比肩低、拳头往上翘；收回来的拳在胸口、在打出去那条胳膊底下，到头那一下张开成竖掌贴在肘弯上；下一拳从这条小臂上面滚出去', () => {
+  const fr = wChainSteps(5);
+  eq([...new Set(fr.map(s => s.name))].filter(n => n[0] === 'w'), ['wJab', 'wJabR', 'wPalmF', 'wJabR', 'wJabF'].filter((n, i, a) => a.indexOf(n) === i), '一串：冲拳、后手冲拳、立掌、后手冲拳、前手冲拳');
+  const serials = [...new Set(fr.filter(s => /^wJab/.test(s.name)).map(s => s.serial))];
+  ok(serials.length >= 4, '量了 ' + serials.length + ' 拳');
+  for (const sr of serials) {
+    const seq = fr.filter(s => s.serial === sr), name = seq[0].name, rear = name === 'wJabR';
+    const L = rear ? 'b' : 'f', G = rear ? 'f' : 'b';               // 打出去的那只手、收着的那只手
+    const at = seq.find(s => s.t >= s.S + 1), end = seq.find(s => s.t >= s.S + s.A - 0.25) || seq[seq.length - 1];
+    if (!at) continue;
+    const J = at.J, sh = J['sh' + L.toUpperCase()], e = J[L + 'e'], h = J[L + 'h'];
+    const deg = elbowDeg(sh, e, h);
+    ok(deg > 145 && deg < 172, `${name} 到头胳膊留一点弯（不是完全伸直）：肘 ${deg.toFixed(0)}°`);
+    const lineY = sh[1] + (h[1] - sh[1]) * (e[0] - sh[0]) / ((h[0] - sh[0]) || 1e-3);
+    ok(e[1] > sh[1] && e[1] > lineY + 1, `${name} 大臂往下：肘比肩低、在肩到拳那条线下面`);
+    ok(J[L + 'wa'] >= 20, `${name} 拳头往上翘：${J[L + 'wa']}°`);
+    ok(Math.abs(h[1] - sh[1]) < 8, `${name} 拳在肩到胸口这一段高度：比肩低 ${(h[1] - sh[1]).toFixed(1)}`);
+    const g = J[G + 'h'];
+    if (name !== 'wJab') ok(J[G + 'pm'] < 0.5 && g[1] > e[1] && (g[0] - e[0]) * at.f < 0, `${name} 收着的那只拳在胸口、打出去那条胳膊的肘底下`);   // 起手那一拳后手本来就是护手的掌
+    const ge = end.J[G + 'h'], pe = end.J[L + 'e'];
+    ok(end.J[G + 'pm'] >= 0.5 && end.J[G + 'pd'][1] < -0.8 && Math.abs(ge[0] - pe[0]) < 10, `${name} 到头那一下收着的手张开成竖掌、贴在肘弯上（第 4 格）`);
+  }
+  // 第 5 格：换手的那一下，新的那只拳在上面、离身子近，收回去的那只在下面、还在前面
+  const r = fr.filter(s => s.name === 'wJabR'), x5 = r.find(s => s.t >= s.S * 0.5);
+  ok(x5 && x5.J.bh[1] < x5.J.fh[1] - 2 && (x5.J.bh[0] - x5.J.fh[0]) * x5.f < 0, '换手：后手拳从前手小臂上面出去');
+});
+T('2.10.2 出拳身子稳住（Jack：像打桩一样，躯干不往前伸很多，一点点就够了）：一串里身子、头一动不动（只有肩跟着左右换），从站着到出拳头只往前一点点；收势的寸拳也不往前扑', () => {
+  const fr = wChainSteps(8), rel = s => (s.J.head[0] - s.x) * s.f;
+  const idle = fr.find(s => s.name === 'idle') || fr[0];
+  const chain = fr.filter(s => /^w(JabR|JabF|PalmF|PalmR)$/.test(s.name));
+  ok(chain.length > 40, '一串里量了 ' + chain.length + ' 步');
+  const hx = chain.map(rel), hy = chain.map(s => s.J.head[1]), tor = chain.map(s => s.tor);
+  ok(Math.max(...hx) - Math.min(...hx) < 1.5, `一串里头前后不晃：${Math.min(...hx).toFixed(1)} ~ ${Math.max(...hx).toFixed(1)}`);
+  ok(Math.max(...hy) - Math.min(...hy) < 1.5, '一串里头上下不晃');
+  ok(Math.max(...tor) - Math.min(...tor) < 1, '一串里身子不前后摆');
+  ok(Math.max(...hx) - rel(idle) <= 8, `从站着到出拳头只往前 ${(Math.max(...hx) - rel(idle)).toFixed(1)}（2.10.1 是 11.8）`);
+  const cun = fr.filter(s => s.name === 'wCunEnd');
+  ok(cun.length && Math.max(...cun.map(rel)) - rel(idle) <= 16, '收势的寸拳往前不超过 16：' + (cun.length ? (Math.max(...cun.map(rel)) - rel(idle)).toFixed(1) : '没打出来'));
+});
+T('2.10.2 站姿照项目书（问手 + 护手）：前手大臂往下、肘沉着不伸直，小臂往上扬，掌张开、手指朝前上；后手竖掌叠在前手小臂的后半段上；两个肘都朝下', () => {
+  const { J } = PoseIcon.build({ style: 'wc', pose: 'stance' });
+  ok(J.fe[1] > J.shF[1] && J.fe[1] > J.fh[1] + 3, '前手：肘比肩低、小臂往上扬');
+  const deg = elbowDeg(J.shF, J.fe, J.fh);
+  ok(deg > 110 && deg < 160, '前手肘不伸直：' + deg.toFixed(0) + '°');
+  ok(J.fpd[0] > 0.5 && J.fpd[1] < -0.2, '前手手指朝前上');
+  ok(J.bpd[1] < -0.9, '后手竖掌（手指朝上）');
+  ok(J.bh[0] >= J.fe[0] - 2 && J.bh[0] <= (J.fe[0] + J.fh[0]) / 2 + 4, '后手的掌叠在前手小臂的后半段上');
+  ok(J.be[1] > J.bh[1] + 8, '后手肘朝下');
+  ok(Math.abs(J.fh[1] - J.shF[1]) < 8, '问手的手在肩那么高（不在脸前、不在肚子前）');
+});
 T('2.9 招名不带别的拳派（Jack）：铁山靠 → 沉肩靠、寸功 → 寸劲、泰山压顶 → 坠山击、千斤坠 → 坠山、劈挂掌 → 劈山掌（印章也改）；崩拳 → 进步冲拳、截拳 → 截击', () => {
   eq([MOVES.shoulder.label, MOVES.shoulder.stamp], ['沉肩靠', '沉肩靠']);
   eq([MOVES.rushEnd.label, MOVES.rushEnd.stamp], ['寸劲', '寸劲']);

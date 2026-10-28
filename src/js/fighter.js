@@ -1163,6 +1163,7 @@ class Fighter {
     const fdir = a => { const r = a * D2R, x = Math.cos(r) * sc, y = Math.sin(r), X = x * cr - y * sr, Y = x * sr + y * cr, l = Math.hypot(X, Y) || 1; return { 0: X / l * f, 1: Y / l }; };
     J.fpm = p.fp || 0; J.bpm = p.bp || 0; J.fpd = fdir(p.fpa); J.bpd = fdir(p.bpa);
     J.fpr = p.fpr === undefined ? 1 : p.fpr; J.bpr = p.bpr === undefined ? 1 : p.bpr;   // 2.10 掌心朝里 / 侧着 / 朝外（body.js palmShape）
+    J.fwa = p.fw || 0; J.bwa = p.bw || 0;                    // 2.10.2 拳头绕手腕往上翘多少度（body.js 画拳头）
     J.fyaw = p.fo || 0; J.byaw = p.bo || 0;                    // 2.5 脚尖跟着膝盖往侧面摆多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }

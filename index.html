@@ -865,7 +865,7 @@ html.desktop .guide{display:none}
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.10.1';
+const VERSION = '2.10.2';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -1406,7 +1406,14 @@ function bodyParts(J, g, only) {
         const s0 = (r >= 0 ? -1 : 1) * f, sh = palmShape(E, dx, dy, s0, g, r);
         parts.push({ k: key + 'H', pts: sh.palm, far, layer, palm: true });
         if (sh.thumb) parts.push({ k: key + 'H', pts: sh.thumb, far, layer, palm: true, thumb: true });
-      } else if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
+      } else if (nE) {
+        // 2.10.2 手腕往上翘（姿势的 fw / bw；Jack：日字冲拳的拳头往上翘一点）：拳头绕手腕（小臂画到的那一点 W）往上转，拳心跟着挪上去一点
+        const wa = (key === 'aF' ? J.fwa : J.bwa) || 0;
+        if (wa) {
+          const a = -wa * D2R * f, c = Math.cos(a), s = Math.sin(a), vx = ux * c - uy * s, vy = ux * s + uy * c;
+          parts.push({ k: key + 'H', pts: fistShape([W[0] + vx * BODY.wrist, W[1] + vy * BODY.wrist], vx, vy, g), far, layer, fist: true });
+        } else parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
+      }
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）
       const kd = key === 'F' ? J.fkd : J.bkd, sg = f * (kd < 0 ? -1 : 1);
@@ -1679,13 +1686,15 @@ function drawHeadGear(J, band) {
    ============================================================ */
 // 出招时的底子（招式关键帧没写的部分都从这里来）：和站姿差不多、略低一点 —— 前手在肩前、后手护着下巴，两脚前后分开
 const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 71, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 0, bp: 0, fpa: -90, bpa: -90, fpr: 1, bpr: 1,
+  fp: 0, bp: 0, fpa: -90, bpa: -90, fpr: 1, bpr: 1, fw: 0, bw: 0,
   fh: [26, -2], bh: [7, -6], ff: [25, 0], bf: [-30, 0] };
 // 2.9 掌（Jack：咏春有掌，单独做一个五指并拢的掌）：fp / bp 前手 / 后手是拳（0）还是掌（1，过了一半就画成掌）；
 //     fpa / bpa 掌的手指朝哪（度，和 fh / bh 一样是姿势的坐标：0 往前、-90 朝上、90 朝下、180 往后）。拳头的时候不管这两个
 // 2.10 fpr / bpr 掌心朝哪（Jack：手掌内翻一定要看得出来是往里翻的）：1 = 掌心朝里（朝中线，问手、护手），0 = 侧着（掌心朝前、朝上下，看见的是掌边），-1 = 朝外。
 //     侧面看：朝里 = 大拇指在靠身子那一边；朝外 = 大拇指在前面；侧着 = 掌窄一点、大拇指藏在后面（body.js palmShape）
-const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo', 'fp', 'bp', 'fpa', 'bpa', 'fpr', 'bpr'];
+// 2.10.2 fw / bw 拳头绕手腕往上翘多少度（Jack：日字冲拳胳膊不是完全伸直的，手腕往上弯一点点）：0 = 拳头顺着小臂；正 = 往上翘（小臂朝前时拳面朝前上）。
+//     只管拳头，掌的手指朝哪还是 fpa / bpa
+const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo', 'fp', 'bp', 'fpa', 'bpa', 'fpr', 'bpr', 'fw', 'bw'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
 // base：这一招的底子（不写 = 传统格斗的 BASE；别的拳派的招用自己的底子，比如咏春拳的 WBASE，见 wingchun.js）
 function mk(o, base) {
@@ -2364,23 +2373,44 @@ function clashRelation(A, B) {
    ============================================================ */
 
 /* ---------- 底子：问手 + 护手，两只掌竖着、掌心朝里（Jack：手掌内翻一定要看得出来是往里翻的）。
-   2.10.1 照 ref/wc_dummy_rolling.jpg：两只手在胸口到肩这一段高度、往前斜伸，肘尖朝下收在身前（不是举在脸前） ---------- */
-const WBASE = { rot: 0, spin: 0, tor: 2, head: 2, hy: 69, dx: 0, air: 0, fe: 1, be: 1, tw: 24, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 1, bp: 1, fpa: -30, bpa: -40, fpr: 1, bpr: 1, fh: [45, 8], bh: [23, 12], ff: [28, 0], bf: [-32, 0] };
+   2.10.2 照 ref/wc_stance_side.jpg 重摆：前手（问手）大臂往前下斜、肘沉着不伸直，小臂往上扬，掌张开、手指朝前上（掌心朝里偏下）；
+   后手（护手）竖掌、掌心朝里，叠在前手小臂的后半段上；两个肘都朝下，身子正着 ---------- */
+const WBASE = { rot: 0, spin: 0, tor: 2, head: 2, hy: 69, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
+  fp: 1, bp: 1, fpa: -34, bpa: -84, fpr: 0.85, bpr: 1, fw: 0, bw: 0, fh: [47.3, -2.8], bh: [31, 8], ff: [28, 0], bf: [-32, 0] };
 const wmk = o => mk(o, WBASE);
 function WM(o) { o.pb = WBASE; o.style = 'wc'; return M(o); }
 const WJ = (base, o) => Object.assign({}, base, o);
 
-// 连环冲拳（照叶问打桩摆的左右交错）：两只拳都走中线、同一个高度；打出去的那条伸直，收着的那只拳在胸口中线、打出去那条胳膊的肘底下，肘沉着 ——
-// 两只拳都看得见。2.10.1 换手那一下两条小臂一里一外交错（左右：远侧那条胳膊暗一点点，body.js），不是一上一下
-const W_LINE = -1;
-const W_PF = { tor: 6, dx: 8, hy: 68, tw: 10, fh: [58, W_LINE], fp: 0, bh: [22, W_LINE + 3], bp: 0, be: 1, ff: [32, 0], bf: [-30, 0] };     // 前手冲拳、后手拳收在胸口
-const W_PR = { tor: 6, dx: 9, hy: 68, tw: -8, bh: [58, W_LINE], bp: 0, fh: [22, W_LINE + 3], fp: 0, fe: 1, ff: [32, 0], bf: [-30, 0] };    // 后手冲拳
-// 立掌（正掌）：掌根往前推，掌心朝前 —— 侧面看是掌边，掌心微微朝里（fpr 0.35）
-const W_MF = { tor: 8, dx: 9, hy: 68, tw: 10, fh: [56, W_LINE], fpa: -74, fpr: 0.35, bh: [22, W_LINE + 3], bp: 0, be: 1, ff: [32, 0], bf: [-30, 0] };
-const W_MR = { tor: 8, dx: 9, hy: 68, tw: -8, bh: [56, W_LINE], bpa: -76, bpr: 0.35, fh: [22, W_LINE + 3], fp: 0, fe: 1, ff: [32, 0], bf: [-30, 0] };
-// 换手的半路：出去的那只到 42、回来的那只到 34，两条小臂一里一外擦着交错过（同一个高度，差两像素是让两只拳都露出来）
-const W_X = (o, pf) => o === 'f' ? { tw: 2, dx: 7, fh: [42, W_LINE], fp: pf === undefined ? 0 : pf, bh: [34, W_LINE + 2], bp: 0 } : { tw: -2, dx: 7, bh: [42, W_LINE], bp: pf === undefined ? 0 : pf, fh: [34, W_LINE + 2], fp: 0 };
+/* ---------- 2.10.2 日字冲拳（照 ref/wc_chung_seq_1 ～ 6.jpg 那六格；Jack：一拳打出去就是这个顺序，两只手轮流这么打）
+   打出去那条胳膊（Jack：大臂往下、小臂平着直着、拳头往上翘一点 —— 胳膊不是完全伸直的，手腕往上弯一点点）：
+     大臂从肩往前下斜 W_UA 度、肘尖朝下，小臂往上扬 W_FA 度，到头也留一点弯；拳头绕手腕往上翘 W_COCK 度（pose.js fw / bw）
+   另一只手：收在胸口、打出去那条胳膊的肘底下（第 1、2、6 格）；这一拳到头，它张开成竖掌贴到那条胳膊的肘弯上（第 4 格）；
+     下一拳就是它从这条小臂上面滚出去、这条从底下抽回来（第 5 格：两条小臂一上一下擦着交错，肩膀正好转到正中）
+   身子（Jack：出拳的时候身子不用往前伸很多，一点点就够了，像打桩一样稳住）：一串里 tor / dx / hy 都不变，不跟着拳一冲一冲，
+     比架势只往前一点点；拳的远近靠拧腰送肩（tw）和胳膊，两拳之间只有肩膀跟着左右换 ---------- */
+const W_LINE = -1;                                              // 搭手里直冲这些后手拳的高度（和肩一样高）
+const W_UA = 12, W_FA = 14, W_COCK = 32;
+const W_TOR = 3, W_DX = 5, W_HY = 69, W_TWF = 34, W_TWR = -34;   // 一串里身子的样子；出前手、后手时拧腰多少（正 = 前手那边的肩往前）
+// 拳心（掌是掌根）离出拳那边的肩膀多远 [往前, 往下]：大臂往前下斜 ua 度、小臂往上扬 fa 度
+const wArm = (ua, fa) => [BODY.bone.ua * Math.cos(ua * D2R) + BODY.bone.fa * Math.cos(fa * D2R), BODY.bone.ua * Math.sin(ua * D2R) - BODY.bone.fa * Math.sin(fa * D2R)];
+const W_ARM = wArm(W_UA, W_FA), W_ARM_PALM = wArm(8, 8);        // 推掌胳膊伸得直一点
+// 换成姿势的坐标（相对两肩中间）：side 1 前手、-1 后手，tw 这一下拧腰多少，at 相对这只手的肩膀
+const wFrom = (side, tw, at) => { const s = side * BODY.shoulderW * Math.sin(tw * D2R), t = W_TOR * D2R; return [+(s * Math.cos(t) + at[0]).toFixed(2), +(s * Math.sin(t) + at[1]).toFixed(2)]; };
+const W_BODY = { tor: W_TOR, head: 2, hy: W_HY, dx: W_DX, ff: [29, 0], bf: [-31, 0] };
+const W_GUARD_FIST = [19, 9], W_GUARD_PALM = [25, 5];           // 收回来的拳（胸口、肘底下）；那一拳到头时张开的竖掌（贴在肘弯上）
+// 前手冲拳到头，后手拳收在胸口（第 6 格反过来）；…4：后手张开成竖掌贴到前手的肘弯（第 4 格）—— 下一拳从这里出
+const W_PF = WJ(W_BODY, { tw: W_TWF, fh: wFrom(1, W_TWF, W_ARM), fp: 0, fw: W_COCK, fe: 1, bh: W_GUARD_FIST, bp: 0, bw: 0, be: 1 });
+const W_PF4 = WJ(W_PF, { bh: W_GUARD_PALM, bp: 1, bpa: -84, bpr: 1 });
+const W_PR = WJ(W_BODY, { tw: W_TWR, bh: wFrom(-1, W_TWR, W_ARM), bp: 0, bw: W_COCK, be: 1, fh: W_GUARD_FIST, fp: 0, fw: 0, fe: 1 });
+const W_PR4 = WJ(W_PR, { fh: W_GUARD_PALM, fp: 1, fpa: -84, fpr: 1 });
+// 立掌（每三下的第三下）：走同一条路推出去，到头是竖掌、掌根往前（侧面看是掌边，掌心微微朝里 fpr 0.35）；推掌胳膊伸得直一点、肩送得多一点
+const W_MF = WJ(W_PF, { tw: W_TWF + 6, fh: wFrom(1, W_TWF + 6, W_ARM_PALM), fp: 1, fpa: -76, fpr: 0.35, fw: 0 });
+const W_MF4 = WJ(W_MF, { bh: W_GUARD_PALM, bp: 1, bpa: -84, bpr: 1 });
+const W_MR = WJ(W_PR, { tw: W_TWR - 6, bh: wFrom(-1, W_TWR - 6, W_ARM_PALM), bp: 1, bpa: -76, bpr: 0.35, bw: 0 });
+const W_MR4 = WJ(W_MR, { fh: W_GUARD_PALM, fp: 1, fpa: -84, fpr: 1 });
+// 换手（第 5 格）：新的那只从打出去那条小臂上面滚出去（高一点），那条从底下往回抽（低一点、还在前面）；两个肘都在下面
+const W_XR = WJ(W_BODY, { tw: 0, bh: [33, -3], bp: 0, bw: 8, be: 1, fh: [40, 6], fp: 0, fw: 6, fe: 1 });    // 出后手
+const W_XF = WJ(W_BODY, { tw: 0, fh: [33, -3], fp: 0, fw: 8, fe: 1, bh: [40, 6], bp: 0, bw: 6, be: 1 });    // 出前手
 const W_LOW = { hy: 52, tor: 18, head: -4, tw: 20, ff: [28, 0], bf: [-26, 0], fh: [34, -2], bh: [18, 4] };   // 蹲着：两只掌还竖着护在前面
 
 /* ---------- 黐手、搭手的手型（前手；后手护着）—— 2.10.1 照参考图：两只手都在胸口到肩这一段、肘尖都朝下（膀手也不抬肘）
@@ -2404,28 +2434,32 @@ const W_PAT = { tor: 4, dx: 3, hy: 68, tw: 18, bh: [46, 11], bpa: 22, bpr: 0.45,
 
 const WMOVES = {
   /* ---- 拳：连环冲拳（beat：按拍子接，见下面「拍子」）。flow：打中了顺加一级 ---- */
-  // 冲拳（起手）：前手从问手的位置直直冲出去，拳头竖着（日字拳），后手留在胸口护着中线
+  // 冲拳（起手，第 1 → 4 格）：前手从问手收成拳、沉到中线上直直冲出去，拳头竖着往上翘；后手的护手跟过去贴到前手的肘弯上。
+  // 身子从架势往前一点点（dx 0 → W_DX），收完招回到架势
   wJab: WM({ kind: 'jab', label: '冲拳', open: true, beat: true, flow: true, S: 3, A: 3, R: 7, dmg: 4, reach: 84, stun: 8, bstun: 6, kb: 1.4, stop: 2, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 3, 6],
-    keys: [[0, {}], [0.5, { fh: [40, W_LINE], fp: 0, tw: 8, bh: [30, W_LINE], bp: 0 }], [1, W_PF, 'back'], [2, W_PF], [2.5, WJ(W_PF, { dx: 4, fh: [40, W_LINE] })], [3, {}]] }),
+    keys: [[0, {}], [0.5, WJ(W_BODY, { dx: 2, tw: 26, fh: [42, 3], fp: 0, fw: 10, bh: [27, 8] })], [1, W_PF4, 'back'], [2, W_PF4], [3, {}]] }),
+  // 连下去（第 4 → 5 → 6 格，两只手轮流）：贴在肘弯上的那只手收成拳、从这条小臂上面滚出去，这条从底下抽回胸口；
+  // 到头以后（判定那几帧）收回来的那只张开成竖掌，贴到打出去那条胳膊的肘弯上，等下一拳。身子一直不动
   wJabR: WM({ kind: 'jab', label: '冲拳', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.2, stop: 2, power: .3,
     limb: 'bh', fx: 'rush', lunge: [1, 3, 7],
-    keys: [[0, WJ(W_PF, { fh: [48, W_LINE], dx: 6 })], [0.5, W_X('b')], [1, W_PR, 'back'], [2, W_PR], [3, WJ(W_PR, { dx: 5, bh: [40, W_LINE] })]] }),
+    keys: [[0, W_PF4], [0.45, W_XR], [1, W_PR, 'back'], [2, W_PR4], [3, {}]] }),
   wJabF: WM({ kind: 'jab', label: '冲拳', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.2, stop: 2, power: .3,
     limb: 'fh', fx: 'rush', lunge: [1, 3, 10],
-    keys: [[0, WJ(W_PR, { bh: [48, W_LINE], dx: 6 })], [0.5, W_X('f')], [1, W_PF, 'back'], [2, W_PF], [3, WJ(W_PF, { dx: 5, fh: [40, W_LINE] })]] }),
+    keys: [[0, W_PR4], [0.45, W_XF], [1, W_PF, 'back'], [2, W_PF4], [3, {}]] }),
   wPalmF: WM({ kind: 'jab', label: '立掌', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.3, stop: 2, power: .35,
     limb: 'fh', fx: 'rush', lunge: [1, 3, 7],
-    keys: [[0, WJ(W_PR, { bh: [48, W_LINE], dx: 6 })], [0.5, W_X('f', 1)], [1, W_MF, 'back'], [2, W_MF], [3, WJ(W_MF, { dx: 5, fh: [40, W_LINE] })]] }),
+    keys: [[0, W_PR4], [0.45, WJ(W_XF, { fp: 1, fpa: -62, fpr: 0.6, fw: 0 })], [1, W_MF, 'back'], [2, W_MF4], [3, {}]] }),
   wPalmR: WM({ kind: 'jab', label: '立掌', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.3, stop: 2, power: .35,
     limb: 'bh', fx: 'rush', lunge: [1, 3, 7],
-    keys: [[0, WJ(W_PF, { fh: [48, W_LINE], dx: 6 })], [0.5, W_X('b', 1)], [1, W_MR, 'back'], [2, W_MR], [3, WJ(W_MR, { dx: 5, bh: [40, W_LINE] })]] }),
-  // 寸拳（收势：连环拳第 8 下、连环拳里按重）：身子往下一沉、后手拳贴着胸口，一寸一寸地炸出去 —— 霸体吃不住，打倒
+    keys: [[0, W_PF4], [0.45, WJ(W_XR, { bp: 1, bpa: -62, bpr: 0.6, bw: 0 })], [1, W_MR, 'back'], [2, W_MR4], [3, {}]] }),
+  // 寸拳（收势：连环拳第 8 下、连环拳里按重）：身子往下一沉、后手拳贴着胸口，一寸一寸地炸出去 —— 霸体吃不住，打倒。
+  // 2.10.2（Jack：出拳身子稳住）：收势也是沉下去、送肩炸出去，身子只往前一点（以前前倾 14°、往前冲 18）
   wCunEnd: WM({ kind: 'jab', label: '寸拳', stamp: '寸拳', beat: true, flow: true, pierce: true, S: 4, A: 3, R: 12, dmg: 10, reach: 88, stun: 14, bstun: 10, kb: 6, stop: 9, shake: 7, power: 1,
     limb: 'bh', fx: 'rushEnd', ghost: true, lunge: [1, 4, 10], launch: 4.5, ender: true, noCancel: true,
-    keys: [[0, WJ(W_PF, { dx: 6 })], [0.6, { tor: 4, dx: 2, hy: 64, tw: 6, bh: [22, 4], bp: 0, fh: [36, -6], ff: [30, 0], bf: [-32, 0] }],
-      [1, { tor: 14, dx: 18, hy: 63, head: -2, tw: -34, bh: [58, -2], bp: 0, fh: [30, -3], fpa: -86, ff: [44, 0], bf: [-30, 0] }, 'back'],
-      [2, { tor: 14, dx: 18, hy: 63, head: -2, tw: -34, bh: [58, -2], bp: 0, fh: [30, -3], fpa: -86, ff: [44, 0], bf: [-30, 0] }], [3, {}]] }),
+    keys: [[0, W_PF4], [0.6, { tor: 3, dx: 4, hy: 65, tw: 8, bh: [20, 6], bp: 0, fh: [34, -2], fpa: -82, ff: [29, 0], bf: [-31, 0] }],
+      [1, { tor: 7, dx: 10, hy: 64, head: 0, tw: -42, bh: [58, -2], bp: 0, bw: 20, fh: [26, 1], fpa: -86, ff: [36, 0], bf: [-30, 0] }, 'back'],
+      [2, { tor: 7, dx: 10, hy: 64, head: 0, tw: -42, bh: [58, -2], bp: 0, bw: 20, fh: [26, 1], fpa: -86, ff: [36, 0], bf: [-30, 0] }], [3, {}]] }),
   // 标指（前 + 拳）：前手四指并拢往前一插，射程长、伤害低；正好插在他出手的那只胳膊上 = 把手挑开，进搭手（biu）
   wBiu: WM({ kind: 'jab', label: '标指', open: true, beat: true, flow: true, biu: true, S: 4, A: 3, R: 9, dmg: 3, reach: 100, stun: 8, bstun: 6, kb: 1.2, stop: 2, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 4, 10],
@@ -5397,6 +5431,7 @@ class Fighter {
     const fdir = a => { const r = a * D2R, x = Math.cos(r) * sc, y = Math.sin(r), X = x * cr - y * sr, Y = x * sr + y * cr, l = Math.hypot(X, Y) || 1; return { 0: X / l * f, 1: Y / l }; };
     J.fpm = p.fp || 0; J.bpm = p.bp || 0; J.fpd = fdir(p.fpa); J.bpd = fdir(p.bpa);
     J.fpr = p.fpr === undefined ? 1 : p.fpr; J.bpr = p.bpr === undefined ? 1 : p.bpr;   // 2.10 掌心朝里 / 侧着 / 朝外（body.js palmShape）
+    J.fwa = p.fw || 0; J.bwa = p.bw || 0;                    // 2.10.2 拳头绕手腕往上翘多少度（body.js 画拳头）
     J.fyaw = p.fo || 0; J.byaw = p.bo || 0;                    // 2.5 脚尖跟着膝盖往侧面摆多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }

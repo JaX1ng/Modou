@@ -271,7 +271,14 @@ function bodyParts(J, g, only) {
         const s0 = (r >= 0 ? -1 : 1) * f, sh = palmShape(E, dx, dy, s0, g, r);
         parts.push({ k: key + 'H', pts: sh.palm, far, layer, palm: true });
         if (sh.thumb) parts.push({ k: key + 'H', pts: sh.thumb, far, layer, palm: true, thumb: true });
-      } else if (nE) parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
+      } else if (nE) {
+        // 2.10.2 手腕往上翘（姿势的 fw / bw；Jack：日字冲拳的拳头往上翘一点）：拳头绕手腕（小臂画到的那一点 W）往上转，拳心跟着挪上去一点
+        const wa = (key === 'aF' ? J.fwa : J.bwa) || 0;
+        if (wa) {
+          const a = -wa * D2R * f, c = Math.cos(a), s = Math.sin(a), vx = ux * c - uy * s, vy = ux * s + uy * c;
+          parts.push({ k: key + 'H', pts: fistShape([W[0] + vx * BODY.wrist, W[1] + vy * BODY.wrist], vx, vy, g), far, layer, fist: true });
+        } else parts.push({ k: key + 'H', pts: fistShape(E, ux, uy, g), far, layer, fist: true });
+      }
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）
       const kd = key === 'F' ? J.fkd : J.bkd, sg = f * (kd < 0 ? -1 : 1);
