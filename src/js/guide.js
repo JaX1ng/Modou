@@ -376,7 +376,7 @@ const WG_TIPS = [
   '被他连招打的时候按住挡 + 方向黐手破连：前手打来按 [前]、后手打来按 [后]、腿和下段按 [蹲]。',
 ];
 const WG_MOVES = [
-  { id: 'wJab', how: '[拳]', icon: { move: 'wJab' }, desc: '前手直直冲出去，连环冲拳的第一拳。接着按拍子按就是一串，两只手轮流打，中间夹了踢也接着轮。' },
+  { id: 'wJab', how: '[拳]', icon: { move: 'wJab' }, desc: '后手从问手的小臂上面直直冲出去，连环冲拳的第一拳。接着按拍子按就是一串，两只手轮流打，中间夹了踢也接着轮。收回来的拳在胸前绕一个小圆再打出去。' },
   { id: 'wBiu', how: '[前] + [拳]', icon: { move: 'wBiu' }, desc: '四指并拢往前一插，够得最远。正好插在他出手的胳膊上，就把手挑开、进搭手。' },
   { id: 'wLowPalm', how: '[蹲] + [拳]', icon: { move: 'wLowPalm' }, desc: '蹲下去一掌推在小腹底下。下段，要蹲着挡。' },
   { id: 'wCun', how: '[重]，按住蓄劲', icon: { move: 'wCun' }, desc: '贴着胸口一寸一寸炸出去的一拳。前摇里霸体吃一下拳，打中他失衡。按住蓄劲越蓄越疼，蓄满是寸劲破体，打倒；蓄的时候没有霸体。' },
@@ -407,15 +407,15 @@ const WG_BEAT = [
 ];
 const WG_COMBOS = [
   { group: '连环冲拳', note: '按在拍子上，一拍一拳', list: [
-    { keys: ['jab'], times: '×8', name: '连环冲拳', moves: ['wJabR', 'wPalmF', 'wCunEnd'], tag: '两只手轮流打，每三拳一记立掌，第 8 下寸拳收势打倒', ko: true },
-    { keys: ['jab', 'kick', 'jab', 'kick'], name: '拳踢轮着打', moves: ['wSideKick', 'wPalmR', 'wSideKick'], tag: '踢也要按在拍子上；踢完接的拳换另一只手' },
-    { keys: ['jab', 'jab', 'jab', 'heavy'], name: '冲拳接寸拳', moves: ['wJabR', 'wPalmF', 'wCunEnd'], tag: '连环拳里随时按重：寸拳收势，霸体吃不住', ko: true },
+    { keys: ['jab'], times: '×8', name: '连环冲拳', moves: ['wJabF', 'wPalmR', 'wCunEndF'], tag: '两只手轮流打，每三拳一记立掌，第 8 下寸拳收势打倒', ko: true },
+    { keys: ['jab', 'kick', 'jab', 'kick'], name: '拳踢轮着打', moves: ['wSideKick', 'wPalmF', 'wSideKick'], tag: '踢也要按在拍子上；踢完接的拳换另一只手' },
+    { keys: ['jab', 'jab', 'jab', 'heavy'], name: '冲拳接寸拳', moves: ['wJabF', 'wPalmR', 'wCunEndF'], tag: '连环拳里随时按重：寸拳收势，霸体吃不住', ko: true },
     { keys: ['jab', 'jab', 'kick', 'kick', 'kick'], name: '侧撑 连环撑 踩膝', moves: ['wSideKick', 'wKick2', 'wStompKnee'], tag: '拳里接踢，踢里再接踢，都按拍子', ko: true },
-    { keys: ['jab', 'jab', 'grab'], name: '冲拳接拉手', moves: ['wJabR', 'grab'], tag: '打中了按拿：扣住手腕进搭手' },
+    { keys: ['jab', 'jab', 'grab'], name: '冲拳接拉手', moves: ['wJabF', 'grab'], tag: '打中了按拿：扣住手腕进搭手' },
   ] },
   { group: '腿和下段起手', list: [
     { keys: ['kick', 'kick', 'kick'], name: '正撑 连环撑 踩膝', moves: ['wKick', 'wKick2', 'wStompKnee'], ko: true },
-    { keys: ['d:kick', 'jab', 'jab'], name: '截脚接冲拳', moves: ['wLowKick', 'wJabF', 'wJabR'], tag: '踢中他失衡，接着按拍子打' },
+    { keys: ['d:kick', 'jab', 'jab'], name: '截脚接冲拳', moves: ['wLowKick', 'wJabR', 'wPalmF'], tag: '踢中他失衡，接着按拍子打' },
     { keys: ['d:jab', 'jab', 'jab'], name: '低掌接冲拳', moves: ['wLowPalm', 'wJabR', 'wPalmF'], tag: '下段起手' },
   ] },
 ];

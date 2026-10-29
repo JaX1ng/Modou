@@ -3052,7 +3052,7 @@ T('2.10 咏春拳是一整套自己的招：招式表、架势（问手 + 护手
   ok(!!MATCHUPS['trad|wc'], '传统格斗 × 咏春拳的规矩写了');
   eq(STYLE_IDS, ['trad', 'wc']);
   for (const n of ['grab', 'lowGrab', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'stomp', 'dash', 'slip', 'slipElbow', 'burst', 'super',
-    'tch', 'tChung', 'tTan', 'tBong', 'tFook', 'tPai', 'tKick', 'tLapDa', 'tLapPai', 'tLapKick', 'tDrag', 'tButterfly', 'tLat', 'tLatChung', 'tMess', 'tSep', 'wCunEnd'])
+    'tch', 'tChung', 'tTan', 'tBong', 'tFook', 'tPai', 'tKick', 'tLapDa', 'tLapPai', 'tLapKick', 'tDrag', 'tButterfly', 'tLat', 'tLatChung', 'tMess', 'tSep', 'wCunEnd', 'wCunEndF'])
     ok(!!WMOVES[n] && WMOVES[n].keys && WMOVES[n].keys.length, '战斗里按名字找的招都要有：' + n);
   ok(!WMOVES.sweep && !WMOVES.palm && !WMOVES.heavy && !WMOVES.kick && !WMOVES.jab && !WMOVES.throwBack && !WMOVES.hold, '没有照搬传统格斗的招（也没有过肩摔）');
   for (const [n, d] of Object.entries(WMOVES)) ok(d.style === 'wc', n + ' 是咏春拳的招');
@@ -3068,7 +3068,7 @@ T('2.10 咏春拳是一整套自己的招：招式表、架势（问手 + 护手
   F1.inp.held.right = false; F1.inp.held.left = true; eq(V('heavy', [], false, '', F1), 'wGwai', '后 + 重 = 拐肘'); F1.inp.held.left = false;
   eq(wcRelation(WMOVES.wLowKick, MOVES.kick), 1, '截脚截住地上的腿'); eq(MATCHUPS['trad|wc'].relation(MOVES.kick, WMOVES.wLowKick), -1, '跨派也是');
   eq(MATCHUPS['trad|wc'].relation(MOVES.heavy, WMOVES.wJab), 1, '重克拳（跨派照旧）');
-  ok(!WMOVES.wJab.pierce && WMOVES.wCunEnd.pierce && WMOVES.super.pierce, '寸拳收势、连环寸拳霸体吃不住，别的拳吃得住');
+  ok(!WMOVES.wJab.pierce && WMOVES.wCunEnd.pierce && WMOVES.wCunEndF.pierce && WMOVES.super.pierce, '寸拳收势、连环寸拳霸体吃不住，别的拳吃得住');
 });
 T('2.10 前手掌心朝里（Jack：手掌内翻一定要看得出来是往里翻的）：竖着的掌，大拇指在靠身子那一边', () => {
   for (const pose of ['stance', 'block']) {
@@ -3090,7 +3090,7 @@ T('2.10 前手掌心朝里（Jack：手掌内翻一定要看得出来是往里�
 T('2.10 连环冲拳按拍子：两只手轮流、每三拳一记立掌、第 8 下寸拳收势打倒；越打越快（拍子 ' + WC_BEAT + ' 帧 → ' + WC_BEAT_MIN + ' 帧）、越疼', () => {
   wArena(80);
   const { names, ev, hitAt } = beatChain(8, -1);
-  eq(names, ['wJab', 'wJabR', 'wPalmF', 'wJabR', 'wJabF', 'wPalmR', 'wJabF', 'wCunEnd'], '一串八下');
+  eq(names, ['wJab', 'wJabF', 'wPalmR', 'wJabF', 'wJabR', 'wPalmF', 'wJabR', 'wCunEndF'], '一串八下（2.10.3 起手是后手，第 8 下轮到前手寸拳）');
   const hits = ev.filter(e => e.type === 'hit' && e.a === 0);
   eq(hits.length, 8, '八下都打中'); ok(F2.state === 'down' || F2.state === 'rise', '寸拳收势打倒');
   ok(!ev.some(e => e.type === 'beat'), '按在拍子上：没有抢拍、过拍');
@@ -3453,16 +3453,16 @@ T('2.10 招名贴近咏春拳的打法（Jack）：冲拳、立掌、标指、�
 });
 
 /* ---------- 2.10.1：Jack 打了 2.10.0 以后的反馈（WINGCHUN.md 十三） ---------- */
-T('2.10.1 换手照传统格斗的普通攻击那样（Jack：连下去不是只有一只手在出拳）：拳 踢 拳 踢 也是一串，踢完接的拳换另一只手；一串断了重新起手是前手', () => {
+T('2.10.1 换手照传统格斗的普通攻击那样（Jack：连下去不是只有一只手在出拳）：拳 踢 拳 踢 也是一串，踢完接的拳换另一只手；一串断了重新起手（2.10.3 起手是后手）', () => {
   wArena(80); F2.noParry = true;
   let r = wSeq(['jab', 'kick', 'jab', 'kick', 'jab', 'kick', 'jab'], -1);
   const jabs = r.names.filter(n => WMOVES[n.name].kind === 'jab');
-  eq(jabs.map(n => n.limb), ['fh', 'bh', 'fh', 'bh'], '拳 踢 拳 踢：四拳两只手轮流 ' + r.names.map(n => n.name).join(' '));
+  eq(jabs.map(n => n.limb), ['bh', 'fh', 'bh', 'fh'], '拳 踢 拳 踢：四拳两只手轮流 ' + r.names.map(n => n.name).join(' '));
   eq(r.names.filter(n => WMOVES[n.name].kind === 'kick').map(n => n.name), ['wSideKick', 'wSideKick', 'wSideKick'], '拳后的踢是侧撑脚');
-  // 过拍：连断了，重新起手还是前手；站着隔一阵子再打也是前手
-  wArena(80); r = beatChain(2, WC_LATE + 1.5); eq(r.names.slice(0, 2), ['wJab', 'wJab'], '过拍以后重新起手：前手');
+  // 过拍：连断了，重新起手还是起手的冲拳（后手）；站着隔一阵子再打也是
+  wArena(80); r = beatChain(2, WC_LATE + 1.5); eq(r.names.slice(0, 2), ['wJab', 'wJab'], '过拍以后重新起手：起手的冲拳');
   wArena(80); run(40, i => [i === 0 || i === 30 ? TAP('jab') : 0, 0]);
-  eq(F1.move && F1.move.name, 'wJab', '隔了一阵子再打：前手');
+  eq(F1.move && F1.move.name, 'wJab', '隔了一阵子再打：起手的冲拳'); eq(WMOVES.wJab.limb, 'bh', '起手的冲拳是后手（2.10.3）');
   // 搭手里打出去再接拍子：也轮流
   wTouch(86, TAP('jab')); r = beatChain(4, -1, null, 200, true);
   const tl = r.names.map(n => WMOVES[n].limb);
@@ -3480,7 +3480,7 @@ T('2.10.1 一串里踢也按拍子（Jack：拳踢来回乱按不能没有还手
   eq(r.names.map(n => n.name), ['wJab', 'wKick'], '过拍的那一脚是起手的正撑脚（慢）');
   // 踢接拳、踢接踢一样
   wArena(84); r = wSeq(['kick', 'jab', 'kick', 'kick'], -1);
-  eq(r.names.map(n => n.name), ['wKick', 'wJabF', 'wSideKick', 'wKick2'], '正撑脚接拳、接踢、连环撑都按拍子');
+  eq(r.names.map(n => n.name), ['wKick', 'wJabR', 'wSideKick', 'wKick2'], '正撑脚接拳、接踢、连环撑都按拍子（踢起手以后的第一拳和起手的冲拳一样是后手）');
   ok(!r.ev.some(e => e.type === 'beat'), '都在拍子上');
   eq(r.hits.length, 4, '四下都打中：' + r.hits.map(e => e.name).join(' '));
 });
@@ -3546,13 +3546,13 @@ function wChainSteps(n) {
 const elbowDeg = (s, e, h) => { const a = [s[0] - e[0], s[1] - e[1]], b = [h[0] - e[0], h[1] - e[1]]; return Math.acos(clamp((a[0] * b[0] + a[1] * b[1]) / (Math.hypot(...a) * Math.hypot(...b) || 1), -1, 1)) / D2R; };
 T('2.10.2 日字冲拳照项目书那六格（Jack：一拳打出去就是这个顺序、两只手轮流）：到头胳膊也留一点弯、肘比肩低、拳头往上翘；收回来的拳在胸口、在打出去那条胳膊底下，到头那一下张开成竖掌贴在肘弯上；下一拳从这条小臂上面滚出去', () => {
   const fr = wChainSteps(5);
-  eq([...new Set(fr.map(s => s.name))].filter(n => n[0] === 'w'), ['wJab', 'wJabR', 'wPalmF', 'wJabR', 'wJabF'].filter((n, i, a) => a.indexOf(n) === i), '一串：冲拳、后手冲拳、立掌、后手冲拳、前手冲拳');
+  eq([...new Set(fr.map(s => s.name))].filter(n => n[0] === 'w'), ['wJab', 'wJabF', 'wPalmR', 'wJabR'], '一串：冲拳（后手）、前手冲拳、立掌、前手冲拳、后手冲拳');
   const serials = [...new Set(fr.filter(s => /^wJab/.test(s.name)).map(s => s.serial))];
   ok(serials.length >= 4, '量了 ' + serials.length + ' 拳');
   for (const sr of serials) {
-    const seq = fr.filter(s => s.serial === sr), name = seq[0].name, rear = name === 'wJabR';
+    const seq = fr.filter(s => s.serial === sr), name = seq[0].name, rear = WMOVES[name].limb === 'bh';
     const L = rear ? 'b' : 'f', G = rear ? 'f' : 'b';               // 打出去的那只手、收着的那只手
-    const at = seq.find(s => s.t >= s.S + 1), end = seq.find(s => s.t >= s.S + s.A - 0.25) || seq[seq.length - 1];
+    const at = seq.find(s => s.t >= s.S + 1), end = seq.find(s => s.t >= s.S + s.A + 0.5) || seq[seq.length - 1];   // 判定完、下一拳出来以前
     if (!at) continue;
     const J = at.J, sh = J['sh' + L.toUpperCase()], e = J[L + 'e'], h = J[L + 'h'];
     const deg = elbowDeg(sh, e, h);
@@ -3562,13 +3562,15 @@ T('2.10.2 日字冲拳照项目书那六格（Jack：一拳打出去就是这个
     ok(J[L + 'wa'] >= 20, `${name} 拳头往上翘：${J[L + 'wa']}°`);
     ok(Math.abs(h[1] - sh[1]) < 8, `${name} 拳在肩到胸口这一段高度：比肩低 ${(h[1] - sh[1]).toFixed(1)}`);
     const g = J[G + 'h'];
-    if (name !== 'wJab') ok(J[G + 'pm'] < 0.5 && g[1] > e[1] && (g[0] - e[0]) * at.f < 0, `${name} 收着的那只拳在胸口、打出去那条胳膊的肘底下`);   // 起手那一拳后手本来就是护手的掌
+    ok(J[G + 'pm'] < 0.5 && g[1] > e[1] && (g[0] - e[0]) * at.f < 0, `${name} 收着的那只拳在胸口、打出去那条胳膊的肘底下`);
     const ge = end.J[G + 'h'], pe = end.J[L + 'e'];
     ok(end.J[G + 'pm'] >= 0.5 && end.J[G + 'pd'][1] < -0.8 && Math.abs(ge[0] - pe[0]) < 10, `${name} 到头那一下收着的手张开成竖掌、贴在肘弯上（第 4 格）`);
   }
   // 第 5 格：换手的那一下，新的那只拳在上面、离身子近，收回去的那只在下面、还在前面
-  const r = fr.filter(s => s.name === 'wJabR'), x5 = r.find(s => s.t >= s.S * 0.5);
-  ok(x5 && x5.J.bh[1] < x5.J.fh[1] - 2 && (x5.J.bh[0] - x5.J.fh[0]) * x5.f < 0, '换手：后手拳从前手小臂上面出去');
+  for (const [n, a, b] of [['wJabR', 'bh', 'fh'], ['wJabF', 'fh', 'bh']]) {
+    const x5 = fr.filter(s => s.name === n).find(s => s.t >= s.S * 0.5);
+    ok(x5 && x5.J[a][1] < x5.J[b][1] - 2 && (x5.J[a][0] - x5.J[b][0]) * x5.f < 0, `换手：${n === 'wJabR' ? '后手拳从前手' : '前手拳从后手'}小臂上面出去`);
+  }
 });
 T('2.10.2 出拳身子稳住（Jack：像打桩一样，躯干不往前伸很多，一点点就够了）：一串里身子、头一动不动（只有肩跟着左右换），从站着到出拳头只往前一点点；收势的寸拳也不往前扑', () => {
   const fr = wChainSteps(8), rel = s => (s.J.head[0] - s.x) * s.f;
@@ -3580,8 +3582,51 @@ T('2.10.2 出拳身子稳住（Jack：像打桩一样，躯干不往前伸很多
   ok(Math.max(...hy) - Math.min(...hy) < 1.5, '一串里头上下不晃');
   ok(Math.max(...tor) - Math.min(...tor) < 1, '一串里身子不前后摆');
   ok(Math.max(...hx) - rel(idle) <= 8, `从站着到出拳头只往前 ${(Math.max(...hx) - rel(idle)).toFixed(1)}（2.10.1 是 11.8）`);
-  const cun = fr.filter(s => s.name === 'wCunEnd');
+  const cun = fr.filter(s => /^wCunEnd/.test(s.name));
   ok(cun.length && Math.max(...cun.map(rel)) - rel(idle) <= 16, '收势的寸拳往前不超过 16：' + (cun.length ? (Math.max(...cun.map(rel)) - rel(idle)).toFixed(1) : '没打出来'));
+});
+T('2.10.3 起手的冲拳换成后手（Jack：只是把问手的掌变成拳不像出拳，第一拳换一只手出）：护手收成拳从问手的小臂上面打出去，问手从底下收回来；一串到底两只手轮流，寸拳收势也轮到哪只手哪只手', () => {
+  eq(WMOVES.wJab.limb, 'bh', '起手的冲拳是后手');
+  const fr = wChainSteps(1), rel = (s, k) => [(s.J[k][0] - s.J.sh[0]) * s.f, s.J[k][1] - s.J.sh[1]];
+  const idle = fr.find(s => s.name === 'idle'), jab = fr.filter(s => s.name === 'wJab');
+  ok(idle && idle.J.bpm >= 0.5 && idle.J.fpm >= 0.5 && rel(idle, 'fh')[0] > rel(idle, 'bh')[0] + 10, '站着：前手问手在前、后手护手在后，都是掌');
+  const x = jab.find(s => s.t >= s.S * 0.5), at = jab.find(s => s.t >= s.S + 1);
+  ok(x && x.J.bpm < 0.5 && rel(x, 'bh')[1] < rel(x, 'fh')[1] - 2, '换手那一下：后手收成拳、在上面，问手在下面');
+  ok(at && rel(at, 'bh')[0] > 45 && rel(at, 'fh')[0] < 25 && at.J.fpm < 0.5, '打到头：后手打出去，问手收成拳抽回胸口');
+  // 一串八下：两只手轮流到底（第 8 下寸拳轮到前手）
+  wArena(80); const { names } = beatChain(8, -1);
+  const tl = names.map(n => WMOVES[n].limb);
+  ok(names.length === 8 && tl.every((l, k) => k === 0 || l !== tl[k - 1]), '八下两只手轮流：' + names.join(' '));
+  eq(names[7], 'wCunEndF', '第 8 下轮到前手寸拳收势');
+  // 连环拳里按重提前收势：也轮到哪只手哪只手
+  for (const [n, want] of [[1, 'wCunEndF'], [2, 'wCunEnd']]) {
+    wArena(80);
+    const seen = []; let doneFor = -1, got = null;
+    for (let i = 0; i < 90 && !got; i++) {
+      const m = F1.move; let v1 = 0;
+      if (!seen.length && F1.actionable()) v1 = TAP('jab');
+      else if (m && seen.length < n && m.def.beat && !m.qn && m.serial !== doneFor && pressT(m) >= wcBeatAt(F1, m) - 1) { v1 = TAP('jab'); doneFor = m.serial; }
+      else if (m && seen.length === n && m.serial === seen[n - 1] && m.hit && wcCanCancel(F1, 'heavy')) v1 = TAP('heavy');
+      step([v1, 0]);
+      const mm = F1.move;
+      if (mm && /^wCunEnd/.test(mm.name)) got = mm.name;
+      else if (mm && mm.def.beat && !seen.includes(mm.serial)) seen.push(mm.serial);
+    }
+    eq(got, want, `打了 ${n} 拳按重：${want === 'wCunEndF' ? '前手' : '后手'}寸拳`);
+  }
+});
+T('2.10.3 收回来的拳在肩膀内侧画一个小圆再出去（Jack：动作再圆润一点）：从打出去那条胳膊底下抽回胸口，往后、往上绕一圈，转到上面贴到肘弯上，再从上面打出去', () => {
+  const fr = wChainSteps(4), rel = (s, k) => [(s.J[k][0] - s.J.sh[0]) * s.f, s.J[k][1] - s.J.sh[1]];
+  for (const n of ['wJabF', 'wPalmR']) {
+    const seq = fr.filter(s => s.name === n), g = WMOVES[n].limb === 'fh' ? 'bh' : 'fh';
+    const loop = seq.filter(s => s.t >= s.S && s.t <= s.S + s.A).map(s => rel(s, g));
+    ok(loop.length > 6, n + ' 量到 ' + loop.length + ' 步');
+    let sweep = 0;
+    for (let i = 1; i < loop.length; i++) { let d = Math.atan2(loop[i][1] - 3, loop[i][0] - 16) - Math.atan2(loop[i - 1][1] - 3, loop[i - 1][0] - 16); d = ((d + Math.PI * 3) % (Math.PI * 2)) - Math.PI; sweep += d; }
+    ok(sweep / D2R > 150, `${n}：收回来的那只拳绕了 ${(sweep / D2R).toFixed(0)}°（从下面往后、往上转）`);
+    ok(loop[0][1] > 4 && loop[loop.length - 1][1] < 1, `${n}：从打出去那条胳膊底下转到上面`);
+    ok(Math.min(...loop.map(p => p[0])) < 15, `${n}：圈在肩膀内侧、胸口前面（最靠后 ${Math.min(...loop.map(p => p[0])).toFixed(1)}）`);
+  }
 });
 T('2.10.2 站姿照项目书（问手 + 护手）：前手大臂往下、肘沉着不伸直，小臂往上扬，掌张开、手指朝前上；后手竖掌叠在前手小臂的后半段上；两个肘都朝下', () => {
   const { J } = PoseIcon.build({ style: 'wc', pose: 'stance' });
