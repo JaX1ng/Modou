@@ -63,7 +63,7 @@ const LEVELS = {
   novice: { react: 22, block: .12, lowRead: .4, parry: .02, push: .04, burst: .1, read: .03, catch: .06, duck: .3, aa: .1, step: .1, low: .15, sup: .35,
     punish: .08, combo: .35, aggr: .42, jump: .45, grabBlock: .18, idle: .55, tech: .05, gc: .03, stomp: .12, scoop: .03, roll: .15,
     slip: .02, gwalk: .1, oki: .1, catchSlip: .06, airBlock: .35, aaPlan: .2, habit: .08, guard: .1, punishBlock: .12,
-    beatSd: 2, brk: .06, brkAcc: .4, touch: .1, feel: 7 },
+    beatSd: 2, brk: .06, brkAcc: .4, touch: .1, feel: 7, jie: .05, jieAcc: .45, jieSd: 3.5 },
   // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
   // 2.7（Jack：简单也再简单些，让乱打的打掉 65% 以上；破招少一点）：读招 0.3 → 0.06、卸力 0.12 → 0.05、推挡 0.25 → 0.05、对空 0.4 → 0.12、
   //     接腿、抄腿、截击、踩腿、闪身都少了；挡住就罚 0.55 → 0.3、罚 0.55 → 0.25；反应 11 → 14。挡、连招只降一点（0.36、0.72）、记习惯照旧 0.45
@@ -71,21 +71,21 @@ const LEVELS = {
   easy: { react: 14, block: .36, lowRead: .55, parry: .05, push: .05, burst: .25, read: .06, catch: .18, duck: .45, aa: .12, step: .18, low: .18, sup: .55,
     punish: .25, combo: .72, aggr: .78, jump: .65, grabBlock: .32, idle: .3, tech: .12, gc: .08, stomp: .3, scoop: .1, roll: .27,
     slip: .05, gwalk: .2, oki: .3, catchSlip: .18, airBlock: .5, aaPlan: .25, habit: .45, guard: .24, punishBlock: .3,
-    beatSd: 1.7, brk: .1, brkAcc: .5, touch: .25, feel: 6 },
+    beatSd: 1.7, brk: .1, brkAcc: .5, touch: .25, feel: 6, jie: .12, jieAcc: .55, jieSd: 2.8 },
   // 中等（2.1 叫「中」）= 2.0.2 的「难」
   // 2.7（Jack：中等也再简单点，让乱打的打掉 40% 以上）：反应 8 → 9、挡 0.66 → 0.58、读招 0.5 → 0.38、卸力 0.25 → 0.16、接腿 0.6 → 0.45、对空 0.7 → 0.55、
   //     罚 0.85 → 0.7、挡住就罚 0.8 → 0.65、连招接下去 0.95 → 0.85、压起身 0.75 → 0.6、发呆 0.1 → 0.15（记习惯不降：老出同一招照样防得住）
   normal: { react: 9, block: .58, lowRead: .8, parry: .16, push: .45, burst: .75, read: .38, catch: .45, duck: .8, aa: .55, step: .4, low: .25, sup: .9,
     punish: .7, combo: .85, aggr: 1, jump: 1, grabBlock: .7, idle: .15, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .6, catchSlip: .55, airBlock: .9, aaPlan: .72, habit: .65, guard: .46, punishBlock: .65,
-    beatSd: 1.6, brk: .25, brkAcc: .6, touch: .45, feel: 4 },
+    beatSd: 1.6, brk: .25, brkAcc: .6, touch: .45, feel: 4, jie: .4, jieAcc: .72, jieSd: 1.8 },
   // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
   // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
   // 2.7 没动（倒地、滚身起改了以后量过：木头玩家占比 12 个种子 2.6 是 26.9%、2.7 是 26.6%）
   hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .9, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86,
-    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3 },
+    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .62, jieAcc: .87, jieSd: 1.05 },
   // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
   //（乱换招的木头玩家打掉的血占比，2.5：入门 67% · 简单 53% · 中等 38% · 困难 28% · 终极 22.5%；2.6：66% · 52% · 34% · 28.5% · 23.5%；
   //  2.7（12 个种子；同样 12 个种子量 2.6 是 66% · 53% · 35% · 27% · 23.5%）：84% · 69% · 43% · 26.5% · 22.5%）
@@ -97,11 +97,12 @@ const LEVELS = {
     punish: .93, combo: .93, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
     inst: .2, instMax: .55, instReact: 1,
-    beatSd: .8, brk: .5, brkAcc: .75, touch: .7, feel: 2 },
+    beatSd: .8, brk: .5, brkAcc: .75, touch: .7, feel: 2, jie: .7, jieAcc: .9, jieSd: .9 },
 };
 // 2.10 咏春拳：beatSd 连环冲拳按得离拍点差多少帧（标准差；拍子前 WC_EARLY、后 WC_LATE 帧以内算在拍子上）；
-//   brk 挨打时试不试黐手破连、brkAcc 方向按对的概率（三个方向，瞎猜是三成）；touch 搭手里懂不懂行（翻对手型、反拿、甩手）；
-//   feel 搭手里手上的反应（帧）：黏着的时候看他几帧以前的样子（比 react 快：手上的感觉比眼睛快）
+//   touch 搭手里懂不懂行（翻对手型、反拿、甩手）；feel 搭手里手上的反应（帧）：黏着的时候看他几帧以前的样子（比 react 快：手上的感觉比眼睛快）
+// 2.11 接招（WINGCHUN.md 十五）：jie 看见他出招、按住挡接的机会；jieAcc 键按对的概率（拳接拳、重接重、拿接腿；瞎猜三成）；
+//   jieSd 按得离正好差多少帧（标准差）；brk / brkAcc 挨打、被挡住的硬直里接（新的黐手破连）试不试、键对不对
 // 2.2 难度的名字（两个字）：菜单、电脑血条底下用（2.3 Jack：菜单上不要介绍，一句话说明删了）
 const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极' };
 for (const id in LEVELS) LEVELS[id].id = id;                   // 2.9 每一档知道自己是哪一档（咏春拳的电脑按档打折用）
@@ -170,10 +171,10 @@ const neutralMove = (F, a) => F.style === 'wc' && W_KEY[a] ? W_KEY[a] : styleOf(
 const J8 = ['jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab'];
 const Jn = n => J8.slice(0, n);
 // 咏春拳的电脑看穿招、化招的机会打个折：咏春拳化开一招就是一整套（拍开、黏住进搭手），同一档难度两派要差不多强（电脑对电脑量出来的）
-const W_READ = { novice: 1, easy: 1, normal: 0.45, hard: 0.4, hell: 0.65 };   // 2.10.1 反打、搭手更疼了，看穿再折一点
+const W_READ = { novice: 1, easy: 1, normal: 1, hard: 1, hell: 1 };   // 2.11 接招要按对键、卡准时候，不再白给一整套，不用再打折（留着调）
 const wcReadMul = L => W_READ[L.id] || 1;
-// 咏春拳的电脑举手挡的机会也打个折：咏春拳挡住（黐手黏住）就是一整套，比传统格斗挡住再罚赚得多（量出来的：对乱打的木头玩家一档一档拉得开）
-const W_GUARD = { novice: 1, easy: 1, normal: 0.45, hard: 0.42, hell: 0.45 };
+// 咏春拳的电脑举手挡的机会打不打折（2.10 挡住就黏住是一整套，打过折；2.11 点一下挡就是普通挡，不折了，留着调）
+const W_GUARD = { novice: 1, easy: 1, normal: 1, hard: 1, hell: 1 };
 const wcGuardMul = L => W_GUARD[L.id] || 1;
 // 两派电脑对打调平用的几个数（电脑对电脑量出来的；改了重新量，见 NOTES「量难度」）
 const AI_TUNE = {
@@ -182,7 +183,9 @@ const AI_TUNE = {
   escK: 0.6, escB: 0.05,    // 打咏春拳：被连环冲拳刚起手打中，一直按着挡的机会 = 挡的本事 × escK + escB
   ctrW: [0.05, 0.4],        // 被黏住时打算反拿的分量 = a + b × 搭手的本事
   wcLow: 0.1, wcGrabBlk: 0.2,   // 咏春拳对着站挡的人：打下段、拉手的机会（传统格斗是 0.05、0.12）
-  vsWcGrab: 0.14,           // 传统格斗对着黐手的人（站着按住挡）：抓的机会（擒拿克黐手，比抓普通挡的人多一点）
+  vsWcGrab: 0.14,           // 传统格斗对着听劲的人（咏春拳站着按住挡）：抓的机会（接不住擒拿，比抓普通挡的人多一点）
+  vsWcLow: 0.12,            // 2.11 对着听劲的人打下段的机会（站着接不住下段；传统格斗对一般挡着的人是 0.05）
+  bait: 0.06,               // 2.11 骗接：他听劲的时候在拳够不着的地方空挥一拳（看他会不会接、接了打他收手），× 读招的本事
 };
 // 搭手、甩手直冲以后接着按拍子连几下（难度越高连得越长）
 const W_AFTER = { novice: 3, easy: 3, normal: 3, hard: 5, hell: 5 };
@@ -285,13 +288,19 @@ class Brain {
     else if (p === 'H') { H.heavy = true; this.chargeT = WC_CHARGE + 6 - (Math.random() < 0.3 ? (Math.random() * 12 | 0) : 0); }
     f.inp.press(a, f.clock);
   }
-  // 2.10 咏春拳的拍手 / 耕手：刚按下挡那几帧（PARRY_WIN）被打到才算 —— 算好时机按下去；按早了、按晚了就只是黐手（黏住进搭手）/ 挡住。
-  //   手准不准看难度（读招 read 越高越准；极难「瞬间看穿」的那一下 exact 按到帧）
-  patAt(eta, low, exact) {
-    const f = this.f, amp = exact ? 0 : 1 + 3 * (1 - this.L.read);
-    const pd = Math.max(0, Math.round(eta - 3 + (Math.random() - 0.5) * 2 * amp));
-    if (pd > 0) { this.todo = { at: f.clock + pd, act: 'parry', low }; return true; }
-    f.noParry = false; this.lowBlock = low; this.blockT = 14; f.inp.held.block = true; f.inp.held.down = low;
+  // 2.11 接招：按住挡，算好时机按键 —— 他这一下打到我的那一帧落在接招能接的那几帧中间（手准不准看 jieSd；极难「瞬间看穿」的那一下 exact 按到帧）；
+  //   按哪个键看他出的是什么（拳接拳、重接重、拿接腿），按对的概率 jieAcc。下段的手上招接不住（交给蹲着挡）；下段的腿蹲着接（耕手）
+  catchAt(s, eta, exact) {
+    const f = this.f, L = this.L, R = Math.random, H = f.inp.held;
+    const leg = s.kind === 'kick' || s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
+    if ((low && !leg) || s.dive || s.kind === 'grab' || s.kind === 'push' || s.tier === 'super') return false;
+    const need = leg ? 'grab' : s.kind === 'heavy' ? 'heavy' : 'jab';
+    const key = exact || R() < L.jieAcc ? need : pick(['jab', 'heavy', 'grab'].filter(k => k !== need));
+    const win = key === 'jab' ? WC_CATCH_WIN : WC_CATCH_WIN_H;
+    const pd = Math.round(eta + 1 - (win + 1) / 2 + (exact ? 0 : gauss() * L.jieSd));
+    if (pd < -1) return false;                                          // 来不及了
+    this.todo = { at: f.clock + Math.max(0, pd), act: 'catch', key, low: low && leg };
+    f.noParry = true; this.lowBlock = low && leg; H.block = true; H.down = this.lowBlock;
     return true;
   }
   // 拉手：伸手扣的那几帧正好落在他那一拳快打出来的时候（他打出来之前就拉住）
@@ -308,41 +317,30 @@ class Brain {
     if (w >= 1) this.todo = { at: this.f.clock + w, act: 'press', key: 'f:jab' }; else this.pressKey('f:jab');
     return true;
   }
-  // 黐手：按着挡（黏得住的招打过来就黏住，进搭手）
-  stick(low, n) {
-    const f = this.f, H = f.inp.held;
-    f.noParry = true; this.lowBlock = low; this.blockT = Math.max(8, n); H.block = true; H.down = low;
-    return true;
-  }
-  // 2.10 咏春拳的电脑看见他出招（还没看穿的时候）：手上的招 —— 拍手 / 拉手 / 标指 / 黐手黏住；地上的腿 —— 耕手 / 截腿 / 拳打单脚站着的 / 黐手黏住；
-  //   下段 —— 耕手、蹲着黐手；空中的拳脚 —— 拍手（读招的本事 read、拍手的本事 parry 越高越常这么接；没接的交给下面的挡）
+  // 2.11 咏春拳的电脑看见他出招（还没看穿的时候）：手上的招 —— 偶尔拉手、标指，多是按住挡接（拍手 / 摊手 / 膀手转马）；
+  //   地上的腿 —— 偶尔截腿、拳打单脚站着的，多是按住挡按拿接（按手）；下段的腿蹲着接（耕手）；跳起来的拳脚也接。
+  //   接不接看 jie（看穿的本事打折 wcReadMul），没接的交给下面的挡
   wcReact(s, dist, eta, press) {
     const L = this.L, R = Math.random;
-    if (s.kind === 'grab' || s.kind === 'push' || s.dive || s.tier === 'super' || eta < 1) return false;
-    if (R() >= Math.min(0.85, L.read * 0.9 + L.parry * 0.6) * wcReadMul(L)) return false;
-    const hand = HAND_LIMB.test(s.limb || ''), leg = s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
-    if (s.air) return !low && (hand || leg) ? this.patAt(eta, false) : false;
-    if (hand && !low) {
+    if (s.kind === 'grab' || s.kind === 'push' || s.dive || s.tier === 'super' || eta < -1) return false;
+    if (R() >= L.jie * wcReadMul(L)) return false;
+    const hand = HAND_LIMB.test(s.limb || ''), leg = s.kind === 'kick' || s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
+    if (!s.air && hand && !low) {
       const r = R(), T = this.MV.grab, B = this.MV.wBiu;
-      if (r < 0.38) return this.patAt(eta, false);
-      if (r < 0.56 && eta >= T.S + 2 && dist <= Math.max(T.reach, s.reach) + 4) return this.trapAt(eta);
-      if (r < 0.68 && eta >= B.S + 1 && dist <= effRD(B)) return this.biuAt(eta);
-      return this.stick(false, s.remain + 6);
+      if (r < 0.14 && eta >= T.S + 2 && dist <= Math.max(T.reach, s.reach) + 4) return this.trapAt(eta);
+      if (r < 0.24 && eta >= B.S + 1 && dist <= effRD(B)) return this.biuAt(eta);
     }
-    if (leg) {
+    if (leg && !s.air && !low) {
       const r = R(), LG = this.MV.lowGrab;
-      if (r < 0.3) return this.patAt(eta, true);                                                        // 耕手
-      if (r < 0.46 && eta >= LG.S + 1 && dist <= s.reach + 6) { press('d:grab'); return true; }         // 截腿截住
-      if (!low && r < 0.6 && dist <= this.eR('jab') - 4 && eta >= this.mvOf('jab').S) { press('jab'); return true; }   // 拳打单脚站着的
-      return this.stick(low, s.remain + 6);                                                             // 黐手黏住腿
+      if (r < 0.12 && eta >= LG.S + 1 && dist <= s.reach + 6) { press('d:grab'); return true; }
+      if (r < 0.22 && dist <= this.eR('jab') - 4 && eta >= this.mvOf('jab').S) { press('jab'); return true; }
     }
-    if (low) return R() < 0.45 ? this.patAt(eta, true) : this.stick(true, s.remain + 6);
-    return false;
+    return this.catchAt(s, eta, false);
   }
   // 对面是咏春拳：手上的招会被拍开、拉住、黏住，腿（和下段）会被耕开、截住、黏住的风险 —— 一开始就知道一点，被化开得越多越小心
   handRisk() { return this.f.opp.style === 'wc' ? Math.min(0.85, 0.15 + 0.35 * this.memo.ctr.hand * this.L.habit) : 0; }
   legRisk() { return this.f.opp.style === 'wc' ? Math.min(0.85, 0.15 + 0.35 * this.memo.ctr.leg * this.L.habit) : 0; }
-  // 咏春拳的电脑贴身先按着挡（黐手）的机会：他多是打（拳、掌、腿）就多黐；他爱抓、爱打下段就少黐（黐手黏不住擒拿，站着黏不住下段）
+  // 咏春拳的电脑贴身先按着挡听劲（等他打过来接）的机会：他多是打（拳、掌、腿）就多听；他爱抓、爱打下段就少听（接不住擒拿和下段的手上招）
   chiChance(dist) {
     const bad = ['grab', 'lowJab', 'sweep', 'lowGrab', 'lowKick'].reduce((a, k) => a + this.habitShare(k, dist), 0);
     return clamp(0.55 - 1.2 * bad * this.L.habit, 0.1, 0.65);
@@ -446,7 +444,7 @@ class Brain {
     if (this.followFor !== om.serial) {
       this.followFor = om.serial;
       this.fPlan = weighted([['shake', 0.3 + 0.4 * (1 - L.touch)], ['counter', AI_TUNE.ctrW[0] + AI_TUNE.ctrW[1] * L.touch], ['wait', 0.6]]);
-      this.fAt = f.clock + WC_TOUCH_GRACE + 1 + this.feelDelay() + (R() * 8 | 0);
+      this.fAt = f.clock + (om.grace || WC_TOUCH_GRACE) + 1 + this.feelDelay() + (R() * 8 | 0);   // 2.11 被接住进来的头几帧按不了（om.grace）
       this.fShape = !!styleOf(f).touchShape && R() < L.touch + 0.2;
     }
     const s = this.feltOf(o);
@@ -463,20 +461,25 @@ class Brain {
     if (this.latFor !== m.serial) { this.latFor = m.serial; this.latAt = f.clock + this.feelDelay(); this.latGo = Math.random() < 0.4 + 0.6 * L.touch; }
     if (this.latGo && f.clock >= this.latAt && m.latT > 0) { press('jab'); this.latGo = false; this.plan = this.K.after(L); }
   }
-  // 挨打的硬直里：黐手破连（按住挡 + 方向：他前手的招按前、后手的招按后、腿和下段按蹲）—— 他每出一招想一次试不试、按哪个方向。
-  // 他打过来那一下太快，反应不过来，只能猜（brkAcc 猜得准不准）；顺到三级的连环冲拳黏不住，不试；按错了那一下挨得更疼
+  // 2.11 挨打、被挡住的硬直里接（新的黐手破连）：按住挡，他下一下打过来之前几帧按键（拳接拳、重接重、拿接腿）——
+  //   他每出一招想一次试不试（brk）、键按对没有（brkAcc）；手上一直搭着，看他的招用不着反应（按他现在出的是什么、还有几帧打到）。
+  //   顺三级以上的连环冲拳太快、下段的手上招接不住，不试；按错了那一下挨得更疼
   wcBreak(o, go) {
     const f = this.f, L = this.L, R = Math.random, H = f.inp.held, om = o.move;
-    if (f.grabbed || f.stuck || f.airborne || o.state !== 'attack' || !om || om.def.script || om.air) return false;
+    if (f.grabbed || f.stuck || f.airborne || f.reel || f.stagger || o.state !== 'attack' || !om || om.def.script) return false;
     if (this.brkFor !== om.serial) {
-      this.brkFor = om.serial;
-      const d = om.def, lc = d.height === 'low' || d.limb === 'ff' || d.limb === 'bf' ? 3 : d.limb === 'fh' || d.limb === 'fe' ? 1 : 2;
-      const fast = d.beat && (o.flow || 0) >= 3;
-      this.brkDir = !fast && R() < L.brk * wcReadMul(L) ? (R() < L.brkAcc ? lc : pick([1, 2, 3].filter(x => x !== lc))) : 0;
+      this.brkFor = om.serial; this.brkKey = null;
+      const d = om.def, leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', low = d.height === 'low';
+      const need = d.dive || d.flurry || d.tier === 'super' || (d.beat && (o.flow || 0) >= 3) || om.air ? null : leg ? 'grab' : low ? null : d.kind === 'heavy' ? 'heavy' : d.kind === 'jab' ? 'jab' : null;
+      if (need && R() < L.brk * wcReadMul(L)) {
+        this.brkKey = R() < L.brkAcc ? need : pick(['jab', 'heavy', 'grab'].filter(k => k !== need));
+        this.brkLow = leg && low;
+        this.brkAt = f.clock + Math.max(0, Math.round(om.S + 1 - om.t - 2 + gauss() * L.jieSd * 0.6));
+      }
     }
-    if (!this.brkDir) return false;
-    H.block = true;
-    if (this.brkDir === 3) H.down = true; else go(this.brkDir === 1 ? 1 : -1);
+    if (!this.brkKey) return false;
+    H.block = true; if (this.brkLow) H.down = true;
+    if (f.clock >= this.brkAt) { f.inp.press(this.brkKey, f.clock); this.brkKey = null; }
     return true;
   }
   // 闪身：按着挡、朝对手双击（三帧：按 → 松 → 按）。挡住的硬直里也要按完，所以不和 seq 共用（seq 挨打时会清掉）
@@ -555,8 +558,9 @@ class Brain {
         if (t.act === 'slip') { this.slipIn(); H.block = true; return; }
         if (t.act === 'parry') { f.noParry = false; this.lowBlock = t.low; this.blockT = 14; H.block = true; H.down = t.low; return; }
         if (t.act === 'press') { press(t.key); return; }
+        if (t.act === 'catch') { f.noParry = true; H.block = true; H.down = t.low; this.lowBlock = t.low; f.inp.press(t.key, f.clock); this.blockT = 0; return; }   // 2.11 接招：按住挡再按键
       } else {
-        if (this.todo.act === 'slip') H.block = true;             // 等着闪：先按着挡
+        if (this.todo.act === 'slip' || this.todo.act === 'catch') { H.block = true; H.down = !!this.todo.low; }   // 等着闪、等着接：先按着挡
         return;                                                    // 等着卸力：先别按挡（要刚按下去那几帧才卸得掉）
       }
     }
@@ -564,8 +568,8 @@ class Brain {
     if (f.state === 'hit' || f.state === 'blockstun') {
       this.guardT = 0;
       if (f.state === 'hit' && f.qi >= QI_BURST && !f.grabbed && f.comboTaken >= 2 && R() < L.burst * 0.08) { pair(); return; }   // 2.1 爆气只在挨打时能用
-      // 2.10 咏春拳挨打：黐手破连（按住挡 + 方向，把他下一下黏住、进搭手）
-      if (f.state === 'hit' && this.K.wc && this.wcBreak(o, go)) return;
+      // 2.11 咏春拳挨打、被挡住：接他下一下（按住挡 + 键，新的黐手破连）
+      if (this.K.wc && this.wcBreak(o, go)) return;
       // 被咏春拳刚起手的两三下打中（还没顺）：第 2、3 下比拍子短一点 —— 一直按着挡，从那一点空里挡下来（每一下掷一次骰子）
       if (f.state === 'hit' && !f.grabbed && o.style === 'wc' && o.state === 'attack' && o.move && o.move.def.beat && (o.flow || 0) < FLOW_COUNTER) {
         if (this.escFor !== o.move.serial) { this.escFor = o.move.serial; this.escRoll = R() < Math.min(0.85, L.block * AI_TUNE.escK + AI_TUNE.escB); }
@@ -673,6 +677,11 @@ class Brain {
         const D = this.memo.dash, top = D.grab > D.strike && D.grab > D.none ? 'duck' : D.none > D.strike ? 'jab' : 'block';
         this.rushArmed = false; this.rush = { kind: 'dash', t: 0, plan: top, now: true };
       }
+    }
+    // 2.11 咏春拳按着挡听劲（等着接）：看见他出招就接 —— 接不接、按对键没有、时机准不准看难度（没接的照样挡着）
+    if (this.K.wc && f.state === 'block' && s.atk && s.serial !== this.lastSeen && s.facing === -toward && dist <= s.reach + 26 + (s.air ? Math.abs(s.vx) * (L.react + 4) : 0)) {
+      this.lastSeen = s.serial;
+      if (this.wcReact(s, dist, s.sLeft - L.react, press)) return;
     }
     // 2.1 防跳：看见他起跳时想好的接法，到时候照着做
     if (this.aa && this.airDefense(sj, dist, press, go, lagJ)) return;
@@ -788,6 +797,10 @@ class Brain {
       const p = this.pickPlan(dist), d0 = this.mvOf(p[0]);
       if (d0 && dist + Math.max(0, -appr) * (d0.S + 1) <= effRD(d0) - 6) { this.plan = p; press(this.plan.shift()); return; }
     }
+    // 2.11 咏春拳按住挡接招没接着（按早了、被骗出来的）：他正在收手 —— 这时候打他 ×1.3（WC_WRONG_MUL；看见了、来得及才打）
+    if (s.catching && this.catchPun !== s.serial && s.rLeft - L.react > this.mvOf('jab').S + 1 && dist <= this.eR('jab') - 4 && R() < L.punish) {
+      this.catchPun = s.serial; this.plan = this.K.wc ? Jn(4) : ['jab', 'heavy']; press(this.plan.shift()); return;
+    }
     // 惩罚空招（空中招打空了、人还在天上：等他落地，见上面的落地硬直）
     if (s.phase === 'r' && !s.confirmed && !s.air && dist <= 110 && R() < L.punish * 0.3) {
       this.plan = this.K.wc ? (dist <= 86 ? Jn(5) : ['kick', 'jab', 'jab', 'jab']) : dist <= 90 ? ['jab', 'heavy'] : ['heavy'];
@@ -798,7 +811,9 @@ class Brain {
     // 对手龟缩：站挡就擒拿或下段，蹲挡就抄腿或打上段（跳）
     if (s.blocking && !s.lowBlock && dist <= 84 && R() < L.grabBlock * (this.K.wc ? AI_TUNE.wcGrabBlk : o.style === 'wc' ? AI_TUNE.vsWcGrab : 0.12)) { press('grab'); return; }   // 咏春拳拉手扣住挡着的人（进搭手）；打咏春拳的人抓黐手
     if (s.blocking && s.lowBlock && dist <= 88 && R() < L.grabBlock * 0.1) { press('d:grab'); return; }
-    if (s.blocking && !s.lowBlock && dist <= 120 && R() < L.low * (this.K.wc ? AI_TUNE.wcLow : 0.05)) { press(dist <= 88 ? 'd:jab' : 'd:kick'); return; }
+    if (s.blocking && !s.lowBlock && dist <= 120 && R() < L.low * (this.K.wc ? AI_TUNE.wcLow : o.style === 'wc' ? AI_TUNE.vsWcLow : 0.05)) { press(dist <= 88 ? 'd:jab' : 'd:kick'); return; }
+    // 2.11 骗接（打咏春拳）：他按着挡听劲，在拳够不着的地方空挥一拳 —— 他按键接了就是接空，收手的时候打他（上面那一段）
+    if (!this.K.wc && o.style === 'wc' && s.blocking && !s.lowBlock && dist > this.eR('jab') + 2 && dist <= this.eR('jab') + 30 && R() < L.read * AI_TUNE.bait) { press('jab'); return; }
     // 被贴身压着：闪步拉开，或者偶尔闪到对手身后
     if (dist < 86 && s.atk && R() < L.step * 0.05) { if (R() < 0.3) this.dashIn(); else this.dashAway(); return; }
     // 2.1 近身先护着：贴得近、他能出手的时候，时不时先举手（短拳 5 帧，谁都看不清，只能预判；他老用短拳就护得更多）
@@ -890,8 +905,8 @@ class Brain {
     if (R() >= pa) return;                                           // 这一跳没反应过来（照普通的来）
     const wall = f.x - (s.x >= f.x ? 1 : -1) * 110, cornered = wall < WALL_L + 20 || wall > WALL_R - 20;
     const hb = L.habit;                                              // 记得越准，越照他的习惯接
-    // 咏春拳没有托天掌：拍手拍开他空中的拳脚（算着他落下来、进了射程的那几帧刚按下挡）
-    const plan = weighted([[this.K.wc ? 'pat' : 'palm', L.aa * (0.5 + 1.6 * pA * hb)], ['block', 0.7 + 0.5 * pA * (1 - hb)], ['wait', 0.35 + 1.8 * (pD + pE * 0.6) * hb],
+    // 咏春拳没有托天掌：按住挡听劲，他空中的拳脚打过来按键接（看见了接，见 tick「听劲」那一段）
+    const plan = weighted([[this.K.wc ? 'block' : 'palm', L.aa * (0.5 + 1.6 * pA * hb)], ['block', 0.7 + 0.5 * pA * (1 - hb)], ['wait', 0.35 + 1.8 * (pD + pE * 0.6) * hb],
       ['back', cornered ? 0 : L.step * 0.6]]);
     // 托天掌的时机：反应慢的按得早一点 / 晚一点（随机偏几帧）
     this.aa = { plan, jitter: Math.round((R() - 0.5) * L.react * 0.5), done: false };
@@ -905,18 +920,16 @@ class Brain {
       if (Math.random() < L.aa) this.antiDive = true; else { f.noParry = true; this.lowBlock = false; this.blockT = 30; H.block = true; }
       return true;
     }
-    if (A.plan === 'palm' || A.plan === 'pat') {
+    if (A.plan === 'palm') {
       if (A.done) return false;
       // 按着他的速度推：托天掌出手（前摇 S 帧）那几帧他在哪 —— 进了托天掌的射程、开始往下落了（或者快落地了）就按
-      // 咏春拳的拍手一样算：他落到跟前（空中的拳脚够得着的地方）那几帧刚按下挡，这时候出的空中招都拍得开（没出就只是按着挡）
-      const pat = A.plan === 'pat', D = pat ? null : this.MV.palm;
-      if (pat && !o.airborne) { this.aa = null; return false; }
-      const k = lag + (pat ? 3 : D.S + 1) + A.jitter;
+      const D = this.MV.palm;
+      const k = lag + D.S + 1 + A.jitter;
       const px = s.x + s.vx * k, pd = Math.abs(px - f.x);
       const tLand = s.air ? (s.vz + Math.sqrt(Math.max(0, s.vz * s.vz + 2 * GRAV * s.alt))) / GRAV : 99;
-      if (pd <= (pat ? 104 : D.reach - 2) && (s.vz < 1 || tLand <= k + 2)) {
+      if (pd <= D.reach - 2 && (s.vz < 1 || tLand <= k + 2)) {
         A.done = true;
-        if (pat) { f.noParry = false; this.lowBlock = false; this.blockT = 14; H.block = true; } else press('d:heavy');
+        press('d:heavy');
         return true;
       }
       return false;
@@ -1059,15 +1072,15 @@ class Brain {
       default: return false;
     }
   }
-  // 2.10 咏春拳的电脑记住你的习惯：你老出手上的招 —— 先黐着手等你打过来（黏住进搭手）、先伸手拉、先标指插你的胳膊；
-  // 老出腿 —— 截脚截你、截腿、拳打你单脚站着、黐手黏腿；老抓 —— 拳打你（拳最快）；老打下段 —— 蹲着黐手
+  // 2.10 咏春拳的电脑记住你的习惯：你老出手上的招 —— 先按着挡听劲等你打过来（接住进搭手）、先伸手拉、先标指插你的胳膊；
+  // 老出腿 —— 截脚截你、截腿、拳打你单脚站着、听劲等着按手接；老抓 —— 拳打你（拳最快）；老打下段 —— 蹲着挡
   wcHabit(top, dist, press, guard, low) {
     const f = this.f, R = Math.random, H = f.inp.held;
     switch (top) {
       case 'jab': case 'heavy': case 'palm': {
         if (dist > 116) return false;
         const r = R();
-        if (r < 0.45) return guard(false, 16 + (R() * 10 | 0));                               // 黐手（按着挡：打过来就黏住）
+        if (r < 0.45) return guard(false, 16 + (R() * 10 | 0));                               // 听劲（按着挡：他打过来就接，tick「听劲」那一段）
         if (r < 0.65 && dist <= this.mvOf('grab').reach + 4) { press('grab'); return true; }    // 拉手（他正好出拳 = 拉住；站着 = 扣住手腕）
         if (r < 0.82 && dist <= this.eR('f:jab') - 4) { press('f:jab'); return true; }          // 标指（插在他出手的胳膊上）
         return guard(low(), 14 + (R() * 10 | 0));
@@ -1078,7 +1091,7 @@ class Brain {
         if (r < 0.3 && dist <= this.eR('d:kick') - 4) { press('d:kick'); return true; }         // 截脚
         if (r < 0.5 && dist <= this.mvOf('d:grab').reach + 4) { press('d:grab'); return true; } // 截腿
         if (r < 0.7 && dist <= this.eR('jab') - 4) { press('jab'); return true; }               // 拳打单脚站着的
-        return guard(false, 16);                                                                // 黐手黏腿
+        return guard(false, 16);                                                                // 听劲（他踢过来按拿接）
       }
       case 'sweep': case 'lowKick': return R() < 0.3 ? (f.inp.press('up', f.clock), true) : guard(true, 18);
       case 'grab': return dist <= this.eR('jab') - 4 && R() < 0.5 ? (press('jab'), true) : (this.duckT = 14, H.down = true, true);
@@ -1181,9 +1194,7 @@ class Brain {
       case 'antiDive': this.antiDive = true; return true;
       case 'trap': return this.trapAt(eta, exact);                   // 拉手：伸手扣的那几帧正好落在他那一拳快打出来的时候
       case 'biu': return this.biuAt(eta, exact);                     // 标指：插在他出手的胳膊上（挑开进搭手）
-      case 'pat': return this.patAt(eta, false, exact);              // 拍手 / 耕手：刚按下挡那几帧被打到
-      case 'gaun': return this.patAt(eta, true, exact);
-      case 'stick': case 'stickLow': return this.stick(c[1] === 'stickLow', s.remain + 6);   // 黐手：按着挡，黏住进搭手
+      case 'catch': return this.catchAt(s, eta, exact);              // 2.11 接招：按住挡、算好时机按对的键
       case 'duck': this.duckT = Math.max(12, s.remain + 8); H.down = true; return true;
       case 'wait': f.noParry = true; this.lowBlock = false; this.blockT = Math.max(6, s.remain + 2); H.block = true; return true;
       case 'block': case 'cblock': f.noParry = true; this.lowBlock = c[1] === 'cblock' || low; this.blockT = Math.max(8, s.remain + 6); H.block = true; H.down = this.lowBlock; return true;
@@ -1200,40 +1211,35 @@ class Brain {
     }
     return best && best[0];
   }
-  // 2.10 咏春拳的电脑看穿了一招：从自己这一派的破法里挑 —— 手上的招：拍手、拉手、标指、黐手黏住（进搭手）、寸拳霸体吃一拳、转马躲重拳；
-  //   地上的腿：耕手、截腿、截脚、拳打单脚站着的、黐手黏腿；下段：耕手、截腿、蹲着黐手；空中的拳脚：拍手
+  // 2.10 咏春拳的电脑看穿了一招：从自己这一派的破法里挑。2.11 接招（按住挡、键按对、时机按到帧）是最主要的一手：
+  //   手上的招：接招（进搭手）、拉手、标指、寸拳霸体吃一拳、转马躲重拳；地上的腿：接招（按手）、截腿、截脚、拳打单脚站着的；
+  //   下段的腿：蹲着接（耕手）、截腿；下段的手上招接不住：蹲着挡；空中的拳脚：接招
   wcCounterOpts(s, d, dist, eta, freshBlock) {
     const opts = [], T = this.MV.grab, LG = this.MV.lowGrab, LK = this.MV.wLowKick, B = this.MV.wBiu, J = this.mvOf('jab');
-    const hand = HAND_LIMB.test(d.limb || ''), leg = d.limb === 'ff' || d.limb === 'bf', low = d.height === 'low';
+    const hand = HAND_LIMB.test(d.limb || ''), leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', low = d.height === 'low';
     if (d.dive) { opts.push([18, 'antiDive']); opts.push([5, 'block']); }
     else if (d.air) {
-      if (freshBlock && !low && (hand || leg)) opts.push([20, 'pat']);
+      if (hand || leg) opts.push([20, 'catch']);
       if (d.evadeCrouch) opts.push([12, 'duck']);
       opts.push([5, 'block']);
     } else if (d.kind === 'grab') {
       if (d.low) opts.push([12, 'wait']);
       else { opts.push([14, 'duck']); if (eta >= J.S + 2 && dist <= this.eR('jab') - 4) opts.push([10, 'jab']); }
-    } else if (d.tier === 'super') {
-      if (freshBlock && hand && !low) opts.push([20, 'pat']);
-      opts.push([6, 'block']);
-    } else if (d.kind === 'push') opts.push([6, 'block']);
+    } else if (d.tier === 'super' || d.kind === 'push') opts.push([6, 'block']);
     else if (leg && !low) {
-      if (freshBlock) opts.push([18, 'gaun']);
-      if (eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([18, 'd:grab']);               // 截腿截住（他失衡）
-      if (dist <= this.eR('jab') - 4 && eta >= J.S) opts.push([15, 'jab']);                  // 拳打出腿的人：失衡倒地
-      if (eta >= LK.S - 1 && dist <= effRD(LK) - 4) opts.push([14, 'd:kick']);               // 截脚截住
-      opts.push([16, 'stick']);                                                             // 黐手黏腿（进搭手）
+      opts.push([20, 'catch']);                                                             // 按手接住（他失衡）
+      if (eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([16, 'd:grab']);               // 截腿截住
+      if (dist <= this.eR('jab') - 4 && eta >= J.S) opts.push([14, 'jab']);                  // 拳打出腿的人：失衡倒地
+      if (eta >= LK.S - 1 && dist <= effRD(LK) - 4) opts.push([13, 'd:kick']);               // 截脚截住
     } else if (low) {
-      if (freshBlock) opts.push([18, 'gaun']);
-      if (leg && eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([16, 'd:grab']);
-      opts.push([15, 'stickLow']);
+      if (leg) { opts.push([18, 'catch']); if (eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([16, 'd:grab']); }   // 耕手接住
+      opts.push([10, 'cblock']);
     } else {                                                                                // 拳、掌、肘、肩……
-      if (freshBlock && hand) opts.push([20, 'pat']);
-      if (hand && eta >= T.S + 1 && dist <= Math.max(T.reach, d.reach) + 4) opts.push([18, 'trap']);   // 拉手拉住（要卡在他快打出来的那几帧）
-      if (hand && eta >= B.S + 1 && dist <= effRD(B)) opts.push([16, 'biu']);                          // 标指挑开
+      opts.push([20, 'catch']);                                                             // 拍手、摊手、膀手转马接住（进搭手）
+      if (hand && eta >= T.S + 1 && dist <= Math.max(T.reach, d.reach) + 4) opts.push([16, 'trap']);   // 拉手拉住（要卡在他快打出来的那几帧）
+      if (hand && eta >= B.S + 1 && dist <= effRD(B)) opts.push([15, 'biu']);                          // 标指挑开
       if (slipable(d)) { const t = Math.min(3, this.slipWindow(dist) - 1); if (t >= 0 && eta >= 3 + t) opts.push([14, 'slip', t]); }
       if (d.tier === 'light' && !d.pierce && eta >= 2 && dist <= this.eR('heavy') - 6) opts.push([10, 'heavy']);   // 寸拳霸体吃他一拳
-      opts.push([17, 'stick']);
     }
     return opts;
   }
@@ -1266,15 +1272,15 @@ class Brain {
       for (const [k, v] of Object.entries(m)) { tot += v; if (!top || v > m[top]) top = k; }
       const pTop = tot >= 8 && top ? m[top] / tot : 0;
       if (pTop >= 0.4 && R() < (pTop - 0.3) * 0.03) {
-        // 对面是咏春拳多的几类：拉手 → 腿；截脚 → 拳。咏春拳自己的预判：手上的招 → 黐手等着黏 / 标指，腿 → 截脚 / 截腿，下段 → 蹲着黐手，抓 → 拳
-        const pre = this.K.wc ? { kick: dist <= 110 ? (R() < 0.5 ? 'd:grab' : 'd:kick') : null, heavy: dist <= 110 ? (R() < 0.5 ? 'f:jab' : 'stick') : null, jab: dist <= 104 ? 'stick' : null,
-          palm: dist <= 104 ? 'stick' : null, grab: 'jab', lowGrab: 'jab', sweep: 'stickLow', lowKick: 'stickLow', lowJab: dist <= 100 ? 'stickLow' : null, dive: 'jab',
+        // 对面是咏春拳多的几类：拉手 → 腿；截脚 → 拳。咏春拳自己的预判：手上的招 → 按着挡听劲等着接 / 标指，腿 → 截脚 / 截腿，下段 → 蹲着挡，抓 → 拳
+        const pre = this.K.wc ? { kick: dist <= 110 ? (R() < 0.5 ? 'd:grab' : 'd:kick') : null, heavy: dist <= 110 ? (R() < 0.5 ? 'f:jab' : 'ting') : null, jab: dist <= 104 ? 'ting' : null,
+          palm: dist <= 104 ? 'ting' : null, grab: 'jab', lowGrab: 'jab', sweep: 'tingLow', lowKick: 'tingLow', lowJab: dist <= 100 ? 'tingLow' : null, dive: 'jab',
           trap: dist <= this.eR('kick') ? 'kick' : null }[top]
           : { kick: dist <= this.MV.kick.reach ? 'grab' : null, heavy: dist <= 120 ? 'slip' : null, jab: dist <= 100 ? 'heavy' : null, grab: 'd:jab',
           sweep: 'up', lowJab: dist <= 100 ? 'heavy' : null, air: dist <= 140 ? 'd:heavy' : null, jump: dist <= 150 ? 'd:heavy' : null, dive: 'jab',
           trap: dist <= this.eR('kick') - 4 ? 'kick' : null, lowKick: dist <= 96 ? 'jab' : null }[top];
         if (pre === 'slip') { this.slipIn(); f.inp.held.block = true; return true; }
-        if (pre === 'stick' || pre === 'stickLow') return this.stick(pre === 'stickLow', 16);
+        if (pre === 'ting' || pre === 'tingLow') { f.noParry = true; this.lowBlock = pre === 'tingLow'; this.blockT = 16; f.inp.held.block = true; f.inp.held.down = this.lowBlock; return true; }   // 按着挡听劲：他打过来就接（tick「听劲」那一段）
         if (pre === 'up') { f.inp.press('up', f.clock); return true; }
         if (pre) { press(pre); return true; }
       }
@@ -1298,7 +1304,7 @@ class Brain {
     const M = this.memo, f = this.f, w = this.L.habit || 0.5;
     // 2.9 我的招被咏春拳化开了（拍开、耕开、拉住、黏住、标指挑开）：记下来是手上的招还是腿 —— 以后少拿这一类起手、多抓、多打快的
     M.ctr.hand *= 0.9997; M.ctr.leg *= 0.9997;
-    const rk = f.state === 'hit' && f.reel ? f.reelKind : null, ck = rk === 'pat' ? 'hand' : rk === 'gaun' ? 'leg' : null;
+    const rk = f.state === 'hit' && f.reel ? f.reelKind : null, ck = rk === 'pat' || rk === 'tan' || rk === 'bong' ? 'hand' : rk === 'gum' || rk === 'gaun' ? 'leg' : null;   // 2.11 被接住（空中的拳脚、腿）
     if (ck && !this.ctrOn) { this.ctrOn = true; M.ctr[ck] += 1; } else if (!ck) this.ctrOn = false;
     if (f.state === 'attack' && f.move && !f.move.def.script) this.lastLimb = f.move.def.height === 'low' ? 'ff' : f.move.def.limb;   // 我正在出的招打的是哪只手脚
     M.rev *= 0.9997; M.esc *= 0.9997;

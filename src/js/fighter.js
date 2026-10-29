@@ -84,6 +84,7 @@ function runArm(u, tor, amp) {
 }
 
 const FIT_KEYS = ['hip', 'neck', 'head', 'shF', 'shB', 'fe', 'be', 'fh', 'bh', 'fk', 'bk', 'ff', 'bf'];   // fitContact 粗看一眼用的关节
+const ARM_KEEP = 0.4 * (BODY.bone.ua + BODY.bone.fa);   // 2.11 贴身出拳：拳头最多收到离肩膀这么远（顺着胳膊量，胳膊长的四成），肘在下面；再近就扎进去一点，胳膊不往回折到肩膀后面
 const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
 class Fighter {
   constructor(idx, cfg) {
@@ -104,7 +105,7 @@ class Fighter {
     this.clock = 0; this.serial = 0; this.walkPhase = 0; this.runT = 0; this.airT = 0; this.leapJump = false;
     this.carried = false; this.carry0 = 0; this.carryRot = 0; this.slam = false; this.qiGlow = 0; this.heat = 0; this.hitFlash = 0; this.hitShake = 0;
     this.lieKind = 0; this.gwalk = 0; this.slipGot = false;   // 2.0：躺姿（画面）、边挡边走（画面）、闪身躲过了重拳（接着回身肘）
-    this.flow = 0; this.reelKind = null;                      // 2.9 顺几级（咏春拳）、被什么弄失衡的（拍开 / 耕开 / 截脚……）
+    this.flow = 0; this.reelKind = null; this.parryKind = null;   // 2.9 顺几级（咏春拳）、被什么弄失衡的（拍开 / 耕开 / 截脚……）；2.11 接住以后停在哪一手上（咏春拳的接招）
     this.stuck = false; this.shook = false; this.prone = false; this.carryPose = null;   // 2.10 被咏春拳黏住（搭手）、刚甩开手（画面）、趴着倒地（画面）、被拽 / 被扛的样子（画面）
     this.stagger = false;                                     // 2.0.2 被回身肘打中、背对着踉跄（在 hit 状态里）
     this.qi = 0; this.reel = false; this.clashed = false; this.noParry = false;
@@ -564,7 +565,7 @@ class Fighter {
         // 挡住后按重 → 截击（传统格斗，花 25 气）；拳派表里 blockHeavy 写 null 的没有这一下（2.10 咏春拳）
         { const bst = styleOf(this), bh = bst.blockHeavy === undefined ? 'jieQuan' : bst.blockHeavy;
           if (bh && !locked && this.qi >= (this.moves[bh].cost || 0) && this.takePress(['heavy'])) { this.beginMove(bh, null); break; } }
-        if (!locked && this.takePress(['jab'])) { this.beginMove('shove', null); break; }
+        if (!locked && !styleOf(this).catchGuard && this.takePress(['jab'])) { this.beginMove('shove', null); break; }   // 2.11 咏春拳挡着按拳是接招（wcDefend 看按键），不是推挡
         if ((this.stunT -= DT) <= 0) this.state = (h.block && !locked) ? 'block' : 'idle';
         break;
       case 'down':
@@ -810,6 +811,7 @@ class Fighter {
       air: this.airborne, alt: this.alt, vz: this.vz, vx: this.airborne ? this.vx : 0, squat: this.state === 'jumpsquat', stun: this.state === 'hit' || this.state === 'blockstun',
       dash: !!(m && m.name === 'dash'), run: this.state === 'run' && this.runT >= RUN_CHARGE,
       held: this.grabbed, low: lowProfile(this), lowBlock: this.lowBlock,
+      catching: !!(d && d.catchKey),                                // 2.11 咏春拳在接招（按住挡再按键的那个架势；rLeft 是还剩几帧收完手）
     };
     this.history.push(s); if (this.history.length > 40) this.history.shift();
   }
@@ -1070,7 +1072,21 @@ class Fighter {
         if (pen <= 0.4 || cut >= 120) break;
         if (lean > 0.4) { const b = Math.min(pen + 0.6, lean); lean -= b; cut += b; back(b); refit(); continue; }
         const d = Math.min(pen + 0.6, 120 - cut), dl = d / ax, L = this.fkL, e = L[limb]; cut += d;
-        if (arm) { p[limb][0] = e[0] - L.sh[0] - dl; p[limb][1] = e[1] - L.sh[1]; }
+        if (arm) {
+          // 2.11（Jack：短拳贴身打中，胳膊折成「ㄱ」—— 肘往上翘、拳头比肩膀还高一截）：两人挤在一起的时候，以前把拳头一直往回拽（最多 120），
+          // 拽到出拳那边的肩膀后面去了，肘就翻到上面。现在拳头最多收到离那边的肩膀 ARM_KEEP 远（顺着胳膊量），肘一直弯在下面；
+          // 再近就让拳头扎进去一点（两人已经挤在一起了，一点点穿模比胳膊折回来好看）
+          const shL = limb === 'fh' ? L.shF : L.shB, rx = e[0] - shL[0], ry = e[1] - shL[1];
+          let dx2 = dl, last = false;
+          if (ax > 0) {
+            const room = Math.abs(ry) >= ARM_KEEP ? 1e9 : Math.max(0, rx - Math.sqrt(ARM_KEEP * ARM_KEEP - ry * ry));   // 往下打的（下盘拳）拳头在肩膀底下：照旧收（肘往后，翻不上去）
+            if (dx2 > room) { dx2 = room; last = true; }
+          }
+          const tx = e[0] - dx2;
+          p[limb][0] = tx - L.sh[0]; p[limb][1] = e[1] - L.sh[1];
+          if (ik0 && Math.abs(ry) < ARM_KEEP) ik0[limb === 'fh' ? 0 : 1] = ik(shL[0], shL[1], tx, e[1], BODY.bone.ua, BODY.bone.fa, -0.3, limb === 'fh' ? p.fe : p.be)[4];   // 平着打的：肘弯在下面，直接定（不慢慢换边）
+          if (last) { refit(); break; }
+        }
         else if (leg) foldLeg(limb, L, e, dl);
         else back(d);
         refit();
@@ -1113,8 +1129,8 @@ class Fighter {
     // 2.7 fkh / bkh：膝盖往哪边顶的提示直接给一个方向（只有 fitContact 收腿时临时放，让膝盖留在原处；脚尖朝向、亮边还是看 fn / bn）
     const fL = limb(2, hipF[0], hipF[1], p.ff[0], p.hy - L.ankle - p.ff[1], L.th, L.sh, p.fkh ? p.fkh[0] : kf, p.fkh ? p.fkh[1] : -0.15);
     const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, p.bkh ? p.bkh[0] : kb, p.bkh ? p.bkh[1] : -0.15);
-    // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收
-    this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]], fk: [fL[0], fL[1]], bk: [bL[0], bL[1]] };
+    // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收（2.11 也记着两个肩关节：拳头最多收到离肩膀多近）
+    this.fkL = { sh, shF, shB, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]], fk: [fL[0], fL[1]], bk: [bL[0], bL[1]] };
     // 2.5 膝盖往侧面摆（姿势的 fo / bo，度；Jack：扫堂腿蹲着的那条腿不是往后，是往侧面 —— z 轴）：
     // 膝盖绕「大腿根 → 脚踝」那条线往这条腿自己那一侧转出去（前腿 z+ 离镜头近、后腿 z- 离镜头远），脚踝不动。
     // 转到 90° 膝盖正冲着侧面：侧面看这条腿是缩短的（大腿、小腿冲着镜头 / 背着镜头），脚尖也跟着朝侧面（body.js 画鞋时变短）

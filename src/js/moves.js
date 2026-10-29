@@ -56,10 +56,12 @@ const JT = P_JTOP, JD = P_JDN;
 
 // 常用姿势片段（2.4 按新人物模型重摆。fh / bh 是拳心相对两肩中间，ff / bf 是脚踝相对髋 + 离地高；tw 拧腰）
 // 短拳（参考图第一张）：前手一拳直直打出去、和肩一样高（胳膊伸直，肘关节用阴影表现），前手那边的肩膀跟着送出去；
-// 后手拳护在下巴前；身子微微前倾，前腿弓、后腿蹬直
-const P_JAB = { tor: 14, head: 4, dx: 10, hy: 69, tw: 46, fh: [58, -2], bh: [7, -7], ff: [38, 0], bf: [-30, 0] };
+// 后手拳护在下巴前；身子微微前倾，前腿弓、后腿蹬直。
+// 2.11（Jack：大臂、小臂顺着一条线直直往前送，拳头和肩差不多高，肘不翘）：拳头再低一点点（以前比肩高 4 像素，现在 1 像素上下）；
+// 贴身打中时胳膊折成「ㄱ」、肘往上翘的毛病在 fighter.js fitContact（拳头被往回拽到肩膀后面去了）
+const P_JAB = { tor: 14, head: 4, dx: 10, hy: 69, tw: 46, fh: [58, 1], bh: [7, -7], ff: [38, 0], bf: [-30, 0] };
 // 后手直拳：反过来，后手那边的肩膀拧过来、后手打直，前手收回下巴
-const P_CROSS = { tor: 18, head: 4, dx: 12, hy: 68, tw: -40, bh: [62, -2], fh: [9, -7], ff: [36, 0], bf: [-34, 0] };
+const P_CROSS = { tor: 18, head: 4, dx: 12, hy: 68, tw: -40, bh: [62, 1], fh: [9, -7], ff: [36, 0], bf: [-34, 0] };   // 2.11 拳头也低一点点（和肩差不多高）
 // 重拳（2.4 重做，Jack：以前那下像撒娇）：蹬地、转胯、拧腰，后手整条胳膊打直砸出去，前手拉回来护住下巴，后脚跟抬起
 const P_HEAVY = { tor: 22, head: 2, dx: 21, hy: 66, tw: -48, bh: [70, -3], fh: [8, -6], ff: [44, 0], bf: [-40, 2] };
 // 腿踢：支撑腿站直、身子往后靠，前腿顶着髋整条蹬出去；两手还护着。
@@ -85,7 +87,7 @@ const MOVES = {
       [2, { fh: [48, -11], fe: -1, tor: 28, dx: 10, head: -4, tw: 58, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }], [3, {}]] }),
   rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
-    keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] })], [3, { tor: 14 }]] }),
+    keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 2] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 2] })], [3, { tor: 14 }]] }),
   rushR: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'bh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_CROSS, { tor: 22, dx: 12 }), 'back'], [2, J_(P_CROSS, { tor: 22, dx: 12 })], [3, { tor: 14 }]] }),

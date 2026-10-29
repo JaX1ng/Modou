@@ -28,20 +28,18 @@
       <div class="panel">
         <h1 class="title">墨斗<i class="seal">拳</i></h1>
         <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
-        <div class="row pve">
+        <!-- 2.11（Jack：主菜单只留模式）：颜色、拳派、场景、难度都进了模式以后在准备页（#prepPanel）里选 -->
+        <div class="row modes">
           <button class="ibtn" id="btnPve" type="button">人机对战</button>
-          <div class="lvl" id="lvlSeg" role="group" aria-label="电脑难度"></div>
-        </div>
-        <div class="row">
           <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
           <button class="ibtn ghost" id="btnOnline" type="button">联机对战</button>
+        </div>
+        <div class="row modes">
+          <button class="ibtn ghost" id="btnWatch" type="button">观战</button>
           <button class="ibtn ghost" id="btnTrain" type="button">训练场</button>
         </div>
         <div class="row tight">
           <button class="tbtn dark" id="btnKeys" type="button">⌨ 键位设置</button>
-          <button class="tbtn dark" id="btnStyle" type="button">拳派：<span id="styleName">传统格斗</span></button>
-          <button class="tbtn dark" id="btnLooks" type="button">人物颜色</button>
-          <button class="tbtn dark" id="btnStage" type="button">场景：<span id="stageName">朱日远山</span></button>
           <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
           <button class="tbtn dark" id="btnLegend" type="button">教程</button>
           <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
@@ -163,55 +161,21 @@
       </div>
     </div>
 
-    <div class="overlay dim scroll" id="lookPanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">人物颜色</p>
-        <p class="hint">人机、训练场、联机时用（双人对战开打前两边另选）。点一下就记住，存在这台电脑的浏览器里。</p>
-        <p class="step">你的颜色</p>
-        <div class="swatches" id="soloMe"></div>
-        <p class="step">电脑的颜色（选「随机」每局换一个，不会和你撞色）</p>
-        <div class="swatches" id="soloCpu"></div>
-        <div class="row"><button class="ibtn" id="btnLooksDone" type="button">确认</button></div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="stylePanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">拳派</p>
-        <p class="hint">人机、训练场、联机用这里选的；双人对战开打前两边另选。点一下就记住。</p>
-        <p class="step">你的拳派</p>
-        <div class="styles" id="styleMe"></div>
-        <p class="step">电脑的拳派</p>
-        <p class="hint">训练场里就是木桩的拳派。选「随机」每局换一派。</p>
-        <div class="styles" id="styleCpu"></div>
-        <div class="row"><button class="ibtn" id="btnStyleDone" type="button">确认</button></div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="stagePanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">场景</p>
-        <p class="hint">人机、双人对战在这张图上打（训练场固定在练武场；联机由房主选）。点一下就记住，菜单后面的画面就是预览。</p>
-        <div class="stages" id="stageList"></div>
-        <div class="row"><button class="ibtn" id="btnStageDone" type="button">确认</button></div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="pvpPanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">双人对战</p>
-        <p class="hint">玩家一按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd>、玩家二按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd> 换颜色，<kbd class="lt">W</kbd> <kbd class="lt">S</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换拳派，也可以直接点。两边颜色不能一样。</p>
-        <p class="step">玩家一</p>
-        <div class="swatches" id="pvpLook0"></div>
-        <div class="styles sm" id="pvpStyle0"></div>
-        <p class="step">玩家二</p>
-        <div class="swatches" id="pvpLook1"></div>
-        <div class="styles sm" id="pvpStyle1"></div>
-        <p class="step">场景</p>
-        <div class="stages sm" id="pvpStages"></div>
+    <!-- 2.11 准备页（人机、双人、观战、训练场共用一张）：场景一排小图、两边各一块（小人 + 拳派卡 + 颜色格；人机的电脑那边还有难度）。
+         选的都记住，下次进来默认就是上次的；联机还是在联机大厅里选（房主定场景） -->
+    <div class="overlay dim scroll" id="prepPanel" hidden>
+      <div class="panel prep">
+        <p class="big sm" id="prepTitle">人机对战</p>
+        <div class="prep-stage" id="prepStageBox">
+          <p class="step">场景</p>
+          <div class="stages sm" id="prepStages"></div>
+        </div>
+        <p class="hint" id="prepStageFix" hidden>训练场的场景固定在练武场</p>
+        <div class="prep-sides" id="prepSides"></div>
+        <p class="hint" id="prepKeys"></p>
         <div class="row">
-          <button class="ibtn" id="btnPvpGo" type="button">开始对战</button>
-          <button class="ibtn ghost" id="btnPvpBack" type="button">返回</button>
+          <button class="ibtn" id="btnPrepGo" type="button">开始</button>
+          <button class="ibtn ghost" id="btnPrepBack" type="button">返回</button>
         </div>
       </div>
     </div>

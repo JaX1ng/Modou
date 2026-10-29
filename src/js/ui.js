@@ -3,14 +3,14 @@
 
 const $ = id => document.getElementById(id);
 const menu = $('menu'), pauseEl = $('pause'), resultEl = $('result'), onlineEl = $('online'), keysEl = $('keysPanel');
-const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel'), stageEl = $('stagePanel'), styleEl = $('stylePanel');
+const prepEl = $('prepPanel'), setEl = $('setPanel');            // 2.11 准备页（人机 / 双人 / 观战 / 训练场选场景、颜色、拳派）
 const drillEl = $('drillPanel'), introEl = $('drillIntro'), passEl = $('drillPass');   // 2.1 破招练习：选课、说明；2.2 过关
 const btnPause = $('btnPause'), btnSound = $('btnSound');
 const Desk = window.modouDesktop || null;          // 2.1 软件版（Steam）才有这个对象（desktop/preload.js 给的）；网页版是 null。见下面「软件版」
 
 function showOverlay(el) {
-  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, styleEl, drillEl, introEl, passEl]) o.hidden = o !== el;
-  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, styleEl].includes(el));
+  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, prepEl, setEl, drillEl, introEl, passEl]) o.hidden = o !== el;
+  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, prepEl, setEl].includes(el));
   const t = el && el.querySelector('.ibtn:not([hidden])');
   if (t) setTimeout(() => t.focus({ preventScroll: true }), 0);
 }
@@ -61,14 +61,14 @@ Hooks.matchOver = () => {
     `<div><b>${st[0].escapes} / ${st[1].escapes}</b>挣脱 ${nm}</div>`;
   const guest = game.mode === 'online' && Net.role === 'guest';
   $('btnAgain').hidden = guest; $('resWait').hidden = !guest;
+  $('btnAgain').textContent = game.mode === 'watch' ? '再来一场' : '再战一局';      // 2.11 观战：两边的选择留着，再看一场
   btnPause.disabled = true;
   MouseLock.sync();
   Ach.matchOver(wi);
   setTimeout(() => { if (game.phase === 'over') showOverlay(resultEl); }, 900);
 };
-/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字）：人机对战按钮旁边一排五格。
-   2.3（Jack：底下不要点，也不要介绍）：每格就是两个字，和人机对战按钮一样高 */
-$('lvlSeg').innerHTML = LEVEL_IDS.map(id => `<button type="button" data-d="${id}" aria-pressed="false">${LEVEL_NAME[id]}</button>`).join('');
+/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字）。2.3（Jack：底下不要点，也不要介绍）：每格就是两个字。
+   2.11 从菜单挪进人机对战的准备页（电脑那一块） */
 function setDiff(d) {
   game.diff = d;
   for (const b of document.querySelectorAll('[data-d]')) b.setAttribute('aria-pressed', String(b.dataset.d === d));
@@ -84,9 +84,11 @@ function restart() {
   else startMatch(game.mode);
 }
 
-$('btnPve').addEventListener('click', () => startMatch('pve'));
-$('btnPvp').addEventListener('click', () => openPvp());
-$('btnTrain').addEventListener('click', () => startMatch('train'));
+// 2.11 主菜单只留模式：点进去先到这个模式的准备页（联机还是联机面板，连上以后在大厅里选）
+$('btnPve').addEventListener('click', () => openPrep('pve'));
+$('btnPvp').addEventListener('click', () => openPrep('pvp'));
+$('btnWatch').addEventListener('click', () => openPrep('watch'));
+$('btnTrain').addEventListener('click', () => openPrep('train'));
 /* ---------- 训练场工具条（2.0.2 以前叫打桩练习） ---------- */
 function setDummy(m) {
   game.dummyMode = m;
@@ -214,7 +216,6 @@ function drillEsc() {
   if (!drillEl.hidden) { showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); return true; }
   return false;
 }
-for (const b of document.querySelectorAll('[data-d]')) b.addEventListener('click', () => setDiff(b.dataset.d));   // 1.8.0 修：以前训练场工具条的按钮也会触发换难度
 $('btnResume').addEventListener('click', () => setPaused(false));
 $('btnPauseDrill').addEventListener('click', () => { if (Drill.cur) openIntro(Drill.cur.def.id); });
 $('btnRestart').addEventListener('click', () => { game.paused = false; restart(); });
@@ -374,7 +375,7 @@ function renderNetStyles() {
 }
 $('netStyles').addEventListener('click', e => {
   const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return;
-  if (Net.pickStyle(b.dataset.style)) { Styles.solo.me = b.dataset.style; Styles.save(); showStyleName(); renderNetStyles(); }
+  if (Net.pickStyle(b.dataset.style)) { Styles.solo.me = b.dataset.style; Styles.save(); renderNetStyles(); }
 });
 // 联机选色：自己的亮着，对方占着的变暗点不了；房主说了算（net.js settleLook）
 function renderNetLooks() {
@@ -517,7 +518,7 @@ $('btnPauseKeys').addEventListener('click', () => openKeys('pause'));
 // 教程里的键位（2.2 起在 guide.js）：改了键位就重画，显示现在真正在用的键
 function showKeyCards() { Guide.refresh(); }
 
-/* ---------- 人物颜色（1.7.0）：单人设置、双人开打前选、联机大厅选 ---------- */
+/* ---------- 人物颜色（1.7.0）：准备页里选（2.11 以前在菜单「人物颜色」）、联机大厅选 ---------- */
 // 色块：一个小火柴人，身体是颜色；头带、发带、腰带是身体色提亮的那一版（2.0.2 腰带是箍在腰上的一道）
 function figSvg(p) {
   const band = palOf(p.color).band;
@@ -540,27 +541,11 @@ function setMyLook(id) {
   if (Looks.solo.cpu === id) Looks.solo.cpu = 'random';
   Looks.save();
 }
-// 单人：菜单「人物颜色」。点了马上记住；菜单背景里两个人就是预览
-function renderLookPanel() {
-  const me = Looks.solo.me;
-  $('soloMe').innerHTML = PALETTE.map(p => swatch(p, { on: p.id === me })).join('');
-  $('soloCpu').innerHTML = randSwatch(Looks.solo.cpu === 'random') + PALETTE.map(p => swatch(p, { on: p.id === Looks.solo.cpu, taken: p.id === me ? '你' : '' })).join('');
-}
-function previewSolo() { if (game.mode === 'attract') { F1.setLook(Looks.solo.me); F2.setLook(Looks.solo.cpu === 'random' ? (F2.look !== Looks.solo.me ? F2.look : cpuLook()) : Looks.solo.cpu); } }
-function closeLooks() { showOverlay(menu); }
-$('btnLooks').addEventListener('click', () => { renderLookPanel(); previewSolo(); showOverlay(lookEl); });
-$('btnLooksDone').addEventListener('click', closeLooks);
-$('soloMe').addEventListener('click', e => { const b = e.target.closest('.sw'); if (!b || b.disabled) return; setMyLook(b.dataset.id); renderLookPanel(); previewSolo(); });
-$('soloCpu').addEventListener('click', e => {
-  const b = e.target.closest('.sw'); if (!b || b.disabled) return;
-  Looks.solo.cpu = b.dataset.id; Looks.save(); renderLookPanel();
-  if (game.mode === 'attract') F2.setLook(b.dataset.id === 'random' ? cpuLook() : b.dataset.id);
-});
-/* ---------- 2.9 拳派：菜单「拳派」里选自己的、电脑的（人机、训练场、联机用），双人开打前两边选，联机大厅各选各的 ----------
+/* ---------- 2.9 拳派：准备页里选（2.11 以前在菜单「拳派」），联机大厅各选各的 ----------
    每一派一张卡：架势小图（用这一派自己的架势画）+ 名字 + 一句话 */
 const STYLE_LINE = {
   trad: '大开大合：重拳霸体、腿长、摔投',
-  wc: '按拍子连环冲拳，手搭上了在手上做文章',
+  wc: '按拍子连环冲拳，按住挡接招，手搭上了在手上做文章',
 };
 function styleCard(id, o) {
   const sm = !!o.sm, w = sm ? 52 : 92;
@@ -573,35 +558,15 @@ function styleRow(el, cur, o) {
   $(el).innerHTML = (o.rand ? styleCard('random', { on: cur === 'random', sm: o.sm }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === cur, sm: o.sm })).join('');
   PoseIcon.fill($(el));
 }
-function showStyleName() { $('styleName').textContent = STYLES[Styles.solo.me].name; }
-function renderStylePanel() { styleRow('styleMe', Styles.solo.me); styleRow('styleCpu', Styles.solo.cpu, { rand: true }); }
-// 菜单背景里两个人就是预览：你选的拳派、电脑选的（随机就随便一派）
-function previewStyles() {
-  if (game.mode !== 'attract') return;
-  F1.style = Styles.solo.me; if (styleOk(Styles.solo.cpu)) F2.style = Styles.solo.cpu;
-  resetFighters();
-}
-$('btnStyle').addEventListener('click', () => { renderStylePanel(); previewStyles(); showOverlay(styleEl); });
-$('btnStyleDone').addEventListener('click', () => showOverlay(menu));
-$('styleMe').addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return; Styles.solo.me = b.dataset.style; Styles.save(); renderStylePanel(); showStyleName(); previewStyles(); });
-$('styleCpu').addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b) return; Styles.solo.cpu = b.dataset.style; Styles.save(); renderStylePanel(); previewStyles(); });
-showStyleName();
 
-/* ---------- 场景（2.0）：菜单「场景」里选（人机、双人用），双人开打前、联机大厅（房主选）也能换 ---------- */
-// 一排场景按钮：每个按钮一张小图（远景 + 中景缩小画的）+ 名字。sm = 小一号（双人、联机面板里）
+/* ---------- 场景（2.0）：准备页里选（2.11 以前在菜单「场景」），联机大厅房主选 ---------- */
+// 一排场景按钮：每个按钮一张小图（远景 + 中景缩小画的）+ 名字。sm = 小一号
 function stageButtons(cur, o) {
   o = o || {};
   const tw = o.sm ? 120 : 200, th = o.sm ? 60 : 100, k = Math.min(2, window.devicePixelRatio || 1);
   return STAGE_PICK.map(id => `<button type="button" class="stg" data-stage="${id}" aria-pressed="${id === cur}"${o.lock ? ' disabled' : ''}>` +
     `<img alt="" width="${tw}" height="${th}" src="${Stage.thumb(id, Math.round(tw * k), Math.round(th * k))}"><span>${STAGES[id].name}</span></button>`).join('');
 }
-function showStageName() { $('stageName').textContent = STAGES[Stage.pref].name; }
-function pickStage(id) { Stage.setPref(id); showStageName(); renderStagePanel(); if (!pvpEl.hidden) renderPvpStages(); }
-function renderStagePanel() { $('stageList').innerHTML = stageButtons(Stage.pref); }
-function renderPvpStages() { $('pvpStages').innerHTML = stageButtons(Stage.pref, { sm: true }); }
-$('btnStage').addEventListener('click', () => { renderStagePanel(); showOverlay(stageEl); });
-$('btnStageDone').addEventListener('click', () => showOverlay(menu));
-for (const id of ['stageList', 'pvpStages']) $(id).addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled) pickStage(b.dataset.stage); });
 // 联机大厅：房主点了算；加入方只看得到房主选的哪张
 function renderNetStages() {
   const host = Net.role === 'host';
@@ -609,34 +574,116 @@ function renderNetStages() {
   $('netStages').innerHTML = stageButtons(Stage.online, { sm: true, lock: !host });
 }
 $('netStages').addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled && Net.pickStage(b.dataset.stage)) renderNetStages(); });
-showStageName();
 
-// 双人：开打前两边选（A/D、←/→ 也能换）。对方选了的变暗
-let pvpDraft = null, pvpStyleDraft = null;
-function openPvp() { pvpDraft = Looks.pvp.slice(); pvpStyleDraft = Styles.pvp.slice(); renderPvp(); renderPvpStages(); showOverlay(pvpEl); }
-function renderPvp() {
-  for (const i of [0, 1]) $('pvpLook' + i).innerHTML = PALETTE.map(p => swatch(p, { on: p.id === pvpDraft[i], taken: p.id === pvpDraft[1 - i] ? (i ? '玩家一' : '玩家二') : '' })).join('');
-  for (const i of [0, 1]) styleRow('pvpStyle' + i, pvpStyleDraft[i], { sm: true });
-  if (game.mode === 'attract') { F1.setLook(pvpDraft[0]); F2.setLook(pvpDraft[1]); }
+/* ---------- 2.11 准备页（Jack：主菜单只留模式，颜色 / 拳派 / 场景都进了模式再选）----------
+   人机、双人、观战、训练场共用一张：上面一排场景（训练场固定练武场，不用选），下面两边各一块 —— 小人（这一派的架势、选的颜色）、拳派卡、颜色格；
+   人机的电脑那一块多一排难度（颜色、拳派都能选「随机」）；训练场右边是木桩（只选拳派）。
+   选的先记在草稿里，菜单后面的两个人、背景跟着换（预览）；点「开始」才存（localStorage 照旧 modou.stage / modou.styles / modou.looks / modou.diff），下次进来默认就是上次的。
+   键盘：左边 A / D 换颜色、W / S 换拳派，右边 ← / → 换颜色、↑ / ↓ 换拳派；Enter 开始，Esc 返回 */
+const PREP = {
+  pve: { title: '人机对战', who: ['你', '电脑'], rand: true, diff: true },
+  pvp: { title: '双人对战', who: ['玩家一', '玩家二'] },
+  watch: { title: '观战', who: ['左边', '右边'], note: '两边都是终极难度的电脑，五局三胜。看它怎么连、怎么破，打完能再来一场。' },
+  train: { title: '训练场', who: ['你', '木桩'], dummy: true },
+};
+let prep = null;              // 草稿：{ mode, stage, looks: [左, 右], styles: [左, 右], diff }
+function openPrep(mode) { prep = picksFor(mode); renderPrep(); showOverlay(prepEl); previewPrep(true); }   // 默认是上次选的（game.js picksFor）
+// 颜色格：两边不能一样（人机的电脑可以「随机」，随机不会和你撞色）
+function prepLooks(i) {
+  const P = PREP[prep.mode], my = prep.looks[i], th = prep.looks[1 - i];
+  const taken = id => id === th && !(P.rand && i === 0 && th === 'random') ? prep.who[1 - i] : '';
+  return (P.rand && i === 1 ? randSwatch(my === 'random') : '') + PALETTE.map(p => swatch(p, { on: p.id === my, taken: taken(p.id) })).join('');
 }
-function cyclePvpStyle(i, d) { const k = STYLE_IDS.indexOf(pvpStyleDraft[i]); pvpStyleDraft[i] = STYLE_IDS[(k + d + STYLE_IDS.length) % STYLE_IDS.length]; renderPvp(); }
-function cyclePvp(i, d) {
-  let k = PALETTE.findIndex(p => p.id === pvpDraft[i]);
-  do k = (k + d + PALETTE.length) % PALETTE.length; while (PALETTE[k].id === pvpDraft[1 - i]);
-  pvpDraft[i] = PALETTE[k].id; renderPvp();
+function prepFace(i) {
+  const st = prep.styles[i], lk = prep.looks[i], col = lk === 'random' ? '#9a9b94' : lookOf(lk).color;
+  return iconSlot({ pose: 'stance', style: styleOk(st) ? st : STYLE_DEFAULT }, 84, 96, 'pface' + (styleOk(st) ? '' : ' rand'), { flip: i === 1, col });
 }
-function pvpKey(e) {
-  const k = { KeyA: [0, -1], KeyD: [0, 1], ArrowLeft: [1, -1], ArrowRight: [1, 1] }[e.code];
-  const ks = { KeyW: [0, -1], KeyS: [0, 1], ArrowUp: [1, -1], ArrowDown: [1, 1] }[e.code];   // 2.9 换拳派
-  if (k) { e.preventDefault(); cyclePvp(k[0], k[1]); }
-  else if (ks) { e.preventDefault(); cyclePvpStyle(ks[0], ks[1]); }
-  else if (e.code === 'Escape') closePvp();
+function renderPrep() {
+  const P = PREP[prep.mode], m = prep.mode;
+  prep.who = P.who;
+  $('prepTitle').textContent = P.title;
+  $('prepStageBox').hidden = m === 'train'; $('prepStageFix').hidden = m !== 'train';
+  if (m !== 'train') $('prepStages').innerHTML = stageButtons(prep.stage, { sm: true });
+  const side = i => {
+    const st = prep.styles[i], lk = prep.looks[i], dummy = P.dummy && i === 1;
+    const name = lk === 'random' || dummy ? (dummy ? '' : '随机') : lookOf(lk).name, stName = styleOk(st) ? STYLES[st].name : '随机拳派';
+    return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div></div>` +
+      `<p class="step">${dummy ? '木桩的拳派' : '拳派'}</p><div class="styles sm" data-ps="${i}"></div>` +
+      (dummy ? '<p class="hint">木桩站着、蹲着、挡着，进去以后下面的工具条上换。</p>' : `<p class="step">颜色</p><div class="swatches sm" data-pl="${i}">${prepLooks(i)}</div>`) +
+      (P.diff && i === 1 ? `<p class="step">难度</p><div class="lvl sm" role="group" aria-label="电脑难度">${LEVEL_IDS.map(id => `<button type="button" data-pd="${id}" aria-pressed="${id === prep.diff}">${LEVEL_NAME[id]}</button>`).join('')}</div>` : '') +
+      '</section>';
+  };
+  $('prepSides').innerHTML = side(0) + side(1) + (P.note ? `<p class="hint prep-note">${P.note}</p>` : '');
+  for (const i of [0, 1]) {
+    const el = $('prepSides').querySelector(`[data-ps="${i}"]`);
+    el.innerHTML = (P.rand && i === 1 ? styleCard('random', { on: prep.styles[i] === 'random', sm: true }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === prep.styles[i], sm: true })).join('');
+  }
+  PoseIcon.fill($('prepSides'));
+  $('prepKeys').innerHTML = P.dummy ? '<kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换你的颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换你的拳派，<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换木桩的拳派，也可以直接点；Enter 开始'
+    : `${P.who[0]}按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换拳派，${P.who[1]}按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd>，也可以直接点；Enter 开始`;
 }
-function closePvp() { showOverlay(menu); applyLooks('attract'); }
-for (const i of [0, 1]) $('pvpLook' + i).addEventListener('click', e => { const b = e.target.closest('.sw'); if (!b || b.disabled) return; pvpDraft[i] = b.dataset.id; renderPvp(); });
-for (const i of [0, 1]) $('pvpStyle' + i).addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return; pvpStyleDraft[i] = b.dataset.style; renderPvp(); });
-$('btnPvpGo').addEventListener('click', () => { Looks.pvp = pvpDraft.slice(); Looks.save(); Styles.pvp = pvpStyleDraft.slice(); Styles.save(); showLooks(); startMatch('pvp'); });
-$('btnPvpBack').addEventListener('click', closePvp);
+// 菜单后面的两个人就是预览：选的颜色、拳派（随机的那边随便一个），背景是选的场景（训练场是练武场）
+function previewPrep(first) {
+  if (game.mode !== 'attract' || !prep) return;
+  const m = prep.mode, [a, b] = prep.looks;
+  Stage.peek = m === 'train' ? 'yard' : prep.stage;
+  F1.setLook(a === 'random' ? cpuLook() : a);
+  F2.setLook(m === 'train' ? cpuLook() : b === 'random' ? (F2.look !== a ? F2.look : PALETTE.find(p => p.id !== a).id) : b);
+  const s0 = prep.styles[0], s1 = styleOk(prep.styles[1]) ? prep.styles[1] : F2.style;
+  if (first || F1.style !== s0 || F2.style !== s1) { F1.style = s0; F2.style = s1; resetFighters(); }
+}
+function closePrep() { prep = null; Stage.peek = null; showOverlay(menu); applyLooks('attract'); }
+function prepPick(i, kind, id) {
+  if (!prep) return;
+  if (kind === 'look') {
+    if (id !== 'random' && id === prep.looks[1 - i] && !(prep.mode === 'pve' && i === 0)) return;
+    prep.looks[i] = id;
+    if (prep.mode === 'pve' && i === 0 && prep.looks[1] === id) prep.looks[1] = 'random';   // 你换成电脑的颜色：电脑改随机
+  } else if (kind === 'style') prep.styles[i] = id;
+  else if (kind === 'stage') prep.stage = id;
+  else if (kind === 'diff') prep.diff = id;
+  renderPrep(); previewPrep();
+}
+function prepCycle(i, kind, d) {
+  const P = PREP[prep.mode];
+  if (kind === 'look') {
+    if (P.dummy && i === 1) return;
+    const ids = (P.rand && i === 1 ? ['random'] : []).concat(PALETTE.map(p => p.id)).filter(id => id === 'random' || id !== prep.looks[1 - i] || (prep.mode === 'pve' && i === 0));
+    const k = ids.indexOf(prep.looks[i]);
+    prepPick(i, 'look', ids[(k + d + ids.length) % ids.length]);
+  } else {
+    const ids = (P.rand && i === 1 ? ['random'] : []).concat(STYLE_IDS), k = ids.indexOf(prep.styles[i]);
+    prepPick(i, 'style', ids[(k + d + ids.length) % ids.length]);
+  }
+}
+function prepGo() {
+  if (!prep) return;
+  const m = prep.mode;
+  savePicks(prep); if (m === 'pve') setDiff(prep.diff);       // 点「开始」才存（game.js savePicks）
+  showLooks();
+  prep = null; Stage.peek = null;
+  startMatch(m);
+}
+function prepKey(e) {
+  const k = { KeyA: [0, 'look', -1], KeyD: [0, 'look', 1], KeyW: [0, 'style', -1], KeyS: [0, 'style', 1],
+    ArrowLeft: [1, 'look', -1], ArrowRight: [1, 'look', 1], ArrowUp: [1, 'style', -1], ArrowDown: [1, 'style', 1] }[e.code];
+  if (k && prep) {
+    e.preventDefault();
+    if (!(PREP[prep.mode].dummy && k[0] === 1 && k[1] === 'look')) prepCycle(k[0], k[1], k[2]);   // 训练场：← → 不用（木桩不选颜色），↑ ↓ 换木桩的拳派
+  }
+  else if (e.code === 'Escape' && !e.repeat) closePrep();
+  else if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && !(e.target && e.target.tagName === 'BUTTON' && e.target !== $('btnPrepGo'))) { e.preventDefault(); prepGo(); }
+}
+$('prepStages').addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled) prepPick(0, 'stage', b.dataset.stage); });
+$('prepSides').addEventListener('click', e => {
+  const sd = e.target.closest('[data-side]'); if (!sd) return;
+  const i = +sd.dataset.side, sw = e.target.closest('.sw'), st = e.target.closest('.styl'), lv = e.target.closest('[data-pd]');
+  if (sw && !sw.disabled) prepPick(i, 'look', sw.dataset.id);
+  else if (st) prepPick(i, 'style', st.dataset.style);
+  else if (lv) prepPick(i, 'diff', lv.dataset.pd);
+});
+$('btnPrepGo').addEventListener('click', prepGo);
+$('btnPrepBack').addEventListener('click', closePrep);
 showLooks();
 
 /* ---------- 小提示条（画面顶上，几秒后自己消失） ---------- */
@@ -766,7 +813,7 @@ const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
   if (game.mode === 'attract' || game.paused || keyWait || e.button > 4) return null;
-  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !styleEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
+  if (!keysEl.hidden || !prepEl.hidden || !setEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
   const r = Keys.route('Mouse' + e.button, game.mode);           // 1.8.0：双人对战里鼠标也能用（谁绑了归谁）
   if (!r) return null;
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
@@ -798,8 +845,8 @@ const MouseLock = {
   ok() { return !!(cv.requestPointerLock && document.exitPointerLock) && !window.modouDesktop; },
   on() { return document.pointerLockElement === cv; },
   want() {
-    if (!this.ok() || game.mode === 'attract' || game.paused || game.phase === 'over') return false;
-    if ([menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl, passEl].some(o => !o.hidden) || Manual.isOpen()) return false;
+    if (!this.ok() || game.mode === 'attract' || game.mode === 'watch' || game.paused || game.phase === 'over') return false;   // 2.11 观战不用锁
+    if ([menu, pauseEl, resultEl, onlineEl, keysEl, prepEl, setEl, drillEl, introEl, passEl].some(o => !o.hidden) || Manual.isOpen()) return false;
     return ['Mouse1', 'Mouse2'].some(c => !!Keys.route(c, game.mode));
   },
   // 该锁就锁、该放就放（锁要在点击 / 按键的那一下里叫，浏览器才答应）
@@ -882,11 +929,8 @@ window.addEventListener('keydown', e => {
   if (keyWait) { captureKey(e); return; }
   if (legendOpen()) { Manual.key(e); return; }                    // 2.2 教程面板开着：Esc 关、↑↓ 换章，别的键不进游戏
   if (!keysEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeKeys(); return; }
-  if (!pvpEl.hidden) { pvpKey(e); return; }
-  if (!lookEl.hidden) { if (e.code === 'Escape') closeLooks(); return; }
+  if (!prepEl.hidden) { prepKey(e); return; }
   if (!setEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeSettings(); return; }
-  if (!stageEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
-  if (!styleEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
   if (!drillEl.hidden || !introEl.hidden || !passEl.hidden) { if (e.code === 'Escape' && !e.repeat) drillEsc(); return; }
   if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
   // 破招练习的演示里按 Esc：不看了，回到说明

@@ -76,16 +76,24 @@ const W_SHAPE = {
   bong: { fh: [46, 15], fpa: 36, fpr: -0.35, fe: 1, bh: [22, 9], bpa: -46, bpr: 1, be: 1, tw: 12 },                  // 膀（肘沉着、掌心翻朝外下）
   fook: { fh: [48, 11], fpa: 28, fpr: 0.7, fe: 1, bh: [26, 9], bpa: -46, bpr: 1, be: 1, tw: 14 },                   // 伏
 };
-// 盘手（按住挡没按方向时一直翻；照 ref/wc_dummy_rolling.jpg）：两只掌同一个高度带、一里一外换位，换的那一下两条小臂交叉；肘一直朝下
-const W_ROLL = [
-  { fh: [50, 7], fpa: -14, fpr: 0.5, fe: 1, bh: [30, 12], bpa: -40, bpr: 1, be: 1, tw: 14 },    // 前手在外（掌心朝上一点）、后手在里
-  { fh: [41, 9], fpa: -30, fpr: 0.9, fe: 1, bh: [40, 11], bpa: -32, bpr: 0.9, be: 1, tw: 4 },   // 换位：两条小臂交叉
-  { bh: [50, 7], bpa: -14, bpr: 0.5, be: 1, fh: [30, 12], fpa: -40, fpr: 1, fe: 1, tw: -6 },    // 后手在外、前手在里
-  { bh: [41, 9], bpa: -30, bpr: 0.9, be: 1, fh: [40, 11], fpa: -32, fpr: 0.9, fe: 1, tw: 4 },   // 换回来
-];
-const W_GUARD_BACK = { fh: [34, 10], fpa: -50, fpr: 1, fe: 1, bh: [22, 15], bpa: -54, bpr: 1, be: 1, tw: 6 };        // 按住挡 + 后：两只手收回来护着
-// 拍手：后手往前下方一拍（掌心朝前下）；前手留在问手的位置
-const W_PAT = { tor: 4, dx: 3, hy: 68, tw: 18, bh: [46, 11], bpa: 22, bpr: 0.45, be: 1, fh: [34, 5], fpa: -40, fpr: 1, fe: 1 };
+/* ---------- 2.11 挡重做（WINGCHUN.md 十五）：按住挡 = 听劲（Jack：长按挡的时候手臂不动，只是往后收一点 —— 不再一直翻盘手）；
+   按住挡再按 拳 / 重 / 拿 = 接招，五个桩法照 ref/wc_guard_1 ～ 5.png ---------- */
+const W_TING = { fh: [40, -1], fpa: -40, fpr: 0.85, fe: 1, bh: [26, 8], bpa: -84, bpr: 1, be: 1, tw: 16 };                       // 听劲：问手、护手往胸前收一点
+const W_TING_LOW = { hy: 52, tor: 16, head: 4, tw: 12, ff: [26, 0], bf: [-25, 0], fh: [36, 6], fpa: -30, fpr: 0.85, fe: 1, bh: [22, 2], bpa: -84, bpr: 1, be: 1 };   // 蹲着听劲
+const W_CATCH = {
+  // 拍手（图 2，按拳接他前手的拳）：前手竖掌往前一拍、拍在他胳膊上往里带，后手竖掌跟在后面护着
+  pat: { tor: 4, dx: 4, hy: 68, tw: 26, fh: [52, 2], fpa: -84, fpr: 0.25, fe: 1, bh: [36, 4], bpa: -86, bpr: 0.95, be: 1, ff: [27, 0], bf: [-32, 0] },
+  // 摊手（图 1，按拳接他后手的拳）：前手往前上方摊出去、手张开把拳托开，后手竖掌护在前手肘弯上
+  tan: { tor: 2, dx: 3, hy: 68, tw: 24, fh: [45, -16], fpa: -48, fpr: 0.1, fe: 1, bh: [30, 3], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-32, 0] },
+  // 膀手转马（图 4，按重接重拳）：脚跟一拧转马、侧过身，前手膀手 —— 肘在前、小臂往下垂着把劲往外带；后手在上面拦着
+  bong: { spin: 26, tor: 6, dx: 0, hy: 66, tw: 4, fh: [30, 30], fpa: 78, fpr: 0.5, fe: -1, bh: [46, -9], bpa: -64, bpr: 0.5, be: 1, ff: [24, 0], bf: [-34, 0] },
+  // 按手（图 5，站着按拿接中段、上段的腿）：下面一只手往前下方把腿按下去（掌心朝下），上面一只手竖掌拦着
+  gum: { tor: 8, dx: 4, hy: 67, tw: 12, fh: [48, 24], fpa: 22, fpr: -0.3, fe: 1, bh: [44, -15], bpa: -76, bpr: 0.8, be: 1, ff: [27, 0], bf: [-32, 0] },
+  // 耕手（图 3，蹲着按拿接地上的腿）：一只手往下往外耕开，一只手竖掌护在脸前
+  gaun: { hy: 52, tor: 18, head: 2, tw: 6, fh: [34, 40], fpa: 74, fpr: 0.4, fe: 1, bh: [22, -16], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-26, 0] },
+};
+const CATCH_NAME = { pat: '拍手', tan: '摊手', bong: '膀手', gum: '按手', gaun: '耕手' };
+const W_TING_K = WJ({ hy: 68, tor: 2, head: 4, dx: -1, ff: [26, 0], bf: [-32, 0] }, W_TING);   // 站着听劲（整个人）
 
 const WMOVES = {
   /* ---- 拳：连环冲拳（beat：按拍子接，见下面「拍子」）。flow：打中了顺加一级 ---- */
@@ -235,8 +243,20 @@ const WMOVES = {
       [1, { rot: -34, tor: 16, head: 10, ff: [40, 32], bf: [-22, 30], fh: [-14, -28], bh: [-30, -12], tw: 0 }, 'out'],
       [2, { rot: -34, tor: 16, head: 10, ff: [40, 32], bf: [-22, 30], fh: [-14, -28], bh: [-30, -12], tw: 0 }], [3, JD]] }),
 
+  /* ---- 2.11 接招（按住挡再按键；WINGCHUN.md 十五）：script，自己不打人 —— 按下去以后第 WC_CATCH_ON 帧起，
+     WC_CATCH_WIN（拳）/ WC_CATCH_WIN_H（重、拿）帧里打过来的招按对了键 = 接住（wcDefend 管：手上的招进搭手、腿失衡）；
+     后面一小会儿是收手，这时候挨打、或者按错了键挨打 = 这一下 ×WC_WRONG_MUL ---- */
+  cPat: WM({ kind: 'script', label: '拍手', S: 0, A: 0, R: 13, script: true, catchKey: 'jab',
+    keys: [[0, W_TING_K], [0.14, W_CATCH.pat, 'out'], [0.55, W_CATCH.pat], [1, {}]] }),
+  cBong: WM({ kind: 'script', label: '膀手转马', S: 0, A: 0, R: 14, script: true, catchKey: 'heavy',
+    keys: [[0, W_TING_K], [0.15, W_CATCH.bong, 'out'], [0.58, W_CATCH.bong], [1, {}]] }),
+  cGum: WM({ kind: 'script', label: '按手', S: 0, A: 0, R: 14, script: true, catchKey: 'grab',
+    keys: [[0, W_TING_K], [0.15, W_CATCH.gum, 'out'], [0.58, W_CATCH.gum], [1, {}]] }),
+  cGaun: WM({ kind: 'script', label: '耕手', S: 0, A: 0, R: 14, script: true, catchKey: 'grab', catchLow: true, height: 'low',
+    keys: [[0, W_TING_LOW], [0.15, W_CATCH.gaun, 'out'], [0.58, W_CATCH.gaun], [1, W_LOW]] }),
+
   /* ---- 防守反击、身法 ---- */
-  // 截打（挡 + 拳）：从手上直接一掌截出去（出手前几帧打击无敌），接着按拍子连
+  // 截打（2.10 是挡 + 拳）：2.11 起挡 + 拳是拍手接招，这一招用不上了（引擎按名字要每一派都有一份 shove，留着）
   shove: WM({ kind: 'jab', label: '截打', stamp: '截打', beat: true, flow: true, S: 2, A: 3, R: 12, dmg: 5, reach: 88, stun: 12, bstun: 7, kb: 1.6, stop: 5, shake: 2, power: .45,
     limb: 'fh', fx: 'jab', lunge: [0, 2, 8], sinv: [0, 4],
     keys: [[0, { hy: 68, tor: 0, head: 6, dx: -3, tw: 14, fh: [30, -14], fpa: -84, bh: [20, -8], bpa: -84 }],
@@ -359,15 +379,18 @@ const WMOVES = {
 WMOVES.super.flurry.poses = [wmk(WJ(W_PF, { dx: 14, hy: 64, tor: 10 })), wmk(WJ(W_PR, { dx: 14, hy: 64, tor: 10 }))];
 WMOVES.super.flurry.endPose = wmk({ tor: 16, dx: 20, hy: 62, head: -2, tw: -36, bh: [58, -2], bp: 0, fh: [30, -3], fpa: -86, ff: [46, 0], bf: [-30, 0] });
 
-/* 架势（fighter.js target 用；挡、搭手的手型在 wcTarget 里现画） */
+/* 架势（fighter.js target 用；搭手的手型在 wcTarget 里现画） */
 const WPOSE = {
   stance: wmk({ hy: 70 }),                                    // 问手 + 护手
   crouch: wmk(W_LOW),
-  block: wmk(WJ(W_SHAPE[''], { hy: 68 })),                    // 黐手（手型见 wcTarget）
-  cblock: wmk({ hy: 50, tor: 16, head: 6, tw: 10, ff: [26, 0], bf: [-25, 0], fh: [36, 16], fpa: 56, fpr: 0.6, bh: [18, -4], bpa: -84 }),   // 耕手：前手斜着往下护住下盘
-  parry: wmk({ tor: -2, head: 6, dx: -4, hy: 69, tw: 20, fh: [48, 4], fpa: -18, bh: [24, 10] }),             // 拍开以后：前手还往外拨着
+  block: wmk(W_TING_K),                                       // 2.11 听劲：按住挡，两只手往胸前收一点，不动
+  cblock: wmk(W_TING_LOW),                                    // 蹲着听劲
+  parry: wmk({ tor: -2, head: 6, dx: -4, hy: 69, tw: 20, fh: [48, 4], fpa: -18, bh: [24, 10] }),             // 拉开以后（截腿截住腿）：前手还往外拨着
   win: wmk({ tor: 0, head: -6, hy: 74, tw: 0, fh: [22, -8], fp: 0, bh: [24, -8], bpa: -90, ff: [20, 0], bf: [-24, 0] }),   // 抱拳
 };
+// 2.11 接招的五个桩法（动作台、教程小图也看得到：cPat 拍手、cTan 摊手、cBong 膀手转马、cGum 按手、cGaun 耕手）
+const WCATCH = {};
+for (const k of Object.keys(W_CATCH)) { WCATCH[k] = wmk(W_CATCH[k]); WPOSE['c' + k[0].toUpperCase() + k.slice(1)] = WCATCH[k]; }
 
 /* ============================================================
    方向（相对对手）：0 没按 / 1 前 / 2 后 / 3 蹲
@@ -514,8 +537,19 @@ function wcCharge(F, m, locked) {
   m.dmgMul = 1 + 0.6 * q;
   if (q >= 1) { m.pierce = true; m.launch = 4.5; m.stamp = '寸劲破体'; }
 }
-// 引擎在出招中（'attack'）、拍开以后（'parry'）先问这里；true = 这一步这里管了
+// 引擎在站着（'neutral'）、出招中（'attack'）、拍开 / 接住以后（'parry'）先问这里；true = 这一步这里管了
 function wcInput(F, where, locked) {
+  if (where === 'neutral') {
+    // 2.11 按住挡再按 拳 / 重 / 拿 = 接招（拍手 / 膀手转马 / 按手；蹲着按拿 = 耕手）。蹲着按拳、重接不了（下段的手上招接不住）：这一下不算
+    const h = F.inp.held;
+    if (locked || !h.block) return false;
+    const k = F.takePress(CATCH_KEYS, true);
+    if (!k) return false;
+    F.takePress([k]);
+    if (h.down && k !== 'grab') return false;
+    catchStart(F, k, !!h.down);
+    return true;
+  }
   if (where === 'parry') {
     if (locked) return false;
     const k = F.takePress(['jab', 'heavy', 'kick', 'grab']);
@@ -540,13 +574,16 @@ function wcInput(F, where, locked) {
 }
 
 /* ============================================================
-   挡：拍手（刚按下挡那几帧）、黐手（按住）、耕手（蹲着）；挨打时：黐手破连
+   2.11 挡：听劲 + 接招（WINGCHUN.md 十五）。光按住挡 = 听劲（普通挡，只吃三成）；按住挡再按键 = 接招：
+   拳接拳系的手上招（他前手的拍手、后手的摊手）、重接重系的手上招（膀手转马）、拿接腿（站着按手，蹲着耕手）。
+   接住手上的招 = 进搭手（我先手、顺 FLOW_COUNTER）；截住腿、空中接住拳脚 = 他失衡，我先动。
+   挨打、被挡住的硬直里也能接（新的黐手破连）：按住挡，他下一下打过来之前 WC_CATCH_HIT 帧以内按对键
    ============================================================ */
 const W_SHAPES = ['', 'tan', 'bong', 'fook'];                       // 方向码 → 手型
 const SHAPE_NAME = { tan: '摊', bong: '膀', fook: '伏' };
 const SHAPE_BEATS = { bong: 'tan', tan: 'fook', fook: 'bong' };     // 膀克摊、摊克伏、伏克膀（咏春打咏春）
 const BEATEN_BY = { tan: 'bong', fook: 'tan', bong: 'fook' };       // 克这个手型的是哪个（电脑被黏住时摆）
-const COUNTER_SHAPE = { lead: 'tan', rear: 'bong', leg: 'fook' };    // 黏住的是他哪只手脚 → 翻成哪个手型是「破」
+const COUNTER_SHAPE = { lead: 'tan', rear: 'bong', leg: 'fook' };    // 搭上的是他哪只手脚 → 翻成哪个手型是「破」
 const TOUCH_STRIKE = { '': 'tChung', tan: 'tTan', bong: 'tBong', fook: 'tFook' };
 // 他这一招是哪只手脚：前手（摊）/ 后手（膀）/ 腿和下段（伏、耕）
 function limbClass(d) {
@@ -554,57 +591,89 @@ function limbClass(d) {
   return d.limb === 'fh' || d.limb === 'fe' ? 'lead' : 'rear';
 }
 const handLimb = d => /^(fh|bh|fe|be|sh)$/.test(d.limb) && d.height !== 'low';
-// 黏得住吗：地上的拳、掌、肘、肩、腿；空中的招、坠山、大招、推挡、擒拿黏不住。breaking（黐手破连）：顺 ≥ 3 的连环冲拳太快，黏不住
-function stickable(A, m, d, breaking) {
-  if (m.air || A.airborne || d.script || d.push || d.dive || d.flurry || d.tier === 'super') return false;
-  if (d.kind !== 'jab' && d.kind !== 'heavy' && d.kind !== 'kick') return false;
-  return !(breaking && d.beat && A.flow >= 3);
+const CATCH_KEYS = ['jab', 'heavy', 'grab'];
+// 他这一招接得住吗、按哪个键接：'jab' 拳（拳系的手上招）/ 'heavy' 重（重系的手上招）/ 'grab' 拿（腿）；null = 接不住。
+// 接不住的：擒拿、推挡、坠山落膝、大招、连环寸拳那一串、下段的手上招。low = 蹲着接（耕手）：只接地上的腿（扫堂腿这种下段的也行）；站着接不住下段
+function catchKeyOf(A, m, d, low) {
+  if (d.script || d.push || d.dive || d.flurry || d.tier === 'super' || d.kind === 'grab') return null;
+  const leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', air = !!(m.air || A.airborne);
+  if (low) return leg && !air ? 'grab' : null;
+  if (d.height === 'low') return null;
+  if (leg) return 'grab';
+  return d.kind === 'heavy' ? 'heavy' : d.kind === 'jab' ? 'jab' : null;
 }
-// 引擎 applyHit：B（咏春）被打到的那一刻先问这里。true = 管了；数 = 这一下的伤害倍数（读错了）；false = 照常
+// 接的是哪一手（五个桩法）：拳 —— 他前手的拳拍手、后手的拳摊手；重 —— 膀手转马；拿 —— 站着按手、蹲着耕手
+const catchTech = (k, d, low) => k === 'grab' ? (low ? 'gaun' : 'gum') : k === 'heavy' ? 'bong' : limbClass(d) === 'lead' ? 'pat' : 'tan';
+// 按住挡再按键：摆出接招的架势（WMOVES 的 cPat / cBong / cGum / cGaun，script，自己不打人）
+function catchStart(F, k, low) {
+  F.facing = F.opp.x >= F.x ? 1 : -1;
+  F.startScript(low ? 'cGaun' : { jab: 'cPat', heavy: 'cBong', grab: 'cGum' }[k]);
+  F.lowBlock = false; F.gwalk = 0;
+  Sound.whoosh(0.25);
+}
+// 引擎 applyHit：B（咏春）被打到的那一刻先问这里。true = 管了；数 = 这一下的伤害倍数（接错了 ×WC_WRONG_MUL）；false = 照常（听劲 = 普通挡）
 function wcDefend(A, B, c, I) {
   const m = I.m, d = I.d;
   if (!I.front) return false;
-  if (B.state === 'hit') {
-    // 黐手破连：挨打的硬直里按住挡 + 方向，他的下一下打过来 —— 前手的招按前（摊）、后手的招按后（膀）、腿和下段按蹲（耕）
-    if (B.airborne || B.grabbed || B.stuck || B.stagger || B.reel || B.clashed || B.carried || !B.inp.held.block) return false;
-    const want = wcDirVs(B, A, false);
-    if (!want || !stickable(A, m, d, true)) return false;
-    const lc = limbClass(d), need = lc === 'lead' ? 1 : lc === 'rear' ? 2 : 3;
-    if (want !== need) { if (!game.quiet) tag(B.x, B.J.head[1] - 40, '读错', A, 18); return WC_WRONG_MUL; }
-    m.done = true; m.blocked = true; A.flow = 0;
-    touchStart(B, A, { from: 'break', limb: lc, flow: FLOW_COUNTER, shape: W_SHAPES[want] });
-    B.stats.parries++;
-    stamp(B.J.head[0] - B.facing * 52, B.J.head[1] - 46, '黐手破连', 28, B);
-    B.info = { label: '黐手破连', dmg: 0, how: '黏住', why: '他连招的时候按对了方向：手搭上去，进搭手', adv: null, t: B.clock };
-    cev('touch', B, A, { from: 'break' });
-    return true;
+  // ① 接招的架势里被打到：能接的那几帧里、按对了键 = 接住；按错了键、早了晚了（收手的时候挨打）= 这一下 ×WC_WRONG_MUL
+  const bm = B.state === 'attack' ? B.move : null;
+  if (bm && bm.def.catchKey) {
+    const win = bm.def.catchKey === 'jab' ? WC_CATCH_WIN : WC_CATCH_WIN_H, low = !!bm.def.catchLow;
+    const inWin = bm.t >= WC_CATCH_ON && bm.t < WC_CATCH_ON + win, need = catchKeyOf(A, m, d, low);
+    if (inWin && need && need === bm.def.catchKey) { catchHit(A, B, c, need, low); return true; }
+    return catchMiss(A, B, inWin && need ? 'key' : 'time');
   }
-  if (!B.isBlocking()) return false;
-  // 拍手 / 耕手：刚按下挡的那几帧（两次按挡要隔 PARRY_LOCK 帧，和卸力一样防乱按）
-  if (B.parryReady()) {
-    if (!B.lowBlock && handCovers('pat', d, m)) { handParry(A, B, c, 'pat'); return true; }
-    if (B.lowBlock && handCovers('gaun', d, m)) { handParry(A, B, c, 'gaun'); return true; }
+  // ② 挨打、被挡住的硬直里按住挡 + 键（新的黐手破连）：他这一下打过来之前 WC_CATCH_HIT 帧以内按的键 —— 按对了接住，按错了、几个键乱按 ×WC_WRONG_MUL。
+  //    顺三级以上的连环冲拳太快，接不住（按了也是按错）
+  if ((B.state === 'hit' || B.state === 'blockstun') && B.inp.held.block && !(B.airborne || B.grabbed || B.stuck || B.stagger || B.reel || B.clashed || B.carried)) {
+    const buf = B.inp.buf, recent = buf.filter(e => CATCH_KEYS.includes(e.a) && B.clock - e.t < WC_CATCH_HIT + 1);
+    if (recent.length) {
+      for (let i = buf.length - 1; i >= 0; i--) if (recent.includes(buf[i])) buf.splice(i, 1);   // 这几下按键用掉了（接没接住都是）
+      const keys = new Set(recent.map(e => e.a)), low = !!B.inp.held.down;
+      const need = d.beat && A.flow >= 3 ? null : catchKeyOf(A, m, d, low);
+      if (keys.size === 1 && need && keys.has(need)) { catchHit(A, B, c, need, low); return true; }
+      return catchMiss(A, B, keys.size > 1 ? 'mash' : 'key');
+    }
   }
-  if (!B.blockHeightOK(d.height)) return false;              // 站着挡不住下段、蹲着挡不住上段：打中
-  if (stickable(A, m, d, false)) {
-    // 黐手黏住：只吃三成，我不进挡住的硬直，直接进搭手。手型对上了（前手的招对摊、后手的招对膀、腿和下段对耕）一进去就顺 1
-    const lc = limbClass(d), sh = W_SHAPES[wcDirVs(B, A, false)] || '';
-    const chip = Math.max(1, Math.round(d.dmg * BLOCK_KEEP));
-    B.hp = Math.max(1, B.hp - chip); B.stats.blocks++; B.gainQi(chip * QI_PER_HP + 2); A.gainQi(1);
-    m.done = true; m.blocked = true; A.flow = 0;
-    note(A, B, chip, '被黏住'); A.info.why = '他在黐手：手上的招、腿被黏住，进了搭手';
-    touchStart(B, A, { from: 'stick', limb: lc, flow: sh && sh === COUNTER_SHAPE[lc] ? 1 : 0, shape: sh });
-    if (!game.quiet) tag(B.x, B.J.head[1] - 22, [['黏 ', B], ['-' + chip, A]], B, 17);
-    cev('touch', B, A, { from: 'stick' });
-    return true;
-  }
-  guard(A, B, c);                                            // 空中的招、大招、推挡：照常挡住
-  return true;
+  return false;
+}
+function catchHit(A, B, c, key, low) {
+  const m = A.move, d = m.def, tech = catchTech(key, d, low), air = !!(m.air || A.airborne);
+  m.done = true; m.blocked = true; A.flow = 0;
+  B.stats.parries++; B.gainQi(8);
+  A.info = { label: d.label, dmg: 0, how: '被接住', why: '他按住挡接你这一招，按对了键（' + { jab: '拳接拳', heavy: '重接重', grab: '拿接腿' }[key] + '）', adv: null, t: A.clock };
+  B.info = { label: CATCH_NAME[tech], dmg: 0, how: '接住', why: key === 'grab' || air ? '接住了：他失衡，你先动' : '接住了他的手：进搭手，你先手', adv: null, t: B.clock };
+  if (key === 'grab' || air) catchReel(A, B, c, tech);                // 截住腿、空中接住拳脚：他失衡，我先动
+  else touchStart(B, A, { from: 'catch', limb: limbClass(d), flow: FLOW_COUNTER, shape: tech === 'tan' ? 'tan' : tech === 'bong' ? 'bong' : '', catchPose: tech, grace: WC_CATCH_GRACE });
+  if (!game.quiet && B.J) stamp(B.J.head[0] - B.facing * 52, B.J.head[1] - 46, CATCH_NAME[tech], 28, B);
+  cev('catch', B, A, { tech, key, name: m.name, air });
+  if (B.move && B.move.def.tch) cev('touch', B, A, { from: 'catch', tech });
+  Sound.parry();
+}
+// 截住腿（按手、耕手）、空中接住拳脚：他失衡 WC_CATCH_REEL 帧（比被卸力还久），我停在接的那一手上，接着按什么出什么（wcInput 'parry'）
+function catchReel(A, B, c, tech) {
+  const m = A.move, d = m.def, dir = A.facing, kd = !!d.launch;
+  A.state = 'hit'; A.stunT = WC_CATCH_REEL + (kd ? TF(4) : 0); A.reel = true; A.reelKind = tech; A.reelBy = B.idx; A.reelKD = kd;
+  A.clashed = false; A.stagger = false; A.hurtHeavy = false; A.grabbed = false;
+  A.move = null; A.chain = []; A.chainIdle = 99; A.runT = 0; A.comboLive = false; A.flow = 0;
+  A.kvx = dir * 1.6; if (A.airborne) { A.vz = Math.max(A.vz, 2); A.vx = 0; }
+  B.move = null; B.state = 'parry'; B.t = 0; B.stunT = 0; B.kvx = 0; B.gwalk = 0; B.parryKind = tech;
+  B.chain = ['pc']; B.chainIdle = 0;
+  game.freeze = Math.max(game.freeze, stop(8)); game.shake = Math.max(game.shake, 3);
+  if (!game.quiet) { parryFx(B, c); tag(A.x, A.J.head[1] - 30, '失衡', B, 20); }
+}
+// 接错了（按错键、几个键乱按、早了晚了在收手）：这一下 ×WC_WRONG_MUL；被挡住的硬直里按错了，手一松 —— 挡不住了
+function catchMiss(A, B, why) {
+  if (B.state === 'blockstun') B.state = 'hit';
+  if (!game.quiet && B.J) tag(B.x, B.J.head[1] - 40, { key: '读错', mash: '乱按', time: '没接住' }[why], A, 18);
+  cev('catchMiss', B, A, { why, name: A.move.name });
+  return WC_WRONG_MUL;
 }
 // 引擎 applyHit：A（咏春）打中 B 的那一刻。标指正好插在他出手的那只胳膊上 = 把手挑开，进搭手
 function wcStrike(A, B, c, I) {
   const d = I.d, bm = I.bm;
-  if (d.flow && (d.beat || d.link)) chainMul(A, B, I.m);     // 一串里的招：按从哪来算收益（中立起手打折）
+  // 一串里的招（拳、踢）按从哪来算收益（中立起手打折）；2.11（Jack：削弱平时的拳 / 重 / 踢）寸拳、三个肘也一样 —— 中立打出去打折，截住、接住以后的反打照样多
+  if ((d.flow && (d.beat || d.link)) || (d.heavy && !d.tch && d.tier !== 'super' && /^w/.test(I.m.name))) chainMul(A, B, I.m);
   if (!d.biu || !bm || bm.air || bm.def.script || !handLimb(bm.def) || (bm.def.kind !== 'jab' && bm.def.kind !== 'heavy') || bm.def.tier === 'super') return false;
   if (bm.t >= bm.S + bm.def.A + 1) return false;            // 他已经收招了：照常打中
   I.m.done = true; I.m.hit = true;
@@ -674,6 +743,8 @@ function touchStart(L, F, o) {
   const m = L.move;
   m.from = o.from; m.limb = o.limb || 'lead'; m.shape = o.shape || ''; m.rollTo = ''; m.rollFrom = ''; m.rollT = 0; m.rolls = 0; m.brk = false;
   m.win = WC_TOUCH_OPEN; m.age = 0; m.dead = false; m.held = wcDir(L);
+  m.grace = o.grace || WC_TOUCH_GRACE;                                   // 他头几帧什么都按不了（2.11 接住进来的多几帧）
+  m.catchPose = o.catchPose || ''; m.catchT = o.catchPose ? WC_CATCH_SHOW : 0;   // 2.11 接住进来的：先停在接的那一手上（只是画面）
   m.fprev = !!(F.inp.held.block && F.inp.held[L.x >= F.x ? 'left' : 'right']);   // 他黏上的时候已经按着挡 + 后：松开再按才算甩手
   m.lap = !!o.lap; m.lapEsc = !!o.lapEsc; m.lapT = 0;
   L.flow = Math.min(FLOW_MAX, o.flow || 0);
@@ -682,7 +753,7 @@ function touchStart(L, F, o) {
   if (!game.quiet) {
     const mx = (L.x + F.x) / 2, my = L.J ? L.J.sh[1] + 6 : FLOOR - 100;
     sparks(mx, my, dir, 6, 5, pal(L).fx, 1.2, 0.2); arcMid(mx, my, 18, dir > 0 ? 0 : Math.PI, 2.4, 3, pal(L).qi, 12);
-    tag(mx, my - 40, '黐', L, 30);
+    if (o.from !== 'catch') tag(mx, my - 40, '黐', L, 30);              // 接住进来的盖了桩法的章，不另写
   }
   Sound.block();
 }
@@ -690,12 +761,12 @@ function touchStart(L, F, o) {
 function touchStep(L, m, k, locked) {
   const F = L.opp;
   if (locked || F.state !== 'hit' || !F.stuck) { touchEnd(L, F, null); return true; }
-  m.age += DT;
+  m.age += DT; if (m.catchT > 0) m.catchT = Math.max(0, m.catchT - DT);
   F.stunT = Math.max(F.stunT, 4); F.kvx = 0; L.kvx = 0;
   F.x = clamp(F.x + (L.x + L.facing * WC_TOUCH_GAP - F.x) * PULL_K, WALL_L, WALL_R);
   // 刚扣住手腕那几帧他按拿挣得脱（和传统格斗的擒住一样，提前几帧按的也算）；甩手、反拿要等手搭稳了（WC_TOUCH_GRACE）
   if (m.lap && m.lapEsc && m.age < HOLD_ESC + 1 && F.takePress(['grab'])) { F.stuck = false; escapeGrab(L, F); return true; }
-  if (!m.dead && m.age >= WC_TOUCH_GRACE + 1 && touchFollower(L, m, F)) return true;
+  if (!m.dead && m.age >= (m.grace || WC_TOUCH_GRACE) + 1 && touchFollower(L, m, F)) return true;
   if (m.rollT > 0) { m.rollT = Math.max(0, m.rollT - DT); if (m.rollT === 0) { m.shape = m.rollTo; m.win = WC_STEP; } }
   if (m.lapT > 0) { m.lapT = Math.max(0, m.lapT - DT); if (m.lapT === 0) { m.lap = true; m.win = WC_STEP + 2; } }
   if (m.rollT <= WC_ROLL_PRE && m.lapT <= 0 && touchLeader(L, m, F)) return true;
@@ -878,45 +949,36 @@ function dragSlam(L, F) {
 const wcTouchShape = F => W_SHAPES[wcDir(F)] || '';
 
 /* ============================================================
-   画：黐手的手型、搭手、被黏住（引擎 target 先问这里；null = 照通用的画）
+   画：听劲、接招的桩法、搭手、被黏住（引擎 target 先问这里；null = 照通用的画）
    ============================================================ */
-const W_CHI_BASE = { hy: 68, tor: 2, head: 4, dx: -1, ff: [26, 0], bf: [-32, 0] };
 const W_TCH_BASE = { hy: 68, tor: 5, head: 3, dx: 2, ff: [28, 0], bf: [-32, 0] };
-const WCHI = {}, WTCH = {};
+const WTCH = {};
 for (const s of W_SHAPES) {
-  WCHI[s] = wmk(WJ(W_CHI_BASE, W_SHAPE[s]));
   const sh = W_SHAPE[s];
   WTCH[s] = wmk(WJ(W_TCH_BASE, WJ(sh, { fh: [sh.fh[0] + (s === 'bong' ? 2 : 6), sh.fh[1] + 1] })));   // 搭上了：前手再往前伸一点（膀手伸直了就不是膀了）
 }
 const WTCH_LAP = wmk(WJ(W_TCH_BASE, { tor: 2, dx: -2, tw: 18, fh: [36, 6], fp: 0, fe: 1, bh: [24, 8], bpa: -50, be: 1 }));   // 扣着手腕往回带
-const WPAT = wmk(W_PAT);
-// 动作台（poses.html）、教程小图也看得到这些手型：黐手 chi*、搭手 tch*、扣着手腕 tchLap、拍手 pat
+// 动作台（poses.html）、教程小图也看得到这些手型：搭手 tch*、扣着手腕 tchLap
 const W_SHAPE_KEY = { '': '', tan: 'Tan', bong: 'Bong', fook: 'Fook' };
-for (const s of W_SHAPES) { WPOSE['chi' + W_SHAPE_KEY[s]] = WCHI[s]; WPOSE['tch' + W_SHAPE_KEY[s]] = WTCH[s]; }
-WPOSE.tchLap = WTCH_LAP; WPOSE.pat = WPAT;
-const WROLL = W_ROLL.map(o => wmk(WJ(W_CHI_BASE, o))), WROLL_T = 10;   // 盘手：四步一圈，一步 10 帧
-const WGUARD_BACK = wmk(WJ(W_CHI_BASE, W_GUARD_BACK));
-W_ROLL.forEach((o, i) => { WPOSE['roll' + i] = WROLL[i]; });   // 动作台、教程小图：盘手的四步
+for (const s of W_SHAPES) WPOSE['tch' + W_SHAPE_KEY[s]] = WTCH[s];
+WPOSE.tchLap = WTCH_LAP;
 function wcTarget(F, t) {
-  const st = F.state, ck = F.clock;
+  const st = F.state;
   if (st === 'block') {
-    if (F.lowBlock) return copyPose(t, WPOSE.cblock);
-    if (ck - F.blockPress < 9 && F.parryOK) return copyPose(t, WPAT);          // 刚按下挡：拍手
-    const dc = wcDir(F);
-    if (dc === 1) copyPose(t, WCHI.tan);                                        // 按着前：摊手往前压
-    else if (dc === 2) copyPose(t, WGUARD_BACK);                                // 按着后：收回来护着，慢慢退
-    else {
-      const p = (ck % (WROLL_T * 4)) / WROLL_T, i = Math.floor(p);               // 盘手：一里一外换位（照参考图）
-      lerpPose(WROLL[i], WROLL[(i + 1) % 4], EASE.io(clamp((p - i) * 1.5 - 0.25, 0, 1)), t, false);
-    }
-    if (F.gwalk) {                                                              // 按着挡走：脚下小碎步（和传统格斗的边挡边走一样）
+    // 2.11 听劲：按住挡，两只手往胸前收一点、不动（Jack：不是一直翻盘手）；按着前 / 后慢慢走
+    copyPose(t, F.lowBlock ? WPOSE.cblock : WPOSE.block);
+    if (F.gwalk && !F.lowBlock) {                                               // 按着挡走：脚下小碎步（和传统格斗的边挡边走一样）
       const ph = F.walkPhase * TAU, s = Math.sin(ph), c = Math.cos(ph);
       t.ff[0] += 9 * s; t.ff[1] = Math.max(0, 6 * c); t.bf[0] -= 9 * s; t.bf[1] = Math.max(0, -6 * c);
     }
     return t;
   }
+  // 截住腿（按手、耕手）、空中接住拳脚以后：停在接的那一手上，他失衡
+  if (st === 'parry' && F.parryKind && WCATCH[F.parryKind]) return copyPose(t, WCATCH[F.parryKind]);
   if (st === 'attack' && F.move && F.move.def.tch) {
     const m = F.move;
+    // 刚接住进搭手：先停在接的那一手上（拍手、摊手、膀手转马），再顺到搭手的手型
+    if (m.catchT > 0 && WCATCH[m.catchPose]) return lerpPose(WTCH[m.shape], WCATCH[m.catchPose], EASE.io(clamp(m.catchT / WC_CATCH_SHOW, 0, 1)), t, false);
     if (m.rollT > 0) return lerpPose(WTCH[m.rollFrom], WTCH[m.rollTo], EASE.io(clamp(1 - m.rollT / WC_ROLL, 0, 1)), t, false);
     if (m.lapT > 0) return lerpPose(WTCH[m.shape], WTCH_LAP, EASE.io(clamp(1 - m.lapT / WC_LAP, 0, 1)), t, false);
     return copyPose(t, m.lap ? WTCH_LAP : WTCH[m.shape]);
@@ -955,7 +1017,8 @@ function wcRules(a, b) {
 function wcRelation(a, b) { return wcRules(a, b) || relation(a, b); }
 // 动作台（poses.html）、测试量「打中时拳脚碰没碰到」用的：分组、要量的招
 const W_BENCH_GROUPS = [
-  ['拳', ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm', 'shove']],
+  ['拳', ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm']],
+  ['接招', ['cPat', 'cBong', 'cGum', 'cGaun']],
   ['重', ['wCun', 'wPai', 'wGwai', 'wJum', 'slipElbow', 'super']],
   ['踢', ['wKick', 'wLowKick', 'wSideKick', 'wKick2', 'wStompKnee', 'wTurnKick', 'stomp']],
   ['搭手', ['tChung', 'tTan', 'tBong', 'tFook', 'tPai', 'tKick', 'tLapDa', 'tLapPai', 'tLapKick', 'tDrag', 'tButterfly', 'tLatChung', 'tMess', 'tSep']],
@@ -965,10 +1028,10 @@ const W_BENCH_GROUPS = [
 ];
 STYLES.wc = {
   id: 'wc', name: '咏春拳', moves: WMOVES, relation: wcRelation, cancel: {}, variant: wcVariant, poses: WPOSE, base: WBASE,
-  chainMax: 8, blockHeavy: null, blockWalk: WC_WALK, parry: false,
+  chainMax: 8, blockHeavy: null, blockWalk: WC_WALK, parry: false, catchGuard: true,   // 2.11 catchGuard：挡着的时候按拳不是截打 / 推挡（是接招，见 wcDefend）
   input: wcInput, canCancel: wcCanCancel, defend: wcDefend, strike: wcStrike, clash: wcClash, grab: wcGrab, stunOf: wcStun,
   target: wcTarget, drawCue: wcDrawCue, touchShape: wcTouchShape,
-  benchGroups: W_BENCH_GROUPS, benchHit: ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm', 'shove', 'wCun', 'wPai', 'wGwai', 'wJum',
+  benchGroups: W_BENCH_GROUPS, benchHit: ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm', 'wCun', 'wPai', 'wGwai', 'wJum',
     'slipElbow', 'super', 'wKick', 'wLowKick', 'wSideKick', 'wKick2', 'wStompKnee', 'wTurnKick', 'stomp', 'airJab', 'airHeavy', 'airKick', 'dive'],
 };
 /* 跨派：传统格斗 × 咏春拳（relation(传统的招, 咏春的招)：1 传统赢 / -1 咏春赢 / ±0.5 压 / 0 平）。

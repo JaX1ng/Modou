@@ -3,19 +3,22 @@
    step 只吃「两个整数输入」，同样的输入序列一定算出同样的结果（联机和测试都靠这一点） */
 
 /* ---------- 人物颜色（只是外观，不进战斗逻辑）。存在浏览器 localStorage「modou.looks」 ----------
-   solo：人机 / 打桩 / 联机时自己的颜色、电脑的颜色（'random' = 每局随机挑一个和你不一样的）；pvp：双人对战两边上次选的 */
+   solo：人机 / 训练场 / 联机时自己的颜色、电脑的颜色（'random' = 每局随机挑一个和你不一样的）；pvp：双人对战两边上次选的；
+   watch（2.11 观战）：两个电脑上次选的。2.11 起都在进了模式以后的准备页里选（ui.js「准备页」），菜单上不再有 */
 const Looks = {
-  solo: { me: 'ink', cpu: 'random' }, pvp: ['ink', 'indigo'],
+  solo: { me: 'ink', cpu: 'random' }, pvp: ['ink', 'indigo'], watch: ['ink', 'vermil'],
   load() {
+    const pair = v => Array.isArray(v) && lookOf(v[0]) && lookOf(v[1]) && v[0] !== v[1];
     try {
       const v = JSON.parse(localStorage.getItem('modou.looks') || 'null') || {};
       if (v.solo && lookOf(v.solo.me)) this.solo.me = v.solo.me;
       if (v.solo && (v.solo.cpu === 'random' || lookOf(v.solo.cpu))) this.solo.cpu = v.solo.cpu;
-      if (Array.isArray(v.pvp) && lookOf(v.pvp[0]) && lookOf(v.pvp[1]) && v.pvp[0] !== v.pvp[1]) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.pvp)) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.watch)) this.watch = v.watch.slice(0, 2);
     } catch (e) {}
     if (this.solo.cpu === this.solo.me) this.solo.cpu = 'random';
   },
-  save() { try { localStorage.setItem('modou.looks', JSON.stringify({ solo: this.solo, pvp: this.pvp })); } catch (e) {} },
+  save() { try { localStorage.setItem('modou.looks', JSON.stringify({ solo: this.solo, pvp: this.pvp, watch: this.watch })); } catch (e) {} },
 };
 Looks.load();
 function cpuLook() {
@@ -26,34 +29,61 @@ function cpuLook() {
 }
 function applyLooks(mode) {
   if (mode === 'pvp') { F1.setLook(Looks.pvp[0]); F2.setLook(Looks.pvp[1]); }
+  else if (mode === 'watch') { F1.setLook(Looks.watch[0]); F2.setLook(Looks.watch[1]); }
   else if (mode === 'online') { F1.setLook(Net.looks.h); F2.setLook(Net.looks.g); }
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
 /* ---------- 2.9 拳派（传统格斗 / 咏春拳；2.9 咏春拳叫「迎春拳」，id 'ying'，2.10 改 'wc'）：进战斗逻辑（招式表、架势、按键语法全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
-   solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的。
-   训练场的木桩：电脑选了哪一派就是哪一派（随机的话是传统格斗）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
+   solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的；watch（2.11 观战）：两个电脑的。
+   训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
    菜单背景里两个电脑互打：每次随机 */
 const STYLE_IDS = ['trad', 'wc'];
 const styleOk = id => STYLE_IDS.includes(id);
 const Styles = {
-  solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'],
+  solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'], watch: ['trad', 'wc'], dummy: 'trad',
   load() {
+    const pair = v => Array.isArray(v) && styleOk(v[0]) && styleOk(v[1]);
     try {
       const v = JSON.parse((localStorage.getItem('modou.styles') || 'null').replace(/"ying"/g, '"wc"')) || {};
       if (v.solo && styleOk(v.solo.me)) this.solo.me = v.solo.me;
       if (v.solo && (v.solo.cpu === 'random' || styleOk(v.solo.cpu))) this.solo.cpu = v.solo.cpu;
-      if (Array.isArray(v.pvp) && styleOk(v.pvp[0]) && styleOk(v.pvp[1])) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.pvp)) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.watch)) this.watch = v.watch.slice(0, 2);
+      if (styleOk(v.dummy)) this.dummy = v.dummy;
+      else if (v.solo && styleOk(v.solo.cpu)) this.dummy = v.solo.cpu;     // 2.11 以前木桩跟着电脑的拳派
     } catch (e) {}
   },
-  save() { try { localStorage.setItem('modou.styles', JSON.stringify({ solo: this.solo, pvp: this.pvp })); } catch (e) {} },
+  save() { try { localStorage.setItem('modou.styles', JSON.stringify({ solo: this.solo, pvp: this.pvp, watch: this.watch, dummy: this.dummy })); } catch (e) {} },
 };
 Styles.load();
+// 2.11 准备页（ui.js）：这个模式上次选的 —— 场景、两边的颜色和拳派（人机：你、电脑；训练场：你、木桩的拳派；双人、观战：两边）、难度。
+// 人机、训练场、联机里「你」是同一份；场景人机、双人、观战共用一份（训练场固定练武场）。点「开始」才 savePicks 存
+function picksFor(mode) {
+  return {
+    mode, stage: Stage.pref, diff: game.diff,
+    looks: mode === 'pvp' ? Looks.pvp.slice() : mode === 'watch' ? Looks.watch.slice() : [Looks.solo.me, Looks.solo.cpu],
+    styles: mode === 'pvp' ? Styles.pvp.slice() : mode === 'watch' ? Styles.watch.slice() : mode === 'train' ? [Styles.solo.me, Styles.dummy] : [Styles.solo.me, Styles.solo.cpu],
+  };
+}
+function savePicks(p) {
+  const m = p.mode;
+  if (m !== 'train') Stage.setPref(p.stage);
+  if (m === 'pvp') { Looks.pvp = p.looks.slice(); Styles.pvp = p.styles.slice(); }
+  else if (m === 'watch') { Looks.watch = p.looks.slice(); Styles.watch = p.styles.slice(); }
+  else {
+    Looks.solo.me = p.looks[0]; Styles.solo.me = p.styles[0];
+    if (m === 'pve') { Looks.solo.cpu = p.looks[1]; Styles.solo.cpu = p.styles[1]; game.diff = p.diff; try { localStorage.setItem('modou.diff', p.diff); } catch (e) {} }
+    else Styles.dummy = p.styles[1];
+    if (Looks.solo.cpu === Looks.solo.me) Looks.solo.cpu = 'random';
+  }
+  Looks.save(); Styles.save();
+}
 const randStyle = () => STYLE_IDS[(Math.random() * STYLE_IDS.length) | 0];
 function cpuStyle() { return styleOk(Styles.solo.cpu) ? Styles.solo.cpu : randStyle(); }
 function applyStyles(mode) {
-  const st = mode === 'pvp' ? Styles.pvp : mode === 'online' ? [Net.styles.h, Net.styles.g] : mode === 'attract' ? [randStyle(), randStyle()]
-    : mode === 'train' ? [Styles.solo.me, styleOk(Styles.solo.cpu) ? Styles.solo.cpu : 'trad'] : [Styles.solo.me, cpuStyle()];
+  const st = mode === 'pvp' ? Styles.pvp : mode === 'watch' ? Styles.watch : mode === 'online' ? [Net.styles.h, Net.styles.g] : mode === 'attract' ? [randStyle(), randStyle()]
+    : mode === 'train' ? [Styles.solo.me, Styles.dummy] : [Styles.solo.me, cpuStyle()];
   F1.style = styleOk(st[0]) ? st[0] : STYLE_DEFAULT; F2.style = styleOk(st[1]) ? st[1] : STYLE_DEFAULT;
 }
 
@@ -63,7 +93,7 @@ const F2 = new Fighter(1, { look: 'indigo', x: START_X[1], facing: -1 });
 F1.opp = F2; F2.opp = F1;
 
 const game = {
-  mode: 'attract',          // attract（菜单背景电脑互打）| pve | pvp | online | train（训练场，2.0.2 以前叫打桩练习）
+  mode: 'attract',          // attract（菜单背景电脑互打）| pve | pvp | online | train（训练场，2.0.2 以前叫打桩练习）| watch（2.11 观战：两个终极电脑互打）
   phase: 'attract',         // attract | intro | fight | ko | roundEnd | over
   diff: 'normal', p: [F1, F2], brains: [null, null],
   frame: 0, freeze: 0, shake: 0, flash: 0, punch: 0, timeScale: 1,   // frame：走了几步（2.6 起一步 = DT 帧）；freeze：顿帧还剩几帧
@@ -75,6 +105,8 @@ const game = {
 // 2.1：「地狱」改叫「极难」（id 还是 hell）；2.2：五档都是两个字 —— 入门 / 简单 / 中等 / 困难 / 终极（ai.js LEVEL_NAME）
 const LABEL = Object.fromEntries(Object.entries(LEVEL_NAME).map(([id, n]) => [id, '电脑 · ' + n]));
 const Hooks = { matchStart() {}, matchOver() {} };   // ui.js 会覆盖
+// 2.11 观战（Jack：看两个终极电脑互打，学最高水平的电脑怎么打）：两边都是这一档；五局三胜、回合流程和人机一样，镜头两个人都在画面里（像双人）
+const WATCH_LEVEL = 'hell';
 
 function resetFighters() {
   F1.reset(START_X[0], 1); F2.reset(START_X[1], -1);
@@ -82,7 +114,7 @@ function resetFighters() {
   if (game.quiet) return;                      // 联机回滚重算时不动画面（特效、镜头）
   FX.length = 0; QI.length = 0; splats = [];
   game.shake = 0; game.flash = 0;
-  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = ZOOM; }
+  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = ZOOM; camLift = game.mode === 'train' ? TRAIN_LIFT : 0; }
 }
 function startAttract() {
   game.mode = 'attract'; game.phase = 'attract'; game.phaseT = 0; game.paused = false; game.endless = false;
@@ -97,10 +129,12 @@ function startMatch(mode) {
   game.endless = mode === 'pvp' || mode === 'train';
   const train = mode === 'train';
   F2.maxHp = train ? DUMMY_HP : MAX_HP; applyLooks(mode); applyStyles(mode);
-  game.brains = mode === 'pve' ? [null, makeBrain(F2, game.diff)] : train ? [null, new Dummy(F2, game.dummyMode)] : [null, null];
+  game.brains = mode === 'pve' ? [null, makeBrain(F2, game.diff)] : train ? [null, new Dummy(F2, game.dummyMode)]
+    : mode === 'watch' ? [makeBrain(F1, WATCH_LEVEL), makeBrain(F2, WATCH_LEVEL)] : [null, null];
   if (mode === 'pve') { F1.label = '玩家'; F2.label = LABEL[game.diff]; }
   else if (train) { F1.label = '练习'; F2.label = '木桩'; }
   else if (mode === 'pvp') { F1.label = '玩家一'; F2.label = '玩家二'; }
+  else if (mode === 'watch') { F1.label = LABEL[WATCH_LEVEL]; F2.label = LABEL[WATCH_LEVEL]; }
   else { const host = Net.role === 'host'; F1.label = host ? '你' : '对手'; F2.label = host ? '对手' : '你'; }
   game.wins = [0, 0]; game.round = 1; game.paused = false; game.frame = 0; FXREC.log.clear();
   for (const p of pads) p.clear();

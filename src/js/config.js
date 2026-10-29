@@ -6,7 +6,7 @@
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.10.3';
+const VERSION = '2.11.0';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -55,7 +55,9 @@ const START_GAP = 360;                   // 开局两人站在场地正中、相
 // 镜头（1.8.0）：人物放大。人机 / 联机 / 打桩：镜头跟着自己，对手可以在画面外（画面边上有箭头）；
 // 双人对战：两人都要在画面里 —— 镜头随距离缩放（近了放大、远了拉远），两人最远 MAXD_PVP
 // 2.0（Jack：人物再大一点，大小粗细一起放大）：1.62 → 1.76。全屏时屏幕比 2:1 高（16:9、16:10），多出来的高度再放大一点（render.js zoomBoost）
-const ZOOM = 1.86;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62，2.0 ~ 2.5 是 1.76；2.6 Jack：人物屏幕占比再大一点点）
+const ZOOM = 2.0;                        // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62，2.0 ~ 2.5 是 1.76；2.6 Jack：人物屏幕占比再大一点点 → 1.86；2.11 Jack：再大一点 → 2.0）
+// 2.11 人放到 2.0 以后训练场上面的面板挨着头了：训练场（打桩、破招练习）镜头往上抬这么多（场地坐标），人往下挪、头和面板之间留出空
+const TRAIN_LIFT = 12;
 const ZOOM_PVP_MIN = 1.24, CAM_MARGIN = 80;   // 双人对战最远时拉到多远；人离画面边至少留多少（场地坐标）
 const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）。画面宽窄怎么变它都不变（是规则）
 const MAX_HP = 400;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500；2.3 Jack：全部改成 400）
@@ -199,27 +201,34 @@ const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着�
 /* 2.10 咏春拳（wingchun.js，设计稿 WINGCHUN.md；2.9 叫迎春拳）—— 规则里用到的数：
    · 顺（flow）：一直打中、按在拍子上、搭手里翻对手型都涨一级（最多 FLOW_MAX）。顺一级：伤害 +FLOW_DMG；连击衰减只算一半（FLOW_DECAY）；
      不按拍子的招（腿、肘……）顺一级前摇少 FLOW_S 帧（最少 FLOW_S_MIN）、他的硬直多 FLOW_STUN 帧。
-     打空、被挡、过拍、挨打、停手超过 FLOW_IDLE 帧：清零。反打（拍开、耕开、拉手反击、标指挑开、黐手破连、转马掌、起身硬直）第一下就顺 FLOW_COUNTER 级。
+     打空、被挡、过拍、挨打、停手超过 FLOW_IDLE 帧：清零。反打（接招、拉手反击、标指挑开、截腿、转马掌、起身硬直）第一下就顺 FLOW_COUNTER 级。
    · 拍子（连环冲拳）：这一拳判定开始以后再过 WC_BEAT 帧，下一拳打出去；顺一级快 WC_BEAT_STEP，最快 WC_BEAT_MIN（越打越快）。
      按在拍点前 WC_EARLY 帧到后 WC_LATE 帧 = 在拍子上（按早了等到拍点、按晚了出手快一点补上，正好打在拍点上）；
      更早 = 抢拍（晚 WC_EARLY_LAG 帧才出，顺不涨，他有空挡）；更晚 = 过拍（连断、顺清零，变回起手的冲拳）
    · 冲拳的硬直按拍子算（wingchun.js wcStun）：起手那拳正好接得上第 2 拳；第 2 拳（顺 1）短 WC_GAP 帧 —— 一直按着挡的人第 3 拳挡得住；
      顺 ≥ 2 起一拳接一拳，比拍子多 WC_MARGIN 帧
-   · 拍手、耕手：打的人失衡 WC_PAT_STUN / WC_GAUN_STUN 帧。拉手拉住打过来的手：他那一拳离打出来还剩 WC_TRAP_EARLY 帧以内（或者正在打）才拉得住
+   · 截腿截住地上的腿：他失衡 WC_GAUN_STUN 帧（WC_PAT_STUN 是 2.10 点一下挡的拍手，2.11 起没有了）。拉手拉住打过来的手：他那一拳离打出来还剩 WC_TRAP_EARLY 帧以内（或者正在打）才拉得住
+   · 2.11 接招（WINGCHUN.md 十五）：按住挡 = 听劲（光举着 = 普通挡）；按住挡再按 拳 / 重 / 拿 = 接招 —— 拳接拳系的手上招（拍手 / 摊手）、
+     重接重系的手上招（膀手转马）、拿接腿（按手；蹲着按 = 耕手，地上的腿都接得住）。按下去第 WC_CATCH_ON 帧起，
+     WC_CATCH_WIN（拳）/ WC_CATCH_WIN_H（重、拿）帧里打过来的招按对了键 = 接住；接招的架势之外挨打（按错键、早了晚了在收手）×WC_WRONG_MUL。
+     挨打、被挡住的硬直里：按住挡，他下一下打过来之前 WC_CATCH_HIT 帧以内按的键按对了 = 接住（几个键一起按 = 乱按，算按错）。
+     接住手上的招 = 进搭手（我先手、顺 FLOW_COUNTER，他头 WC_CATCH_GRACE 帧什么都按不了，接的那一手停 WC_CATCH_SHOW 帧再顺到搭手的手型）；
+     截住腿、空中接住拳脚 = 他失衡 WC_CATCH_REEL 帧，我先动
    · 寸拳：按住重蓄劲（前摇走到 WC_CHARGE_AT 那么多的时候停住，拳收在胸口），最多蓄 WC_CHARGE 帧；蓄满 = 寸劲破体（霸体吃不住、打倒）
    · 搭手：开头 WC_TOUCH_OPEN 帧里要按第一下；翻一次手 WC_ROLL 帧，翻完以后 WC_STEP 帧里要按下一步（翻手的最后 WC_ROLL_PRE 帧就能按）；
      被黏住的人头 WC_TOUCH_GRACE 帧什么都按不了；两人中心离 WC_TOUCH_GAP；拉手扣手腕要 WC_LAP 帧（这几帧他还甩得开）；
      最多翻 WC_ROLL_MAX 次。他甩手以后 WC_LAT_WIN 帧里按拳 = 甩手直冲
-   · 黐手破连按错方向：这一下 ×WC_WRONG_MUL
-   · 2.10.1 一串里拳、踢都按拍子（link 的踢和 beat 的拳一样走抢拍 / 过拍）；收益按一串从哪来：中立起手 ×WC_NEUTRAL_MUL、拍开 / 耕开以后 ×WC_COUNTER_MUL、搭手里 ×WC_TOUCH_MUL */
+   · 接招按错、时机不对：这一下 ×WC_WRONG_MUL
+   · 2.10.1 一串里拳、踢都按拍子（link 的踢和 beat 的拳一样走抢拍 / 过拍）；收益按一串从哪来：中立起手 ×WC_NEUTRAL_MUL、接招 / 截腿以后 ×WC_COUNTER_MUL、搭手里 ×WC_TOUCH_MUL */
 const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.06, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
 const WC_BEAT = 8, WC_BEAT_STEP = 0.25, WC_BEAT_MIN = 6.5, WC_EARLY = 3, WC_LATE = 2, WC_EARLY_LAG = 3, WC_GAP = 2, WC_MARGIN = 1.5;
 const WC_PAT_STUN = TFH(19), WC_GAUN_STUN = TFH(21), WC_TRAP_EARLY = TF(4), WC_TRAP_DMG = 3, WC_REEL_HIT = TFH(14);
-const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：黐手慢慢往前压、往后退
+const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：听劲慢慢往前压、往后退
+const WC_CATCH_ON = 1, WC_CATCH_WIN = 6, WC_CATCH_WIN_H = 7, WC_CATCH_HIT = 4, WC_CATCH_GRACE = 9, WC_CATCH_SHOW = 8, WC_CATCH_REEL = TFH(26);   // 2.11 接招
 const WC_CHARGE = 20, WC_CHARGE_AT = 0.6;
 const WC_TOUCH_OPEN = 16, WC_STEP = 8, WC_ROLL = 6, WC_ROLL_PRE = 3, WC_ROLL_MAX = 3, WC_TOUCH_GRACE = 4, WC_TOUCH_GAP = 66, WC_LAP = 6, WC_LAT_WIN = 10;
 const WC_WRONG_MUL = 1.3;
-const WC_NEUTRAL_MUL = 0.8, WC_COUNTER_MUL = 1.15, WC_TOUCH_MUL = 1.2;   // 2.10.1 一串的收益按从哪来：中立起手打八折、拍开 / 耕开 / 压起身 ×1.15、搭手里 ×1.2（Jack：反打、贴脸最高，主动进攻降一降）
+const WC_NEUTRAL_MUL = 0.7, WC_COUNTER_MUL = 1.15, WC_TOUCH_MUL = 1.2;   // 2.10.1 一串的收益按从哪来：中立起手打折、接招 / 截腿 / 压起身 ×1.15、搭手里 ×1.2（Jack：反打、贴脸最高，主动进攻降一降）；2.11 中立起手 ×0.8 → ×0.7、寸拳和肘也算（Jack：削弱平时的拳 / 重 / 踢）
 
 // 联机（P2P）
 const NET = {

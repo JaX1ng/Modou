@@ -379,7 +379,7 @@ function parry(A, B, c) {
    拍手（站着、手往前拍）：拍得开手上的招（拳、掌、肘、肩，地上的、跳起来的都行）和跳起来的腿（不算落膝、坠山这种往下砸的）；拍不开地上的腿、下段。
    耕手（蹲着、手往下耕）：耕得开地上的腿（扫堂腿这种下段的也行）、下段的拳；耕不开中段、上段的拳掌（站着打过来的拳照样打中）。
    都防不了擒拿、推挡 */
-const REEL_LABEL = { pat: '拍手反击', gaun: '耕手反击', trap: '拉手反击' };
+const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击' };   // 2.11 接招的五个桩法
 function handCovers(g, d, m) {
   const hand = /^(fh|bh|fe|be|sh)$/.test(d.limb), leg = d.limb === 'ff' || d.limb === 'bf';
   if (g === 'pat') return d.height !== 'low' && (hand || (m.air && leg && !d.dive));
@@ -394,7 +394,7 @@ function handParry(A, B, c, g) {
   A.move = null; A.chain = []; A.chainIdle = 99; A.runT = 0; A.comboLive = false; A.flow = 0;
   A.kvx = dir * 1.6;                                                  // 被拍开的人往前一扑（被带过来一点：咏春拳手短，反打够得着）
   if (A.airborne) { A.vz = Math.max(A.vz, 2); A.vx = 0; }
-  B.move = null; B.state = 'parry'; B.t = 0; B.stunT = 0; B.kvx = 0; B.gwalk = 0;
+  B.move = null; B.state = 'parry'; B.t = 0; B.stunT = 0; B.kvx = 0; B.gwalk = 0; B.parryKind = null;
   B.chain = ['pc']; B.chainIdle = 0;                                   // 拍开以后接这一派的反打（wcInput 'parry'：拳 后手冲拳、重 寸拳、踢 正撑脚、拿 拉手）
   B.gainQi(8); B.stats.parries++;
   A.info = { label: gaun ? '被耕开' : '被拍开', dmg: 0, how: '失衡', adv: -A.stunT, t: A.clock };
@@ -702,7 +702,7 @@ function separate(a, b) {
   if (a.carried || b.carried) return;               // 过肩摔扛着的时候不推挤
   const d = b.x - a.x, ad = Math.abs(d), min = PUSH * 2;
   // 两人最远距离：只有双人对战（和菜单背景）要两人都在画面里；人机 / 联机 / 打桩镜头跟着自己，不限
-  const maxD = game.mode === 'pvp' || game.mode === 'attract' ? MAXD_PVP : Infinity;
+  const maxD = game.mode === 'pvp' || game.mode === 'attract' || game.mode === 'watch' ? MAXD_PVP : Infinity;   // 2.11 观战也是两个人都在画面里
   if (ad > maxD) { const s = d > 0 ? 1 : -1, ex = (ad - maxD) / 2; a.x += s * ex; b.x -= s * ex; return; }
   const rolling = F => F.state === 'down' && F.downPhase === 'getup' && F.rollDir;
   if (rolling(a) || rolling(b)) return;             // 滚身起能从人脚下滚过去

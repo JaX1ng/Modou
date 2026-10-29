@@ -704,7 +704,7 @@ let camX = STAGE_W / 2, camZ = ZOOM, camLift = 0;
 const localIdx = () => game.mode === 'online' && typeof Net !== 'undefined' && Net.role === 'guest' ? 1 : 0;
 function camGoal(mode, a, b, local) {
   const zTop = ZOOM * zoomBoost();
-  if (mode === 'pvp' || mode === 'attract') {
+  if (mode === 'pvp' || mode === 'attract' || mode === 'watch') {      // 2.11 观战：和双人一样，两个人都在画面里
     const top = mode === 'attract' ? ZOOM_PVP_MIN * zoomBoost() : zTop;       // 菜单背景不放大（不挡菜单按钮）
     const zoom = clamp(VW / (Math.abs(a.x - b.x) + 2 * CAM_MARGIN), ZOOM_PVP_MIN, top), half = VW / (2 * zoom);
     return { x: clamp((a.x + b.x) / 2, half, STAGE_W - half), zoom };
@@ -744,7 +744,8 @@ function render() {
   const half = VW / (2 * camZ);
   camX = clamp(camX, half, STAGE_W - half);
   // 镜头上抬：两人里飞得最高的离地超过 30 才抬，最多抬 48（场地像素）
-  camLift += (clamp((Math.max(va.alt, vb.alt) - 30) * 0.35, 0, 48) - camLift) * ease(0.1);
+  //   训练场一直抬着 TRAIN_LIFT（2.11：人放大以后头别挨着上面的面板）
+  camLift += (Math.max(game.mode === 'train' ? TRAIN_LIFT : 0, clamp((Math.max(va.alt, vb.alt) - 30) * 0.35, 0, 48)) - camLift) * ease(0.1);
   Stage.use(Stage.forMode(game.mode), viewInfo());
   ctx.save(); ctx.translate(sx, sy);
   const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0));     // 重击时镜头往里推一下（1.9.0，只是画面）

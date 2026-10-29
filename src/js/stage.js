@@ -1377,8 +1377,9 @@ const Stage = {
   live: null, liveLast: 0,     // 2.5.1 动态背景：这张图的状态（{ id, t 秒 }，换图才清空）、上一帧的时间
   load() { try { const v = localStorage.getItem('modou.stage'); if (STAGE_PICK.includes(v)) this.pref = v; } catch (e) {} },
   setPref(id) { if (!STAGE_PICK.includes(id)) return; this.pref = id; try { localStorage.setItem('modou.stage', id); } catch (e) {} },
+  peek: null,                  // 2.11 准备页开着的时候菜单背景先换成正在选的那张（预览，不存）
   // 这一局用哪张：打桩 = 练武场；联机 = 房主选的；别的 = 自己选的
-  forMode(mode) { return mode === 'train' ? 'yard' : mode === 'online' ? this.online : this.pref; },
+  forMode(mode) { return mode === 'train' ? 'yard' : mode === 'online' ? this.online : mode === 'attract' && this.peek ? this.peek : this.pref; },
   // 需要的分辨率（逻辑像素 → 屏幕物理像素）：远景、中景按画面缩放；地面还要乘上镜头放大
   want(view) {
     const k = view.scale * view.pxr;
