@@ -452,6 +452,27 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 .stages.sm .stg{font-size:16px;padding:4px 4px 5px}
 .stages.sm .stg img{width:120px;height:60px}
 @media (max-width:640px){.stg img{width:140px;height:70px}.stages.sm .stg img{width:96px;height:48px}}
+/* 2.11 准备页（Jack：主菜单只留模式，颜色 / 拳派 / 场景进了模式再选）：上面一排场景，下面两边各一块 —— 小人（这一派的架势、选的颜色）+ 拳派 + 颜色（人机的电脑那块多一排难度） */
+.panel.prep{max-width:980px;width:100%;gap:10px}
+.prep-stage{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+.prep-sides{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%}
+.prep-side{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 12px 12px;border:1.5px solid rgba(23,24,26,.18);border-radius:4px;background:rgba(255,255,255,.42);min-width:0}
+.ps-head{display:flex;align-items:center;gap:12px;align-self:stretch;justify-content:center}
+.ps-head .pface{display:block;width:84px;height:96px;flex:none}
+.ps-head .pface.rand{opacity:.45}
+.ps-head div{display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:left}
+.ps-head b{font:400 27px/1 var(--brush);color:var(--ink)}
+.ps-head small{font:500 13px/1.3 var(--ui);color:var(--ink-soft)}
+.prep-side .step{margin:4px 0 0}
+.prep-side .styles.sm{margin-top:0}
+.prep-note{grid-column:1/-1}
+.swatches.sm{gap:4px}
+.swatches.sm .sw{width:46px;font-size:15px;padding:3px 0}
+.swatches.sm .sw svg{width:28px;height:33px}
+.swatches.sm .sw.rand span{font-size:14px}
+.lvl.sm button{font-size:18px;padding:7px 10px 6px;min-width:46px}
+#prepKeys{margin-top:-2px}
+@media (max-width:720px){.prep-sides{grid-template-columns:1fr}}
 
 /* 训练场 · 破招练习（2.1 做的，2.2 重排：Jack —— 入口太小、里面 UI 太小不好看、没有玩的欲望）
    工具条：左边一个大的「破招练习」按钮（朱底、毛笔字），右边自由练的工具；练着课时换成这一课的名字 + 说明 / 演示 / 出招提示 / 换一课 / 退出
@@ -549,20 +570,18 @@ html.desktop .guide{display:none}
       <div class="panel">
         <h1 class="title">墨斗<i class="seal">拳</i></h1>
         <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
-        <div class="row pve">
+        <!-- 2.11（Jack：主菜单只留模式）：颜色、拳派、场景、难度都进了模式以后在准备页（#prepPanel）里选 -->
+        <div class="row modes">
           <button class="ibtn" id="btnPve" type="button">人机对战</button>
-          <div class="lvl" id="lvlSeg" role="group" aria-label="电脑难度"></div>
-        </div>
-        <div class="row">
           <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
           <button class="ibtn ghost" id="btnOnline" type="button">联机对战</button>
+        </div>
+        <div class="row modes">
+          <button class="ibtn ghost" id="btnWatch" type="button">观战</button>
           <button class="ibtn ghost" id="btnTrain" type="button">训练场</button>
         </div>
         <div class="row tight">
           <button class="tbtn dark" id="btnKeys" type="button">⌨ 键位设置</button>
-          <button class="tbtn dark" id="btnStyle" type="button">拳派：<span id="styleName">传统格斗</span></button>
-          <button class="tbtn dark" id="btnLooks" type="button">人物颜色</button>
-          <button class="tbtn dark" id="btnStage" type="button">场景：<span id="stageName">朱日远山</span></button>
           <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
           <button class="tbtn dark" id="btnLegend" type="button">教程</button>
           <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
@@ -684,55 +703,21 @@ html.desktop .guide{display:none}
       </div>
     </div>
 
-    <div class="overlay dim scroll" id="lookPanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">人物颜色</p>
-        <p class="hint">人机、训练场、联机时用（双人对战开打前两边另选）。点一下就记住，存在这台电脑的浏览器里。</p>
-        <p class="step">你的颜色</p>
-        <div class="swatches" id="soloMe"></div>
-        <p class="step">电脑的颜色（选「随机」每局换一个，不会和你撞色）</p>
-        <div class="swatches" id="soloCpu"></div>
-        <div class="row"><button class="ibtn" id="btnLooksDone" type="button">确认</button></div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="stylePanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">拳派</p>
-        <p class="hint">人机、训练场、联机用这里选的；双人对战开打前两边另选。点一下就记住。</p>
-        <p class="step">你的拳派</p>
-        <div class="styles" id="styleMe"></div>
-        <p class="step">电脑的拳派</p>
-        <p class="hint">训练场里就是木桩的拳派。选「随机」每局换一派。</p>
-        <div class="styles" id="styleCpu"></div>
-        <div class="row"><button class="ibtn" id="btnStyleDone" type="button">确认</button></div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="stagePanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">场景</p>
-        <p class="hint">人机、双人对战在这张图上打（训练场固定在练武场；联机由房主选）。点一下就记住，菜单后面的画面就是预览。</p>
-        <div class="stages" id="stageList"></div>
-        <div class="row"><button class="ibtn" id="btnStageDone" type="button">确认</button></div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="pvpPanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">双人对战</p>
-        <p class="hint">玩家一按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd>、玩家二按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd> 换颜色，<kbd class="lt">W</kbd> <kbd class="lt">S</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换拳派，也可以直接点。两边颜色不能一样。</p>
-        <p class="step">玩家一</p>
-        <div class="swatches" id="pvpLook0"></div>
-        <div class="styles sm" id="pvpStyle0"></div>
-        <p class="step">玩家二</p>
-        <div class="swatches" id="pvpLook1"></div>
-        <div class="styles sm" id="pvpStyle1"></div>
-        <p class="step">场景</p>
-        <div class="stages sm" id="pvpStages"></div>
+    <!-- 2.11 准备页（人机、双人、观战、训练场共用一张）：场景一排小图、两边各一块（小人 + 拳派卡 + 颜色格；人机的电脑那边还有难度）。
+         选的都记住，下次进来默认就是上次的；联机还是在联机大厅里选（房主定场景） -->
+    <div class="overlay dim scroll" id="prepPanel" hidden>
+      <div class="panel prep">
+        <p class="big sm" id="prepTitle">人机对战</p>
+        <div class="prep-stage" id="prepStageBox">
+          <p class="step">场景</p>
+          <div class="stages sm" id="prepStages"></div>
+        </div>
+        <p class="hint" id="prepStageFix" hidden>训练场的场景固定在练武场</p>
+        <div class="prep-sides" id="prepSides"></div>
+        <p class="hint" id="prepKeys"></p>
         <div class="row">
-          <button class="ibtn" id="btnPvpGo" type="button">开始对战</button>
-          <button class="ibtn ghost" id="btnPvpBack" type="button">返回</button>
+          <button class="ibtn" id="btnPrepGo" type="button">开始</button>
+          <button class="ibtn ghost" id="btnPrepBack" type="button">返回</button>
         </div>
       </div>
     </div>
@@ -865,7 +850,7 @@ html.desktop .guide{display:none}
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.10.3';
+const VERSION = '2.11.0';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -914,7 +899,9 @@ const START_GAP = 360;                   // 开局两人站在场地正中、相
 // 镜头（1.8.0）：人物放大。人机 / 联机 / 打桩：镜头跟着自己，对手可以在画面外（画面边上有箭头）；
 // 双人对战：两人都要在画面里 —— 镜头随距离缩放（近了放大、远了拉远），两人最远 MAXD_PVP
 // 2.0（Jack：人物再大一点，大小粗细一起放大）：1.62 → 1.76。全屏时屏幕比 2:1 高（16:9、16:10），多出来的高度再放大一点（render.js zoomBoost）
-const ZOOM = 1.86;                       // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62，2.0 ~ 2.5 是 1.76；2.6 Jack：人物屏幕占比再大一点点）
+const ZOOM = 2.0;                        // 人机 / 联机 / 打桩的镜头放大倍数（1.7.0 是 1.22，1.8.0 ~ 1.9.4 是 1.62，2.0 ~ 2.5 是 1.76；2.6 Jack：人物屏幕占比再大一点点 → 1.86；2.11 Jack：再大一点 → 2.0）
+// 2.11 人放到 2.0 以后训练场上面的面板挨着头了：训练场（打桩、破招练习）镜头往上抬这么多（场地坐标），人往下挪、头和面板之间留出空
+const TRAIN_LIFT = 12;
 const ZOOM_PVP_MIN = 1.24, CAM_MARGIN = 80;   // 双人对战最远时拉到多远；人离画面边至少留多少（场地坐标）
 const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）。画面宽窄怎么变它都不变（是规则）
 const MAX_HP = 400;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500；2.3 Jack：全部改成 400）
@@ -1058,27 +1045,34 @@ const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着�
 /* 2.10 咏春拳（wingchun.js，设计稿 WINGCHUN.md；2.9 叫迎春拳）—— 规则里用到的数：
    · 顺（flow）：一直打中、按在拍子上、搭手里翻对手型都涨一级（最多 FLOW_MAX）。顺一级：伤害 +FLOW_DMG；连击衰减只算一半（FLOW_DECAY）；
      不按拍子的招（腿、肘……）顺一级前摇少 FLOW_S 帧（最少 FLOW_S_MIN）、他的硬直多 FLOW_STUN 帧。
-     打空、被挡、过拍、挨打、停手超过 FLOW_IDLE 帧：清零。反打（拍开、耕开、拉手反击、标指挑开、黐手破连、转马掌、起身硬直）第一下就顺 FLOW_COUNTER 级。
+     打空、被挡、过拍、挨打、停手超过 FLOW_IDLE 帧：清零。反打（接招、拉手反击、标指挑开、截腿、转马掌、起身硬直）第一下就顺 FLOW_COUNTER 级。
    · 拍子（连环冲拳）：这一拳判定开始以后再过 WC_BEAT 帧，下一拳打出去；顺一级快 WC_BEAT_STEP，最快 WC_BEAT_MIN（越打越快）。
      按在拍点前 WC_EARLY 帧到后 WC_LATE 帧 = 在拍子上（按早了等到拍点、按晚了出手快一点补上，正好打在拍点上）；
      更早 = 抢拍（晚 WC_EARLY_LAG 帧才出，顺不涨，他有空挡）；更晚 = 过拍（连断、顺清零，变回起手的冲拳）
    · 冲拳的硬直按拍子算（wingchun.js wcStun）：起手那拳正好接得上第 2 拳；第 2 拳（顺 1）短 WC_GAP 帧 —— 一直按着挡的人第 3 拳挡得住；
      顺 ≥ 2 起一拳接一拳，比拍子多 WC_MARGIN 帧
-   · 拍手、耕手：打的人失衡 WC_PAT_STUN / WC_GAUN_STUN 帧。拉手拉住打过来的手：他那一拳离打出来还剩 WC_TRAP_EARLY 帧以内（或者正在打）才拉得住
+   · 截腿截住地上的腿：他失衡 WC_GAUN_STUN 帧（WC_PAT_STUN 是 2.10 点一下挡的拍手，2.11 起没有了）。拉手拉住打过来的手：他那一拳离打出来还剩 WC_TRAP_EARLY 帧以内（或者正在打）才拉得住
+   · 2.11 接招（WINGCHUN.md 十五）：按住挡 = 听劲（光举着 = 普通挡）；按住挡再按 拳 / 重 / 拿 = 接招 —— 拳接拳系的手上招（拍手 / 摊手）、
+     重接重系的手上招（膀手转马）、拿接腿（按手；蹲着按 = 耕手，地上的腿都接得住）。按下去第 WC_CATCH_ON 帧起，
+     WC_CATCH_WIN（拳）/ WC_CATCH_WIN_H（重、拿）帧里打过来的招按对了键 = 接住；接招的架势之外挨打（按错键、早了晚了在收手）×WC_WRONG_MUL。
+     挨打、被挡住的硬直里：按住挡，他下一下打过来之前 WC_CATCH_HIT 帧以内按的键按对了 = 接住（几个键一起按 = 乱按，算按错）。
+     接住手上的招 = 进搭手（我先手、顺 FLOW_COUNTER，他头 WC_CATCH_GRACE 帧什么都按不了，接的那一手停 WC_CATCH_SHOW 帧再顺到搭手的手型）；
+     截住腿、空中接住拳脚 = 他失衡 WC_CATCH_REEL 帧，我先动
    · 寸拳：按住重蓄劲（前摇走到 WC_CHARGE_AT 那么多的时候停住，拳收在胸口），最多蓄 WC_CHARGE 帧；蓄满 = 寸劲破体（霸体吃不住、打倒）
    · 搭手：开头 WC_TOUCH_OPEN 帧里要按第一下；翻一次手 WC_ROLL 帧，翻完以后 WC_STEP 帧里要按下一步（翻手的最后 WC_ROLL_PRE 帧就能按）；
      被黏住的人头 WC_TOUCH_GRACE 帧什么都按不了；两人中心离 WC_TOUCH_GAP；拉手扣手腕要 WC_LAP 帧（这几帧他还甩得开）；
      最多翻 WC_ROLL_MAX 次。他甩手以后 WC_LAT_WIN 帧里按拳 = 甩手直冲
-   · 黐手破连按错方向：这一下 ×WC_WRONG_MUL
-   · 2.10.1 一串里拳、踢都按拍子（link 的踢和 beat 的拳一样走抢拍 / 过拍）；收益按一串从哪来：中立起手 ×WC_NEUTRAL_MUL、拍开 / 耕开以后 ×WC_COUNTER_MUL、搭手里 ×WC_TOUCH_MUL */
+   · 接招按错、时机不对：这一下 ×WC_WRONG_MUL
+   · 2.10.1 一串里拳、踢都按拍子（link 的踢和 beat 的拳一样走抢拍 / 过拍）；收益按一串从哪来：中立起手 ×WC_NEUTRAL_MUL、接招 / 截腿以后 ×WC_COUNTER_MUL、搭手里 ×WC_TOUCH_MUL */
 const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.06, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
 const WC_BEAT = 8, WC_BEAT_STEP = 0.25, WC_BEAT_MIN = 6.5, WC_EARLY = 3, WC_LATE = 2, WC_EARLY_LAG = 3, WC_GAP = 2, WC_MARGIN = 1.5;
 const WC_PAT_STUN = TFH(19), WC_GAUN_STUN = TFH(21), WC_TRAP_EARLY = TF(4), WC_TRAP_DMG = 3, WC_REEL_HIT = TFH(14);
-const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：黐手慢慢往前压、往后退
+const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：听劲慢慢往前压、往后退
+const WC_CATCH_ON = 1, WC_CATCH_WIN = 6, WC_CATCH_WIN_H = 7, WC_CATCH_HIT = 4, WC_CATCH_GRACE = 9, WC_CATCH_SHOW = 8, WC_CATCH_REEL = TFH(26);   // 2.11 接招
 const WC_CHARGE = 20, WC_CHARGE_AT = 0.6;
 const WC_TOUCH_OPEN = 16, WC_STEP = 8, WC_ROLL = 6, WC_ROLL_PRE = 3, WC_ROLL_MAX = 3, WC_TOUCH_GRACE = 4, WC_TOUCH_GAP = 66, WC_LAP = 6, WC_LAT_WIN = 10;
 const WC_WRONG_MUL = 1.3;
-const WC_NEUTRAL_MUL = 0.8, WC_COUNTER_MUL = 1.15, WC_TOUCH_MUL = 1.2;   // 2.10.1 一串的收益按从哪来：中立起手打八折、拍开 / 耕开 / 压起身 ×1.15、搭手里 ×1.2（Jack：反打、贴脸最高，主动进攻降一降）
+const WC_NEUTRAL_MUL = 0.7, WC_COUNTER_MUL = 1.15, WC_TOUCH_MUL = 1.2;   // 2.10.1 一串的收益按从哪来：中立起手打折、接招 / 截腿 / 压起身 ×1.15、搭手里 ×1.2（Jack：反打、贴脸最高，主动进攻降一降）；2.11 中立起手 ×0.8 → ×0.7、寸拳和肘也算（Jack：削弱平时的拳 / 重 / 踢）
 
 // 联机（P2P）
 const NET = {
@@ -1536,30 +1530,49 @@ function bodyPenT(polys, tgt, dir) {
 function signedArea(pts) { let s = 0; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) s += (pts[j][0] - pts[i][0]) * (pts[j][1] + pts[i][1]); return s; }
 // 一圈点加进路径：绕向统一；折线用二次曲线磨圆（经过每两点的中点），线条顺、看不出折角
 function addPoly(path, pts) {
-  const P = signedArea(pts) < 0 ? pts.slice().reverse() : pts, n = P.length;
-  path.moveTo((P[n - 1][0] + P[0][0]) / 2, (P[n - 1][1] + P[0][1]) / 2);
-  for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  const n = pts.length;
+  if (signedArea(pts) < 0) {
+    // 反着绕的：倒着走一遍（和以前 pts.slice().reverse() 一模一样的点、一样的先后，只是不再每次另抄一个数组 —— 2.11 优化）
+    path.moveTo((pts[0][0] + pts[n - 1][0]) / 2, (pts[0][1] + pts[n - 1][1]) / 2);
+    for (let i = n - 1; i >= 0; i--) { const a = pts[i], b = pts[i ? i - 1 : n - 1]; path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  } else {
+    path.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2);
+    for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  }
   path.closePath();
   return path;
 }
 const polysPath = list => { const p = new Path2D(); for (const q of list) addPoly(p, q.pts || q); return p; };
 // 整个人的剪影（整个人先填一遍本色、残影、运气的光、挨打白闪、身子外面那圈影子）：一个路径、填一次 —— 关节、重叠的地方没有缝、不叠色
 function bodySilhouette(J, g) { return polysPath(bodyParts(J, g || 0).parts); }
-function drawSilhouette(J, col, alpha, grow) {
+// path（可选）：已经算好的同一个人、同样胖瘦（grow）的剪影 —— 2.11 一帧里同一个人的外形只算一遍
+function drawSilhouette(J, col, alpha, grow, path) {
   if (alpha <= 0) return;
   ctx.globalAlpha = Math.min(1, alpha); ctx.fillStyle = col;
-  ctx.fill(bodySilhouette(J, grow));
+  ctx.fill(path || bodySilhouette(J, grow));
   ctx.globalAlpha = 1;
 }
 const BODY_LAYERS = ['farArm', 'farLeg', 'torso', 'nearLeg', 'head', 'nearArm'];
+/* 2.11（Jack：网页版有点卡）：一个人这一帧每一层的外形路径 + 整个人的剪影，算一遍给 drawFighter（剪影、白闪）和 drawBody（一层一层）共用。
+   bp = bodyParts(J, 0)。剪影 = 各层按 BODY_LAYERS 的顺序拼起来 —— 和 bodyParts 排出来的顺序一样，和以前 polysPath(全部) 是同一个路径 */
+function bodyPaths(bp) {
+  const layers = {}, all = new Path2D();
+  for (const L of BODY_LAYERS) {
+    const parts = bp.parts.filter(p => p.layer === L);
+    if (!parts.length) continue;
+    all.addPath(layers[L] = polysPath(parts));
+  }
+  return { layers, all };
+}
 // 2.5.1 腿根上多大一圈不打亮边（腿从裆里出来以前）、近侧那条腿叠在远侧腿上的线离大腿根多远才开始描
 const LEG_ROOT_CUT = 11.5, LEG_LINE_CUT = 16;
 /* 整个人：J 骨骼，col 身体色，band 头带 / 腰带色。调用前整个人已经填过一遍本色（render.js 先填剪影、带一圈淡影）。
    一层一层从后往前画（每一层只在自己的外形里画）：先把这一层涂成本色（盖住后面几层的亮边），再画这一层侧面那道淡亮边；
    近侧的胳膊、腿叠在身子上的那一段，外沿描一道同样淡的亮线（整条合起来的外沿 —— 关节里面不会出线）。
    都是「先涂亮色、再把不要的地方涂回本色」，每一笔都是整块填满的，不会在剪裁的边上留下一道道浅印子 */
-function drawBody(J, col, band) {
-  const S = BODY.shade, T = bodyTones(col), bp = bodyParts(J, 0), f = bp.f;
+// 2.11 bp0 / paths0（可选）：drawFighter 已经算好的 bodyParts(J, 0)、bodyPaths(bp0)，不用再算一遍
+function drawBody(J, col, band, bp0, paths0) {
+  const S = BODY.shade, T = bodyTones(col), bp = bp0 || bodyParts(J, 0), f = bp.f, LP = (paths0 || bodyPaths(bp)).layers;
   const inner = bodyParts(J, -S.line).parts;              // 整圈往里收 line 的外形：近侧手脚只留外沿那一圈亮线
   const under = new Path2D(), underLimb = new Path2D();   // 已经画过的层（往里收过的）：全部 / 只算远侧的手脚
   const nrm = (x, y) => { const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
@@ -1594,7 +1607,8 @@ function drawBody(J, col, band) {
   for (const L of BODY_LAYERS) {
     const parts = bp.parts.filter(p => p.layer === L);
     if (!parts.length) continue;
-    const path = polysPath(parts), arm = L === 'farArm' || L === 'nearArm', leg = L === 'farLeg' || L === 'nearLeg';
+    const path = LP[L], arm = L === 'farArm' || L === 'nearArm', leg = L === 'farLeg' || L === 'nearLeg';
+    const ip = polysPath(inner.filter(p => p.layer === L));  // 这一层往里收过的外形：近侧手脚的亮线、给后面几层当「已经画过的」（2.11 只拼一次）
     const key = arm ? parts[0].k[1] : leg ? parts[0].k[0] : null, cut = key ? rootCut(key, arm) : null;
     ctx.save(); ctx.clip(path);
     paint(T.base, path);
@@ -1641,10 +1655,10 @@ function drawBody(J, col, band) {
         ring.arc(hp[0], hp[1], LEG_LINE_CUT, 0, Math.PI * 2);
         paint(T.base, ring, seatCut);
       }
-      paint(T.base, polysPath(inner.filter(p => p.layer === L)), cut, leg ? beltCut : null);
+      paint(T.base, ip, cut, leg ? beltCut : null);
     }
     ctx.restore();
-    for (const q of inner) if (q.layer === L) { addPoly(under, q.pts); if (L === 'farArm' || L === 'farLeg') addPoly(underLimb, q.pts); }
+    under.addPath(ip); if (L === 'farArm' || L === 'farLeg') underLimb.addPath(ip);
     any = true;
     if (L === 'nearLeg' && tr) drawWaistBelt(tr, band);       // 腰带箍在腰上：盖住两条大腿根
     if (L === 'head') drawHeadGear(J, band);
@@ -1906,10 +1920,12 @@ const JT = P_JTOP, JD = P_JDN;
 
 // 常用姿势片段（2.4 按新人物模型重摆。fh / bh 是拳心相对两肩中间，ff / bf 是脚踝相对髋 + 离地高；tw 拧腰）
 // 短拳（参考图第一张）：前手一拳直直打出去、和肩一样高（胳膊伸直，肘关节用阴影表现），前手那边的肩膀跟着送出去；
-// 后手拳护在下巴前；身子微微前倾，前腿弓、后腿蹬直
-const P_JAB = { tor: 14, head: 4, dx: 10, hy: 69, tw: 46, fh: [58, -2], bh: [7, -7], ff: [38, 0], bf: [-30, 0] };
+// 后手拳护在下巴前；身子微微前倾，前腿弓、后腿蹬直。
+// 2.11（Jack：大臂、小臂顺着一条线直直往前送，拳头和肩差不多高，肘不翘）：拳头再低一点点（以前比肩高 4 像素，现在 1 像素上下）；
+// 贴身打中时胳膊折成「ㄱ」、肘往上翘的毛病在 fighter.js fitContact（拳头被往回拽到肩膀后面去了）
+const P_JAB = { tor: 14, head: 4, dx: 10, hy: 69, tw: 46, fh: [58, 1], bh: [7, -7], ff: [38, 0], bf: [-30, 0] };
 // 后手直拳：反过来，后手那边的肩膀拧过来、后手打直，前手收回下巴
-const P_CROSS = { tor: 18, head: 4, dx: 12, hy: 68, tw: -40, bh: [62, -2], fh: [9, -7], ff: [36, 0], bf: [-34, 0] };
+const P_CROSS = { tor: 18, head: 4, dx: 12, hy: 68, tw: -40, bh: [62, 1], fh: [9, -7], ff: [36, 0], bf: [-34, 0] };   // 2.11 拳头也低一点点（和肩差不多高）
 // 重拳（2.4 重做，Jack：以前那下像撒娇）：蹬地、转胯、拧腰，后手整条胳膊打直砸出去，前手拉回来护住下巴，后脚跟抬起
 const P_HEAVY = { tor: 22, head: 2, dx: 21, hy: 66, tw: -48, bh: [70, -3], fh: [8, -6], ff: [44, 0], bf: [-40, 2] };
 // 腿踢：支撑腿站直、身子往后靠，前腿顶着髋整条蹬出去；两手还护着。
@@ -1935,7 +1951,7 @@ const MOVES = {
       [2, { fh: [48, -11], fe: -1, tor: 28, dx: 10, head: -4, tw: 58, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }], [3, {}]] }),
   rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
-    keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 0] })], [3, { tor: 14 }]] }),
+    keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 2] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 2] })], [3, { tor: 14 }]] }),
   rushR: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'bh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_CROSS, { tor: 22, dx: 12 }), 'back'], [2, J_(P_CROSS, { tor: 22, dx: 12 })], [3, { tor: 14 }]] }),
@@ -2437,16 +2453,24 @@ const W_SHAPE = {
   bong: { fh: [46, 15], fpa: 36, fpr: -0.35, fe: 1, bh: [22, 9], bpa: -46, bpr: 1, be: 1, tw: 12 },                  // 膀（肘沉着、掌心翻朝外下）
   fook: { fh: [48, 11], fpa: 28, fpr: 0.7, fe: 1, bh: [26, 9], bpa: -46, bpr: 1, be: 1, tw: 14 },                   // 伏
 };
-// 盘手（按住挡没按方向时一直翻；照 ref/wc_dummy_rolling.jpg）：两只掌同一个高度带、一里一外换位，换的那一下两条小臂交叉；肘一直朝下
-const W_ROLL = [
-  { fh: [50, 7], fpa: -14, fpr: 0.5, fe: 1, bh: [30, 12], bpa: -40, bpr: 1, be: 1, tw: 14 },    // 前手在外（掌心朝上一点）、后手在里
-  { fh: [41, 9], fpa: -30, fpr: 0.9, fe: 1, bh: [40, 11], bpa: -32, bpr: 0.9, be: 1, tw: 4 },   // 换位：两条小臂交叉
-  { bh: [50, 7], bpa: -14, bpr: 0.5, be: 1, fh: [30, 12], fpa: -40, fpr: 1, fe: 1, tw: -6 },    // 后手在外、前手在里
-  { bh: [41, 9], bpa: -30, bpr: 0.9, be: 1, fh: [40, 11], fpa: -32, fpr: 0.9, fe: 1, tw: 4 },   // 换回来
-];
-const W_GUARD_BACK = { fh: [34, 10], fpa: -50, fpr: 1, fe: 1, bh: [22, 15], bpa: -54, bpr: 1, be: 1, tw: 6 };        // 按住挡 + 后：两只手收回来护着
-// 拍手：后手往前下方一拍（掌心朝前下）；前手留在问手的位置
-const W_PAT = { tor: 4, dx: 3, hy: 68, tw: 18, bh: [46, 11], bpa: 22, bpr: 0.45, be: 1, fh: [34, 5], fpa: -40, fpr: 1, fe: 1 };
+/* ---------- 2.11 挡重做（WINGCHUN.md 十五）：按住挡 = 听劲（Jack：长按挡的时候手臂不动，只是往后收一点 —— 不再一直翻盘手）；
+   按住挡再按 拳 / 重 / 拿 = 接招，五个桩法照 ref/wc_guard_1 ～ 5.png ---------- */
+const W_TING = { fh: [40, -1], fpa: -40, fpr: 0.85, fe: 1, bh: [26, 8], bpa: -84, bpr: 1, be: 1, tw: 16 };                       // 听劲：问手、护手往胸前收一点
+const W_TING_LOW = { hy: 52, tor: 16, head: 4, tw: 12, ff: [26, 0], bf: [-25, 0], fh: [36, 6], fpa: -30, fpr: 0.85, fe: 1, bh: [22, 2], bpa: -84, bpr: 1, be: 1 };   // 蹲着听劲
+const W_CATCH = {
+  // 拍手（图 2，按拳接他前手的拳）：前手竖掌往前一拍、拍在他胳膊上往里带，后手竖掌跟在后面护着
+  pat: { tor: 4, dx: 4, hy: 68, tw: 26, fh: [52, 2], fpa: -84, fpr: 0.25, fe: 1, bh: [36, 4], bpa: -86, bpr: 0.95, be: 1, ff: [27, 0], bf: [-32, 0] },
+  // 摊手（图 1，按拳接他后手的拳）：前手往前上方摊出去、手张开把拳托开，后手竖掌护在前手肘弯上
+  tan: { tor: 2, dx: 3, hy: 68, tw: 24, fh: [45, -16], fpa: -48, fpr: 0.1, fe: 1, bh: [30, 3], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-32, 0] },
+  // 膀手转马（图 4，按重接重拳）：脚跟一拧转马、侧过身，前手膀手 —— 肘在前、小臂往下垂着把劲往外带；后手在上面拦着
+  bong: { spin: 26, tor: 6, dx: 0, hy: 66, tw: 4, fh: [30, 30], fpa: 78, fpr: 0.5, fe: -1, bh: [46, -9], bpa: -64, bpr: 0.5, be: 1, ff: [24, 0], bf: [-34, 0] },
+  // 按手（图 5，站着按拿接中段、上段的腿）：下面一只手往前下方把腿按下去（掌心朝下），上面一只手竖掌拦着
+  gum: { tor: 8, dx: 4, hy: 67, tw: 12, fh: [48, 24], fpa: 22, fpr: -0.3, fe: 1, bh: [44, -15], bpa: -76, bpr: 0.8, be: 1, ff: [27, 0], bf: [-32, 0] },
+  // 耕手（图 3，蹲着按拿接地上的腿）：一只手往下往外耕开，一只手竖掌护在脸前
+  gaun: { hy: 52, tor: 18, head: 2, tw: 6, fh: [34, 40], fpa: 74, fpr: 0.4, fe: 1, bh: [22, -16], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-26, 0] },
+};
+const CATCH_NAME = { pat: '拍手', tan: '摊手', bong: '膀手', gum: '按手', gaun: '耕手' };
+const W_TING_K = WJ({ hy: 68, tor: 2, head: 4, dx: -1, ff: [26, 0], bf: [-32, 0] }, W_TING);   // 站着听劲（整个人）
 
 const WMOVES = {
   /* ---- 拳：连环冲拳（beat：按拍子接，见下面「拍子」）。flow：打中了顺加一级 ---- */
@@ -2596,8 +2620,20 @@ const WMOVES = {
       [1, { rot: -34, tor: 16, head: 10, ff: [40, 32], bf: [-22, 30], fh: [-14, -28], bh: [-30, -12], tw: 0 }, 'out'],
       [2, { rot: -34, tor: 16, head: 10, ff: [40, 32], bf: [-22, 30], fh: [-14, -28], bh: [-30, -12], tw: 0 }], [3, JD]] }),
 
+  /* ---- 2.11 接招（按住挡再按键；WINGCHUN.md 十五）：script，自己不打人 —— 按下去以后第 WC_CATCH_ON 帧起，
+     WC_CATCH_WIN（拳）/ WC_CATCH_WIN_H（重、拿）帧里打过来的招按对了键 = 接住（wcDefend 管：手上的招进搭手、腿失衡）；
+     后面一小会儿是收手，这时候挨打、或者按错了键挨打 = 这一下 ×WC_WRONG_MUL ---- */
+  cPat: WM({ kind: 'script', label: '拍手', S: 0, A: 0, R: 13, script: true, catchKey: 'jab',
+    keys: [[0, W_TING_K], [0.14, W_CATCH.pat, 'out'], [0.55, W_CATCH.pat], [1, {}]] }),
+  cBong: WM({ kind: 'script', label: '膀手转马', S: 0, A: 0, R: 14, script: true, catchKey: 'heavy',
+    keys: [[0, W_TING_K], [0.15, W_CATCH.bong, 'out'], [0.58, W_CATCH.bong], [1, {}]] }),
+  cGum: WM({ kind: 'script', label: '按手', S: 0, A: 0, R: 14, script: true, catchKey: 'grab',
+    keys: [[0, W_TING_K], [0.15, W_CATCH.gum, 'out'], [0.58, W_CATCH.gum], [1, {}]] }),
+  cGaun: WM({ kind: 'script', label: '耕手', S: 0, A: 0, R: 14, script: true, catchKey: 'grab', catchLow: true, height: 'low',
+    keys: [[0, W_TING_LOW], [0.15, W_CATCH.gaun, 'out'], [0.58, W_CATCH.gaun], [1, W_LOW]] }),
+
   /* ---- 防守反击、身法 ---- */
-  // 截打（挡 + 拳）：从手上直接一掌截出去（出手前几帧打击无敌），接着按拍子连
+  // 截打（2.10 是挡 + 拳）：2.11 起挡 + 拳是拍手接招，这一招用不上了（引擎按名字要每一派都有一份 shove，留着）
   shove: WM({ kind: 'jab', label: '截打', stamp: '截打', beat: true, flow: true, S: 2, A: 3, R: 12, dmg: 5, reach: 88, stun: 12, bstun: 7, kb: 1.6, stop: 5, shake: 2, power: .45,
     limb: 'fh', fx: 'jab', lunge: [0, 2, 8], sinv: [0, 4],
     keys: [[0, { hy: 68, tor: 0, head: 6, dx: -3, tw: 14, fh: [30, -14], fpa: -84, bh: [20, -8], bpa: -84 }],
@@ -2720,15 +2756,18 @@ const WMOVES = {
 WMOVES.super.flurry.poses = [wmk(WJ(W_PF, { dx: 14, hy: 64, tor: 10 })), wmk(WJ(W_PR, { dx: 14, hy: 64, tor: 10 }))];
 WMOVES.super.flurry.endPose = wmk({ tor: 16, dx: 20, hy: 62, head: -2, tw: -36, bh: [58, -2], bp: 0, fh: [30, -3], fpa: -86, ff: [46, 0], bf: [-30, 0] });
 
-/* 架势（fighter.js target 用；挡、搭手的手型在 wcTarget 里现画） */
+/* 架势（fighter.js target 用；搭手的手型在 wcTarget 里现画） */
 const WPOSE = {
   stance: wmk({ hy: 70 }),                                    // 问手 + 护手
   crouch: wmk(W_LOW),
-  block: wmk(WJ(W_SHAPE[''], { hy: 68 })),                    // 黐手（手型见 wcTarget）
-  cblock: wmk({ hy: 50, tor: 16, head: 6, tw: 10, ff: [26, 0], bf: [-25, 0], fh: [36, 16], fpa: 56, fpr: 0.6, bh: [18, -4], bpa: -84 }),   // 耕手：前手斜着往下护住下盘
-  parry: wmk({ tor: -2, head: 6, dx: -4, hy: 69, tw: 20, fh: [48, 4], fpa: -18, bh: [24, 10] }),             // 拍开以后：前手还往外拨着
+  block: wmk(W_TING_K),                                       // 2.11 听劲：按住挡，两只手往胸前收一点，不动
+  cblock: wmk(W_TING_LOW),                                    // 蹲着听劲
+  parry: wmk({ tor: -2, head: 6, dx: -4, hy: 69, tw: 20, fh: [48, 4], fpa: -18, bh: [24, 10] }),             // 拉开以后（截腿截住腿）：前手还往外拨着
   win: wmk({ tor: 0, head: -6, hy: 74, tw: 0, fh: [22, -8], fp: 0, bh: [24, -8], bpa: -90, ff: [20, 0], bf: [-24, 0] }),   // 抱拳
 };
+// 2.11 接招的五个桩法（动作台、教程小图也看得到：cPat 拍手、cTan 摊手、cBong 膀手转马、cGum 按手、cGaun 耕手）
+const WCATCH = {};
+for (const k of Object.keys(W_CATCH)) { WCATCH[k] = wmk(W_CATCH[k]); WPOSE['c' + k[0].toUpperCase() + k.slice(1)] = WCATCH[k]; }
 
 /* ============================================================
    方向（相对对手）：0 没按 / 1 前 / 2 后 / 3 蹲
@@ -2875,8 +2914,19 @@ function wcCharge(F, m, locked) {
   m.dmgMul = 1 + 0.6 * q;
   if (q >= 1) { m.pierce = true; m.launch = 4.5; m.stamp = '寸劲破体'; }
 }
-// 引擎在出招中（'attack'）、拍开以后（'parry'）先问这里；true = 这一步这里管了
+// 引擎在站着（'neutral'）、出招中（'attack'）、拍开 / 接住以后（'parry'）先问这里；true = 这一步这里管了
 function wcInput(F, where, locked) {
+  if (where === 'neutral') {
+    // 2.11 按住挡再按 拳 / 重 / 拿 = 接招（拍手 / 膀手转马 / 按手；蹲着按拿 = 耕手）。蹲着按拳、重接不了（下段的手上招接不住）：这一下不算
+    const h = F.inp.held;
+    if (locked || !h.block) return false;
+    const k = F.takePress(CATCH_KEYS, true);
+    if (!k) return false;
+    F.takePress([k]);
+    if (h.down && k !== 'grab') return false;
+    catchStart(F, k, !!h.down);
+    return true;
+  }
   if (where === 'parry') {
     if (locked) return false;
     const k = F.takePress(['jab', 'heavy', 'kick', 'grab']);
@@ -2901,13 +2951,16 @@ function wcInput(F, where, locked) {
 }
 
 /* ============================================================
-   挡：拍手（刚按下挡那几帧）、黐手（按住）、耕手（蹲着）；挨打时：黐手破连
+   2.11 挡：听劲 + 接招（WINGCHUN.md 十五）。光按住挡 = 听劲（普通挡，只吃三成）；按住挡再按键 = 接招：
+   拳接拳系的手上招（他前手的拍手、后手的摊手）、重接重系的手上招（膀手转马）、拿接腿（站着按手，蹲着耕手）。
+   接住手上的招 = 进搭手（我先手、顺 FLOW_COUNTER）；截住腿、空中接住拳脚 = 他失衡，我先动。
+   挨打、被挡住的硬直里也能接（新的黐手破连）：按住挡，他下一下打过来之前 WC_CATCH_HIT 帧以内按对键
    ============================================================ */
 const W_SHAPES = ['', 'tan', 'bong', 'fook'];                       // 方向码 → 手型
 const SHAPE_NAME = { tan: '摊', bong: '膀', fook: '伏' };
 const SHAPE_BEATS = { bong: 'tan', tan: 'fook', fook: 'bong' };     // 膀克摊、摊克伏、伏克膀（咏春打咏春）
 const BEATEN_BY = { tan: 'bong', fook: 'tan', bong: 'fook' };       // 克这个手型的是哪个（电脑被黏住时摆）
-const COUNTER_SHAPE = { lead: 'tan', rear: 'bong', leg: 'fook' };    // 黏住的是他哪只手脚 → 翻成哪个手型是「破」
+const COUNTER_SHAPE = { lead: 'tan', rear: 'bong', leg: 'fook' };    // 搭上的是他哪只手脚 → 翻成哪个手型是「破」
 const TOUCH_STRIKE = { '': 'tChung', tan: 'tTan', bong: 'tBong', fook: 'tFook' };
 // 他这一招是哪只手脚：前手（摊）/ 后手（膀）/ 腿和下段（伏、耕）
 function limbClass(d) {
@@ -2915,57 +2968,89 @@ function limbClass(d) {
   return d.limb === 'fh' || d.limb === 'fe' ? 'lead' : 'rear';
 }
 const handLimb = d => /^(fh|bh|fe|be|sh)$/.test(d.limb) && d.height !== 'low';
-// 黏得住吗：地上的拳、掌、肘、肩、腿；空中的招、坠山、大招、推挡、擒拿黏不住。breaking（黐手破连）：顺 ≥ 3 的连环冲拳太快，黏不住
-function stickable(A, m, d, breaking) {
-  if (m.air || A.airborne || d.script || d.push || d.dive || d.flurry || d.tier === 'super') return false;
-  if (d.kind !== 'jab' && d.kind !== 'heavy' && d.kind !== 'kick') return false;
-  return !(breaking && d.beat && A.flow >= 3);
+const CATCH_KEYS = ['jab', 'heavy', 'grab'];
+// 他这一招接得住吗、按哪个键接：'jab' 拳（拳系的手上招）/ 'heavy' 重（重系的手上招）/ 'grab' 拿（腿）；null = 接不住。
+// 接不住的：擒拿、推挡、坠山落膝、大招、连环寸拳那一串、下段的手上招。low = 蹲着接（耕手）：只接地上的腿（扫堂腿这种下段的也行）；站着接不住下段
+function catchKeyOf(A, m, d, low) {
+  if (d.script || d.push || d.dive || d.flurry || d.tier === 'super' || d.kind === 'grab') return null;
+  const leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', air = !!(m.air || A.airborne);
+  if (low) return leg && !air ? 'grab' : null;
+  if (d.height === 'low') return null;
+  if (leg) return 'grab';
+  return d.kind === 'heavy' ? 'heavy' : d.kind === 'jab' ? 'jab' : null;
 }
-// 引擎 applyHit：B（咏春）被打到的那一刻先问这里。true = 管了；数 = 这一下的伤害倍数（读错了）；false = 照常
+// 接的是哪一手（五个桩法）：拳 —— 他前手的拳拍手、后手的拳摊手；重 —— 膀手转马；拿 —— 站着按手、蹲着耕手
+const catchTech = (k, d, low) => k === 'grab' ? (low ? 'gaun' : 'gum') : k === 'heavy' ? 'bong' : limbClass(d) === 'lead' ? 'pat' : 'tan';
+// 按住挡再按键：摆出接招的架势（WMOVES 的 cPat / cBong / cGum / cGaun，script，自己不打人）
+function catchStart(F, k, low) {
+  F.facing = F.opp.x >= F.x ? 1 : -1;
+  F.startScript(low ? 'cGaun' : { jab: 'cPat', heavy: 'cBong', grab: 'cGum' }[k]);
+  F.lowBlock = false; F.gwalk = 0;
+  Sound.whoosh(0.25);
+}
+// 引擎 applyHit：B（咏春）被打到的那一刻先问这里。true = 管了；数 = 这一下的伤害倍数（接错了 ×WC_WRONG_MUL）；false = 照常（听劲 = 普通挡）
 function wcDefend(A, B, c, I) {
   const m = I.m, d = I.d;
   if (!I.front) return false;
-  if (B.state === 'hit') {
-    // 黐手破连：挨打的硬直里按住挡 + 方向，他的下一下打过来 —— 前手的招按前（摊）、后手的招按后（膀）、腿和下段按蹲（耕）
-    if (B.airborne || B.grabbed || B.stuck || B.stagger || B.reel || B.clashed || B.carried || !B.inp.held.block) return false;
-    const want = wcDirVs(B, A, false);
-    if (!want || !stickable(A, m, d, true)) return false;
-    const lc = limbClass(d), need = lc === 'lead' ? 1 : lc === 'rear' ? 2 : 3;
-    if (want !== need) { if (!game.quiet) tag(B.x, B.J.head[1] - 40, '读错', A, 18); return WC_WRONG_MUL; }
-    m.done = true; m.blocked = true; A.flow = 0;
-    touchStart(B, A, { from: 'break', limb: lc, flow: FLOW_COUNTER, shape: W_SHAPES[want] });
-    B.stats.parries++;
-    stamp(B.J.head[0] - B.facing * 52, B.J.head[1] - 46, '黐手破连', 28, B);
-    B.info = { label: '黐手破连', dmg: 0, how: '黏住', why: '他连招的时候按对了方向：手搭上去，进搭手', adv: null, t: B.clock };
-    cev('touch', B, A, { from: 'break' });
-    return true;
+  // ① 接招的架势里被打到：能接的那几帧里、按对了键 = 接住；按错了键、早了晚了（收手的时候挨打）= 这一下 ×WC_WRONG_MUL
+  const bm = B.state === 'attack' ? B.move : null;
+  if (bm && bm.def.catchKey) {
+    const win = bm.def.catchKey === 'jab' ? WC_CATCH_WIN : WC_CATCH_WIN_H, low = !!bm.def.catchLow;
+    const inWin = bm.t >= WC_CATCH_ON && bm.t < WC_CATCH_ON + win, need = catchKeyOf(A, m, d, low);
+    if (inWin && need && need === bm.def.catchKey) { catchHit(A, B, c, need, low); return true; }
+    return catchMiss(A, B, inWin && need ? 'key' : 'time');
   }
-  if (!B.isBlocking()) return false;
-  // 拍手 / 耕手：刚按下挡的那几帧（两次按挡要隔 PARRY_LOCK 帧，和卸力一样防乱按）
-  if (B.parryReady()) {
-    if (!B.lowBlock && handCovers('pat', d, m)) { handParry(A, B, c, 'pat'); return true; }
-    if (B.lowBlock && handCovers('gaun', d, m)) { handParry(A, B, c, 'gaun'); return true; }
+  // ② 挨打、被挡住的硬直里按住挡 + 键（新的黐手破连）：他这一下打过来之前 WC_CATCH_HIT 帧以内按的键 —— 按对了接住，按错了、几个键乱按 ×WC_WRONG_MUL。
+  //    顺三级以上的连环冲拳太快，接不住（按了也是按错）
+  if ((B.state === 'hit' || B.state === 'blockstun') && B.inp.held.block && !(B.airborne || B.grabbed || B.stuck || B.stagger || B.reel || B.clashed || B.carried)) {
+    const buf = B.inp.buf, recent = buf.filter(e => CATCH_KEYS.includes(e.a) && B.clock - e.t < WC_CATCH_HIT + 1);
+    if (recent.length) {
+      for (let i = buf.length - 1; i >= 0; i--) if (recent.includes(buf[i])) buf.splice(i, 1);   // 这几下按键用掉了（接没接住都是）
+      const keys = new Set(recent.map(e => e.a)), low = !!B.inp.held.down;
+      const need = d.beat && A.flow >= 3 ? null : catchKeyOf(A, m, d, low);
+      if (keys.size === 1 && need && keys.has(need)) { catchHit(A, B, c, need, low); return true; }
+      return catchMiss(A, B, keys.size > 1 ? 'mash' : 'key');
+    }
   }
-  if (!B.blockHeightOK(d.height)) return false;              // 站着挡不住下段、蹲着挡不住上段：打中
-  if (stickable(A, m, d, false)) {
-    // 黐手黏住：只吃三成，我不进挡住的硬直，直接进搭手。手型对上了（前手的招对摊、后手的招对膀、腿和下段对耕）一进去就顺 1
-    const lc = limbClass(d), sh = W_SHAPES[wcDirVs(B, A, false)] || '';
-    const chip = Math.max(1, Math.round(d.dmg * BLOCK_KEEP));
-    B.hp = Math.max(1, B.hp - chip); B.stats.blocks++; B.gainQi(chip * QI_PER_HP + 2); A.gainQi(1);
-    m.done = true; m.blocked = true; A.flow = 0;
-    note(A, B, chip, '被黏住'); A.info.why = '他在黐手：手上的招、腿被黏住，进了搭手';
-    touchStart(B, A, { from: 'stick', limb: lc, flow: sh && sh === COUNTER_SHAPE[lc] ? 1 : 0, shape: sh });
-    if (!game.quiet) tag(B.x, B.J.head[1] - 22, [['黏 ', B], ['-' + chip, A]], B, 17);
-    cev('touch', B, A, { from: 'stick' });
-    return true;
-  }
-  guard(A, B, c);                                            // 空中的招、大招、推挡：照常挡住
-  return true;
+  return false;
+}
+function catchHit(A, B, c, key, low) {
+  const m = A.move, d = m.def, tech = catchTech(key, d, low), air = !!(m.air || A.airborne);
+  m.done = true; m.blocked = true; A.flow = 0;
+  B.stats.parries++; B.gainQi(8);
+  A.info = { label: d.label, dmg: 0, how: '被接住', why: '他按住挡接你这一招，按对了键（' + { jab: '拳接拳', heavy: '重接重', grab: '拿接腿' }[key] + '）', adv: null, t: A.clock };
+  B.info = { label: CATCH_NAME[tech], dmg: 0, how: '接住', why: key === 'grab' || air ? '接住了：他失衡，你先动' : '接住了他的手：进搭手，你先手', adv: null, t: B.clock };
+  if (key === 'grab' || air) catchReel(A, B, c, tech);                // 截住腿、空中接住拳脚：他失衡，我先动
+  else touchStart(B, A, { from: 'catch', limb: limbClass(d), flow: FLOW_COUNTER, shape: tech === 'tan' ? 'tan' : tech === 'bong' ? 'bong' : '', catchPose: tech, grace: WC_CATCH_GRACE });
+  if (!game.quiet && B.J) stamp(B.J.head[0] - B.facing * 52, B.J.head[1] - 46, CATCH_NAME[tech], 28, B);
+  cev('catch', B, A, { tech, key, name: m.name, air });
+  if (B.move && B.move.def.tch) cev('touch', B, A, { from: 'catch', tech });
+  Sound.parry();
+}
+// 截住腿（按手、耕手）、空中接住拳脚：他失衡 WC_CATCH_REEL 帧（比被卸力还久），我停在接的那一手上，接着按什么出什么（wcInput 'parry'）
+function catchReel(A, B, c, tech) {
+  const m = A.move, d = m.def, dir = A.facing, kd = !!d.launch;
+  A.state = 'hit'; A.stunT = WC_CATCH_REEL + (kd ? TF(4) : 0); A.reel = true; A.reelKind = tech; A.reelBy = B.idx; A.reelKD = kd;
+  A.clashed = false; A.stagger = false; A.hurtHeavy = false; A.grabbed = false;
+  A.move = null; A.chain = []; A.chainIdle = 99; A.runT = 0; A.comboLive = false; A.flow = 0;
+  A.kvx = dir * 1.6; if (A.airborne) { A.vz = Math.max(A.vz, 2); A.vx = 0; }
+  B.move = null; B.state = 'parry'; B.t = 0; B.stunT = 0; B.kvx = 0; B.gwalk = 0; B.parryKind = tech;
+  B.chain = ['pc']; B.chainIdle = 0;
+  game.freeze = Math.max(game.freeze, stop(8)); game.shake = Math.max(game.shake, 3);
+  if (!game.quiet) { parryFx(B, c); tag(A.x, A.J.head[1] - 30, '失衡', B, 20); }
+}
+// 接错了（按错键、几个键乱按、早了晚了在收手）：这一下 ×WC_WRONG_MUL；被挡住的硬直里按错了，手一松 —— 挡不住了
+function catchMiss(A, B, why) {
+  if (B.state === 'blockstun') B.state = 'hit';
+  if (!game.quiet && B.J) tag(B.x, B.J.head[1] - 40, { key: '读错', mash: '乱按', time: '没接住' }[why], A, 18);
+  cev('catchMiss', B, A, { why, name: A.move.name });
+  return WC_WRONG_MUL;
 }
 // 引擎 applyHit：A（咏春）打中 B 的那一刻。标指正好插在他出手的那只胳膊上 = 把手挑开，进搭手
 function wcStrike(A, B, c, I) {
   const d = I.d, bm = I.bm;
-  if (d.flow && (d.beat || d.link)) chainMul(A, B, I.m);     // 一串里的招：按从哪来算收益（中立起手打折）
+  // 一串里的招（拳、踢）按从哪来算收益（中立起手打折）；2.11（Jack：削弱平时的拳 / 重 / 踢）寸拳、三个肘也一样 —— 中立打出去打折，截住、接住以后的反打照样多
+  if ((d.flow && (d.beat || d.link)) || (d.heavy && !d.tch && d.tier !== 'super' && /^w/.test(I.m.name))) chainMul(A, B, I.m);
   if (!d.biu || !bm || bm.air || bm.def.script || !handLimb(bm.def) || (bm.def.kind !== 'jab' && bm.def.kind !== 'heavy') || bm.def.tier === 'super') return false;
   if (bm.t >= bm.S + bm.def.A + 1) return false;            // 他已经收招了：照常打中
   I.m.done = true; I.m.hit = true;
@@ -3035,6 +3120,8 @@ function touchStart(L, F, o) {
   const m = L.move;
   m.from = o.from; m.limb = o.limb || 'lead'; m.shape = o.shape || ''; m.rollTo = ''; m.rollFrom = ''; m.rollT = 0; m.rolls = 0; m.brk = false;
   m.win = WC_TOUCH_OPEN; m.age = 0; m.dead = false; m.held = wcDir(L);
+  m.grace = o.grace || WC_TOUCH_GRACE;                                   // 他头几帧什么都按不了（2.11 接住进来的多几帧）
+  m.catchPose = o.catchPose || ''; m.catchT = o.catchPose ? WC_CATCH_SHOW : 0;   // 2.11 接住进来的：先停在接的那一手上（只是画面）
   m.fprev = !!(F.inp.held.block && F.inp.held[L.x >= F.x ? 'left' : 'right']);   // 他黏上的时候已经按着挡 + 后：松开再按才算甩手
   m.lap = !!o.lap; m.lapEsc = !!o.lapEsc; m.lapT = 0;
   L.flow = Math.min(FLOW_MAX, o.flow || 0);
@@ -3043,7 +3130,7 @@ function touchStart(L, F, o) {
   if (!game.quiet) {
     const mx = (L.x + F.x) / 2, my = L.J ? L.J.sh[1] + 6 : FLOOR - 100;
     sparks(mx, my, dir, 6, 5, pal(L).fx, 1.2, 0.2); arcMid(mx, my, 18, dir > 0 ? 0 : Math.PI, 2.4, 3, pal(L).qi, 12);
-    tag(mx, my - 40, '黐', L, 30);
+    if (o.from !== 'catch') tag(mx, my - 40, '黐', L, 30);              // 接住进来的盖了桩法的章，不另写
   }
   Sound.block();
 }
@@ -3051,12 +3138,12 @@ function touchStart(L, F, o) {
 function touchStep(L, m, k, locked) {
   const F = L.opp;
   if (locked || F.state !== 'hit' || !F.stuck) { touchEnd(L, F, null); return true; }
-  m.age += DT;
+  m.age += DT; if (m.catchT > 0) m.catchT = Math.max(0, m.catchT - DT);
   F.stunT = Math.max(F.stunT, 4); F.kvx = 0; L.kvx = 0;
   F.x = clamp(F.x + (L.x + L.facing * WC_TOUCH_GAP - F.x) * PULL_K, WALL_L, WALL_R);
   // 刚扣住手腕那几帧他按拿挣得脱（和传统格斗的擒住一样，提前几帧按的也算）；甩手、反拿要等手搭稳了（WC_TOUCH_GRACE）
   if (m.lap && m.lapEsc && m.age < HOLD_ESC + 1 && F.takePress(['grab'])) { F.stuck = false; escapeGrab(L, F); return true; }
-  if (!m.dead && m.age >= WC_TOUCH_GRACE + 1 && touchFollower(L, m, F)) return true;
+  if (!m.dead && m.age >= (m.grace || WC_TOUCH_GRACE) + 1 && touchFollower(L, m, F)) return true;
   if (m.rollT > 0) { m.rollT = Math.max(0, m.rollT - DT); if (m.rollT === 0) { m.shape = m.rollTo; m.win = WC_STEP; } }
   if (m.lapT > 0) { m.lapT = Math.max(0, m.lapT - DT); if (m.lapT === 0) { m.lap = true; m.win = WC_STEP + 2; } }
   if (m.rollT <= WC_ROLL_PRE && m.lapT <= 0 && touchLeader(L, m, F)) return true;
@@ -3239,45 +3326,36 @@ function dragSlam(L, F) {
 const wcTouchShape = F => W_SHAPES[wcDir(F)] || '';
 
 /* ============================================================
-   画：黐手的手型、搭手、被黏住（引擎 target 先问这里；null = 照通用的画）
+   画：听劲、接招的桩法、搭手、被黏住（引擎 target 先问这里；null = 照通用的画）
    ============================================================ */
-const W_CHI_BASE = { hy: 68, tor: 2, head: 4, dx: -1, ff: [26, 0], bf: [-32, 0] };
 const W_TCH_BASE = { hy: 68, tor: 5, head: 3, dx: 2, ff: [28, 0], bf: [-32, 0] };
-const WCHI = {}, WTCH = {};
+const WTCH = {};
 for (const s of W_SHAPES) {
-  WCHI[s] = wmk(WJ(W_CHI_BASE, W_SHAPE[s]));
   const sh = W_SHAPE[s];
   WTCH[s] = wmk(WJ(W_TCH_BASE, WJ(sh, { fh: [sh.fh[0] + (s === 'bong' ? 2 : 6), sh.fh[1] + 1] })));   // 搭上了：前手再往前伸一点（膀手伸直了就不是膀了）
 }
 const WTCH_LAP = wmk(WJ(W_TCH_BASE, { tor: 2, dx: -2, tw: 18, fh: [36, 6], fp: 0, fe: 1, bh: [24, 8], bpa: -50, be: 1 }));   // 扣着手腕往回带
-const WPAT = wmk(W_PAT);
-// 动作台（poses.html）、教程小图也看得到这些手型：黐手 chi*、搭手 tch*、扣着手腕 tchLap、拍手 pat
+// 动作台（poses.html）、教程小图也看得到这些手型：搭手 tch*、扣着手腕 tchLap
 const W_SHAPE_KEY = { '': '', tan: 'Tan', bong: 'Bong', fook: 'Fook' };
-for (const s of W_SHAPES) { WPOSE['chi' + W_SHAPE_KEY[s]] = WCHI[s]; WPOSE['tch' + W_SHAPE_KEY[s]] = WTCH[s]; }
-WPOSE.tchLap = WTCH_LAP; WPOSE.pat = WPAT;
-const WROLL = W_ROLL.map(o => wmk(WJ(W_CHI_BASE, o))), WROLL_T = 10;   // 盘手：四步一圈，一步 10 帧
-const WGUARD_BACK = wmk(WJ(W_CHI_BASE, W_GUARD_BACK));
-W_ROLL.forEach((o, i) => { WPOSE['roll' + i] = WROLL[i]; });   // 动作台、教程小图：盘手的四步
+for (const s of W_SHAPES) WPOSE['tch' + W_SHAPE_KEY[s]] = WTCH[s];
+WPOSE.tchLap = WTCH_LAP;
 function wcTarget(F, t) {
-  const st = F.state, ck = F.clock;
+  const st = F.state;
   if (st === 'block') {
-    if (F.lowBlock) return copyPose(t, WPOSE.cblock);
-    if (ck - F.blockPress < 9 && F.parryOK) return copyPose(t, WPAT);          // 刚按下挡：拍手
-    const dc = wcDir(F);
-    if (dc === 1) copyPose(t, WCHI.tan);                                        // 按着前：摊手往前压
-    else if (dc === 2) copyPose(t, WGUARD_BACK);                                // 按着后：收回来护着，慢慢退
-    else {
-      const p = (ck % (WROLL_T * 4)) / WROLL_T, i = Math.floor(p);               // 盘手：一里一外换位（照参考图）
-      lerpPose(WROLL[i], WROLL[(i + 1) % 4], EASE.io(clamp((p - i) * 1.5 - 0.25, 0, 1)), t, false);
-    }
-    if (F.gwalk) {                                                              // 按着挡走：脚下小碎步（和传统格斗的边挡边走一样）
+    // 2.11 听劲：按住挡，两只手往胸前收一点、不动（Jack：不是一直翻盘手）；按着前 / 后慢慢走
+    copyPose(t, F.lowBlock ? WPOSE.cblock : WPOSE.block);
+    if (F.gwalk && !F.lowBlock) {                                               // 按着挡走：脚下小碎步（和传统格斗的边挡边走一样）
       const ph = F.walkPhase * TAU, s = Math.sin(ph), c = Math.cos(ph);
       t.ff[0] += 9 * s; t.ff[1] = Math.max(0, 6 * c); t.bf[0] -= 9 * s; t.bf[1] = Math.max(0, -6 * c);
     }
     return t;
   }
+  // 截住腿（按手、耕手）、空中接住拳脚以后：停在接的那一手上，他失衡
+  if (st === 'parry' && F.parryKind && WCATCH[F.parryKind]) return copyPose(t, WCATCH[F.parryKind]);
   if (st === 'attack' && F.move && F.move.def.tch) {
     const m = F.move;
+    // 刚接住进搭手：先停在接的那一手上（拍手、摊手、膀手转马），再顺到搭手的手型
+    if (m.catchT > 0 && WCATCH[m.catchPose]) return lerpPose(WTCH[m.shape], WCATCH[m.catchPose], EASE.io(clamp(m.catchT / WC_CATCH_SHOW, 0, 1)), t, false);
     if (m.rollT > 0) return lerpPose(WTCH[m.rollFrom], WTCH[m.rollTo], EASE.io(clamp(1 - m.rollT / WC_ROLL, 0, 1)), t, false);
     if (m.lapT > 0) return lerpPose(WTCH[m.shape], WTCH_LAP, EASE.io(clamp(1 - m.lapT / WC_LAP, 0, 1)), t, false);
     return copyPose(t, m.lap ? WTCH_LAP : WTCH[m.shape]);
@@ -3316,7 +3394,8 @@ function wcRules(a, b) {
 function wcRelation(a, b) { return wcRules(a, b) || relation(a, b); }
 // 动作台（poses.html）、测试量「打中时拳脚碰没碰到」用的：分组、要量的招
 const W_BENCH_GROUPS = [
-  ['拳', ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm', 'shove']],
+  ['拳', ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm']],
+  ['接招', ['cPat', 'cBong', 'cGum', 'cGaun']],
   ['重', ['wCun', 'wPai', 'wGwai', 'wJum', 'slipElbow', 'super']],
   ['踢', ['wKick', 'wLowKick', 'wSideKick', 'wKick2', 'wStompKnee', 'wTurnKick', 'stomp']],
   ['搭手', ['tChung', 'tTan', 'tBong', 'tFook', 'tPai', 'tKick', 'tLapDa', 'tLapPai', 'tLapKick', 'tDrag', 'tButterfly', 'tLatChung', 'tMess', 'tSep']],
@@ -3326,10 +3405,10 @@ const W_BENCH_GROUPS = [
 ];
 STYLES.wc = {
   id: 'wc', name: '咏春拳', moves: WMOVES, relation: wcRelation, cancel: {}, variant: wcVariant, poses: WPOSE, base: WBASE,
-  chainMax: 8, blockHeavy: null, blockWalk: WC_WALK, parry: false,
+  chainMax: 8, blockHeavy: null, blockWalk: WC_WALK, parry: false, catchGuard: true,   // 2.11 catchGuard：挡着的时候按拳不是截打 / 推挡（是接招，见 wcDefend）
   input: wcInput, canCancel: wcCanCancel, defend: wcDefend, strike: wcStrike, clash: wcClash, grab: wcGrab, stunOf: wcStun,
   target: wcTarget, drawCue: wcDrawCue, touchShape: wcTouchShape,
-  benchGroups: W_BENCH_GROUPS, benchHit: ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm', 'shove', 'wCun', 'wPai', 'wGwai', 'wJum',
+  benchGroups: W_BENCH_GROUPS, benchHit: ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm', 'wCun', 'wPai', 'wGwai', 'wJum',
     'slipElbow', 'super', 'wKick', 'wLowKick', 'wSideKick', 'wKick2', 'wStompKnee', 'wTurnKick', 'stomp', 'airJab', 'airHeavy', 'airKick', 'dive'],
 };
 /* 跨派：传统格斗 × 咏春拳（relation(传统的招, 咏春的招)：1 传统赢 / -1 咏春赢 / ±0.5 压 / 0 平）。
@@ -4377,6 +4456,7 @@ function runArm(u, tor, amp) {
 }
 
 const FIT_KEYS = ['hip', 'neck', 'head', 'shF', 'shB', 'fe', 'be', 'fh', 'bh', 'fk', 'bk', 'ff', 'bf'];   // fitContact 粗看一眼用的关节
+const ARM_KEEP = 0.4 * (BODY.bone.ua + BODY.bone.fa);   // 2.11 贴身出拳：拳头最多收到离肩膀这么远（顺着胳膊量，胳膊长的四成），肘在下面；再近就扎进去一点，胳膊不往回折到肩膀后面
 const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
 class Fighter {
   constructor(idx, cfg) {
@@ -4397,7 +4477,7 @@ class Fighter {
     this.clock = 0; this.serial = 0; this.walkPhase = 0; this.runT = 0; this.airT = 0; this.leapJump = false;
     this.carried = false; this.carry0 = 0; this.carryRot = 0; this.slam = false; this.qiGlow = 0; this.heat = 0; this.hitFlash = 0; this.hitShake = 0;
     this.lieKind = 0; this.gwalk = 0; this.slipGot = false;   // 2.0：躺姿（画面）、边挡边走（画面）、闪身躲过了重拳（接着回身肘）
-    this.flow = 0; this.reelKind = null;                      // 2.9 顺几级（咏春拳）、被什么弄失衡的（拍开 / 耕开 / 截脚……）
+    this.flow = 0; this.reelKind = null; this.parryKind = null;   // 2.9 顺几级（咏春拳）、被什么弄失衡的（拍开 / 耕开 / 截脚……）；2.11 接住以后停在哪一手上（咏春拳的接招）
     this.stuck = false; this.shook = false; this.prone = false; this.carryPose = null;   // 2.10 被咏春拳黏住（搭手）、刚甩开手（画面）、趴着倒地（画面）、被拽 / 被扛的样子（画面）
     this.stagger = false;                                     // 2.0.2 被回身肘打中、背对着踉跄（在 hit 状态里）
     this.qi = 0; this.reel = false; this.clashed = false; this.noParry = false;
@@ -4857,7 +4937,7 @@ class Fighter {
         // 挡住后按重 → 截击（传统格斗，花 25 气）；拳派表里 blockHeavy 写 null 的没有这一下（2.10 咏春拳）
         { const bst = styleOf(this), bh = bst.blockHeavy === undefined ? 'jieQuan' : bst.blockHeavy;
           if (bh && !locked && this.qi >= (this.moves[bh].cost || 0) && this.takePress(['heavy'])) { this.beginMove(bh, null); break; } }
-        if (!locked && this.takePress(['jab'])) { this.beginMove('shove', null); break; }
+        if (!locked && !styleOf(this).catchGuard && this.takePress(['jab'])) { this.beginMove('shove', null); break; }   // 2.11 咏春拳挡着按拳是接招（wcDefend 看按键），不是推挡
         if ((this.stunT -= DT) <= 0) this.state = (h.block && !locked) ? 'block' : 'idle';
         break;
       case 'down':
@@ -5103,6 +5183,7 @@ class Fighter {
       air: this.airborne, alt: this.alt, vz: this.vz, vx: this.airborne ? this.vx : 0, squat: this.state === 'jumpsquat', stun: this.state === 'hit' || this.state === 'blockstun',
       dash: !!(m && m.name === 'dash'), run: this.state === 'run' && this.runT >= RUN_CHARGE,
       held: this.grabbed, low: lowProfile(this), lowBlock: this.lowBlock,
+      catching: !!(d && d.catchKey),                                // 2.11 咏春拳在接招（按住挡再按键的那个架势；rLeft 是还剩几帧收完手）
     };
     this.history.push(s); if (this.history.length > 40) this.history.shift();
   }
@@ -5363,7 +5444,21 @@ class Fighter {
         if (pen <= 0.4 || cut >= 120) break;
         if (lean > 0.4) { const b = Math.min(pen + 0.6, lean); lean -= b; cut += b; back(b); refit(); continue; }
         const d = Math.min(pen + 0.6, 120 - cut), dl = d / ax, L = this.fkL, e = L[limb]; cut += d;
-        if (arm) { p[limb][0] = e[0] - L.sh[0] - dl; p[limb][1] = e[1] - L.sh[1]; }
+        if (arm) {
+          // 2.11（Jack：短拳贴身打中，胳膊折成「ㄱ」—— 肘往上翘、拳头比肩膀还高一截）：两人挤在一起的时候，以前把拳头一直往回拽（最多 120），
+          // 拽到出拳那边的肩膀后面去了，肘就翻到上面。现在拳头最多收到离那边的肩膀 ARM_KEEP 远（顺着胳膊量），肘一直弯在下面；
+          // 再近就让拳头扎进去一点（两人已经挤在一起了，一点点穿模比胳膊折回来好看）
+          const shL = limb === 'fh' ? L.shF : L.shB, rx = e[0] - shL[0], ry = e[1] - shL[1];
+          let dx2 = dl, last = false;
+          if (ax > 0) {
+            const room = Math.abs(ry) >= ARM_KEEP ? 1e9 : Math.max(0, rx - Math.sqrt(ARM_KEEP * ARM_KEEP - ry * ry));   // 往下打的（下盘拳）拳头在肩膀底下：照旧收（肘往后，翻不上去）
+            if (dx2 > room) { dx2 = room; last = true; }
+          }
+          const tx = e[0] - dx2;
+          p[limb][0] = tx - L.sh[0]; p[limb][1] = e[1] - L.sh[1];
+          if (ik0 && Math.abs(ry) < ARM_KEEP) ik0[limb === 'fh' ? 0 : 1] = ik(shL[0], shL[1], tx, e[1], BODY.bone.ua, BODY.bone.fa, -0.3, limb === 'fh' ? p.fe : p.be)[4];   // 平着打的：肘弯在下面，直接定（不慢慢换边）
+          if (last) { refit(); break; }
+        }
         else if (leg) foldLeg(limb, L, e, dl);
         else back(d);
         refit();
@@ -5406,8 +5501,8 @@ class Fighter {
     // 2.7 fkh / bkh：膝盖往哪边顶的提示直接给一个方向（只有 fitContact 收腿时临时放，让膝盖留在原处；脚尖朝向、亮边还是看 fn / bn）
     const fL = limb(2, hipF[0], hipF[1], p.ff[0], p.hy - L.ankle - p.ff[1], L.th, L.sh, p.fkh ? p.fkh[0] : kf, p.fkh ? p.fkh[1] : -0.15);
     const bL = limb(3, hipB[0], hipB[1], p.bf[0], p.hy - L.ankle - p.bf[1], L.th, L.sh, p.bkh ? p.bkh[0] : kb, p.bkh ? p.bkh[1] : -0.15);
-    // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收
-    this.fkL = { sh, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]], fk: [fL[0], fL[1]], bk: [bL[0], bL[1]] };
+    // 这一帧手、脚真正伸到哪（姿势的坐标，没转身、没翻滚以前）：fitContact 从这里往回收（2.11 也记着两个肩关节：拳头最多收到离肩膀多近）
+    this.fkL = { sh, shF, shB, fh: [fA[2], fA[3]], bh: [bA[2], bA[3]], ff: [fL[2], fL[3]], bf: [bL[2], bL[3]], fk: [fL[0], fL[1]], bk: [bL[0], bL[1]] };
     // 2.5 膝盖往侧面摆（姿势的 fo / bo，度；Jack：扫堂腿蹲着的那条腿不是往后，是往侧面 —— z 轴）：
     // 膝盖绕「大腿根 → 脚踝」那条线往这条腿自己那一侧转出去（前腿 z+ 离镜头近、后腿 z- 离镜头远），脚踝不动。
     // 转到 90° 膝盖正冲着侧面：侧面看这条腿是缩短的（大腿、小腿冲着镜头 / 背着镜头），脚尖也跟着朝侧面（body.js 画鞋时变短）
@@ -5873,7 +5968,7 @@ function parry(A, B, c) {
    拍手（站着、手往前拍）：拍得开手上的招（拳、掌、肘、肩，地上的、跳起来的都行）和跳起来的腿（不算落膝、坠山这种往下砸的）；拍不开地上的腿、下段。
    耕手（蹲着、手往下耕）：耕得开地上的腿（扫堂腿这种下段的也行）、下段的拳；耕不开中段、上段的拳掌（站着打过来的拳照样打中）。
    都防不了擒拿、推挡 */
-const REEL_LABEL = { pat: '拍手反击', gaun: '耕手反击', trap: '拉手反击' };
+const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击' };   // 2.11 接招的五个桩法
 function handCovers(g, d, m) {
   const hand = /^(fh|bh|fe|be|sh)$/.test(d.limb), leg = d.limb === 'ff' || d.limb === 'bf';
   if (g === 'pat') return d.height !== 'low' && (hand || (m.air && leg && !d.dive));
@@ -5888,7 +5983,7 @@ function handParry(A, B, c, g) {
   A.move = null; A.chain = []; A.chainIdle = 99; A.runT = 0; A.comboLive = false; A.flow = 0;
   A.kvx = dir * 1.6;                                                  // 被拍开的人往前一扑（被带过来一点：咏春拳手短，反打够得着）
   if (A.airborne) { A.vz = Math.max(A.vz, 2); A.vx = 0; }
-  B.move = null; B.state = 'parry'; B.t = 0; B.stunT = 0; B.kvx = 0; B.gwalk = 0;
+  B.move = null; B.state = 'parry'; B.t = 0; B.stunT = 0; B.kvx = 0; B.gwalk = 0; B.parryKind = null;
   B.chain = ['pc']; B.chainIdle = 0;                                   // 拍开以后接这一派的反打（wcInput 'parry'：拳 后手冲拳、重 寸拳、踢 正撑脚、拿 拉手）
   B.gainQi(8); B.stats.parries++;
   A.info = { label: gaun ? '被耕开' : '被拍开', dmg: 0, how: '失衡', adv: -A.stunT, t: A.clock };
@@ -6196,7 +6291,7 @@ function separate(a, b) {
   if (a.carried || b.carried) return;               // 过肩摔扛着的时候不推挤
   const d = b.x - a.x, ad = Math.abs(d), min = PUSH * 2;
   // 两人最远距离：只有双人对战（和菜单背景）要两人都在画面里；人机 / 联机 / 打桩镜头跟着自己，不限
-  const maxD = game.mode === 'pvp' || game.mode === 'attract' ? MAXD_PVP : Infinity;
+  const maxD = game.mode === 'pvp' || game.mode === 'attract' || game.mode === 'watch' ? MAXD_PVP : Infinity;   // 2.11 观战也是两个人都在画面里
   if (ad > maxD) { const s = d > 0 ? 1 : -1, ex = (ad - maxD) / 2; a.x += s * ex; b.x -= s * ex; return; }
   const rolling = F => F.state === 'down' && F.downPhase === 'getup' && F.rollDir;
   if (rolling(a) || rolling(b)) return;             // 滚身起能从人脚下滚过去
@@ -6273,7 +6368,7 @@ const LEVELS = {
   novice: { react: 22, block: .12, lowRead: .4, parry: .02, push: .04, burst: .1, read: .03, catch: .06, duck: .3, aa: .1, step: .1, low: .15, sup: .35,
     punish: .08, combo: .35, aggr: .42, jump: .45, grabBlock: .18, idle: .55, tech: .05, gc: .03, stomp: .12, scoop: .03, roll: .15,
     slip: .02, gwalk: .1, oki: .1, catchSlip: .06, airBlock: .35, aaPlan: .2, habit: .08, guard: .1, punishBlock: .12,
-    beatSd: 2, brk: .06, brkAcc: .4, touch: .1, feel: 7 },
+    beatSd: 2, brk: .06, brkAcc: .4, touch: .1, feel: 7, jie: .05, jieAcc: .45, jieSd: 3.5 },
   // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
   // 2.7（Jack：简单也再简单些，让乱打的打掉 65% 以上；破招少一点）：读招 0.3 → 0.06、卸力 0.12 → 0.05、推挡 0.25 → 0.05、对空 0.4 → 0.12、
   //     接腿、抄腿、截击、踩腿、闪身都少了；挡住就罚 0.55 → 0.3、罚 0.55 → 0.25；反应 11 → 14。挡、连招只降一点（0.36、0.72）、记习惯照旧 0.45
@@ -6281,21 +6376,21 @@ const LEVELS = {
   easy: { react: 14, block: .36, lowRead: .55, parry: .05, push: .05, burst: .25, read: .06, catch: .18, duck: .45, aa: .12, step: .18, low: .18, sup: .55,
     punish: .25, combo: .72, aggr: .78, jump: .65, grabBlock: .32, idle: .3, tech: .12, gc: .08, stomp: .3, scoop: .1, roll: .27,
     slip: .05, gwalk: .2, oki: .3, catchSlip: .18, airBlock: .5, aaPlan: .25, habit: .45, guard: .24, punishBlock: .3,
-    beatSd: 1.7, brk: .1, brkAcc: .5, touch: .25, feel: 6 },
+    beatSd: 1.7, brk: .1, brkAcc: .5, touch: .25, feel: 6, jie: .12, jieAcc: .55, jieSd: 2.8 },
   // 中等（2.1 叫「中」）= 2.0.2 的「难」
   // 2.7（Jack：中等也再简单点，让乱打的打掉 40% 以上）：反应 8 → 9、挡 0.66 → 0.58、读招 0.5 → 0.38、卸力 0.25 → 0.16、接腿 0.6 → 0.45、对空 0.7 → 0.55、
   //     罚 0.85 → 0.7、挡住就罚 0.8 → 0.65、连招接下去 0.95 → 0.85、压起身 0.75 → 0.6、发呆 0.1 → 0.15（记习惯不降：老出同一招照样防得住）
   normal: { react: 9, block: .58, lowRead: .8, parry: .16, push: .45, burst: .75, read: .38, catch: .45, duck: .8, aa: .55, step: .4, low: .25, sup: .9,
     punish: .7, combo: .85, aggr: 1, jump: 1, grabBlock: .7, idle: .15, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .6, catchSlip: .55, airBlock: .9, aaPlan: .72, habit: .65, guard: .46, punishBlock: .65,
-    beatSd: 1.6, brk: .25, brkAcc: .6, touch: .45, feel: 4 },
+    beatSd: 1.6, brk: .25, brkAcc: .6, touch: .45, feel: 4, jie: .4, jieAcc: .72, jieSd: 1.8 },
   // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
   // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
   // 2.7 没动（倒地、滚身起改了以后量过：木头玩家占比 12 个种子 2.6 是 26.9%、2.7 是 26.6%）
   hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .9, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86,
-    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3 },
+    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .62, jieAcc: .87, jieSd: 1.05 },
   // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
   //（乱换招的木头玩家打掉的血占比，2.5：入门 67% · 简单 53% · 中等 38% · 困难 28% · 终极 22.5%；2.6：66% · 52% · 34% · 28.5% · 23.5%；
   //  2.7（12 个种子；同样 12 个种子量 2.6 是 66% · 53% · 35% · 27% · 23.5%）：84% · 69% · 43% · 26.5% · 22.5%）
@@ -6307,11 +6402,12 @@ const LEVELS = {
     punish: .93, combo: .93, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
     inst: .2, instMax: .55, instReact: 1,
-    beatSd: .8, brk: .5, brkAcc: .75, touch: .7, feel: 2 },
+    beatSd: .8, brk: .5, brkAcc: .75, touch: .7, feel: 2, jie: .7, jieAcc: .9, jieSd: .9 },
 };
 // 2.10 咏春拳：beatSd 连环冲拳按得离拍点差多少帧（标准差；拍子前 WC_EARLY、后 WC_LATE 帧以内算在拍子上）；
-//   brk 挨打时试不试黐手破连、brkAcc 方向按对的概率（三个方向，瞎猜是三成）；touch 搭手里懂不懂行（翻对手型、反拿、甩手）；
-//   feel 搭手里手上的反应（帧）：黏着的时候看他几帧以前的样子（比 react 快：手上的感觉比眼睛快）
+//   touch 搭手里懂不懂行（翻对手型、反拿、甩手）；feel 搭手里手上的反应（帧）：黏着的时候看他几帧以前的样子（比 react 快：手上的感觉比眼睛快）
+// 2.11 接招（WINGCHUN.md 十五）：jie 看见他出招、按住挡接的机会；jieAcc 键按对的概率（拳接拳、重接重、拿接腿；瞎猜三成）；
+//   jieSd 按得离正好差多少帧（标准差）；brk / brkAcc 挨打、被挡住的硬直里接（新的黐手破连）试不试、键对不对
 // 2.2 难度的名字（两个字）：菜单、电脑血条底下用（2.3 Jack：菜单上不要介绍，一句话说明删了）
 const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极' };
 for (const id in LEVELS) LEVELS[id].id = id;                   // 2.9 每一档知道自己是哪一档（咏春拳的电脑按档打折用）
@@ -6380,10 +6476,10 @@ const neutralMove = (F, a) => F.style === 'wc' && W_KEY[a] ? W_KEY[a] : styleOf(
 const J8 = ['jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab'];
 const Jn = n => J8.slice(0, n);
 // 咏春拳的电脑看穿招、化招的机会打个折：咏春拳化开一招就是一整套（拍开、黏住进搭手），同一档难度两派要差不多强（电脑对电脑量出来的）
-const W_READ = { novice: 1, easy: 1, normal: 0.45, hard: 0.4, hell: 0.65 };   // 2.10.1 反打、搭手更疼了，看穿再折一点
+const W_READ = { novice: 1, easy: 1, normal: 1, hard: 1, hell: 1 };   // 2.11 接招要按对键、卡准时候，不再白给一整套，不用再打折（留着调）
 const wcReadMul = L => W_READ[L.id] || 1;
-// 咏春拳的电脑举手挡的机会也打个折：咏春拳挡住（黐手黏住）就是一整套，比传统格斗挡住再罚赚得多（量出来的：对乱打的木头玩家一档一档拉得开）
-const W_GUARD = { novice: 1, easy: 1, normal: 0.45, hard: 0.42, hell: 0.45 };
+// 咏春拳的电脑举手挡的机会打不打折（2.10 挡住就黏住是一整套，打过折；2.11 点一下挡就是普通挡，不折了，留着调）
+const W_GUARD = { novice: 1, easy: 1, normal: 1, hard: 1, hell: 1 };
 const wcGuardMul = L => W_GUARD[L.id] || 1;
 // 两派电脑对打调平用的几个数（电脑对电脑量出来的；改了重新量，见 NOTES「量难度」）
 const AI_TUNE = {
@@ -6392,7 +6488,9 @@ const AI_TUNE = {
   escK: 0.6, escB: 0.05,    // 打咏春拳：被连环冲拳刚起手打中，一直按着挡的机会 = 挡的本事 × escK + escB
   ctrW: [0.05, 0.4],        // 被黏住时打算反拿的分量 = a + b × 搭手的本事
   wcLow: 0.1, wcGrabBlk: 0.2,   // 咏春拳对着站挡的人：打下段、拉手的机会（传统格斗是 0.05、0.12）
-  vsWcGrab: 0.14,           // 传统格斗对着黐手的人（站着按住挡）：抓的机会（擒拿克黐手，比抓普通挡的人多一点）
+  vsWcGrab: 0.14,           // 传统格斗对着听劲的人（咏春拳站着按住挡）：抓的机会（接不住擒拿，比抓普通挡的人多一点）
+  vsWcLow: 0.12,            // 2.11 对着听劲的人打下段的机会（站着接不住下段；传统格斗对一般挡着的人是 0.05）
+  bait: 0.06,               // 2.11 骗接：他听劲的时候在拳够不着的地方空挥一拳（看他会不会接、接了打他收手），× 读招的本事
 };
 // 搭手、甩手直冲以后接着按拍子连几下（难度越高连得越长）
 const W_AFTER = { novice: 3, easy: 3, normal: 3, hard: 5, hell: 5 };
@@ -6495,13 +6593,19 @@ class Brain {
     else if (p === 'H') { H.heavy = true; this.chargeT = WC_CHARGE + 6 - (Math.random() < 0.3 ? (Math.random() * 12 | 0) : 0); }
     f.inp.press(a, f.clock);
   }
-  // 2.10 咏春拳的拍手 / 耕手：刚按下挡那几帧（PARRY_WIN）被打到才算 —— 算好时机按下去；按早了、按晚了就只是黐手（黏住进搭手）/ 挡住。
-  //   手准不准看难度（读招 read 越高越准；极难「瞬间看穿」的那一下 exact 按到帧）
-  patAt(eta, low, exact) {
-    const f = this.f, amp = exact ? 0 : 1 + 3 * (1 - this.L.read);
-    const pd = Math.max(0, Math.round(eta - 3 + (Math.random() - 0.5) * 2 * amp));
-    if (pd > 0) { this.todo = { at: f.clock + pd, act: 'parry', low }; return true; }
-    f.noParry = false; this.lowBlock = low; this.blockT = 14; f.inp.held.block = true; f.inp.held.down = low;
+  // 2.11 接招：按住挡，算好时机按键 —— 他这一下打到我的那一帧落在接招能接的那几帧中间（手准不准看 jieSd；极难「瞬间看穿」的那一下 exact 按到帧）；
+  //   按哪个键看他出的是什么（拳接拳、重接重、拿接腿），按对的概率 jieAcc。下段的手上招接不住（交给蹲着挡）；下段的腿蹲着接（耕手）
+  catchAt(s, eta, exact) {
+    const f = this.f, L = this.L, R = Math.random, H = f.inp.held;
+    const leg = s.kind === 'kick' || s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
+    if ((low && !leg) || s.dive || s.kind === 'grab' || s.kind === 'push' || s.tier === 'super') return false;
+    const need = leg ? 'grab' : s.kind === 'heavy' ? 'heavy' : 'jab';
+    const key = exact || R() < L.jieAcc ? need : pick(['jab', 'heavy', 'grab'].filter(k => k !== need));
+    const win = key === 'jab' ? WC_CATCH_WIN : WC_CATCH_WIN_H;
+    const pd = Math.round(eta + 1 - (win + 1) / 2 + (exact ? 0 : gauss() * L.jieSd));
+    if (pd < -1) return false;                                          // 来不及了
+    this.todo = { at: f.clock + Math.max(0, pd), act: 'catch', key, low: low && leg };
+    f.noParry = true; this.lowBlock = low && leg; H.block = true; H.down = this.lowBlock;
     return true;
   }
   // 拉手：伸手扣的那几帧正好落在他那一拳快打出来的时候（他打出来之前就拉住）
@@ -6518,41 +6622,30 @@ class Brain {
     if (w >= 1) this.todo = { at: this.f.clock + w, act: 'press', key: 'f:jab' }; else this.pressKey('f:jab');
     return true;
   }
-  // 黐手：按着挡（黏得住的招打过来就黏住，进搭手）
-  stick(low, n) {
-    const f = this.f, H = f.inp.held;
-    f.noParry = true; this.lowBlock = low; this.blockT = Math.max(8, n); H.block = true; H.down = low;
-    return true;
-  }
-  // 2.10 咏春拳的电脑看见他出招（还没看穿的时候）：手上的招 —— 拍手 / 拉手 / 标指 / 黐手黏住；地上的腿 —— 耕手 / 截腿 / 拳打单脚站着的 / 黐手黏住；
-  //   下段 —— 耕手、蹲着黐手；空中的拳脚 —— 拍手（读招的本事 read、拍手的本事 parry 越高越常这么接；没接的交给下面的挡）
+  // 2.11 咏春拳的电脑看见他出招（还没看穿的时候）：手上的招 —— 偶尔拉手、标指，多是按住挡接（拍手 / 摊手 / 膀手转马）；
+  //   地上的腿 —— 偶尔截腿、拳打单脚站着的，多是按住挡按拿接（按手）；下段的腿蹲着接（耕手）；跳起来的拳脚也接。
+  //   接不接看 jie（看穿的本事打折 wcReadMul），没接的交给下面的挡
   wcReact(s, dist, eta, press) {
     const L = this.L, R = Math.random;
-    if (s.kind === 'grab' || s.kind === 'push' || s.dive || s.tier === 'super' || eta < 1) return false;
-    if (R() >= Math.min(0.85, L.read * 0.9 + L.parry * 0.6) * wcReadMul(L)) return false;
-    const hand = HAND_LIMB.test(s.limb || ''), leg = s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
-    if (s.air) return !low && (hand || leg) ? this.patAt(eta, false) : false;
-    if (hand && !low) {
+    if (s.kind === 'grab' || s.kind === 'push' || s.dive || s.tier === 'super' || eta < -1) return false;
+    if (R() >= L.jie * wcReadMul(L)) return false;
+    const hand = HAND_LIMB.test(s.limb || ''), leg = s.kind === 'kick' || s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
+    if (!s.air && hand && !low) {
       const r = R(), T = this.MV.grab, B = this.MV.wBiu;
-      if (r < 0.38) return this.patAt(eta, false);
-      if (r < 0.56 && eta >= T.S + 2 && dist <= Math.max(T.reach, s.reach) + 4) return this.trapAt(eta);
-      if (r < 0.68 && eta >= B.S + 1 && dist <= effRD(B)) return this.biuAt(eta);
-      return this.stick(false, s.remain + 6);
+      if (r < 0.14 && eta >= T.S + 2 && dist <= Math.max(T.reach, s.reach) + 4) return this.trapAt(eta);
+      if (r < 0.24 && eta >= B.S + 1 && dist <= effRD(B)) return this.biuAt(eta);
     }
-    if (leg) {
+    if (leg && !s.air && !low) {
       const r = R(), LG = this.MV.lowGrab;
-      if (r < 0.3) return this.patAt(eta, true);                                                        // 耕手
-      if (r < 0.46 && eta >= LG.S + 1 && dist <= s.reach + 6) { press('d:grab'); return true; }         // 截腿截住
-      if (!low && r < 0.6 && dist <= this.eR('jab') - 4 && eta >= this.mvOf('jab').S) { press('jab'); return true; }   // 拳打单脚站着的
-      return this.stick(low, s.remain + 6);                                                             // 黐手黏住腿
+      if (r < 0.12 && eta >= LG.S + 1 && dist <= s.reach + 6) { press('d:grab'); return true; }
+      if (r < 0.22 && dist <= this.eR('jab') - 4 && eta >= this.mvOf('jab').S) { press('jab'); return true; }
     }
-    if (low) return R() < 0.45 ? this.patAt(eta, true) : this.stick(true, s.remain + 6);
-    return false;
+    return this.catchAt(s, eta, false);
   }
   // 对面是咏春拳：手上的招会被拍开、拉住、黏住，腿（和下段）会被耕开、截住、黏住的风险 —— 一开始就知道一点，被化开得越多越小心
   handRisk() { return this.f.opp.style === 'wc' ? Math.min(0.85, 0.15 + 0.35 * this.memo.ctr.hand * this.L.habit) : 0; }
   legRisk() { return this.f.opp.style === 'wc' ? Math.min(0.85, 0.15 + 0.35 * this.memo.ctr.leg * this.L.habit) : 0; }
-  // 咏春拳的电脑贴身先按着挡（黐手）的机会：他多是打（拳、掌、腿）就多黐；他爱抓、爱打下段就少黐（黐手黏不住擒拿，站着黏不住下段）
+  // 咏春拳的电脑贴身先按着挡听劲（等他打过来接）的机会：他多是打（拳、掌、腿）就多听；他爱抓、爱打下段就少听（接不住擒拿和下段的手上招）
   chiChance(dist) {
     const bad = ['grab', 'lowJab', 'sweep', 'lowGrab', 'lowKick'].reduce((a, k) => a + this.habitShare(k, dist), 0);
     return clamp(0.55 - 1.2 * bad * this.L.habit, 0.1, 0.65);
@@ -6656,7 +6749,7 @@ class Brain {
     if (this.followFor !== om.serial) {
       this.followFor = om.serial;
       this.fPlan = weighted([['shake', 0.3 + 0.4 * (1 - L.touch)], ['counter', AI_TUNE.ctrW[0] + AI_TUNE.ctrW[1] * L.touch], ['wait', 0.6]]);
-      this.fAt = f.clock + WC_TOUCH_GRACE + 1 + this.feelDelay() + (R() * 8 | 0);
+      this.fAt = f.clock + (om.grace || WC_TOUCH_GRACE) + 1 + this.feelDelay() + (R() * 8 | 0);   // 2.11 被接住进来的头几帧按不了（om.grace）
       this.fShape = !!styleOf(f).touchShape && R() < L.touch + 0.2;
     }
     const s = this.feltOf(o);
@@ -6673,20 +6766,25 @@ class Brain {
     if (this.latFor !== m.serial) { this.latFor = m.serial; this.latAt = f.clock + this.feelDelay(); this.latGo = Math.random() < 0.4 + 0.6 * L.touch; }
     if (this.latGo && f.clock >= this.latAt && m.latT > 0) { press('jab'); this.latGo = false; this.plan = this.K.after(L); }
   }
-  // 挨打的硬直里：黐手破连（按住挡 + 方向：他前手的招按前、后手的招按后、腿和下段按蹲）—— 他每出一招想一次试不试、按哪个方向。
-  // 他打过来那一下太快，反应不过来，只能猜（brkAcc 猜得准不准）；顺到三级的连环冲拳黏不住，不试；按错了那一下挨得更疼
+  // 2.11 挨打、被挡住的硬直里接（新的黐手破连）：按住挡，他下一下打过来之前几帧按键（拳接拳、重接重、拿接腿）——
+  //   他每出一招想一次试不试（brk）、键按对没有（brkAcc）；手上一直搭着，看他的招用不着反应（按他现在出的是什么、还有几帧打到）。
+  //   顺三级以上的连环冲拳太快、下段的手上招接不住，不试；按错了那一下挨得更疼
   wcBreak(o, go) {
     const f = this.f, L = this.L, R = Math.random, H = f.inp.held, om = o.move;
-    if (f.grabbed || f.stuck || f.airborne || o.state !== 'attack' || !om || om.def.script || om.air) return false;
+    if (f.grabbed || f.stuck || f.airborne || f.reel || f.stagger || o.state !== 'attack' || !om || om.def.script) return false;
     if (this.brkFor !== om.serial) {
-      this.brkFor = om.serial;
-      const d = om.def, lc = d.height === 'low' || d.limb === 'ff' || d.limb === 'bf' ? 3 : d.limb === 'fh' || d.limb === 'fe' ? 1 : 2;
-      const fast = d.beat && (o.flow || 0) >= 3;
-      this.brkDir = !fast && R() < L.brk * wcReadMul(L) ? (R() < L.brkAcc ? lc : pick([1, 2, 3].filter(x => x !== lc))) : 0;
+      this.brkFor = om.serial; this.brkKey = null;
+      const d = om.def, leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', low = d.height === 'low';
+      const need = d.dive || d.flurry || d.tier === 'super' || (d.beat && (o.flow || 0) >= 3) || om.air ? null : leg ? 'grab' : low ? null : d.kind === 'heavy' ? 'heavy' : d.kind === 'jab' ? 'jab' : null;
+      if (need && R() < L.brk * wcReadMul(L)) {
+        this.brkKey = R() < L.brkAcc ? need : pick(['jab', 'heavy', 'grab'].filter(k => k !== need));
+        this.brkLow = leg && low;
+        this.brkAt = f.clock + Math.max(0, Math.round(om.S + 1 - om.t - 2 + gauss() * L.jieSd * 0.6));
+      }
     }
-    if (!this.brkDir) return false;
-    H.block = true;
-    if (this.brkDir === 3) H.down = true; else go(this.brkDir === 1 ? 1 : -1);
+    if (!this.brkKey) return false;
+    H.block = true; if (this.brkLow) H.down = true;
+    if (f.clock >= this.brkAt) { f.inp.press(this.brkKey, f.clock); this.brkKey = null; }
     return true;
   }
   // 闪身：按着挡、朝对手双击（三帧：按 → 松 → 按）。挡住的硬直里也要按完，所以不和 seq 共用（seq 挨打时会清掉）
@@ -6765,8 +6863,9 @@ class Brain {
         if (t.act === 'slip') { this.slipIn(); H.block = true; return; }
         if (t.act === 'parry') { f.noParry = false; this.lowBlock = t.low; this.blockT = 14; H.block = true; H.down = t.low; return; }
         if (t.act === 'press') { press(t.key); return; }
+        if (t.act === 'catch') { f.noParry = true; H.block = true; H.down = t.low; this.lowBlock = t.low; f.inp.press(t.key, f.clock); this.blockT = 0; return; }   // 2.11 接招：按住挡再按键
       } else {
-        if (this.todo.act === 'slip') H.block = true;             // 等着闪：先按着挡
+        if (this.todo.act === 'slip' || this.todo.act === 'catch') { H.block = true; H.down = !!this.todo.low; }   // 等着闪、等着接：先按着挡
         return;                                                    // 等着卸力：先别按挡（要刚按下去那几帧才卸得掉）
       }
     }
@@ -6774,8 +6873,8 @@ class Brain {
     if (f.state === 'hit' || f.state === 'blockstun') {
       this.guardT = 0;
       if (f.state === 'hit' && f.qi >= QI_BURST && !f.grabbed && f.comboTaken >= 2 && R() < L.burst * 0.08) { pair(); return; }   // 2.1 爆气只在挨打时能用
-      // 2.10 咏春拳挨打：黐手破连（按住挡 + 方向，把他下一下黏住、进搭手）
-      if (f.state === 'hit' && this.K.wc && this.wcBreak(o, go)) return;
+      // 2.11 咏春拳挨打、被挡住：接他下一下（按住挡 + 键，新的黐手破连）
+      if (this.K.wc && this.wcBreak(o, go)) return;
       // 被咏春拳刚起手的两三下打中（还没顺）：第 2、3 下比拍子短一点 —— 一直按着挡，从那一点空里挡下来（每一下掷一次骰子）
       if (f.state === 'hit' && !f.grabbed && o.style === 'wc' && o.state === 'attack' && o.move && o.move.def.beat && (o.flow || 0) < FLOW_COUNTER) {
         if (this.escFor !== o.move.serial) { this.escFor = o.move.serial; this.escRoll = R() < Math.min(0.85, L.block * AI_TUNE.escK + AI_TUNE.escB); }
@@ -6883,6 +6982,11 @@ class Brain {
         const D = this.memo.dash, top = D.grab > D.strike && D.grab > D.none ? 'duck' : D.none > D.strike ? 'jab' : 'block';
         this.rushArmed = false; this.rush = { kind: 'dash', t: 0, plan: top, now: true };
       }
+    }
+    // 2.11 咏春拳按着挡听劲（等着接）：看见他出招就接 —— 接不接、按对键没有、时机准不准看难度（没接的照样挡着）
+    if (this.K.wc && f.state === 'block' && s.atk && s.serial !== this.lastSeen && s.facing === -toward && dist <= s.reach + 26 + (s.air ? Math.abs(s.vx) * (L.react + 4) : 0)) {
+      this.lastSeen = s.serial;
+      if (this.wcReact(s, dist, s.sLeft - L.react, press)) return;
     }
     // 2.1 防跳：看见他起跳时想好的接法，到时候照着做
     if (this.aa && this.airDefense(sj, dist, press, go, lagJ)) return;
@@ -6998,6 +7102,10 @@ class Brain {
       const p = this.pickPlan(dist), d0 = this.mvOf(p[0]);
       if (d0 && dist + Math.max(0, -appr) * (d0.S + 1) <= effRD(d0) - 6) { this.plan = p; press(this.plan.shift()); return; }
     }
+    // 2.11 咏春拳按住挡接招没接着（按早了、被骗出来的）：他正在收手 —— 这时候打他 ×1.3（WC_WRONG_MUL；看见了、来得及才打）
+    if (s.catching && this.catchPun !== s.serial && s.rLeft - L.react > this.mvOf('jab').S + 1 && dist <= this.eR('jab') - 4 && R() < L.punish) {
+      this.catchPun = s.serial; this.plan = this.K.wc ? Jn(4) : ['jab', 'heavy']; press(this.plan.shift()); return;
+    }
     // 惩罚空招（空中招打空了、人还在天上：等他落地，见上面的落地硬直）
     if (s.phase === 'r' && !s.confirmed && !s.air && dist <= 110 && R() < L.punish * 0.3) {
       this.plan = this.K.wc ? (dist <= 86 ? Jn(5) : ['kick', 'jab', 'jab', 'jab']) : dist <= 90 ? ['jab', 'heavy'] : ['heavy'];
@@ -7008,7 +7116,9 @@ class Brain {
     // 对手龟缩：站挡就擒拿或下段，蹲挡就抄腿或打上段（跳）
     if (s.blocking && !s.lowBlock && dist <= 84 && R() < L.grabBlock * (this.K.wc ? AI_TUNE.wcGrabBlk : o.style === 'wc' ? AI_TUNE.vsWcGrab : 0.12)) { press('grab'); return; }   // 咏春拳拉手扣住挡着的人（进搭手）；打咏春拳的人抓黐手
     if (s.blocking && s.lowBlock && dist <= 88 && R() < L.grabBlock * 0.1) { press('d:grab'); return; }
-    if (s.blocking && !s.lowBlock && dist <= 120 && R() < L.low * (this.K.wc ? AI_TUNE.wcLow : 0.05)) { press(dist <= 88 ? 'd:jab' : 'd:kick'); return; }
+    if (s.blocking && !s.lowBlock && dist <= 120 && R() < L.low * (this.K.wc ? AI_TUNE.wcLow : o.style === 'wc' ? AI_TUNE.vsWcLow : 0.05)) { press(dist <= 88 ? 'd:jab' : 'd:kick'); return; }
+    // 2.11 骗接（打咏春拳）：他按着挡听劲，在拳够不着的地方空挥一拳 —— 他按键接了就是接空，收手的时候打他（上面那一段）
+    if (!this.K.wc && o.style === 'wc' && s.blocking && !s.lowBlock && dist > this.eR('jab') + 2 && dist <= this.eR('jab') + 30 && R() < L.read * AI_TUNE.bait) { press('jab'); return; }
     // 被贴身压着：闪步拉开，或者偶尔闪到对手身后
     if (dist < 86 && s.atk && R() < L.step * 0.05) { if (R() < 0.3) this.dashIn(); else this.dashAway(); return; }
     // 2.1 近身先护着：贴得近、他能出手的时候，时不时先举手（短拳 5 帧，谁都看不清，只能预判；他老用短拳就护得更多）
@@ -7100,8 +7210,8 @@ class Brain {
     if (R() >= pa) return;                                           // 这一跳没反应过来（照普通的来）
     const wall = f.x - (s.x >= f.x ? 1 : -1) * 110, cornered = wall < WALL_L + 20 || wall > WALL_R - 20;
     const hb = L.habit;                                              // 记得越准，越照他的习惯接
-    // 咏春拳没有托天掌：拍手拍开他空中的拳脚（算着他落下来、进了射程的那几帧刚按下挡）
-    const plan = weighted([[this.K.wc ? 'pat' : 'palm', L.aa * (0.5 + 1.6 * pA * hb)], ['block', 0.7 + 0.5 * pA * (1 - hb)], ['wait', 0.35 + 1.8 * (pD + pE * 0.6) * hb],
+    // 咏春拳没有托天掌：按住挡听劲，他空中的拳脚打过来按键接（看见了接，见 tick「听劲」那一段）
+    const plan = weighted([[this.K.wc ? 'block' : 'palm', L.aa * (0.5 + 1.6 * pA * hb)], ['block', 0.7 + 0.5 * pA * (1 - hb)], ['wait', 0.35 + 1.8 * (pD + pE * 0.6) * hb],
       ['back', cornered ? 0 : L.step * 0.6]]);
     // 托天掌的时机：反应慢的按得早一点 / 晚一点（随机偏几帧）
     this.aa = { plan, jitter: Math.round((R() - 0.5) * L.react * 0.5), done: false };
@@ -7115,18 +7225,16 @@ class Brain {
       if (Math.random() < L.aa) this.antiDive = true; else { f.noParry = true; this.lowBlock = false; this.blockT = 30; H.block = true; }
       return true;
     }
-    if (A.plan === 'palm' || A.plan === 'pat') {
+    if (A.plan === 'palm') {
       if (A.done) return false;
       // 按着他的速度推：托天掌出手（前摇 S 帧）那几帧他在哪 —— 进了托天掌的射程、开始往下落了（或者快落地了）就按
-      // 咏春拳的拍手一样算：他落到跟前（空中的拳脚够得着的地方）那几帧刚按下挡，这时候出的空中招都拍得开（没出就只是按着挡）
-      const pat = A.plan === 'pat', D = pat ? null : this.MV.palm;
-      if (pat && !o.airborne) { this.aa = null; return false; }
-      const k = lag + (pat ? 3 : D.S + 1) + A.jitter;
+      const D = this.MV.palm;
+      const k = lag + D.S + 1 + A.jitter;
       const px = s.x + s.vx * k, pd = Math.abs(px - f.x);
       const tLand = s.air ? (s.vz + Math.sqrt(Math.max(0, s.vz * s.vz + 2 * GRAV * s.alt))) / GRAV : 99;
-      if (pd <= (pat ? 104 : D.reach - 2) && (s.vz < 1 || tLand <= k + 2)) {
+      if (pd <= D.reach - 2 && (s.vz < 1 || tLand <= k + 2)) {
         A.done = true;
-        if (pat) { f.noParry = false; this.lowBlock = false; this.blockT = 14; H.block = true; } else press('d:heavy');
+        press('d:heavy');
         return true;
       }
       return false;
@@ -7269,15 +7377,15 @@ class Brain {
       default: return false;
     }
   }
-  // 2.10 咏春拳的电脑记住你的习惯：你老出手上的招 —— 先黐着手等你打过来（黏住进搭手）、先伸手拉、先标指插你的胳膊；
-  // 老出腿 —— 截脚截你、截腿、拳打你单脚站着、黐手黏腿；老抓 —— 拳打你（拳最快）；老打下段 —— 蹲着黐手
+  // 2.10 咏春拳的电脑记住你的习惯：你老出手上的招 —— 先按着挡听劲等你打过来（接住进搭手）、先伸手拉、先标指插你的胳膊；
+  // 老出腿 —— 截脚截你、截腿、拳打你单脚站着、听劲等着按手接；老抓 —— 拳打你（拳最快）；老打下段 —— 蹲着挡
   wcHabit(top, dist, press, guard, low) {
     const f = this.f, R = Math.random, H = f.inp.held;
     switch (top) {
       case 'jab': case 'heavy': case 'palm': {
         if (dist > 116) return false;
         const r = R();
-        if (r < 0.45) return guard(false, 16 + (R() * 10 | 0));                               // 黐手（按着挡：打过来就黏住）
+        if (r < 0.45) return guard(false, 16 + (R() * 10 | 0));                               // 听劲（按着挡：他打过来就接，tick「听劲」那一段）
         if (r < 0.65 && dist <= this.mvOf('grab').reach + 4) { press('grab'); return true; }    // 拉手（他正好出拳 = 拉住；站着 = 扣住手腕）
         if (r < 0.82 && dist <= this.eR('f:jab') - 4) { press('f:jab'); return true; }          // 标指（插在他出手的胳膊上）
         return guard(low(), 14 + (R() * 10 | 0));
@@ -7288,7 +7396,7 @@ class Brain {
         if (r < 0.3 && dist <= this.eR('d:kick') - 4) { press('d:kick'); return true; }         // 截脚
         if (r < 0.5 && dist <= this.mvOf('d:grab').reach + 4) { press('d:grab'); return true; } // 截腿
         if (r < 0.7 && dist <= this.eR('jab') - 4) { press('jab'); return true; }               // 拳打单脚站着的
-        return guard(false, 16);                                                                // 黐手黏腿
+        return guard(false, 16);                                                                // 听劲（他踢过来按拿接）
       }
       case 'sweep': case 'lowKick': return R() < 0.3 ? (f.inp.press('up', f.clock), true) : guard(true, 18);
       case 'grab': return dist <= this.eR('jab') - 4 && R() < 0.5 ? (press('jab'), true) : (this.duckT = 14, H.down = true, true);
@@ -7391,9 +7499,7 @@ class Brain {
       case 'antiDive': this.antiDive = true; return true;
       case 'trap': return this.trapAt(eta, exact);                   // 拉手：伸手扣的那几帧正好落在他那一拳快打出来的时候
       case 'biu': return this.biuAt(eta, exact);                     // 标指：插在他出手的胳膊上（挑开进搭手）
-      case 'pat': return this.patAt(eta, false, exact);              // 拍手 / 耕手：刚按下挡那几帧被打到
-      case 'gaun': return this.patAt(eta, true, exact);
-      case 'stick': case 'stickLow': return this.stick(c[1] === 'stickLow', s.remain + 6);   // 黐手：按着挡，黏住进搭手
+      case 'catch': return this.catchAt(s, eta, exact);              // 2.11 接招：按住挡、算好时机按对的键
       case 'duck': this.duckT = Math.max(12, s.remain + 8); H.down = true; return true;
       case 'wait': f.noParry = true; this.lowBlock = false; this.blockT = Math.max(6, s.remain + 2); H.block = true; return true;
       case 'block': case 'cblock': f.noParry = true; this.lowBlock = c[1] === 'cblock' || low; this.blockT = Math.max(8, s.remain + 6); H.block = true; H.down = this.lowBlock; return true;
@@ -7410,40 +7516,35 @@ class Brain {
     }
     return best && best[0];
   }
-  // 2.10 咏春拳的电脑看穿了一招：从自己这一派的破法里挑 —— 手上的招：拍手、拉手、标指、黐手黏住（进搭手）、寸拳霸体吃一拳、转马躲重拳；
-  //   地上的腿：耕手、截腿、截脚、拳打单脚站着的、黐手黏腿；下段：耕手、截腿、蹲着黐手；空中的拳脚：拍手
+  // 2.10 咏春拳的电脑看穿了一招：从自己这一派的破法里挑。2.11 接招（按住挡、键按对、时机按到帧）是最主要的一手：
+  //   手上的招：接招（进搭手）、拉手、标指、寸拳霸体吃一拳、转马躲重拳；地上的腿：接招（按手）、截腿、截脚、拳打单脚站着的；
+  //   下段的腿：蹲着接（耕手）、截腿；下段的手上招接不住：蹲着挡；空中的拳脚：接招
   wcCounterOpts(s, d, dist, eta, freshBlock) {
     const opts = [], T = this.MV.grab, LG = this.MV.lowGrab, LK = this.MV.wLowKick, B = this.MV.wBiu, J = this.mvOf('jab');
-    const hand = HAND_LIMB.test(d.limb || ''), leg = d.limb === 'ff' || d.limb === 'bf', low = d.height === 'low';
+    const hand = HAND_LIMB.test(d.limb || ''), leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', low = d.height === 'low';
     if (d.dive) { opts.push([18, 'antiDive']); opts.push([5, 'block']); }
     else if (d.air) {
-      if (freshBlock && !low && (hand || leg)) opts.push([20, 'pat']);
+      if (hand || leg) opts.push([20, 'catch']);
       if (d.evadeCrouch) opts.push([12, 'duck']);
       opts.push([5, 'block']);
     } else if (d.kind === 'grab') {
       if (d.low) opts.push([12, 'wait']);
       else { opts.push([14, 'duck']); if (eta >= J.S + 2 && dist <= this.eR('jab') - 4) opts.push([10, 'jab']); }
-    } else if (d.tier === 'super') {
-      if (freshBlock && hand && !low) opts.push([20, 'pat']);
-      opts.push([6, 'block']);
-    } else if (d.kind === 'push') opts.push([6, 'block']);
+    } else if (d.tier === 'super' || d.kind === 'push') opts.push([6, 'block']);
     else if (leg && !low) {
-      if (freshBlock) opts.push([18, 'gaun']);
-      if (eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([18, 'd:grab']);               // 截腿截住（他失衡）
-      if (dist <= this.eR('jab') - 4 && eta >= J.S) opts.push([15, 'jab']);                  // 拳打出腿的人：失衡倒地
-      if (eta >= LK.S - 1 && dist <= effRD(LK) - 4) opts.push([14, 'd:kick']);               // 截脚截住
-      opts.push([16, 'stick']);                                                             // 黐手黏腿（进搭手）
+      opts.push([20, 'catch']);                                                             // 按手接住（他失衡）
+      if (eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([16, 'd:grab']);               // 截腿截住
+      if (dist <= this.eR('jab') - 4 && eta >= J.S) opts.push([14, 'jab']);                  // 拳打出腿的人：失衡倒地
+      if (eta >= LK.S - 1 && dist <= effRD(LK) - 4) opts.push([13, 'd:kick']);               // 截脚截住
     } else if (low) {
-      if (freshBlock) opts.push([18, 'gaun']);
-      if (leg && eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([16, 'd:grab']);
-      opts.push([15, 'stickLow']);
+      if (leg) { opts.push([18, 'catch']); if (eta >= LG.S + 1 && dist <= d.reach + 6) opts.push([16, 'd:grab']); }   // 耕手接住
+      opts.push([10, 'cblock']);
     } else {                                                                                // 拳、掌、肘、肩……
-      if (freshBlock && hand) opts.push([20, 'pat']);
-      if (hand && eta >= T.S + 1 && dist <= Math.max(T.reach, d.reach) + 4) opts.push([18, 'trap']);   // 拉手拉住（要卡在他快打出来的那几帧）
-      if (hand && eta >= B.S + 1 && dist <= effRD(B)) opts.push([16, 'biu']);                          // 标指挑开
+      opts.push([20, 'catch']);                                                             // 拍手、摊手、膀手转马接住（进搭手）
+      if (hand && eta >= T.S + 1 && dist <= Math.max(T.reach, d.reach) + 4) opts.push([16, 'trap']);   // 拉手拉住（要卡在他快打出来的那几帧）
+      if (hand && eta >= B.S + 1 && dist <= effRD(B)) opts.push([15, 'biu']);                          // 标指挑开
       if (slipable(d)) { const t = Math.min(3, this.slipWindow(dist) - 1); if (t >= 0 && eta >= 3 + t) opts.push([14, 'slip', t]); }
       if (d.tier === 'light' && !d.pierce && eta >= 2 && dist <= this.eR('heavy') - 6) opts.push([10, 'heavy']);   // 寸拳霸体吃他一拳
-      opts.push([17, 'stick']);
     }
     return opts;
   }
@@ -7476,15 +7577,15 @@ class Brain {
       for (const [k, v] of Object.entries(m)) { tot += v; if (!top || v > m[top]) top = k; }
       const pTop = tot >= 8 && top ? m[top] / tot : 0;
       if (pTop >= 0.4 && R() < (pTop - 0.3) * 0.03) {
-        // 对面是咏春拳多的几类：拉手 → 腿；截脚 → 拳。咏春拳自己的预判：手上的招 → 黐手等着黏 / 标指，腿 → 截脚 / 截腿，下段 → 蹲着黐手，抓 → 拳
-        const pre = this.K.wc ? { kick: dist <= 110 ? (R() < 0.5 ? 'd:grab' : 'd:kick') : null, heavy: dist <= 110 ? (R() < 0.5 ? 'f:jab' : 'stick') : null, jab: dist <= 104 ? 'stick' : null,
-          palm: dist <= 104 ? 'stick' : null, grab: 'jab', lowGrab: 'jab', sweep: 'stickLow', lowKick: 'stickLow', lowJab: dist <= 100 ? 'stickLow' : null, dive: 'jab',
+        // 对面是咏春拳多的几类：拉手 → 腿；截脚 → 拳。咏春拳自己的预判：手上的招 → 按着挡听劲等着接 / 标指，腿 → 截脚 / 截腿，下段 → 蹲着挡，抓 → 拳
+        const pre = this.K.wc ? { kick: dist <= 110 ? (R() < 0.5 ? 'd:grab' : 'd:kick') : null, heavy: dist <= 110 ? (R() < 0.5 ? 'f:jab' : 'ting') : null, jab: dist <= 104 ? 'ting' : null,
+          palm: dist <= 104 ? 'ting' : null, grab: 'jab', lowGrab: 'jab', sweep: 'tingLow', lowKick: 'tingLow', lowJab: dist <= 100 ? 'tingLow' : null, dive: 'jab',
           trap: dist <= this.eR('kick') ? 'kick' : null }[top]
           : { kick: dist <= this.MV.kick.reach ? 'grab' : null, heavy: dist <= 120 ? 'slip' : null, jab: dist <= 100 ? 'heavy' : null, grab: 'd:jab',
           sweep: 'up', lowJab: dist <= 100 ? 'heavy' : null, air: dist <= 140 ? 'd:heavy' : null, jump: dist <= 150 ? 'd:heavy' : null, dive: 'jab',
           trap: dist <= this.eR('kick') - 4 ? 'kick' : null, lowKick: dist <= 96 ? 'jab' : null }[top];
         if (pre === 'slip') { this.slipIn(); f.inp.held.block = true; return true; }
-        if (pre === 'stick' || pre === 'stickLow') return this.stick(pre === 'stickLow', 16);
+        if (pre === 'ting' || pre === 'tingLow') { f.noParry = true; this.lowBlock = pre === 'tingLow'; this.blockT = 16; f.inp.held.block = true; f.inp.held.down = this.lowBlock; return true; }   // 按着挡听劲：他打过来就接（tick「听劲」那一段）
         if (pre === 'up') { f.inp.press('up', f.clock); return true; }
         if (pre) { press(pre); return true; }
       }
@@ -7508,7 +7609,7 @@ class Brain {
     const M = this.memo, f = this.f, w = this.L.habit || 0.5;
     // 2.9 我的招被咏春拳化开了（拍开、耕开、拉住、黏住、标指挑开）：记下来是手上的招还是腿 —— 以后少拿这一类起手、多抓、多打快的
     M.ctr.hand *= 0.9997; M.ctr.leg *= 0.9997;
-    const rk = f.state === 'hit' && f.reel ? f.reelKind : null, ck = rk === 'pat' ? 'hand' : rk === 'gaun' ? 'leg' : null;
+    const rk = f.state === 'hit' && f.reel ? f.reelKind : null, ck = rk === 'pat' || rk === 'tan' || rk === 'bong' ? 'hand' : rk === 'gum' || rk === 'gaun' ? 'leg' : null;   // 2.11 被接住（空中的拳脚、腿）
     if (ck && !this.ctrOn) { this.ctrOn = true; M.ctr[ck] += 1; } else if (!ck) this.ctrOn = false;
     if (f.state === 'attack' && f.move && !f.move.def.script) this.lastLimb = f.move.def.height === 'low' ? 'ff' : f.move.def.limb;   // 我正在出的招打的是哪只手脚
     M.rev *= 0.9997; M.esc *= 0.9997;
@@ -8643,10 +8744,12 @@ function drawFighter(F, V) {
   // 2.4：先把整个人的剪影填一次（只为了外面那圈影子 / 亮边），再一块一块不透明地画（drawBody：阴影、肌肉线、前后分得清）
   if (aura > 0.15) { const tf = ctx.getTransform(); ctx.shadowColor = `rgba(246,245,238,${(0.35 + 0.4 * Math.min(1, aura)).toFixed(2)})`; ctx.shadowBlur = 3.2 * Math.hypot(tf.a, tf.b); }
   else { ctx.shadowColor = 'rgba(23,24,26,.35)'; ctx.shadowBlur = 2.5; }
-  ctx.fillStyle = F.color; ctx.fill(bodySilhouette(J, 0));
+  // 2.11（优化）：这个人这一帧的外形、每一层的路径只算一遍 —— 剪影、drawBody、白闪共用（以前同一个外形一帧算三遍）
+  const bp = bodyParts(J, 0), bpath = bodyPaths(bp);
+  ctx.fillStyle = F.color; ctx.fill(bpath.all);
   ctx.shadowBlur = 0;
-  drawBody(J, F.color, F.sash);                       // 头带、眼睛、腰带也在里面
-  if (F.hitFlash > 0) drawSilhouette(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 0);   // 挨打那一下身上白闪（一整块，关节不会更亮）
+  drawBody(J, F.color, F.sash, bp, bpath);            // 头带、眼睛、腰带也在里面
+  if (F.hitFlash > 0) drawSilhouette(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 0, bpath.all);   // 挨打那一下身上白闪（一整块，关节不会更亮）
   const hx = J.head[0], hy = J.head[1];
   // 气：火星（在身体前面）
   drawQi(F, true);
@@ -9211,7 +9314,7 @@ let camX = STAGE_W / 2, camZ = ZOOM, camLift = 0;
 const localIdx = () => game.mode === 'online' && typeof Net !== 'undefined' && Net.role === 'guest' ? 1 : 0;
 function camGoal(mode, a, b, local) {
   const zTop = ZOOM * zoomBoost();
-  if (mode === 'pvp' || mode === 'attract') {
+  if (mode === 'pvp' || mode === 'attract' || mode === 'watch') {      // 2.11 观战：和双人一样，两个人都在画面里
     const top = mode === 'attract' ? ZOOM_PVP_MIN * zoomBoost() : zTop;       // 菜单背景不放大（不挡菜单按钮）
     const zoom = clamp(VW / (Math.abs(a.x - b.x) + 2 * CAM_MARGIN), ZOOM_PVP_MIN, top), half = VW / (2 * zoom);
     return { x: clamp((a.x + b.x) / 2, half, STAGE_W - half), zoom };
@@ -9251,7 +9354,8 @@ function render() {
   const half = VW / (2 * camZ);
   camX = clamp(camX, half, STAGE_W - half);
   // 镜头上抬：两人里飞得最高的离地超过 30 才抬，最多抬 48（场地像素）
-  camLift += (clamp((Math.max(va.alt, vb.alt) - 30) * 0.35, 0, 48) - camLift) * ease(0.1);
+  //   训练场一直抬着 TRAIN_LIFT（2.11：人放大以后头别挨着上面的面板）
+  camLift += (Math.max(game.mode === 'train' ? TRAIN_LIFT : 0, clamp((Math.max(va.alt, vb.alt) - 30) * 0.35, 0, 48)) - camLift) * ease(0.1);
   Stage.use(Stage.forMode(game.mode), viewInfo());
   ctx.save(); ctx.translate(sx, sy);
   const zz = camZ * (1 + (reduceMotion ? 0 : game.punch || 0));     // 重击时镜头往里推一下（1.9.0，只是画面）
@@ -10756,6 +10860,55 @@ const LIVE = {
 };
 for (const k in LIVE) STAGES[k].live = LIVE[k];
 
+/* ---------- 2.11（Jack：网页版有点卡）贴图只贴有东西的那几行 ----------
+   远景、中景、地面每一层都是一整张大图，每帧整张贴一遍；可很多层上面一大截是全透明的（天上什么都没画）。
+   没有显卡加速（软件渲染）时，透明的地方贴上去也要一个像素一个像素地混色，一整屏要好几毫秒。
+   做法：画好一层以后量一次哪几行有东西（c.rows：从第一行有东西的往上、最后一行有东西的往下各多留 ROW_PAD 行全透明的），
+   每帧只贴这几行 —— 贴上去的位置、缩放和整张贴时一样（同一个换算），画出来不变。最底下那层（天 / 远景）整张不透明的话记 c.opaque。
+   量的时候按一条一条（ROW_BAND 行）读，读到有东西就停；读不了（浏览器不让）就照旧整张贴 */
+const ROW_PAD = 3, ROW_BAND = 32;
+// 量的时候先把这一层整张抄到一块「专门给读的」画布上（willReadFrequently：放在内存里），在那上面一条一条读 ——
+// 不对这一层本身 getImageData（读多了浏览器会把它挪出显卡，以后每帧贴它反而慢）；量完把这块画布清掉（不占内存）
+function layerRows(c, wantOpaque) {
+  c.rows = null; c.opaque = false;
+  const w = c.width, h = c.height;
+  if (!w || !h) return;
+  const tmp = document.createElement('canvas');
+  try {
+    tmp.width = w; tmp.height = h;
+    const g = tmp.getContext('2d', { willReadFrequently: true });
+    g.drawImage(c, 0, 0);
+    const band = y => new Uint32Array(g.getImageData(0, y, w, Math.min(ROW_BAND, h - y)).data.buffer);   // 一个像素四个字节，全透明 = 0
+    const rowHas = (d, r) => { for (let k = r * w, e = k + w; k < e; k++) if (d[k] !== 0) return true; return false; };
+    let y0 = -1, y1 = -1;
+    for (let y = 0; y < h && y0 < 0; y += ROW_BAND) { const d = band(y), n = d.length / w; for (let r = 0; r < n; r++) if (rowHas(d, r)) { y0 = y + r; break; } }
+    if (y0 < 0) { c.rows = [0, 0]; return; }                                              // 整层是空的
+    for (let y = Math.max(y0, h - ROW_BAND); y1 < 0; y = Math.max(y0, y - ROW_BAND)) {
+      const d = band(y), n = d.length / w;
+      for (let r = n - 1; r >= 0; r--) if (rowHas(d, r)) { y1 = y + r; break; }
+      if (y === y0) break;
+    }
+    c.rows = [Math.max(0, y0 - ROW_PAD), Math.min(h, Math.max(y0, y1) + 1 + ROW_PAD)];
+    if (wantOpaque) {                                    // 除了最右两列、最下两行（画的时候不满一个像素的边）都是不透明的
+      let op = true;
+      for (let y = 0; y < h - 2 && op; y += ROW_BAND) {
+        const a = g.getImageData(0, y, w, Math.min(ROW_BAND, h - 2 - y)).data;
+        for (let i = 3, x = 0; i < a.length; i += 4) { if (a[i] !== 255 && x < w - 2) { op = false; break; } if (++x === w) x = 0; }
+      }
+      c.opaque = op;
+    }
+  } catch (e) { c.rows = null; c.opaque = false; }
+  finally { tmp.width = tmp.height = 0; }
+}
+// 贴一层：只贴 c.rows 那几行（没量过就整张贴）。目标位置 = 整张贴时这几行落在的地方
+function drawRows(g, c, x, y, w, h) {
+  const r = c.rows;
+  if (!r) { g.drawImage(c, x, y, w, h); return; }
+  if (r[1] <= r[0]) return;
+  const k = h / c.height;
+  g.drawImage(c, 0, r[0], c.width, r[1] - r[0], x, y + r[0] * k, w, (r[1] - r[0]) * k);
+}
+
 /* ---------- 场景管理：选哪张、按屏幕分辨率画成离屏图、每帧贴上去 ---------- */
 const Stage = {
   pref: 'sun',                 // 人机 / 双人用的（菜单里选，存在 localStorage「modou.stage」）
@@ -10764,8 +10917,9 @@ const Stage = {
   live: null, liveLast: 0,     // 2.5.1 动态背景：这张图的状态（{ id, t 秒 }，换图才清空）、上一帧的时间
   load() { try { const v = localStorage.getItem('modou.stage'); if (STAGE_PICK.includes(v)) this.pref = v; } catch (e) {} },
   setPref(id) { if (!STAGE_PICK.includes(id)) return; this.pref = id; try { localStorage.setItem('modou.stage', id); } catch (e) {} },
+  peek: null,                  // 2.11 准备页开着的时候菜单背景先换成正在选的那张（预览，不存）
   // 这一局用哪张：打桩 = 练武场；联机 = 房主选的；别的 = 自己选的
-  forMode(mode) { return mode === 'train' ? 'yard' : mode === 'online' ? this.online : this.pref; },
+  forMode(mode) { return mode === 'train' ? 'yard' : mode === 'online' ? this.online : mode === 'attract' && this.peek ? this.peek : this.pref; },
   // 需要的分辨率（逻辑像素 → 屏幕物理像素）：远景、中景按画面缩放；地面还要乘上镜头放大
   want(view) {
     const k = view.scale * view.pxr;
@@ -10802,6 +10956,12 @@ const Stage = {
     const gg = gc.getContext('2d'); gg.scale(w.ground, w.ground); gg.translate(-GX0, GUP - FLOOR);
     S.ground(gg, { x0: GX0, x1: STAGE_W - GX0, R: R(3) });
     this.layers = { sky, far, mid, ground: gc, near: S.near || null };
+    // 2.11 量一下每层哪几行有东西（每帧只贴这几行）；最底下那层（有天就是天，没有就是远景）再看是不是整张不透明。
+    // 不在这一帧里量（开局、换窗口大小时不卡一下）：过一会儿一层一层地量，量好之前照旧整张贴（画出来一样）
+    clearTimeout(this.scanT);
+    const todo = [sky, far, mid, gc].filter(Boolean), bottom = sky || far, mine = this.layers;
+    const next = () => { const c = this.layers === mine && todo.shift(); if (!c) return; layerRows(c, c === bottom); this.scanT = setTimeout(next, 40); };
+    this.scanT = setTimeout(next, 300);
     this.built = { id, back: w.back, ground: w.ground, top, vw };
     this.id = id;
     if (!this.live || this.live.id !== id) this.live = { id, t: 0 };      // 2.5.1 换了图才从头来（窗口缩放重画背景，鸟照样接着飞）
@@ -10819,14 +10979,18 @@ const Stage = {
   // 2.5.1 每一层贴完，接着在同一套坐标里画这一层会动的东西（STAGES[id].live.far / mid）
   drawBack(ctx, camX, view, lift) {
     const L = this.layers, S = STAGES[this.id] || STAGES.sun;
-    ctx.fillStyle = S.paper || C.paper;
-    ctx.fillRect(-20, -20, view.vw + 40, view.vh + 40);
+    // 2.11 最底下那层（天 / 远景）整张不透明、四边都伸出画面以外：纸色就不用先涂一遍（一样被它整个盖住）
+    const b = L && (L.sky || L.far), bx = b ? view.vw / 2 - b.lw / 2 - (camX - STAGE_W / 2) * (L.sky ? PAR_SKY : PAR_FAR) : 0, by = b ? view.fy + lift * (L.sky ? 0.1 : 0.25) - this.built.top : 0;
+    if (!(b && b.opaque && bx <= -24 && by <= -24 && bx + b.lw * (b.width - 3) / b.width >= view.vw + 24 && by + b.lh * (b.height - 3) / b.height >= view.vh + 24)) {   // 留 24：震屏最多挪 12
+      ctx.fillStyle = S.paper || C.paper;
+      ctx.fillRect(-20, -20, view.vw + 40, view.vh + 40);
+    }
     if (!L) return;
     const top = this.built.top, lv = S.live, st = this.live, dt = this.liveStep();
     for (const [c, par, py, k] of [[L.sky, PAR_SKY, 0.1, 'sky'], [L.far, PAR_FAR, 0.25, 'far'], [L.mid, PAR_MID, 0.5, 'mid']]) {
       if (!c) continue;
       const x = view.vw / 2 - c.lw / 2 - (camX - STAGE_W / 2) * par, y = view.fy + lift * py - top;
-      ctx.drawImage(c, x, y, c.lw, c.lh);
+      drawRows(ctx, c, x, y, c.lw, c.lh);
       if (lv && lv[k] && st) {
         ctx.save(); ctx.translate(x, y);
         lv[k](ctx, { w: c.lw, h: c.lh, fy: top, vis: [-x, view.vw - x] }, st, dt);
@@ -10838,7 +11002,7 @@ const Stage = {
   drawGround(ctx) {
     const L = this.layers;
     if (!L) return;
-    ctx.drawImage(L.ground, GX0, FLOOR - GUP, STAGE_W - 2 * GX0, GUP + GDN);
+    drawRows(ctx, L.ground, GX0, FLOOR - GUP, STAGE_W - 2 * GX0, GUP + GDN);
     if (L.near) L.near(ctx, this.live);
   },
   // 选场景按钮上的小图：远景 + 中景缩小画一张（只画一次，存起来）
@@ -10870,19 +11034,22 @@ Stage.load();
    step 只吃「两个整数输入」，同样的输入序列一定算出同样的结果（联机和测试都靠这一点） */
 
 /* ---------- 人物颜色（只是外观，不进战斗逻辑）。存在浏览器 localStorage「modou.looks」 ----------
-   solo：人机 / 打桩 / 联机时自己的颜色、电脑的颜色（'random' = 每局随机挑一个和你不一样的）；pvp：双人对战两边上次选的 */
+   solo：人机 / 训练场 / 联机时自己的颜色、电脑的颜色（'random' = 每局随机挑一个和你不一样的）；pvp：双人对战两边上次选的；
+   watch（2.11 观战）：两个电脑上次选的。2.11 起都在进了模式以后的准备页里选（ui.js「准备页」），菜单上不再有 */
 const Looks = {
-  solo: { me: 'ink', cpu: 'random' }, pvp: ['ink', 'indigo'],
+  solo: { me: 'ink', cpu: 'random' }, pvp: ['ink', 'indigo'], watch: ['ink', 'vermil'],
   load() {
+    const pair = v => Array.isArray(v) && lookOf(v[0]) && lookOf(v[1]) && v[0] !== v[1];
     try {
       const v = JSON.parse(localStorage.getItem('modou.looks') || 'null') || {};
       if (v.solo && lookOf(v.solo.me)) this.solo.me = v.solo.me;
       if (v.solo && (v.solo.cpu === 'random' || lookOf(v.solo.cpu))) this.solo.cpu = v.solo.cpu;
-      if (Array.isArray(v.pvp) && lookOf(v.pvp[0]) && lookOf(v.pvp[1]) && v.pvp[0] !== v.pvp[1]) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.pvp)) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.watch)) this.watch = v.watch.slice(0, 2);
     } catch (e) {}
     if (this.solo.cpu === this.solo.me) this.solo.cpu = 'random';
   },
-  save() { try { localStorage.setItem('modou.looks', JSON.stringify({ solo: this.solo, pvp: this.pvp })); } catch (e) {} },
+  save() { try { localStorage.setItem('modou.looks', JSON.stringify({ solo: this.solo, pvp: this.pvp, watch: this.watch })); } catch (e) {} },
 };
 Looks.load();
 function cpuLook() {
@@ -10893,34 +11060,61 @@ function cpuLook() {
 }
 function applyLooks(mode) {
   if (mode === 'pvp') { F1.setLook(Looks.pvp[0]); F2.setLook(Looks.pvp[1]); }
+  else if (mode === 'watch') { F1.setLook(Looks.watch[0]); F2.setLook(Looks.watch[1]); }
   else if (mode === 'online') { F1.setLook(Net.looks.h); F2.setLook(Net.looks.g); }
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
 /* ---------- 2.9 拳派（传统格斗 / 咏春拳；2.9 咏春拳叫「迎春拳」，id 'ying'，2.10 改 'wc'）：进战斗逻辑（招式表、架势、按键语法全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
-   solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的。
-   训练场的木桩：电脑选了哪一派就是哪一派（随机的话是传统格斗）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
+   solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的；watch（2.11 观战）：两个电脑的。
+   训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
    菜单背景里两个电脑互打：每次随机 */
 const STYLE_IDS = ['trad', 'wc'];
 const styleOk = id => STYLE_IDS.includes(id);
 const Styles = {
-  solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'],
+  solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'], watch: ['trad', 'wc'], dummy: 'trad',
   load() {
+    const pair = v => Array.isArray(v) && styleOk(v[0]) && styleOk(v[1]);
     try {
       const v = JSON.parse((localStorage.getItem('modou.styles') || 'null').replace(/"ying"/g, '"wc"')) || {};
       if (v.solo && styleOk(v.solo.me)) this.solo.me = v.solo.me;
       if (v.solo && (v.solo.cpu === 'random' || styleOk(v.solo.cpu))) this.solo.cpu = v.solo.cpu;
-      if (Array.isArray(v.pvp) && styleOk(v.pvp[0]) && styleOk(v.pvp[1])) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.pvp)) this.pvp = v.pvp.slice(0, 2);
+      if (pair(v.watch)) this.watch = v.watch.slice(0, 2);
+      if (styleOk(v.dummy)) this.dummy = v.dummy;
+      else if (v.solo && styleOk(v.solo.cpu)) this.dummy = v.solo.cpu;     // 2.11 以前木桩跟着电脑的拳派
     } catch (e) {}
   },
-  save() { try { localStorage.setItem('modou.styles', JSON.stringify({ solo: this.solo, pvp: this.pvp })); } catch (e) {} },
+  save() { try { localStorage.setItem('modou.styles', JSON.stringify({ solo: this.solo, pvp: this.pvp, watch: this.watch, dummy: this.dummy })); } catch (e) {} },
 };
 Styles.load();
+// 2.11 准备页（ui.js）：这个模式上次选的 —— 场景、两边的颜色和拳派（人机：你、电脑；训练场：你、木桩的拳派；双人、观战：两边）、难度。
+// 人机、训练场、联机里「你」是同一份；场景人机、双人、观战共用一份（训练场固定练武场）。点「开始」才 savePicks 存
+function picksFor(mode) {
+  return {
+    mode, stage: Stage.pref, diff: game.diff,
+    looks: mode === 'pvp' ? Looks.pvp.slice() : mode === 'watch' ? Looks.watch.slice() : [Looks.solo.me, Looks.solo.cpu],
+    styles: mode === 'pvp' ? Styles.pvp.slice() : mode === 'watch' ? Styles.watch.slice() : mode === 'train' ? [Styles.solo.me, Styles.dummy] : [Styles.solo.me, Styles.solo.cpu],
+  };
+}
+function savePicks(p) {
+  const m = p.mode;
+  if (m !== 'train') Stage.setPref(p.stage);
+  if (m === 'pvp') { Looks.pvp = p.looks.slice(); Styles.pvp = p.styles.slice(); }
+  else if (m === 'watch') { Looks.watch = p.looks.slice(); Styles.watch = p.styles.slice(); }
+  else {
+    Looks.solo.me = p.looks[0]; Styles.solo.me = p.styles[0];
+    if (m === 'pve') { Looks.solo.cpu = p.looks[1]; Styles.solo.cpu = p.styles[1]; game.diff = p.diff; try { localStorage.setItem('modou.diff', p.diff); } catch (e) {} }
+    else Styles.dummy = p.styles[1];
+    if (Looks.solo.cpu === Looks.solo.me) Looks.solo.cpu = 'random';
+  }
+  Looks.save(); Styles.save();
+}
 const randStyle = () => STYLE_IDS[(Math.random() * STYLE_IDS.length) | 0];
 function cpuStyle() { return styleOk(Styles.solo.cpu) ? Styles.solo.cpu : randStyle(); }
 function applyStyles(mode) {
-  const st = mode === 'pvp' ? Styles.pvp : mode === 'online' ? [Net.styles.h, Net.styles.g] : mode === 'attract' ? [randStyle(), randStyle()]
-    : mode === 'train' ? [Styles.solo.me, styleOk(Styles.solo.cpu) ? Styles.solo.cpu : 'trad'] : [Styles.solo.me, cpuStyle()];
+  const st = mode === 'pvp' ? Styles.pvp : mode === 'watch' ? Styles.watch : mode === 'online' ? [Net.styles.h, Net.styles.g] : mode === 'attract' ? [randStyle(), randStyle()]
+    : mode === 'train' ? [Styles.solo.me, Styles.dummy] : [Styles.solo.me, cpuStyle()];
   F1.style = styleOk(st[0]) ? st[0] : STYLE_DEFAULT; F2.style = styleOk(st[1]) ? st[1] : STYLE_DEFAULT;
 }
 
@@ -10930,7 +11124,7 @@ const F2 = new Fighter(1, { look: 'indigo', x: START_X[1], facing: -1 });
 F1.opp = F2; F2.opp = F1;
 
 const game = {
-  mode: 'attract',          // attract（菜单背景电脑互打）| pve | pvp | online | train（训练场，2.0.2 以前叫打桩练习）
+  mode: 'attract',          // attract（菜单背景电脑互打）| pve | pvp | online | train（训练场，2.0.2 以前叫打桩练习）| watch（2.11 观战：两个终极电脑互打）
   phase: 'attract',         // attract | intro | fight | ko | roundEnd | over
   diff: 'normal', p: [F1, F2], brains: [null, null],
   frame: 0, freeze: 0, shake: 0, flash: 0, punch: 0, timeScale: 1,   // frame：走了几步（2.6 起一步 = DT 帧）；freeze：顿帧还剩几帧
@@ -10942,6 +11136,8 @@ const game = {
 // 2.1：「地狱」改叫「极难」（id 还是 hell）；2.2：五档都是两个字 —— 入门 / 简单 / 中等 / 困难 / 终极（ai.js LEVEL_NAME）
 const LABEL = Object.fromEntries(Object.entries(LEVEL_NAME).map(([id, n]) => [id, '电脑 · ' + n]));
 const Hooks = { matchStart() {}, matchOver() {} };   // ui.js 会覆盖
+// 2.11 观战（Jack：看两个终极电脑互打，学最高水平的电脑怎么打）：两边都是这一档；五局三胜、回合流程和人机一样，镜头两个人都在画面里（像双人）
+const WATCH_LEVEL = 'hell';
 
 function resetFighters() {
   F1.reset(START_X[0], 1); F2.reset(START_X[1], -1);
@@ -10949,7 +11145,7 @@ function resetFighters() {
   if (game.quiet) return;                      // 联机回滚重算时不动画面（特效、镜头）
   FX.length = 0; QI.length = 0; splats = [];
   game.shake = 0; game.flash = 0;
-  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = ZOOM; }
+  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = ZOOM; camLift = game.mode === 'train' ? TRAIN_LIFT : 0; }
 }
 function startAttract() {
   game.mode = 'attract'; game.phase = 'attract'; game.phaseT = 0; game.paused = false; game.endless = false;
@@ -10964,10 +11160,12 @@ function startMatch(mode) {
   game.endless = mode === 'pvp' || mode === 'train';
   const train = mode === 'train';
   F2.maxHp = train ? DUMMY_HP : MAX_HP; applyLooks(mode); applyStyles(mode);
-  game.brains = mode === 'pve' ? [null, makeBrain(F2, game.diff)] : train ? [null, new Dummy(F2, game.dummyMode)] : [null, null];
+  game.brains = mode === 'pve' ? [null, makeBrain(F2, game.diff)] : train ? [null, new Dummy(F2, game.dummyMode)]
+    : mode === 'watch' ? [makeBrain(F1, WATCH_LEVEL), makeBrain(F2, WATCH_LEVEL)] : [null, null];
   if (mode === 'pve') { F1.label = '玩家'; F2.label = LABEL[game.diff]; }
   else if (train) { F1.label = '练习'; F2.label = '木桩'; }
   else if (mode === 'pvp') { F1.label = '玩家一'; F2.label = '玩家二'; }
+  else if (mode === 'watch') { F1.label = LABEL[WATCH_LEVEL]; F2.label = LABEL[WATCH_LEVEL]; }
   else { const host = Net.role === 'host'; F1.label = host ? '你' : '对手'; F2.label = host ? '对手' : '你'; }
   game.wins = [0, 0]; game.round = 1; game.paused = false; game.frame = 0; FXREC.log.clear();
   for (const p of pads) p.clear();
@@ -11927,7 +12125,7 @@ async function unpackDesc(code) {
    教程（2.2 起两种排法：网页版 Guide 在游戏下面分页看，软件版 / 网页全屏用 Manual 面板，左边章节、右边文字 + 表格）
    2.10（Jack：以后会有更多更多的拳派进来，底下的教程得重新做，不要用括号往里塞）：按拳派分成一本一本的书 ——
    · 「通用」一本：键位、两个克制圈、规矩、身法和倒地，哪一派都一样的东西
-   · 每一派一本：上手、招式、连招、攻防、查表，页数和页名每一派自己定（咏春拳是连环拳、黐手 · 搭手）
+   · 每一派一本：上手、招式、连招、攻防、查表，页数和页名每一派自己定（咏春拳是连环拳、接招 · 搭手）
    · 先选书（通用 / 传统格斗 / 咏春拳 ……），再翻页；以后加拳派，在 GUIDE_BOOKS 里加一本就行，两种排法都从这里来
    · 文字不用括号塞补充：要补充的单独成句，或者放进表格的一格（测试会查）
    · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] [冲] 换成按键（按你自己设的单人键位显示）
@@ -12143,16 +12341,16 @@ function triHtml(a, nodes, mode) {
    通用：哪一派都一样的东西
    ============================================================ */
 const G_FIRST = [
-  '难度从「入门」开始，打得过再往上调。',
-  '菜单「拳派」里先挑一派。每一派五个键一样，打法不一样：上面选那一派的书看。',
+  '点「人机对战」进去，难度从「入门」开始，打得过再往上调。',
+  '进了模式先在准备页挑一派、挑颜色。每一派五个键一样，打法不一样：上面选那一派的书看。',
   '拳克腿、腿克重、重克拳：看他出什么，出克它的那一手。',
   '他老举着手挡，贴上去拿他，或者蹲下打下段。',
   '挡住他一下以后他还在收招，马上打回去。',
   '被打倒了，起身的时候按住方向滚开，别在原地站起来挨打。',
-  '训练场里能对着木桩随便练；破招练习一招一招教怎么破传统格斗的招。',
+  '训练场里能对着木桩随便练；破招练习一招一招教怎么破传统格斗的招。想看高手怎么打，点「观战」看两个终极电脑互打。',
 ];
 const G_RULES = [
-  ['胜负', `血量 ${MAX_HP}，五局三胜。人机、联机每回合 ${ROUND_FRAMES / 3600} 分钟；双人对战、训练场不限时。`],
+  ['胜负', `血量 ${MAX_HP}，五局三胜。人机、联机、观战每回合 ${ROUND_FRAMES / 3600} 分钟；双人对战、训练场不限时。`],
   ['交手', '两边同时打中，先比主系：克制的一方叫「克」，单方面打中。主系一样再比起手：克制的一方叫「压」，被压的吃全额、被打退，压人的只吃三成还能接着打。都一样就是拼招，各掉五成、互相震退。'],
   ['起手和主系', '单招两者一样；连招的起手是第一下，主系是最后一下。'],
   ['高低', '中段站着、蹲着都能挡；下段要蹲着挡；上段要站着挡。每一招是哪一段，看那一派的招式页。'],
@@ -12170,7 +12368,7 @@ const G_MULS = [
   ['冲势', '冲刺途中、刚冲完出的第一招', '×' + DASH_IN_MUL],
   ['空中招', '跳起来出的招', '×' + AIR_BONUS],
   ['挡后反击', '打在你刚挡住的那一招的收招里', `×${PUNISH_MUL}，击倒招 ×${PUNISH_KD_MUL}`],
-  ['失衡后打中', '卸开、拍开、耕开以后趁他失衡打', '×' + PARRY_MUL],
+  ['失衡后打中', '卸开、截住腿以后趁他失衡打', '×' + PARRY_MUL],
   ['破绽', '击倒招打空了，打它的收招', '×' + WHIFF_KD_MUL],
   ['截住闪身', '他钻过来的时候被短拳、腿、下段、擒拿打中', '×' + SLIP_CAUGHT_MUL],
   ['格挡', '挡住了只吃', Math.round(BLOCK_KEEP * 10) + ' 成'],
@@ -12178,7 +12376,7 @@ const G_MULS = [
 // 身法和倒地：图用传统格斗的动作（哪一派都一样的按法）
 const G_BODY = [
   { group: '身法', list: [
-    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害。刚按下挡的那一下每一派不一样：传统格斗是卸力，咏春拳是拍手。`,
+    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害。每一派的挡不一样：传统格斗刚按下挡的那一下是卸力；咏春拳按住挡再按键是接招，看咏春拳那本。`,
       more: ['下段要按住 [蹲] 挡，上段要站着挡', '背对着挡不住'] },
     { name: '冲刺', how: '双击 [前] 或 [后]', icon: { move: 'dash', ph: 0.3 }, desc: '贴地滑出一大步；前几帧谁也打不中你，能穿到对面身后。' },
     { name: '冲势', how: '冲刺里出招', icon: { move: 'dash', ph: 0.6 }, desc: `冲刺途中、刚冲完出的第一招 ×${DASH_IN_MUL}，被挡也压得住。` },
@@ -12287,17 +12485,18 @@ const WG_KEYS = [
   { name: '寸拳', how: '[重]，按住蓄劲', icon: { move: 'wCun' }, desc: '[前] + [重] 批肘，[后] + [重] 拐肘，[蹲] + [重] 沉肘。' },
   { name: '撑脚', how: '[踢]', icon: { move: 'wKick' }, desc: '近、快、伤害小。[蹲] + [踢] 截脚，专截地上的腿。' },
   { name: '拉手', how: '[拿]', icon: { move: 'grab', ph: 1.6 }, desc: '拉住打过来的手，扣住站着的人，都进搭手。[蹲] + [拿] 截腿。' },
-  { name: '黐手', how: '点一下 [挡] 拍手，按住 [挡] 黐手', icon: { pose: 'chiTan' }, desc: '黏住打过来的手脚就进搭手。蹲着按是耕手。' },
+  { name: '接招', how: '按住 [挡]，他打过来按 [拳] [重] [拿]', icon: { pose: 'cPat' }, desc: '按住挡是听劲。看他出什么来接：拳接拳、重接重、拿接腿。接住手上的招进搭手，截住腿他失衡。光按住挡不按键只是普通挡。' },
   { name: '搭手', how: '手搭上了以后', icon: { pose: 'tchBong' }, desc: '翻手型、从手型里打出去，或者拉手扣住手腕往下拽。' },
 ];
 const WG_TIPS = [
   '先练拍子：一串里的拳和踢都看你按得准不准，不看打没打中。头上写「抢拍」是按早了，「过拍」是按晚了。乱按全是空，按准了才打得满。',
-  '自己主动打一串伤害打八折；反打回去的、搭手里打出去的才疼。手腿短，别追着人打，等他来。',
-  '贴着他按住挡，等他出手：打过来就黏住，进搭手。',
+  '自己主动打一串伤害打七折；反打回去的、搭手里打出去的才疼。手腿短，别追着人打，等他来。',
+  '贴着他按住挡听劲，看他出什么：出拳按 [拳]、出重拳按 [重]、起腿按 [拿]。接住手上的招进搭手，截住腿他失衡，你先打。',
+  '接拳最难：短拳太快，只能猜着按；重拳、腿看得见再按。按错了、按早了挨的那一下更疼，读不准就光挡着。',
   '搭手里先翻一下手型再打，顺涨上去打得更疼。他前手打来翻摊、后手打来翻膀、腿打来翻伏，写「破」就是翻对了。',
   '翻手的那一拍会被人反拿：对面会反拿，就少翻，直接打。',
   '他挡着不动，拉手扣他手腕，再按 [蹲] 拉手跪马把他拽倒。',
-  '被他连招打的时候按住挡 + 方向黐手破连：前手打来按 [前]、后手打来按 [后]、腿和下段按 [蹲]。',
+  '被他连招打的时候也能接：按住挡，他下一下打过来之前按对键，接住了进搭手。这个窗口很窄，几个键一起乱按算按错。',
 ];
 const WG_MOVES = [
   { id: 'wJab', how: '[拳]', icon: { move: 'wJab' }, desc: '后手从问手的小臂上面直直冲出去，连环冲拳的第一拳。接着按拍子按就是一串，两只手轮流打，中间夹了踢也接着轮。收回来的拳在胸前绕一个小圆再打出去。' },
@@ -12326,7 +12525,7 @@ const WG_BEAT = [
   ['顺', `按在拍子上打中一下顺一级，最多 ${FLOW_MAX} 级。每一级伤害多 ${Math.round(FLOW_DMG * 100)}%、他的硬直更长、拍子更快。打空、被挡、挨打、停手就断了。`],
   ['头两下有空', '刚起手的第二下打中以后，他的硬直比拍子短一点：他一直按着挡，第三下就挡住了。第二下是踢也一样。连上三下、顺到两级以后就没有空。'],
   ['被挡', '一串被挡着的时候，每一下之间他都有一点空，推挡推得开。'],
-  ['反打', `拍开、耕开、截住以后，第一拳就顺 ${FLOW_COUNTER} 级，一整套跑不掉，伤害也比自己起手的高。`],
+  ['反打', `接招截住腿、截腿截住、压起身的时候，第一拳就顺 ${FLOW_COUNTER} 级，一整套跑不掉，伤害也比自己起手的高。接住手上的招是进搭手，看下一页。`],
   ['收势', '一串最多 8 下。连环拳里按 [重] 是寸拳收势；按 [踢] 是侧撑脚，再按 [踢] 连环撑、踩膝；打中了按 [拿] 是拉手扣住手腕。'],
 ];
 const WG_COMBOS = [
@@ -12344,16 +12543,25 @@ const WG_COMBOS = [
   ] },
 ];
 const WG_GUARD = [
-  { group: '挡', list: [
-    { name: '拍手', how: '刚按下 [挡]', icon: { pose: 'pat' }, desc: `按下挡的 ${PARRY_WIN} 帧里被他手上的招打到：拍开，他失衡，你先打。空中的拳脚也拍得开。`,
-      more: [`两次按挡要隔 ${PARRY_LOCK} 帧以上才拍得开，乱按没用`, '拍不到地上的腿和下段', '拍开以后按 [拳] 是后手冲拳，一手拍一手打'] },
-    { name: '耕手', how: '蹲着刚按下 [挡]', icon: { pose: 'cblock' }, desc: '耕开地上的腿和下段，他失衡。耕不到中段的拳。' },
-    { name: '黐手', how: '按住 [挡]', icon: { pose: 'roll1' }, desc: `黏住打过来的拳、掌、肘、腿：只吃 ${Math.round(BLOCK_KEEP * 10)} 成，他的招停住，进搭手。没按方向两只掌一里一外盘着；按着 [前] 是摊手往前压，按着 [后] 收回来护着。`,
-      more: ['黏不住擒拿、空中招、大招', '站着黏不住下段，蹲着黏得住', '按着挡再按方向是黐着手慢慢走'] },
-    { name: '黐手破连', how: '挨打时按住 [挡] + 方向', icon: { pose: 'chiBong' }, desc: `他连招的时候，下一下是前手打来按 [前]、后手打来按 [后]、腿和下段按 [蹲]：黏住他、进搭手，顺 ${FLOW_COUNTER} 级。`,
-      more: [`按错了那一下伤害 ×${WC_WRONG_MUL}`, '顺到三级的连环冲拳太快，黏不住'] },
-    { name: '截打', how: '挡着按 [拳]', icon: { move: 'shove' }, desc: '从手上直接一掌截出去，出手前几帧打不中你，接着按拍子连。' },
+  { group: '听劲', list: [
+    { name: '听劲', how: '按住 [挡]', icon: { pose: 'block' }, desc: `问手、护手往胸前收一点，不动。光举着不按键就是普通挡，只吃 ${Math.round(BLOCK_KEEP * 10)} 成，没有别的收益。`,
+      more: ['按着挡再按方向是听着劲慢慢走', '下段要蹲着挡'] },
     { name: '转马', how: '按住 [挡]，朝对手双击 [前]', icon: { move: 'slip', ph: 0.3 }, desc: '只躲得过重拳一类，躲过了自动转马掌，他背对着你踉跄。' },
+  ] },
+  { group: '接招：按住挡再按键，拳接拳、重接重、拿接腿', list: [
+    { name: '拍手', how: '按住 [挡] 再按 [拳]', icon: { pose: 'cPat' }, desc: '他前手打来的拳：前手一掌拍在他胳膊上往里带，后手竖掌跟着护住。接住了进搭手，你先手。',
+      more: [`按下去以后 ${WC_CATCH_WIN} 帧里打到才接得住，之后是收手`, `按错了键、按早了在收手的时候挨打：那一下 ×${WC_WRONG_MUL}`] },
+    { name: '摊手', how: '按住 [挡] 再按 [拳]', icon: { pose: 'cTan' }, desc: '他后手打来的拳：前手往前上方摊出去把拳托开，后手竖掌护在肘弯上。接住了进搭手，手型就是摊。' },
+    { name: '膀手转马', how: '按住 [挡] 再按 [重]', icon: { pose: 'cBong' }, desc: '他的重拳、掌、肘：脚跟一拧转马，膀手吃住劲往外带，后手在上面拦着。接住了进搭手，手型就是膀。',
+      more: [`重、拿按下去以后 ${WC_CATCH_WIN_H} 帧里接得住`] },
+    { name: '按手', how: '按住 [挡] 再按 [拿]', icon: { pose: 'cGum' }, desc: '他中段、上段的腿：上面一只手竖掌拦着，下面一只手往前下方把腿按下去。他单脚站不稳，失衡得比被卸力还久，你先打。',
+      more: ['跳起来打过来的拳脚也接得住，他在空中失衡掉下来', '站着接不住地上的腿'] },
+    { name: '耕手', how: '蹲着按住 [挡] 再按 [拿]', icon: { pose: 'cGaun' }, desc: '他地上的腿、扫堂腿：一只手护在脸前，一只手往下往外耕开，他失衡。耕不到中段的拳。' },
+    { name: '挨打时接', how: '挨打时按住 [挡] 再按键', icon: { pose: 'cTan' }, desc: `他连招的时候，下一下打过来之前 ${WC_CATCH_HIT} 帧里按对键：接住，进搭手，顺 ${FLOW_COUNTER} 级。`,
+      more: [`按错了、几个键一起乱按，那一下 ×${WC_WRONG_MUL}`, '顺到三级的连环冲拳太快，接不住'] },
+  ] },
+  { group: '接不住的', list: [
+    { name: '擒拿、下段', how: '只能挡、只能躲', icon: { pose: 'cblock' }, desc: '擒拿、下段的拳和肘、坠山、大招、推挡都接不住。打咏春拳就多打下段、多抓，这是它的弱点。' },
   ] },
 ];
 // 搭手：先手那一方按什么
@@ -12374,19 +12582,19 @@ const WG_FOLLOW = [
 ];
 const WG_LAP = { name: '拉手跪马', how: '扣住手腕以后按 [蹲]', icon: { move: 'tDrag', ph: 0.5 }, desc: '扣着他的手腕往回往下一拽，自己退一步沉身跪马：他往前扑倒，脸朝下趴在你面前，那只手还在你手里。' };
 const WG_VS = [
-  ['咏春拳打传统格斗', '他的重拳、腿慢：按住挡黐住，等他打过来，黏住了在手上做文章。他老举着手挡，就拉手扣他手腕，接拉手跪马。他贴身连拳，挨了第一下就按住挡 + 方向黐手破连。'],
-  ['传统格斗打咏春拳', '他按着挡的时候别乱出拳脚，会被黏住。擒拿抓得住黐手的人，站着的黐手黏不住下段。被他黏住了，在他翻手那一拍里按 [拿] 反拿；他连环冲拳刚起手，挨了两拳马上按住挡，第三拳就挡住了。'],
+  ['咏春拳打传统格斗', '他的重拳、腿慢，看得见：按住挡听劲，他出重拳按 [重]、起腿按 [拿]，接住了在手上做文章。他老举着手挡，就拉手扣他手腕，接拉手跪马。他贴身连拳，挨了第一下按住挡，下一拳打过来之前按 [拳] 接住。'],
+  ['传统格斗打咏春拳', '他按住挡的时候别老出同一招，按对键就被接住。擒拿抓得住按着挡的人，下段的拳接不住，扫堂腿他要蹲着才接得住；在他够不着的地方空挥一拳骗他接，打他收手的那一下。被他黏住了，在他翻手那一拍里按 [拿] 反拿；他连环冲拳刚起手，挨了两拳马上按住挡，第三拳就挡住了。'],
 ];
 const WG_MULS = [
   ['顺', '按在拍子上打中一下涨一级，每一级', `+${Math.round(FLOW_DMG * 100)}%`],
-  ['自己起手', '站着主动打出去的一串，每一下', '×' + WC_NEUTRAL_MUL],
-  ['反打', '拍开、耕开、压起身以后的一串，每一下', '×' + WC_COUNTER_MUL],
+  ['自己起手', '站着主动打出去的一串、寸拳和肘，每一下', '×' + WC_NEUTRAL_MUL],
+  ['反打', '截住腿、截腿截住、压起身以后的一串，每一下', '×' + WC_COUNTER_MUL],
   ['搭手', '搭手里打出去的一串，每一下', '×' + WC_TOUCH_MUL],
   ['寸劲蓄满', '寸拳按住蓄满劲', '×1.6'],
-  ['黐手破连按错', '挨打时按错了方向，那一下', '×' + WC_WRONG_MUL],
+  ['接错', '按错了键、按早了在收手的时候挨打，那一下', '×' + WC_WRONG_MUL],
 ];
 const WG_FRAMES = ['wJab', 'wJabR', 'wPalmF', 'wCunEnd', 'wBiu', 'wLowPalm', 'wCun', 'wPai', 'wGwai', 'wJum', 'wKick', 'wLowKick', 'wSideKick', 'wKick2', 'wStompKnee', 'wTurnKick',
-  'grab', 'lowGrab', 'tChung', 'tTan', 'tBong', 'tFook', 'tPai', 'tKick', 'tLatChung', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'slipElbow', 'super'];
+  'grab', 'lowGrab', 'tChung', 'tTan', 'tBong', 'tFook', 'tPai', 'tKick', 'tLatChung', 'airJab', 'airHeavy', 'airKick', 'dive', 'slipElbow', 'super'];
 const wcDmg = (k, d) => d.kind === 'grab' ? (k === 'grab' ? `0~${WC_TRAP_DMG}` : '0') : k === 'super' ? `${d.dmg} + 连环` : undefined;
 
 /* ============================================================
@@ -12410,7 +12618,7 @@ const GUIDE_BOOKS = [
         <article class="g-card keys"><h3>键位<small>人机 · 联机 · 训练场</small></h3><div class="krows">${keys}<div class="kr"><span class="kn">暂停</span><span class="kk"><kbd>Esc</kbd><i class="or">/</i><kbd>P</kbd></span></div></div>
           <p class="g-note">菜单「键位设置」里能改；双人对战用另外两套键位，见下面。</p>
           <details class="g-pvp"><summary>双人对战的键位：两个人一个键盘</summary>${Guide.pvpKeys()}</details></article>
-        <article class="g-card schools"><h3>拳派<small>菜单「拳派」里换</small></h3><ul class="g-books-list">${STYLE_IDS.map(id => `<li>${iconSlot({ style: id, pose: 'stance' }, 64, 72)}<div><b>${STYLES[id].name}</b><span>${guideStyleLine(id)}</span>
+        <article class="g-card schools"><h3>拳派<small>进了模式在准备页里选</small></h3><ul class="g-books-list">${STYLE_IDS.map(id => `<li>${iconSlot({ style: id, pose: 'stance' }, 64, 72)}<div><b>${STYLES[id].name}</b><span>${guideStyleLine(id)}</span>
           <button type="button" class="g-link" data-book="${id}">看${STYLES[id].name}的书 →</button></div></li>`).join('')}</ul></article>
         <article class="g-card tips"><h3>第一局怎么打</h3>${GX.steps(G_FIRST, mode)}</article>
       </div>`;
@@ -12467,11 +12675,11 @@ const GUIDE_BOOKS = [
     { id: 'combos', name: '连环拳', body(mode) {
       return GX.pair(['拍子和顺', GX.dl(WG_BEAT, mode)], ['自己的加成', GX.muls(WG_MULS, mode)], mode) + GX.combos(WG_COMBOS, 'wc', mode);
     } },
-    { id: 'tech', name: '黐手 · 搭手', body(mode) {
+    { id: 'tech', name: '接招 · 搭手', body(mode) {
       const touch = mode === 'man' ? `<table class="mn-t"><thead><tr><th>按</th><th>做什么</th><th>说明</th></tr></thead><tbody>${WG_TOUCH.map(([a, b, c]) => `<tr><td class="how">${gText(a)}</td><th>${b}</th><td>${gText(c)}</td></tr>`).join('')}</tbody></table>`
         : `<table class="g-mul touch"><tbody>${WG_TOUCH.map(([a, b, c]) => `<tr><td class="how">${gText(a)}</td><th>${b}</th><td>${gText(c)}</td></tr>`).join('')}</tbody></table>`;
       return GX.tech(WG_GUARD, 'wc', mode) +
-        GX.sec('搭手：手搭上了', GX.p('黐手黏住、标指挑开、拉手拉住、黐手破连，都进搭手：先手那一方手边一圈墨线，转完之前要按。手型在圈里写着。', mode) + touch, mode, '先手按什么') +
+        GX.sec('搭手：手搭上了', GX.p('接招接住他手上的招、标指挑开、拉手拉住，都进搭手：先手那一方手边一圈墨线，转完之前要按。手型在圈里写着。', mode) + touch, mode, '先手按什么') +
         GX.tech([{ group: '被黏住的一方', list: WG_FOLLOW }, { group: '扣住手腕以后', list: [WG_LAP] }], 'wc', mode);
     } },
     { id: 'charts', name: '查表', body(mode) {
@@ -12480,7 +12688,7 @@ const GUIDE_BOOKS = [
     } },
   ] },
 ];
-// 拳派一句话（菜单拳派面板里的那一句）
+// 拳派一句话（准备页拳派卡、教程「通用 · 上手」里的那一句）
 const guideStyleLine = id => (typeof STYLE_LINE !== 'undefined' && STYLE_LINE[id]) || '';
 const bookOf = id => GUIDE_BOOKS.find(b => b.id === id) || GUIDE_BOOKS[0];
 
@@ -12622,14 +12830,14 @@ const Manual = {
 
 const $ = id => document.getElementById(id);
 const menu = $('menu'), pauseEl = $('pause'), resultEl = $('result'), onlineEl = $('online'), keysEl = $('keysPanel');
-const lookEl = $('lookPanel'), pvpEl = $('pvpPanel'), setEl = $('setPanel'), stageEl = $('stagePanel'), styleEl = $('stylePanel');
+const prepEl = $('prepPanel'), setEl = $('setPanel');            // 2.11 准备页（人机 / 双人 / 观战 / 训练场选场景、颜色、拳派）
 const drillEl = $('drillPanel'), introEl = $('drillIntro'), passEl = $('drillPass');   // 2.1 破招练习：选课、说明；2.2 过关
 const btnPause = $('btnPause'), btnSound = $('btnSound');
 const Desk = window.modouDesktop || null;          // 2.1 软件版（Steam）才有这个对象（desktop/preload.js 给的）；网页版是 null。见下面「软件版」
 
 function showOverlay(el) {
-  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, styleEl, drillEl, introEl, passEl]) o.hidden = o !== el;
-  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, styleEl].includes(el));
+  for (const o of [menu, pauseEl, resultEl, onlineEl, keysEl, prepEl, setEl, drillEl, introEl, passEl]) o.hidden = o !== el;
+  $('stage').classList.toggle('playing', ![menu, onlineEl, keysEl, prepEl, setEl].includes(el));
   const t = el && el.querySelector('.ibtn:not([hidden])');
   if (t) setTimeout(() => t.focus({ preventScroll: true }), 0);
 }
@@ -12680,14 +12888,14 @@ Hooks.matchOver = () => {
     `<div><b>${st[0].escapes} / ${st[1].escapes}</b>挣脱 ${nm}</div>`;
   const guest = game.mode === 'online' && Net.role === 'guest';
   $('btnAgain').hidden = guest; $('resWait').hidden = !guest;
+  $('btnAgain').textContent = game.mode === 'watch' ? '再来一场' : '再战一局';      // 2.11 观战：两边的选择留着，再看一场
   btnPause.disabled = true;
   MouseLock.sync();
   Ach.matchOver(wi);
   setTimeout(() => { if (game.phase === 'over') showOverlay(resultEl); }, 900);
 };
-/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字）：人机对战按钮旁边一排五格。
-   2.3（Jack：底下不要点，也不要介绍）：每格就是两个字，和人机对战按钮一样高 */
-$('lvlSeg').innerHTML = LEVEL_IDS.map(id => `<button type="button" data-d="${id}" aria-pressed="false">${LEVEL_NAME[id]}</button>`).join('');
+/* 2.2 难度（Jack：入门 / 简单 / 中等 / 困难 / 终极，每个两个字）。2.3（Jack：底下不要点，也不要介绍）：每格就是两个字。
+   2.11 从菜单挪进人机对战的准备页（电脑那一块） */
 function setDiff(d) {
   game.diff = d;
   for (const b of document.querySelectorAll('[data-d]')) b.setAttribute('aria-pressed', String(b.dataset.d === d));
@@ -12703,9 +12911,11 @@ function restart() {
   else startMatch(game.mode);
 }
 
-$('btnPve').addEventListener('click', () => startMatch('pve'));
-$('btnPvp').addEventListener('click', () => openPvp());
-$('btnTrain').addEventListener('click', () => startMatch('train'));
+// 2.11 主菜单只留模式：点进去先到这个模式的准备页（联机还是联机面板，连上以后在大厅里选）
+$('btnPve').addEventListener('click', () => openPrep('pve'));
+$('btnPvp').addEventListener('click', () => openPrep('pvp'));
+$('btnWatch').addEventListener('click', () => openPrep('watch'));
+$('btnTrain').addEventListener('click', () => openPrep('train'));
 /* ---------- 训练场工具条（2.0.2 以前叫打桩练习） ---------- */
 function setDummy(m) {
   game.dummyMode = m;
@@ -12833,7 +13043,6 @@ function drillEsc() {
   if (!drillEl.hidden) { showOverlay(null); game.paused = false; drillBar(); MouseLock.sync(); return true; }
   return false;
 }
-for (const b of document.querySelectorAll('[data-d]')) b.addEventListener('click', () => setDiff(b.dataset.d));   // 1.8.0 修：以前训练场工具条的按钮也会触发换难度
 $('btnResume').addEventListener('click', () => setPaused(false));
 $('btnPauseDrill').addEventListener('click', () => { if (Drill.cur) openIntro(Drill.cur.def.id); });
 $('btnRestart').addEventListener('click', () => { game.paused = false; restart(); });
@@ -12993,7 +13202,7 @@ function renderNetStyles() {
 }
 $('netStyles').addEventListener('click', e => {
   const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return;
-  if (Net.pickStyle(b.dataset.style)) { Styles.solo.me = b.dataset.style; Styles.save(); showStyleName(); renderNetStyles(); }
+  if (Net.pickStyle(b.dataset.style)) { Styles.solo.me = b.dataset.style; Styles.save(); renderNetStyles(); }
 });
 // 联机选色：自己的亮着，对方占着的变暗点不了；房主说了算（net.js settleLook）
 function renderNetLooks() {
@@ -13136,7 +13345,7 @@ $('btnPauseKeys').addEventListener('click', () => openKeys('pause'));
 // 教程里的键位（2.2 起在 guide.js）：改了键位就重画，显示现在真正在用的键
 function showKeyCards() { Guide.refresh(); }
 
-/* ---------- 人物颜色（1.7.0）：单人设置、双人开打前选、联机大厅选 ---------- */
+/* ---------- 人物颜色（1.7.0）：准备页里选（2.11 以前在菜单「人物颜色」）、联机大厅选 ---------- */
 // 色块：一个小火柴人，身体是颜色；头带、发带、腰带是身体色提亮的那一版（2.0.2 腰带是箍在腰上的一道）
 function figSvg(p) {
   const band = palOf(p.color).band;
@@ -13159,27 +13368,11 @@ function setMyLook(id) {
   if (Looks.solo.cpu === id) Looks.solo.cpu = 'random';
   Looks.save();
 }
-// 单人：菜单「人物颜色」。点了马上记住；菜单背景里两个人就是预览
-function renderLookPanel() {
-  const me = Looks.solo.me;
-  $('soloMe').innerHTML = PALETTE.map(p => swatch(p, { on: p.id === me })).join('');
-  $('soloCpu').innerHTML = randSwatch(Looks.solo.cpu === 'random') + PALETTE.map(p => swatch(p, { on: p.id === Looks.solo.cpu, taken: p.id === me ? '你' : '' })).join('');
-}
-function previewSolo() { if (game.mode === 'attract') { F1.setLook(Looks.solo.me); F2.setLook(Looks.solo.cpu === 'random' ? (F2.look !== Looks.solo.me ? F2.look : cpuLook()) : Looks.solo.cpu); } }
-function closeLooks() { showOverlay(menu); }
-$('btnLooks').addEventListener('click', () => { renderLookPanel(); previewSolo(); showOverlay(lookEl); });
-$('btnLooksDone').addEventListener('click', closeLooks);
-$('soloMe').addEventListener('click', e => { const b = e.target.closest('.sw'); if (!b || b.disabled) return; setMyLook(b.dataset.id); renderLookPanel(); previewSolo(); });
-$('soloCpu').addEventListener('click', e => {
-  const b = e.target.closest('.sw'); if (!b || b.disabled) return;
-  Looks.solo.cpu = b.dataset.id; Looks.save(); renderLookPanel();
-  if (game.mode === 'attract') F2.setLook(b.dataset.id === 'random' ? cpuLook() : b.dataset.id);
-});
-/* ---------- 2.9 拳派：菜单「拳派」里选自己的、电脑的（人机、训练场、联机用），双人开打前两边选，联机大厅各选各的 ----------
+/* ---------- 2.9 拳派：准备页里选（2.11 以前在菜单「拳派」），联机大厅各选各的 ----------
    每一派一张卡：架势小图（用这一派自己的架势画）+ 名字 + 一句话 */
 const STYLE_LINE = {
   trad: '大开大合：重拳霸体、腿长、摔投',
-  wc: '按拍子连环冲拳，手搭上了在手上做文章',
+  wc: '按拍子连环冲拳，按住挡接招，手搭上了在手上做文章',
 };
 function styleCard(id, o) {
   const sm = !!o.sm, w = sm ? 52 : 92;
@@ -13192,35 +13385,15 @@ function styleRow(el, cur, o) {
   $(el).innerHTML = (o.rand ? styleCard('random', { on: cur === 'random', sm: o.sm }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === cur, sm: o.sm })).join('');
   PoseIcon.fill($(el));
 }
-function showStyleName() { $('styleName').textContent = STYLES[Styles.solo.me].name; }
-function renderStylePanel() { styleRow('styleMe', Styles.solo.me); styleRow('styleCpu', Styles.solo.cpu, { rand: true }); }
-// 菜单背景里两个人就是预览：你选的拳派、电脑选的（随机就随便一派）
-function previewStyles() {
-  if (game.mode !== 'attract') return;
-  F1.style = Styles.solo.me; if (styleOk(Styles.solo.cpu)) F2.style = Styles.solo.cpu;
-  resetFighters();
-}
-$('btnStyle').addEventListener('click', () => { renderStylePanel(); previewStyles(); showOverlay(styleEl); });
-$('btnStyleDone').addEventListener('click', () => showOverlay(menu));
-$('styleMe').addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return; Styles.solo.me = b.dataset.style; Styles.save(); renderStylePanel(); showStyleName(); previewStyles(); });
-$('styleCpu').addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b) return; Styles.solo.cpu = b.dataset.style; Styles.save(); renderStylePanel(); previewStyles(); });
-showStyleName();
 
-/* ---------- 场景（2.0）：菜单「场景」里选（人机、双人用），双人开打前、联机大厅（房主选）也能换 ---------- */
-// 一排场景按钮：每个按钮一张小图（远景 + 中景缩小画的）+ 名字。sm = 小一号（双人、联机面板里）
+/* ---------- 场景（2.0）：准备页里选（2.11 以前在菜单「场景」），联机大厅房主选 ---------- */
+// 一排场景按钮：每个按钮一张小图（远景 + 中景缩小画的）+ 名字。sm = 小一号
 function stageButtons(cur, o) {
   o = o || {};
   const tw = o.sm ? 120 : 200, th = o.sm ? 60 : 100, k = Math.min(2, window.devicePixelRatio || 1);
   return STAGE_PICK.map(id => `<button type="button" class="stg" data-stage="${id}" aria-pressed="${id === cur}"${o.lock ? ' disabled' : ''}>` +
     `<img alt="" width="${tw}" height="${th}" src="${Stage.thumb(id, Math.round(tw * k), Math.round(th * k))}"><span>${STAGES[id].name}</span></button>`).join('');
 }
-function showStageName() { $('stageName').textContent = STAGES[Stage.pref].name; }
-function pickStage(id) { Stage.setPref(id); showStageName(); renderStagePanel(); if (!pvpEl.hidden) renderPvpStages(); }
-function renderStagePanel() { $('stageList').innerHTML = stageButtons(Stage.pref); }
-function renderPvpStages() { $('pvpStages').innerHTML = stageButtons(Stage.pref, { sm: true }); }
-$('btnStage').addEventListener('click', () => { renderStagePanel(); showOverlay(stageEl); });
-$('btnStageDone').addEventListener('click', () => showOverlay(menu));
-for (const id of ['stageList', 'pvpStages']) $(id).addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled) pickStage(b.dataset.stage); });
 // 联机大厅：房主点了算；加入方只看得到房主选的哪张
 function renderNetStages() {
   const host = Net.role === 'host';
@@ -13228,34 +13401,116 @@ function renderNetStages() {
   $('netStages').innerHTML = stageButtons(Stage.online, { sm: true, lock: !host });
 }
 $('netStages').addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled && Net.pickStage(b.dataset.stage)) renderNetStages(); });
-showStageName();
 
-// 双人：开打前两边选（A/D、←/→ 也能换）。对方选了的变暗
-let pvpDraft = null, pvpStyleDraft = null;
-function openPvp() { pvpDraft = Looks.pvp.slice(); pvpStyleDraft = Styles.pvp.slice(); renderPvp(); renderPvpStages(); showOverlay(pvpEl); }
-function renderPvp() {
-  for (const i of [0, 1]) $('pvpLook' + i).innerHTML = PALETTE.map(p => swatch(p, { on: p.id === pvpDraft[i], taken: p.id === pvpDraft[1 - i] ? (i ? '玩家一' : '玩家二') : '' })).join('');
-  for (const i of [0, 1]) styleRow('pvpStyle' + i, pvpStyleDraft[i], { sm: true });
-  if (game.mode === 'attract') { F1.setLook(pvpDraft[0]); F2.setLook(pvpDraft[1]); }
+/* ---------- 2.11 准备页（Jack：主菜单只留模式，颜色 / 拳派 / 场景都进了模式再选）----------
+   人机、双人、观战、训练场共用一张：上面一排场景（训练场固定练武场，不用选），下面两边各一块 —— 小人（这一派的架势、选的颜色）、拳派卡、颜色格；
+   人机的电脑那一块多一排难度（颜色、拳派都能选「随机」）；训练场右边是木桩（只选拳派）。
+   选的先记在草稿里，菜单后面的两个人、背景跟着换（预览）；点「开始」才存（localStorage 照旧 modou.stage / modou.styles / modou.looks / modou.diff），下次进来默认就是上次的。
+   键盘：左边 A / D 换颜色、W / S 换拳派，右边 ← / → 换颜色、↑ / ↓ 换拳派；Enter 开始，Esc 返回 */
+const PREP = {
+  pve: { title: '人机对战', who: ['你', '电脑'], rand: true, diff: true },
+  pvp: { title: '双人对战', who: ['玩家一', '玩家二'] },
+  watch: { title: '观战', who: ['左边', '右边'], note: '两边都是终极难度的电脑，五局三胜。看它怎么连、怎么破，打完能再来一场。' },
+  train: { title: '训练场', who: ['你', '木桩'], dummy: true },
+};
+let prep = null;              // 草稿：{ mode, stage, looks: [左, 右], styles: [左, 右], diff }
+function openPrep(mode) { prep = picksFor(mode); renderPrep(); showOverlay(prepEl); previewPrep(true); }   // 默认是上次选的（game.js picksFor）
+// 颜色格：两边不能一样（人机的电脑可以「随机」，随机不会和你撞色）
+function prepLooks(i) {
+  const P = PREP[prep.mode], my = prep.looks[i], th = prep.looks[1 - i];
+  const taken = id => id === th && !(P.rand && i === 0 && th === 'random') ? prep.who[1 - i] : '';
+  return (P.rand && i === 1 ? randSwatch(my === 'random') : '') + PALETTE.map(p => swatch(p, { on: p.id === my, taken: taken(p.id) })).join('');
 }
-function cyclePvpStyle(i, d) { const k = STYLE_IDS.indexOf(pvpStyleDraft[i]); pvpStyleDraft[i] = STYLE_IDS[(k + d + STYLE_IDS.length) % STYLE_IDS.length]; renderPvp(); }
-function cyclePvp(i, d) {
-  let k = PALETTE.findIndex(p => p.id === pvpDraft[i]);
-  do k = (k + d + PALETTE.length) % PALETTE.length; while (PALETTE[k].id === pvpDraft[1 - i]);
-  pvpDraft[i] = PALETTE[k].id; renderPvp();
+function prepFace(i) {
+  const st = prep.styles[i], lk = prep.looks[i], col = lk === 'random' ? '#9a9b94' : lookOf(lk).color;
+  return iconSlot({ pose: 'stance', style: styleOk(st) ? st : STYLE_DEFAULT }, 84, 96, 'pface' + (styleOk(st) ? '' : ' rand'), { flip: i === 1, col });
 }
-function pvpKey(e) {
-  const k = { KeyA: [0, -1], KeyD: [0, 1], ArrowLeft: [1, -1], ArrowRight: [1, 1] }[e.code];
-  const ks = { KeyW: [0, -1], KeyS: [0, 1], ArrowUp: [1, -1], ArrowDown: [1, 1] }[e.code];   // 2.9 换拳派
-  if (k) { e.preventDefault(); cyclePvp(k[0], k[1]); }
-  else if (ks) { e.preventDefault(); cyclePvpStyle(ks[0], ks[1]); }
-  else if (e.code === 'Escape') closePvp();
+function renderPrep() {
+  const P = PREP[prep.mode], m = prep.mode;
+  prep.who = P.who;
+  $('prepTitle').textContent = P.title;
+  $('prepStageBox').hidden = m === 'train'; $('prepStageFix').hidden = m !== 'train';
+  if (m !== 'train') $('prepStages').innerHTML = stageButtons(prep.stage, { sm: true });
+  const side = i => {
+    const st = prep.styles[i], lk = prep.looks[i], dummy = P.dummy && i === 1;
+    const name = lk === 'random' || dummy ? (dummy ? '' : '随机') : lookOf(lk).name, stName = styleOk(st) ? STYLES[st].name : '随机拳派';
+    return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div></div>` +
+      `<p class="step">${dummy ? '木桩的拳派' : '拳派'}</p><div class="styles sm" data-ps="${i}"></div>` +
+      (dummy ? '<p class="hint">木桩站着、蹲着、挡着，进去以后下面的工具条上换。</p>' : `<p class="step">颜色</p><div class="swatches sm" data-pl="${i}">${prepLooks(i)}</div>`) +
+      (P.diff && i === 1 ? `<p class="step">难度</p><div class="lvl sm" role="group" aria-label="电脑难度">${LEVEL_IDS.map(id => `<button type="button" data-pd="${id}" aria-pressed="${id === prep.diff}">${LEVEL_NAME[id]}</button>`).join('')}</div>` : '') +
+      '</section>';
+  };
+  $('prepSides').innerHTML = side(0) + side(1) + (P.note ? `<p class="hint prep-note">${P.note}</p>` : '');
+  for (const i of [0, 1]) {
+    const el = $('prepSides').querySelector(`[data-ps="${i}"]`);
+    el.innerHTML = (P.rand && i === 1 ? styleCard('random', { on: prep.styles[i] === 'random', sm: true }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === prep.styles[i], sm: true })).join('');
+  }
+  PoseIcon.fill($('prepSides'));
+  $('prepKeys').innerHTML = P.dummy ? '<kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换你的颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换你的拳派，<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换木桩的拳派，也可以直接点；Enter 开始'
+    : `${P.who[0]}按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换拳派，${P.who[1]}按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd>，也可以直接点；Enter 开始`;
 }
-function closePvp() { showOverlay(menu); applyLooks('attract'); }
-for (const i of [0, 1]) $('pvpLook' + i).addEventListener('click', e => { const b = e.target.closest('.sw'); if (!b || b.disabled) return; pvpDraft[i] = b.dataset.id; renderPvp(); });
-for (const i of [0, 1]) $('pvpStyle' + i).addEventListener('click', e => { const b = e.target.closest('.styl'); if (!b || !styleOk(b.dataset.style)) return; pvpStyleDraft[i] = b.dataset.style; renderPvp(); });
-$('btnPvpGo').addEventListener('click', () => { Looks.pvp = pvpDraft.slice(); Looks.save(); Styles.pvp = pvpStyleDraft.slice(); Styles.save(); showLooks(); startMatch('pvp'); });
-$('btnPvpBack').addEventListener('click', closePvp);
+// 菜单后面的两个人就是预览：选的颜色、拳派（随机的那边随便一个），背景是选的场景（训练场是练武场）
+function previewPrep(first) {
+  if (game.mode !== 'attract' || !prep) return;
+  const m = prep.mode, [a, b] = prep.looks;
+  Stage.peek = m === 'train' ? 'yard' : prep.stage;
+  F1.setLook(a === 'random' ? cpuLook() : a);
+  F2.setLook(m === 'train' ? cpuLook() : b === 'random' ? (F2.look !== a ? F2.look : PALETTE.find(p => p.id !== a).id) : b);
+  const s0 = prep.styles[0], s1 = styleOk(prep.styles[1]) ? prep.styles[1] : F2.style;
+  if (first || F1.style !== s0 || F2.style !== s1) { F1.style = s0; F2.style = s1; resetFighters(); }
+}
+function closePrep() { prep = null; Stage.peek = null; showOverlay(menu); applyLooks('attract'); }
+function prepPick(i, kind, id) {
+  if (!prep) return;
+  if (kind === 'look') {
+    if (id !== 'random' && id === prep.looks[1 - i] && !(prep.mode === 'pve' && i === 0)) return;
+    prep.looks[i] = id;
+    if (prep.mode === 'pve' && i === 0 && prep.looks[1] === id) prep.looks[1] = 'random';   // 你换成电脑的颜色：电脑改随机
+  } else if (kind === 'style') prep.styles[i] = id;
+  else if (kind === 'stage') prep.stage = id;
+  else if (kind === 'diff') prep.diff = id;
+  renderPrep(); previewPrep();
+}
+function prepCycle(i, kind, d) {
+  const P = PREP[prep.mode];
+  if (kind === 'look') {
+    if (P.dummy && i === 1) return;
+    const ids = (P.rand && i === 1 ? ['random'] : []).concat(PALETTE.map(p => p.id)).filter(id => id === 'random' || id !== prep.looks[1 - i] || (prep.mode === 'pve' && i === 0));
+    const k = ids.indexOf(prep.looks[i]);
+    prepPick(i, 'look', ids[(k + d + ids.length) % ids.length]);
+  } else {
+    const ids = (P.rand && i === 1 ? ['random'] : []).concat(STYLE_IDS), k = ids.indexOf(prep.styles[i]);
+    prepPick(i, 'style', ids[(k + d + ids.length) % ids.length]);
+  }
+}
+function prepGo() {
+  if (!prep) return;
+  const m = prep.mode;
+  savePicks(prep); if (m === 'pve') setDiff(prep.diff);       // 点「开始」才存（game.js savePicks）
+  showLooks();
+  prep = null; Stage.peek = null;
+  startMatch(m);
+}
+function prepKey(e) {
+  const k = { KeyA: [0, 'look', -1], KeyD: [0, 'look', 1], KeyW: [0, 'style', -1], KeyS: [0, 'style', 1],
+    ArrowLeft: [1, 'look', -1], ArrowRight: [1, 'look', 1], ArrowUp: [1, 'style', -1], ArrowDown: [1, 'style', 1] }[e.code];
+  if (k && prep) {
+    e.preventDefault();
+    if (!(PREP[prep.mode].dummy && k[0] === 1 && k[1] === 'look')) prepCycle(k[0], k[1], k[2]);   // 训练场：← → 不用（木桩不选颜色），↑ ↓ 换木桩的拳派
+  }
+  else if (e.code === 'Escape' && !e.repeat) closePrep();
+  else if ((e.code === 'Enter' || e.code === 'NumpadEnter') && !e.repeat && !(e.target && e.target.tagName === 'BUTTON' && e.target !== $('btnPrepGo'))) { e.preventDefault(); prepGo(); }
+}
+$('prepStages').addEventListener('click', e => { const b = e.target.closest('.stg'); if (b && !b.disabled) prepPick(0, 'stage', b.dataset.stage); });
+$('prepSides').addEventListener('click', e => {
+  const sd = e.target.closest('[data-side]'); if (!sd) return;
+  const i = +sd.dataset.side, sw = e.target.closest('.sw'), st = e.target.closest('.styl'), lv = e.target.closest('[data-pd]');
+  if (sw && !sw.disabled) prepPick(i, 'look', sw.dataset.id);
+  else if (st) prepPick(i, 'style', st.dataset.style);
+  else if (lv) prepPick(i, 'diff', lv.dataset.pd);
+});
+$('btnPrepGo').addEventListener('click', prepGo);
+$('btnPrepBack').addEventListener('click', closePrep);
 showLooks();
 
 /* ---------- 小提示条（画面顶上，几秒后自己消失） ---------- */
@@ -13385,7 +13640,7 @@ const mouseHeld = [];
 const UI_TAGS = 'button, a, input, textarea, select, summary, label, details';
 function mouseAction(e) {
   if (game.mode === 'attract' || game.paused || keyWait || e.button > 4) return null;
-  if (!keysEl.hidden || !lookEl.hidden || !pvpEl.hidden || !setEl.hidden || !stageEl.hidden || !styleEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
+  if (!keysEl.hidden || !prepEl.hidden || !setEl.hidden || !drillEl.hidden || !introEl.hidden || !passEl.hidden || Manual.isOpen()) return null;
   const r = Keys.route('Mouse' + e.button, game.mode);           // 1.8.0：双人对战里鼠标也能用（谁绑了归谁）
   if (!r) return null;
   if (e.button === 0 && e.target.closest && e.target.closest(UI_TAGS)) return null;   // 左键点在按钮上 = 点按钮
@@ -13417,8 +13672,8 @@ const MouseLock = {
   ok() { return !!(cv.requestPointerLock && document.exitPointerLock) && !window.modouDesktop; },
   on() { return document.pointerLockElement === cv; },
   want() {
-    if (!this.ok() || game.mode === 'attract' || game.paused || game.phase === 'over') return false;
-    if ([menu, pauseEl, resultEl, onlineEl, keysEl, lookEl, pvpEl, setEl, stageEl, drillEl, introEl, passEl].some(o => !o.hidden) || Manual.isOpen()) return false;
+    if (!this.ok() || game.mode === 'attract' || game.mode === 'watch' || game.paused || game.phase === 'over') return false;   // 2.11 观战不用锁
+    if ([menu, pauseEl, resultEl, onlineEl, keysEl, prepEl, setEl, drillEl, introEl, passEl].some(o => !o.hidden) || Manual.isOpen()) return false;
     return ['Mouse1', 'Mouse2'].some(c => !!Keys.route(c, game.mode));
   },
   // 该锁就锁、该放就放（锁要在点击 / 按键的那一下里叫，浏览器才答应）
@@ -13501,11 +13756,8 @@ window.addEventListener('keydown', e => {
   if (keyWait) { captureKey(e); return; }
   if (legendOpen()) { Manual.key(e); return; }                    // 2.2 教程面板开着：Esc 关、↑↓ 换章，别的键不进游戏
   if (!keysEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeKeys(); return; }
-  if (!pvpEl.hidden) { pvpKey(e); return; }
-  if (!lookEl.hidden) { if (e.code === 'Escape') closeLooks(); return; }
+  if (!prepEl.hidden) { prepKey(e); return; }
   if (!setEl.hidden) { if (e.code === 'Escape' && !e.repeat) closeSettings(); return; }
-  if (!stageEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
-  if (!styleEl.hidden) { if (e.code === 'Escape' && !e.repeat) showOverlay(menu); return; }
   if (!drillEl.hidden || !introEl.hidden || !passEl.hidden) { if (e.code === 'Escape' && !e.repeat) drillEsc(); return; }
   if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT')) return;
   // 破招练习的演示里按 Esc：不看了，回到说明
