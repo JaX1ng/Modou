@@ -401,30 +401,49 @@ function bodyPenT(polys, tgt, dir) {
 function signedArea(pts) { let s = 0; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) s += (pts[j][0] - pts[i][0]) * (pts[j][1] + pts[i][1]); return s; }
 // 一圈点加进路径：绕向统一；折线用二次曲线磨圆（经过每两点的中点），线条顺、看不出折角
 function addPoly(path, pts) {
-  const P = signedArea(pts) < 0 ? pts.slice().reverse() : pts, n = P.length;
-  path.moveTo((P[n - 1][0] + P[0][0]) / 2, (P[n - 1][1] + P[0][1]) / 2);
-  for (let i = 0; i < n; i++) { const a = P[i], b = P[(i + 1) % n]; path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  const n = pts.length;
+  if (signedArea(pts) < 0) {
+    // 反着绕的：倒着走一遍（和以前 pts.slice().reverse() 一模一样的点、一样的先后，只是不再每次另抄一个数组 —— 2.11 优化）
+    path.moveTo((pts[0][0] + pts[n - 1][0]) / 2, (pts[0][1] + pts[n - 1][1]) / 2);
+    for (let i = n - 1; i >= 0; i--) { const a = pts[i], b = pts[i ? i - 1 : n - 1]; path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  } else {
+    path.moveTo((pts[n - 1][0] + pts[0][0]) / 2, (pts[n - 1][1] + pts[0][1]) / 2);
+    for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n]; path.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); }
+  }
   path.closePath();
   return path;
 }
 const polysPath = list => { const p = new Path2D(); for (const q of list) addPoly(p, q.pts || q); return p; };
 // 整个人的剪影（整个人先填一遍本色、残影、运气的光、挨打白闪、身子外面那圈影子）：一个路径、填一次 —— 关节、重叠的地方没有缝、不叠色
 function bodySilhouette(J, g) { return polysPath(bodyParts(J, g || 0).parts); }
-function drawSilhouette(J, col, alpha, grow) {
+// path（可选）：已经算好的同一个人、同样胖瘦（grow）的剪影 —— 2.11 一帧里同一个人的外形只算一遍
+function drawSilhouette(J, col, alpha, grow, path) {
   if (alpha <= 0) return;
   ctx.globalAlpha = Math.min(1, alpha); ctx.fillStyle = col;
-  ctx.fill(bodySilhouette(J, grow));
+  ctx.fill(path || bodySilhouette(J, grow));
   ctx.globalAlpha = 1;
 }
 const BODY_LAYERS = ['farArm', 'farLeg', 'torso', 'nearLeg', 'head', 'nearArm'];
+/* 2.11（Jack：网页版有点卡）：一个人这一帧每一层的外形路径 + 整个人的剪影，算一遍给 drawFighter（剪影、白闪）和 drawBody（一层一层）共用。
+   bp = bodyParts(J, 0)。剪影 = 各层按 BODY_LAYERS 的顺序拼起来 —— 和 bodyParts 排出来的顺序一样，和以前 polysPath(全部) 是同一个路径 */
+function bodyPaths(bp) {
+  const layers = {}, all = new Path2D();
+  for (const L of BODY_LAYERS) {
+    const parts = bp.parts.filter(p => p.layer === L);
+    if (!parts.length) continue;
+    all.addPath(layers[L] = polysPath(parts));
+  }
+  return { layers, all };
+}
 // 2.5.1 腿根上多大一圈不打亮边（腿从裆里出来以前）、近侧那条腿叠在远侧腿上的线离大腿根多远才开始描
 const LEG_ROOT_CUT = 11.5, LEG_LINE_CUT = 16;
 /* 整个人：J 骨骼，col 身体色，band 头带 / 腰带色。调用前整个人已经填过一遍本色（render.js 先填剪影、带一圈淡影）。
    一层一层从后往前画（每一层只在自己的外形里画）：先把这一层涂成本色（盖住后面几层的亮边），再画这一层侧面那道淡亮边；
    近侧的胳膊、腿叠在身子上的那一段，外沿描一道同样淡的亮线（整条合起来的外沿 —— 关节里面不会出线）。
    都是「先涂亮色、再把不要的地方涂回本色」，每一笔都是整块填满的，不会在剪裁的边上留下一道道浅印子 */
-function drawBody(J, col, band) {
-  const S = BODY.shade, T = bodyTones(col), bp = bodyParts(J, 0), f = bp.f;
+// 2.11 bp0 / paths0（可选）：drawFighter 已经算好的 bodyParts(J, 0)、bodyPaths(bp0)，不用再算一遍
+function drawBody(J, col, band, bp0, paths0) {
+  const S = BODY.shade, T = bodyTones(col), bp = bp0 || bodyParts(J, 0), f = bp.f, LP = (paths0 || bodyPaths(bp)).layers;
   const inner = bodyParts(J, -S.line).parts;              // 整圈往里收 line 的外形：近侧手脚只留外沿那一圈亮线
   const under = new Path2D(), underLimb = new Path2D();   // 已经画过的层（往里收过的）：全部 / 只算远侧的手脚
   const nrm = (x, y) => { const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
@@ -459,7 +478,8 @@ function drawBody(J, col, band) {
   for (const L of BODY_LAYERS) {
     const parts = bp.parts.filter(p => p.layer === L);
     if (!parts.length) continue;
-    const path = polysPath(parts), arm = L === 'farArm' || L === 'nearArm', leg = L === 'farLeg' || L === 'nearLeg';
+    const path = LP[L], arm = L === 'farArm' || L === 'nearArm', leg = L === 'farLeg' || L === 'nearLeg';
+    const ip = polysPath(inner.filter(p => p.layer === L));  // 这一层往里收过的外形：近侧手脚的亮线、给后面几层当「已经画过的」（2.11 只拼一次）
     const key = arm ? parts[0].k[1] : leg ? parts[0].k[0] : null, cut = key ? rootCut(key, arm) : null;
     ctx.save(); ctx.clip(path);
     paint(T.base, path);
@@ -506,10 +526,10 @@ function drawBody(J, col, band) {
         ring.arc(hp[0], hp[1], LEG_LINE_CUT, 0, Math.PI * 2);
         paint(T.base, ring, seatCut);
       }
-      paint(T.base, polysPath(inner.filter(p => p.layer === L)), cut, leg ? beltCut : null);
+      paint(T.base, ip, cut, leg ? beltCut : null);
     }
     ctx.restore();
-    for (const q of inner) if (q.layer === L) { addPoly(under, q.pts); if (L === 'farArm' || L === 'farLeg') addPoly(underLimb, q.pts); }
+    under.addPath(ip); if (L === 'farArm' || L === 'farLeg') underLimb.addPath(ip);
     any = true;
     if (L === 'nearLeg' && tr) drawWaistBelt(tr, band);       // 腰带箍在腰上：盖住两条大腿根
     if (L === 'head') drawHeadGear(J, band);
