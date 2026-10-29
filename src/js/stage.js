@@ -1369,6 +1369,55 @@ const LIVE = {
 };
 for (const k in LIVE) STAGES[k].live = LIVE[k];
 
+/* ---------- 2.11（Jack：网页版有点卡）贴图只贴有东西的那几行 ----------
+   远景、中景、地面每一层都是一整张大图，每帧整张贴一遍；可很多层上面一大截是全透明的（天上什么都没画）。
+   没有显卡加速（软件渲染）时，透明的地方贴上去也要一个像素一个像素地混色，一整屏要好几毫秒。
+   做法：画好一层以后量一次哪几行有东西（c.rows：从第一行有东西的往上、最后一行有东西的往下各多留 ROW_PAD 行全透明的），
+   每帧只贴这几行 —— 贴上去的位置、缩放和整张贴时一样（同一个换算），画出来不变。最底下那层（天 / 远景）整张不透明的话记 c.opaque。
+   量的时候按一条一条（ROW_BAND 行）读，读到有东西就停；读不了（浏览器不让）就照旧整张贴 */
+const ROW_PAD = 3, ROW_BAND = 32;
+// 量的时候先把这一层整张抄到一块「专门给读的」画布上（willReadFrequently：放在内存里），在那上面一条一条读 ——
+// 不对这一层本身 getImageData（读多了浏览器会把它挪出显卡，以后每帧贴它反而慢）；量完把这块画布清掉（不占内存）
+function layerRows(c, wantOpaque) {
+  c.rows = null; c.opaque = false;
+  const w = c.width, h = c.height;
+  if (!w || !h) return;
+  const tmp = document.createElement('canvas');
+  try {
+    tmp.width = w; tmp.height = h;
+    const g = tmp.getContext('2d', { willReadFrequently: true });
+    g.drawImage(c, 0, 0);
+    const band = y => new Uint32Array(g.getImageData(0, y, w, Math.min(ROW_BAND, h - y)).data.buffer);   // 一个像素四个字节，全透明 = 0
+    const rowHas = (d, r) => { for (let k = r * w, e = k + w; k < e; k++) if (d[k] !== 0) return true; return false; };
+    let y0 = -1, y1 = -1;
+    for (let y = 0; y < h && y0 < 0; y += ROW_BAND) { const d = band(y), n = d.length / w; for (let r = 0; r < n; r++) if (rowHas(d, r)) { y0 = y + r; break; } }
+    if (y0 < 0) { c.rows = [0, 0]; return; }                                              // 整层是空的
+    for (let y = Math.max(y0, h - ROW_BAND); y1 < 0; y = Math.max(y0, y - ROW_BAND)) {
+      const d = band(y), n = d.length / w;
+      for (let r = n - 1; r >= 0; r--) if (rowHas(d, r)) { y1 = y + r; break; }
+      if (y === y0) break;
+    }
+    c.rows = [Math.max(0, y0 - ROW_PAD), Math.min(h, Math.max(y0, y1) + 1 + ROW_PAD)];
+    if (wantOpaque) {                                    // 除了最右两列、最下两行（画的时候不满一个像素的边）都是不透明的
+      let op = true;
+      for (let y = 0; y < h - 2 && op; y += ROW_BAND) {
+        const a = g.getImageData(0, y, w, Math.min(ROW_BAND, h - 2 - y)).data;
+        for (let i = 3, x = 0; i < a.length; i += 4) { if (a[i] !== 255 && x < w - 2) { op = false; break; } if (++x === w) x = 0; }
+      }
+      c.opaque = op;
+    }
+  } catch (e) { c.rows = null; c.opaque = false; }
+  finally { tmp.width = tmp.height = 0; }
+}
+// 贴一层：只贴 c.rows 那几行（没量过就整张贴）。目标位置 = 整张贴时这几行落在的地方
+function drawRows(g, c, x, y, w, h) {
+  const r = c.rows;
+  if (!r) { g.drawImage(c, x, y, w, h); return; }
+  if (r[1] <= r[0]) return;
+  const k = h / c.height;
+  g.drawImage(c, 0, r[0], c.width, r[1] - r[0], x, y + r[0] * k, w, (r[1] - r[0]) * k);
+}
+
 /* ---------- 场景管理：选哪张、按屏幕分辨率画成离屏图、每帧贴上去 ---------- */
 const Stage = {
   pref: 'sun',                 // 人机 / 双人用的（菜单里选，存在 localStorage「modou.stage」）
@@ -1416,6 +1465,12 @@ const Stage = {
     const gg = gc.getContext('2d'); gg.scale(w.ground, w.ground); gg.translate(-GX0, GUP - FLOOR);
     S.ground(gg, { x0: GX0, x1: STAGE_W - GX0, R: R(3) });
     this.layers = { sky, far, mid, ground: gc, near: S.near || null };
+    // 2.11 量一下每层哪几行有东西（每帧只贴这几行）；最底下那层（有天就是天，没有就是远景）再看是不是整张不透明。
+    // 不在这一帧里量（开局、换窗口大小时不卡一下）：过一会儿一层一层地量，量好之前照旧整张贴（画出来一样）
+    clearTimeout(this.scanT);
+    const todo = [sky, far, mid, gc].filter(Boolean), bottom = sky || far, mine = this.layers;
+    const next = () => { const c = this.layers === mine && todo.shift(); if (!c) return; layerRows(c, c === bottom); this.scanT = setTimeout(next, 40); };
+    this.scanT = setTimeout(next, 300);
     this.built = { id, back: w.back, ground: w.ground, top, vw };
     this.id = id;
     if (!this.live || this.live.id !== id) this.live = { id, t: 0 };      // 2.5.1 换了图才从头来（窗口缩放重画背景，鸟照样接着飞）
@@ -1433,14 +1488,18 @@ const Stage = {
   // 2.5.1 每一层贴完，接着在同一套坐标里画这一层会动的东西（STAGES[id].live.far / mid）
   drawBack(ctx, camX, view, lift) {
     const L = this.layers, S = STAGES[this.id] || STAGES.sun;
-    ctx.fillStyle = S.paper || C.paper;
-    ctx.fillRect(-20, -20, view.vw + 40, view.vh + 40);
+    // 2.11 最底下那层（天 / 远景）整张不透明、四边都伸出画面以外：纸色就不用先涂一遍（一样被它整个盖住）
+    const b = L && (L.sky || L.far), bx = b ? view.vw / 2 - b.lw / 2 - (camX - STAGE_W / 2) * (L.sky ? PAR_SKY : PAR_FAR) : 0, by = b ? view.fy + lift * (L.sky ? 0.1 : 0.25) - this.built.top : 0;
+    if (!(b && b.opaque && bx <= -24 && by <= -24 && bx + b.lw * (b.width - 3) / b.width >= view.vw + 24 && by + b.lh * (b.height - 3) / b.height >= view.vh + 24)) {   // 留 24：震屏最多挪 12
+      ctx.fillStyle = S.paper || C.paper;
+      ctx.fillRect(-20, -20, view.vw + 40, view.vh + 40);
+    }
     if (!L) return;
     const top = this.built.top, lv = S.live, st = this.live, dt = this.liveStep();
     for (const [c, par, py, k] of [[L.sky, PAR_SKY, 0.1, 'sky'], [L.far, PAR_FAR, 0.25, 'far'], [L.mid, PAR_MID, 0.5, 'mid']]) {
       if (!c) continue;
       const x = view.vw / 2 - c.lw / 2 - (camX - STAGE_W / 2) * par, y = view.fy + lift * py - top;
-      ctx.drawImage(c, x, y, c.lw, c.lh);
+      drawRows(ctx, c, x, y, c.lw, c.lh);
       if (lv && lv[k] && st) {
         ctx.save(); ctx.translate(x, y);
         lv[k](ctx, { w: c.lw, h: c.lh, fy: top, vis: [-x, view.vw - x] }, st, dt);
@@ -1452,7 +1511,7 @@ const Stage = {
   drawGround(ctx) {
     const L = this.layers;
     if (!L) return;
-    ctx.drawImage(L.ground, GX0, FLOOR - GUP, STAGE_W - 2 * GX0, GUP + GDN);
+    drawRows(ctx, L.ground, GX0, FLOOR - GUP, STAGE_W - 2 * GX0, GUP + GDN);
     if (L.near) L.near(ctx, this.live);
   },
   // 选场景按钮上的小图：远景 + 中景缩小画一张（只画一次，存起来）

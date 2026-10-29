@@ -136,10 +136,12 @@ function drawFighter(F, V) {
   // 2.4：先把整个人的剪影填一次（只为了外面那圈影子 / 亮边），再一块一块不透明地画（drawBody：阴影、肌肉线、前后分得清）
   if (aura > 0.15) { const tf = ctx.getTransform(); ctx.shadowColor = `rgba(246,245,238,${(0.35 + 0.4 * Math.min(1, aura)).toFixed(2)})`; ctx.shadowBlur = 3.2 * Math.hypot(tf.a, tf.b); }
   else { ctx.shadowColor = 'rgba(23,24,26,.35)'; ctx.shadowBlur = 2.5; }
-  ctx.fillStyle = F.color; ctx.fill(bodySilhouette(J, 0));
+  // 2.11（优化）：这个人这一帧的外形、每一层的路径只算一遍 —— 剪影、drawBody、白闪共用（以前同一个外形一帧算三遍）
+  const bp = bodyParts(J, 0), bpath = bodyPaths(bp);
+  ctx.fillStyle = F.color; ctx.fill(bpath.all);
   ctx.shadowBlur = 0;
-  drawBody(J, F.color, F.sash);                       // 头带、眼睛、腰带也在里面
-  if (F.hitFlash > 0) drawSilhouette(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 0);   // 挨打那一下身上白闪（一整块，关节不会更亮）
+  drawBody(J, F.color, F.sash, bp, bpath);            // 头带、眼睛、腰带也在里面
+  if (F.hitFlash > 0) drawSilhouette(J, '#fbfaf3', 0.62 * F.hitFlash / 3, 0, bpath.all);   // 挨打那一下身上白闪（一整块，关节不会更亮）
   const hx = J.head[0], hy = J.head[1];
   // 气：火星（在身体前面）
   drawQi(F, true);
