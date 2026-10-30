@@ -1127,6 +1127,62 @@ const YARD_FLAGS = [-520, 600];                       // 练武场两面旗（�
 // 竹林两头的竹子迎着风摇（多斜多少：正 = 往右）。风从左边来，所以总是往右偏、一阵一阵的
 const bambooSway = (t, i) => 0.0032 + 0.0026 * Math.sin(t * 0.9 + i * 0.7) + 0.0011 * Math.sin(t * 2.1 + i * 1.9);
 
+// 2.12（Jack）：燕子回到桃花园（2.7 改错了地方），大雁搬去大漠孤烟
+// 2.6 一只燕子（侧面，往右飞）：细长的身子、白肚皮、短尖嘴，两只镰刀一样又长又窄的翅膀，剪刀尾（两根长尾羽一上一下分开）。
+// k：翅膀扇到哪（1 扬到最高、-1 压到最低），k2 远侧那只（慢半拍、淡一点）；fold：翅膀往后收多少（0 张开，1 收成一把剪刀 —— 俯冲）；ang：身子仰俯
+function swallow(g, x, y, s, ang, k, k2, fold, a) {
+  g.save(); g.translate(x, y); g.rotate(ang); g.scale(s, s);
+  const col = '30,32,38';
+  const wing = (k, al, side) => {
+    const rx = 1.4, ry = -0.5, len = 15 - 4 * fold, el = k * (1.05 - 0.4 * fold);           // 翅根在身子前半截；收起来短一点、扇不大
+    // 从侧下方一点看过去：平着的时候近的那只在身子下面、远的那只在上面（张开的样子看得出来），收起来贴着身子
+    const tx = rx - len * (0.34 + 0.5 * fold) * (0.8 + 0.2 * Math.cos(el)), ty = ry - len * Math.sin(el) * 0.92 + side * len * 0.42 * Math.cos(el) * (1 - 0.6 * fold);
+    const dx = tx - rx, dy = ty - ry, n = Math.hypot(dx, dy) || 1, mx = (rx + tx) / 2, my = (ry + ty) / 2;
+    let px = -dy / n, py = dx / n; if (px < 0) { px = -px; py = -py; }                      // 翅膀前缘那一侧
+    g.fillStyle = INK(al, col);
+    g.beginPath(); g.moveTo(rx, ry);
+    g.quadraticCurveTo(mx + px * n * 0.2, my + py * n * 0.2, tx, ty);                         // 前缘往外鼓
+    g.quadraticCurveTo(mx + px * n * 0.07 - dx * 0.12, my + py * n * 0.07 - dy * 0.12, -2.4, 0.3);   // 后缘往里凹，回到身子后半截
+    g.closePath(); g.fill();
+  };
+  wing(k2, a * 0.55, -1);
+  g.fillStyle = INK(a, col);
+  for (const ey of [-2.2 - fold * 0.5, 1.9 + fold * 0.5]) { g.beginPath(); g.moveTo(-3.4, -0.55); g.lineTo(-12.5, ey); g.lineTo(-3.4, 0.6); g.closePath(); g.fill(); }
+  g.beginPath(); g.ellipse(0.2, 0, 4.9, 1.45, 0, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.arc(4.5, -0.45, 1.5, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.moveTo(5.8, -0.75); g.lineTo(7.3, -0.35); g.lineTo(5.8, 0.05); g.fill();
+  g.fillStyle = `rgba(244,240,234,${a * 0.65})`;
+  g.beginPath(); g.ellipse(0.9, 0.78, 3.1, 0.52, 0.05, 0, Math.PI * 2); g.fill();
+  wing(k, a, 1);
+  g.restore();
+}
+// 2.6 燕子飞一步：扇一阵（一秒四五下，往上拔一点、加速）→ 张着翅膀飘一阵（慢一点、慢慢往下沉）→ 偶尔收起翅膀往下一扎、再拉起来（俯冲）。
+// 总是往右（横着的速度一直是正的），上下不出 y0 ~ y1 这一段天
+function swallowStep(m, dt, y0, y1) {
+  m.tm -= dt;
+  if (m.tm <= 0) {
+    m.mode = m.mode === 'flap' ? (LIVE_R() < 0.3 ? 'dive' : 'glide') : 'flap';
+    m.tm = m.t0 = m.mode === 'flap' ? lrand(0.45, 1.1) : m.mode === 'glide' ? lrand(0.7, 1.6) : lrand(0.55, 0.8);
+  }
+  const e6 = Math.min(1, dt * 6);
+  let tvx, tvy, fold, kk = 2.4;
+  if (m.mode === 'flap') {
+    m.ph += dt * Math.PI * 2 / m.per; m.k = Math.sin(m.ph); m.k2 = Math.sin(m.ph - 0.45);
+    tvx = m.v; tvy = -16; fold = 0.08;
+  } else if (m.mode === 'glide') {
+    m.k += (0.14 - m.k) * e6; m.k2 += (0.08 - m.k2) * e6;
+    tvx = m.v * 0.8; tvy = 20; fold = 0.28;
+  } else {
+    m.k += (0.22 - m.k) * e6; m.k2 += (0.18 - m.k2) * e6;
+    const u = 1 - m.tm / m.t0;
+    tvx = m.v * 1.18; tvy = u < 0.5 ? 120 : -95; fold = 0.85; kk = 4;
+  }
+  if (m.y > y1) tvy = Math.min(tvy, -45); else if (m.y < y0) tvy = Math.max(tvy, 45);
+  const e = Math.min(1, dt * kk);
+  m.vx += (tvx - m.vx) * e; m.vy += (tvy - m.vy) * e;
+  m.fold += (fold - m.fold) * Math.min(1, dt * 7);
+  m.x += m.vx * dt; m.y += m.vy * dt;
+}
 // 2.7 一只大雁（侧面，往右飞；Jack：桃花园的燕子换成一排大雁）：长脖子伸在前面、小脑袋、短尖嘴，身子圆长，短尾巴，
 // 翅膀又长又宽（尖头钝一点），一直扇着。k：翅膀扇到哪（1 扬到最高、-1 压到最低），k2 远侧那只（慢一点点、淡一点）
 function goose(g, x, y, s, k, k2, a) {
@@ -1296,11 +1352,52 @@ const LIVE = {
     },
   },
   peach: {
-    // 2.7 大雁（Jack：燕子变成一排大雁，从左往右，全是扇翅膀飞、不用飘，要看得出在远处飞，飞慢一点，飞的地方和人物在哪无关）：
-    // 远景那一层（跟远山一起挪，比中景的桃林远；飞在远山前面、桃树梢上面那一截天），一排五到八只斜着排开，一直慢慢扇着翅膀（一秒一下半多，前后一只只错开一点），
+    // 2.6 燕子（Jack：鸟改成燕子，是背景里的、不跟着人走，飞快点，一会儿飞一会儿飘；2.7 一度换成大雁 —— 2.12 Jack：大雁是大漠孤烟的，桃花源是小燕子飞 + 飘，放回来）：
+    // 中景那一层（镜头一挪，它跟着桃林一起挪），隔几秒从看得见的左边飞进来一只、两只或三只，在桃树上面那一截天上往右飞（一秒两百来像素），
+    // 扇一阵、飘一阵、偶尔俯冲再拉起来，飞出右边就没了；同时最多两群。落英：几片花瓣翻着跟头往右飘、慢慢往下落（在人头顶上面那一截，飘一阵就淡掉）
+    mid(g, L, st, dt) {
+      const B = st.birds || (st.birds = []), y0 = L.fy - 490, y1 = L.fy - 350;          // 飞在桃树梢上面那一截天（比人头高一截）
+      if (st.nextBird === undefined) st.nextBird = st.t + lrand(1, 3);
+      if (dt > 0 && st.t >= st.nextBird && B.length < 2) {
+        const n = LIVE_R() < 0.45 ? 1 : LIVE_R() < 0.65 ? 2 : 3, v = lrand(175, 240), y = lrand(y0 + 20, y1 - 30);
+        const fl = { m: [] };
+        for (let i = 0; i < n; i++) fl.m.push({ x: L.vis[0] - 40 - i * lrand(26, 60), y: y + (i ? lrand(-28, 28) : 0), vx: v, vy: 0, v: v * lrand(0.94, 1.06), s: lrand(1.35, 1.65),
+          mode: 'flap', tm: lrand(0.3, 1), t0: 1, ph: LIVE_R() * 6.28, per: lrand(0.2, 0.26), k: 0, k2: 0, fold: 0.1 });
+        B.push(fl); st.nextBird = st.t + lrand(5, 12);
+      }
+      for (let i = B.length - 1; i >= 0; i--) {
+        const fl = B[i]; let left = 1e9;
+        for (const m of fl.m) {
+          if (dt > 0) swallowStep(m, dt, y0, y1);
+          left = Math.min(left, m.x);
+          if (m.x > L.vis[0] - 40 && m.x < L.vis[1] + 40) {
+            const ang = clamp(Math.atan2(m.vy, m.vx), -0.45, 0.45), bob = m.mode === 'flap' ? Math.cos(m.ph) * 0.8 : 0;
+            swallow(g, m.x, m.y + bob, m.s, ang, m.k, m.k2, m.fold, 0.7);
+          }
+        }
+        if (left > L.vis[1] + 300 || left > L.w + 40) B.splice(i, 1);
+      }
+      // 落英
+      const P = st.petals || (st.petals = []);
+      if (st.nextPetal === undefined) st.nextPetal = st.t + lrand(0.5, 2);
+      if (dt > 0 && st.t >= st.nextPetal && P.length < 6) {
+        P.push({ x: lrand(L.vis[0] - 60, L.vis[1] - 160), y: L.fy - lrand(250, 420), vx: lrand(14, 26), vy: lrand(4, 9), rot: LIVE_R() * 6.28, vr: lrand(-1.4, 1.4), s: lrand(2.2, 3.3), life: 0, dur: lrand(7, 12), ph: LIVE_R() * 6.28, col: LIVE_R() < 0.35 ? PINK_L : PINK });
+        st.nextPetal = st.t + lrand(1.2, 3);
+      }
+      for (let i = P.length - 1; i >= 0; i--) {
+        const p = P[i]; p.life += dt;
+        if (p.life >= p.dur) { P.splice(i, 1); continue; }
+        p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+        petal(g, p.x, p.y + Math.sin(p.life * 1.3 + p.ph) * 5, p.s, p.rot, p.col, 0.62 * lifeFade(p.life, p.dur, 1.2, 1.6), 0.45 + 0.55 * Math.abs(Math.cos(p.life * 1.7 + p.ph)));
+      }
+    },
+  },
+  desert: {
+    // 大雁（2.7 做在桃花园；2.12 Jack：一群大雁是在落日孤烟里的，搬到这儿）：从左往右，全是扇翅膀飞、不飘，看得出在远处飞，飞得慢，飞的地方和人在哪无关 ——
+    // 远景那一层（跟远山一起挪；长河落日圆那一截天上，飞在落日、远山前面、孤烟旁边），一排五到八只斜着排开，一直慢慢扇着翅膀（一秒一下半多，前后一只只错开一点），
     // 一秒 28~36 像素从这一层的最左边飞到最右边 —— 从哪飞进来、飞多高只看这一层（不看镜头在哪、人在哪）。飞过去了停一会儿再来下一排；
     // 一进来就有一排已经飞在半空（不用等）
-    far(g, L, st, dt) {
+    geese(g, L, st, dt) {
       const G = st.geese || (st.geese = []);
       if (st.nextGeese === undefined) st.nextGeese = 0;
       if (dt > 0 && !G.length && st.t >= st.nextGeese) {
@@ -1320,25 +1417,9 @@ const LIVE = {
         if (left > L.w + 30) { G.splice(i, 1); st.nextGeese = st.t + lrand(8, 18); }
       }
     },
-    // 落英：几片花瓣翻着跟头往右飘、慢慢往下落（在人头顶上面那一截，飘一阵就淡掉）
-    mid(g, L, st, dt) {
-      const P = st.petals || (st.petals = []);
-      if (st.nextPetal === undefined) st.nextPetal = st.t + lrand(0.5, 2);
-      if (dt > 0 && st.t >= st.nextPetal && P.length < 6) {
-        P.push({ x: lrand(L.vis[0] - 60, L.vis[1] - 160), y: L.fy - lrand(250, 420), vx: lrand(14, 26), vy: lrand(4, 9), rot: LIVE_R() * 6.28, vr: lrand(-1.4, 1.4), s: lrand(2.2, 3.3), life: 0, dur: lrand(7, 12), ph: LIVE_R() * 6.28, col: LIVE_R() < 0.35 ? PINK_L : PINK });
-        st.nextPetal = st.t + lrand(1.2, 3);
-      }
-      for (let i = P.length - 1; i >= 0; i--) {
-        const p = P[i]; p.life += dt;
-        if (p.life >= p.dur) { P.splice(i, 1); continue; }
-        p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
-        petal(g, p.x, p.y + Math.sin(p.life * 1.3 + p.ph) * 5, p.s, p.rot, p.col, 0.62 * lifeFade(p.life, p.dur, 1.2, 1.6), 0.45 + 0.55 * Math.abs(Math.cos(p.life * 1.7 + p.ph)));
-      }
-    },
-  },
-  desert: {
     // 孤烟：一团团淡烟顺着烟柱慢慢往上升（二十来秒升到顶），越往上越宽、越淡，到顶上被风带着往右偏一点
-    far(g, L, st) {
+    far(g, L, st, dt) {
+      this.geese(g, L, st, dt);
       const bx = L.w * 0.3, y0 = L.fy - 239, y1 = L.fy - 540, spr = softDot('70,64,60'), N = 11;
       for (let i = 0; i < N; i++) {
         const p = ((st.t * 0.045 + i / N) % 1 + 1) % 1, k = (i * 7 % N) / N;

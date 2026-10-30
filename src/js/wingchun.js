@@ -15,7 +15,7 @@
    2.10.2 照 ref/wc_stance_side.jpg 重摆：前手（问手）大臂往前下斜、肘沉着不伸直，小臂往上扬，掌张开、手指朝前上（掌心朝里偏下）；
    后手（护手）竖掌、掌心朝里，叠在前手小臂的后半段上；两个肘都朝下，身子正着 ---------- */
 const WBASE = { rot: 0, spin: 0, tor: 2, head: 2, hy: 69, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 1, bp: 1, fpa: -34, bpa: -84, fpr: 0.85, bpr: 1, fw: 0, bw: 0, fh: [47.3, -2.8], bh: [31, 8], ff: [28, 0], bf: [-32, 0] };
+  fp: 1, bp: 1, fpa: -34, bpa: -84, fpr: 0.85, bpr: 1, fw: 0, bw: 0, fz: 0, fh: [47.3, -2.8], bh: [31, 8], ff: [28, 0], bf: [-32, 0] };
 const wmk = o => mk(o, WBASE);
 function WM(o) { o.pb = WBASE; o.style = 'wc'; return M(o); }
 const WJ = (base, o) => Object.assign({}, base, o);
@@ -69,12 +69,14 @@ const W_PF4 = wStrike('f', false, W_GUARD_PALM, true), W_PR4 = wStrike('b', fals
 const W_LOW = { hy: 52, tor: 18, head: -4, tw: 20, ff: [28, 0], bf: [-26, 0], fh: [34, -2], bh: [18, 4] };   // 蹲着：两只掌还竖着护在前面
 
 /* ---------- 黐手、搭手的手型（前手；后手护着）—— 2.10.1 照参考图：两只手都在胸口到肩这一段、肘尖都朝下（膀手也不抬肘）
-   摊：掌心朝上、小臂往前托；膀：小臂横在中线上、掌心朝外朝下；伏：掌心朝下压 */
+   摊：掌心朝上、小臂往前托；膀：小臂横在中线上、掌心朝外朝下；伏：掌心朝下压
+   2.12（Jack：缠绕是 z 轴上的事，别像蛇一样上下扭，必要时加一点阴影）：四个手型的前手一样高（往下 9），翻手只在里 / 外上走 ——
+   fz 正 = 前手到外面（近侧，画在后手前面）、负 = 到里面（远侧，淡一点）：摊、伏在外面，膀转到里面；翻手过零那一下两条小臂交叉、淡色换边 */
 const W_SHAPE = {
-  '': { fh: [44, 7], fpa: -36, fpr: 1, fe: 1, bh: [24, 12], bpa: -46, bpr: 1, be: 1, tw: 10 },                      // 问手（没翻）
-  tan: { fh: [50, 9], fpa: -8, fpr: 0.3, fe: 1, bh: [26, 11], bpa: -46, bpr: 1, be: 1, tw: 16 },                   // 摊
-  bong: { fh: [46, 15], fpa: 36, fpr: -0.35, fe: 1, bh: [22, 9], bpa: -46, bpr: 1, be: 1, tw: 12 },                  // 膀（肘沉着、掌心翻朝外下）
-  fook: { fh: [48, 11], fpa: 28, fpr: 0.7, fe: 1, bh: [26, 9], bpa: -46, bpr: 1, be: 1, tw: 14 },                   // 伏
+  '': { fh: [44, 9], fpa: -36, fpr: 1, fe: 1, bh: [24, 12], bpa: -46, bpr: 1, be: 1, tw: 10, fz: 0 },                 // 问手（没翻）
+  tan: { fh: [50, 9], fpa: -8, fpr: 0.3, fe: 1, bh: [26, 11], bpa: -46, bpr: 1, be: 1, tw: 16, fz: 1 },             // 摊（在外面）
+  bong: { fh: [46, 9], fpa: 36, fpr: -0.35, fe: 1, bh: [22, 9], bpa: -46, bpr: 1, be: 1, tw: 12, fz: -1 },           // 膀（转到里面；肘沉着、掌心翻朝外下）
+  fook: { fh: [48, 9], fpa: 28, fpr: 0.7, fe: 1, bh: [26, 9], bpa: -46, bpr: 1, be: 1, tw: 14, fz: 1 },              // 伏（在外面，压着）
 };
 /* ---------- 2.11 挡重做（WINGCHUN.md 十五）：按住挡 = 听劲（Jack：长按挡的时候手臂不动，只是往后收一点 —— 不再一直翻盘手）；
    按住挡再按 拳 / 重 / 拿 = 接招，五个桩法照 ref/wc_guard_1 ～ 5.png ---------- */
@@ -592,6 +594,13 @@ function limbClass(d) {
 }
 const handLimb = d => /^(fh|bh|fe|be|sh)$/.test(d.limb) && d.height !== 'low';
 const CATCH_KEYS = ['jab', 'heavy', 'grab'];
+/* 2.12 一错、一平、一对（WINGCHUN.md 十六；Jack：三个键里只有唯一解，下限太低 —— 改成一种错、一种平、一种对）：
+   环 拳 → 重 → 拿 → 拳。按他这一招的本键 = 对（接住），按环上的下一个 = 平（当普通挡住：吃三成、不进搭手、不罚），按上一个 = 错（×WC_WRONG_MUL）。
+   他出拳系：拳对、重平（膀手转马把拳带开）、拿错；出重系：重对、拿平（按手压下去）、拳错；出腿：拿对、拳平（拍在腿上）、重错。
+   时机不对（按早了在收手时挨打）照旧算错，接不住的那几类（catchKeyOf 返回 null）照旧 ×WC_WRONG_MUL */
+const CATCH_NEXT = { jab: 'heavy', heavy: 'grab', grab: 'jab' };
+// 按了 key 接 need：'hit' 对 / 'flat' 平 / 'miss' 错（need 为 null = 接不住，怎么按都是错）
+const catchGrade = (need, key) => !need ? 'miss' : key === need ? 'hit' : key === CATCH_NEXT[need] ? 'flat' : 'miss';
 // 他这一招接得住吗、按哪个键接：'jab' 拳（拳系的手上招）/ 'heavy' 重（重系的手上招）/ 'grab' 拿（腿）；null = 接不住。
 // 接不住的：擒拿、推挡、坠山落膝、大招、连环寸拳那一串、下段的手上招。low = 蹲着接（耕手）：只接地上的腿（扫堂腿这种下段的也行）；站着接不住下段
 function catchKeyOf(A, m, d, low) {
@@ -620,7 +629,9 @@ function wcDefend(A, B, c, I) {
   if (bm && bm.def.catchKey) {
     const win = bm.def.catchKey === 'jab' ? WC_CATCH_WIN : WC_CATCH_WIN_H, low = !!bm.def.catchLow;
     const inWin = bm.t >= WC_CATCH_ON && bm.t < WC_CATCH_ON + win, need = catchKeyOf(A, m, d, low);
-    if (inWin && need && need === bm.def.catchKey) { catchHit(A, B, c, need, low); return true; }
+    const g = inWin ? catchGrade(need, bm.def.catchKey) : 'miss';
+    if (g === 'hit') { catchHit(A, B, c, need, low); return true; }
+    if (g === 'flat') return catchFlat(A, B, c, low);
     return catchMiss(A, B, inWin && need ? 'key' : 'time');
   }
   // ② 挨打、被挡住的硬直里按住挡 + 键（新的黐手破连）：他这一下打过来之前 WC_CATCH_HIT 帧以内按的键 —— 按对了接住，按错了、几个键乱按 ×WC_WRONG_MUL。
@@ -631,7 +642,9 @@ function wcDefend(A, B, c, I) {
       for (let i = buf.length - 1; i >= 0; i--) if (recent.includes(buf[i])) buf.splice(i, 1);   // 这几下按键用掉了（接没接住都是）
       const keys = new Set(recent.map(e => e.a)), low = !!B.inp.held.down;
       const need = d.beat && A.flow >= 3 ? null : catchKeyOf(A, m, d, low);
-      if (keys.size === 1 && need && keys.has(need)) { catchHit(A, B, c, need, low); return true; }
+      const g = keys.size === 1 ? catchGrade(need, recent[0].a) : 'miss';
+      if (g === 'hit') { catchHit(A, B, c, need, low); return true; }
+      if (g === 'flat') { cev('catchFlat', B, A, { name: m.name }); return false; }   // 平：这一下照常（挡住的硬直里就是挡住；挨打的硬直里本来就挡不住，照旧挨）
       return catchMiss(A, B, keys.size > 1 ? 'mash' : 'key');
     }
   }
@@ -661,6 +674,14 @@ function catchReel(A, B, c, tech) {
   B.chain = ['pc']; B.chainIdle = 0;
   game.freeze = Math.max(game.freeze, stop(8)); game.shake = Math.max(game.shake, 3);
   if (!game.quiet) { parryFx(B, c); tag(A.x, A.J.head[1] - 30, '失衡', B, 20); }
+}
+// 2.12 平（按了环上的下一个键）：当普通挡住 —— 收起接招的架势、按这一手的高低挡住，吃三成、不进搭手、不罚（guard 照常记势破、挡住的硬直、BLOCK_PEN）
+function catchFlat(A, B, c, low) {
+  B.move = null; B.lowBlock = !!low; B.chain = []; B.chainIdle = 99;
+  guard(A, B, c);
+  if (!game.quiet && B.J) tag(B.x, B.J.head[1] - 40, '平', B, 18);
+  cev('catchFlat', B, A, { name: A.move.name });
+  return true;
 }
 // 接错了（按错键、几个键乱按、早了晚了在收手）：这一下 ×WC_WRONG_MUL；被挡住的硬直里按错了，手一松 —— 挡不住了
 function catchMiss(A, B, why) {

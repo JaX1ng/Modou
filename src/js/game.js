@@ -106,7 +106,8 @@ const game = {
 const LABEL = Object.fromEntries(Object.entries(LEVEL_NAME).map(([id, n]) => [id, '电脑 · ' + n]));
 const Hooks = { matchStart() {}, matchOver() {} };   // ui.js 会覆盖
 // 2.11 观战（Jack：看两个终极电脑互打，学最高水平的电脑怎么打）：两边都是这一档；五局三胜、回合流程和人机一样，镜头两个人都在画面里（像双人）
-const WATCH_LEVEL = 'hell';
+// 2.12（Jack：观战的时候两个电脑的强度必须拉满）：换成只给观战用的「满级」（ai.js LEVELS.max，比终极狠得多），血条底下写「电脑 · 满级 · 某某拳」
+const WATCH_LEVEL = 'max';
 
 function resetFighters() {
   F1.reset(START_X[0], 1); F2.reset(START_X[1], -1);
@@ -267,7 +268,7 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'vp', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'qback', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose']);
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};

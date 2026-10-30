@@ -305,10 +305,10 @@ function bodyParts(J, g, only) {
   // 头：圆
   const hr = B.head + g, head = [];
   if (need('head')) for (let i = 0; i < 28; i++) { const a = i / 28 * Math.PI * 2; head.push([J.head[0] + Math.cos(a) * hr, J.head[1] + Math.sin(a) * hr]); }
-  // 近侧 / 远侧：护着下巴的后手、往前的前腿在近侧；转过身两边对调
-  const t = !!J.turned;
-  const farArm = t ? ['B', J.shB, J.be, J.bh, J.hBe] : ['F', J.shF, J.fe, J.fh, J.hFe];
-  const nearArm = t ? ['F', J.shF, J.fe, J.fh, J.hFe] : ['B', J.shB, J.be, J.bh, J.hBe];
+  // 近侧 / 远侧：护着下巴的后手、往前的前腿在近侧；转过身两边对调。2.12 姿势的 fz > 0（搭手翻手：前手那条胳膊到了外面）两条胳膊再对调一次
+  const t = !!J.turned, ta = t !== (J.fz > 0.001);
+  const farArm = ta ? ['B', J.shB, J.be, J.bh, J.hBe] : ['F', J.shF, J.fe, J.fh, J.hFe];
+  const nearArm = ta ? ['F', J.shF, J.fe, J.fh, J.hFe] : ['B', J.shB, J.be, J.bh, J.hBe];
   const farLeg = t ? ['F', J.hipF, J.fk, J.ff, J.hFk] : ['B', J.hipB, J.bk, J.bf, J.hBk];
   const nearLeg = t ? ['B', J.hipB, J.bk, J.bf, J.hBk] : ['F', J.hipF, J.fk, J.ff, J.hFk];
   limb('a' + farArm[0], farArm[1], farArm[2], farArm[3], farArm[4], true, true, 'farArm');

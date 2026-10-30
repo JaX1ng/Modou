@@ -64,8 +64,9 @@ const BENCH_SEQ = {
   legCatch: { dist: 112, op: (i, F, O) => i === 0 ? TAP('kick') : 0, me: (i, F, O) => O.move && O.move.name === 'kick' && O.move.t >= 6 && O.move.t < 7 ? TAP('grab') : 0 },
   scoop: { dist: 104, op: (i, F, O) => i === 0 ? HOLD('down') | TAP('kick') : 0, me: (i, F, O) => O.move && O.move.name === 'sweep' && O.move.t >= 3 && O.move.t < 4 ? HOLD('down') | TAP('grab') : 0 },
   // 回身肘：对手出重拳，按着挡朝他双击闪过去，钻到他身后自动回身一肘（打在背上）
+  // 钻的时机跟着重拳的前摇走（2.12 重拳 15 → 18）：重拳出手前 5 帧开始双击
   slipElbow: { dist: 80, min: 30, op: i => i === 3 ? TAP('heavy') : 0,
-    me: (i, F) => F.move && F.move.name === 'slipElbow' ? 0 : i >= 13 && i <= 15 ? HOLD('block') | (i === 14 ? 0 : HOLD('right')) : HOLD('block') },
+    me: (i, F) => { const t0 = 3 + MOVES.heavy.S - 5; return F.move && F.move.name === 'slipElbow' ? 0 : i >= t0 && i <= t0 + 2 ? HOLD('block') | (i === t0 + 1 ? 0 : HOLD('right')) : HOLD('block'); } },
 };
 // 跳起来出的招：真跳 —— 按住前跳起来，快到最高点按招（坠山按住蹲再踢）。最远多远起跳还打得中，现找一遍（记下来）
 const BENCH_AIR = { airJab: 'jab', airHeavy: 'heavy', airKick: 'kick', dive: 'kick' };

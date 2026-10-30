@@ -63,7 +63,7 @@ const LEVELS = {
   novice: { react: 22, block: .12, lowRead: .4, parry: .02, push: .04, burst: .1, read: .03, catch: .06, duck: .3, aa: .1, step: .1, low: .15, sup: .35,
     punish: .08, combo: .35, aggr: .42, jump: .45, grabBlock: .18, idle: .55, tech: .05, gc: .03, stomp: .12, scoop: .03, roll: .15,
     slip: .02, gwalk: .1, oki: .1, catchSlip: .06, airBlock: .35, aaPlan: .2, habit: .08, guard: .1, punishBlock: .12,
-    beatSd: 2, brk: .06, brkAcc: .4, touch: .1, feel: 7, jie: .05, jieAcc: .45, jieSd: 3.5 },
+    beatSd: 2, brk: .06, brkAcc: .4, touch: .1, feel: 7, jie: .05, jieAcc: .45, jieSd: 3.5, jieFlat: .75 },
   // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
   // 2.7（Jack：简单也再简单些，让乱打的打掉 65% 以上；破招少一点）：读招 0.3 → 0.06、卸力 0.12 → 0.05、推挡 0.25 → 0.05、对空 0.4 → 0.12、
   //     接腿、抄腿、截击、踩腿、闪身都少了；挡住就罚 0.55 → 0.3、罚 0.55 → 0.25；反应 11 → 14。挡、连招只降一点（0.36、0.72）、记习惯照旧 0.45
@@ -71,21 +71,21 @@ const LEVELS = {
   easy: { react: 14, block: .36, lowRead: .55, parry: .05, push: .05, burst: .25, read: .06, catch: .18, duck: .45, aa: .12, step: .18, low: .18, sup: .55,
     punish: .25, combo: .72, aggr: .78, jump: .65, grabBlock: .32, idle: .3, tech: .12, gc: .08, stomp: .3, scoop: .1, roll: .27,
     slip: .05, gwalk: .2, oki: .3, catchSlip: .18, airBlock: .5, aaPlan: .25, habit: .45, guard: .24, punishBlock: .3,
-    beatSd: 1.7, brk: .1, brkAcc: .5, touch: .25, feel: 6, jie: .12, jieAcc: .55, jieSd: 2.8 },
+    beatSd: 1.7, brk: .1, brkAcc: .5, touch: .25, feel: 6, jie: .12, jieAcc: .55, jieSd: 2.8, jieFlat: .7 },
   // 中等（2.1 叫「中」）= 2.0.2 的「难」
   // 2.7（Jack：中等也再简单点，让乱打的打掉 40% 以上）：反应 8 → 9、挡 0.66 → 0.58、读招 0.5 → 0.38、卸力 0.25 → 0.16、接腿 0.6 → 0.45、对空 0.7 → 0.55、
   //     罚 0.85 → 0.7、挡住就罚 0.8 → 0.65、连招接下去 0.95 → 0.85、压起身 0.75 → 0.6、发呆 0.1 → 0.15（记习惯不降：老出同一招照样防得住）
   normal: { react: 9, block: .58, lowRead: .8, parry: .16, push: .45, burst: .75, read: .38, catch: .45, duck: .8, aa: .55, step: .4, low: .25, sup: .9,
     punish: .7, combo: .85, aggr: 1, jump: 1, grabBlock: .7, idle: .15, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .6, catchSlip: .55, airBlock: .9, aaPlan: .72, habit: .65, guard: .46, punishBlock: .65,
-    beatSd: 1.6, brk: .25, brkAcc: .6, touch: .45, feel: 4, jie: .4, jieAcc: .72, jieSd: 1.8 },
+    beatSd: 1.6, brk: .25, brkAcc: .6, touch: .45, feel: 4, jie: .4, jieAcc: .72, jieSd: 1.8, jieFlat: .6 },
   // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
   // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
   // 2.7 没动（倒地、滚身起改了以后量过：木头玩家占比 12 个种子 2.6 是 26.9%、2.7 是 26.6%）
   hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .9, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86,
-    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .62, jieAcc: .87, jieSd: 1.05 },
+    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .62, jieAcc: .87, jieSd: 1.05, jieFlat: .5 },
   // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
   //（乱换招的木头玩家打掉的血占比，2.5：入门 67% · 简单 53% · 中等 38% · 困难 28% · 终极 22.5%；2.6：66% · 52% · 34% · 28.5% · 23.5%；
   //  2.7（12 个种子；同样 12 个种子量 2.6 是 66% · 53% · 35% · 27% · 23.5%）：84% · 69% · 43% · 26.5% · 22.5%）
@@ -97,16 +97,28 @@ const LEVELS = {
     punish: .93, combo: .93, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
     inst: .2, instMax: .55, instReact: 1,
-    beatSd: .8, brk: .5, brkAcc: .75, touch: .7, feel: 2, jie: .7, jieAcc: .9, jieSd: .9 },
+    beatSd: .8, brk: .58, brkAcc: .82, touch: .7, feel: 2, jie: .78, jieAcc: .94, jieSd: .75, jieFlat: .35 },   // 2.12 终极的接招再准一点（和困难拉开）
 };
 // 2.10 咏春拳：beatSd 连环冲拳按得离拍点差多少帧（标准差；拍子前 WC_EARLY、后 WC_LATE 帧以内算在拍子上）；
 //   touch 搭手里懂不懂行（翻对手型、反拿、甩手）；feel 搭手里手上的反应（帧）：黏着的时候看他几帧以前的样子（比 react 快：手上的感觉比眼睛快）
+// 2.12 按错了按的是哪个键（WINGCHUN.md 十六，一错一平一对）：没按对的那一下，jieFlat 的概率按「平」的键（环上的下一个：当普通挡住），剩下的按「错」的（×1.3）——
+//   入门、简单多半按平（手生的人先护着），困难、终极一半一半
+function wrongCatchKey(L, need) { return Math.random() < (L.jieFlat === undefined ? 0.5 : L.jieFlat) ? CATCH_NEXT[need] : CATCH_NEXT[CATCH_NEXT[need]]; }
 // 2.11 接招（WINGCHUN.md 十五）：jie 看见他出招、按住挡接的机会；jieAcc 键按对的概率（拳接拳、重接重、拿接腿；瞎猜三成）；
 //   jieSd 按得离正好差多少帧（标准差）；brk / brkAcc 挨打、被挡住的硬直里接（新的黐手破连）试不试、键对不对
 // 2.2 难度的名字（两个字）：菜单、电脑血条底下用（2.3 Jack：菜单上不要介绍，一句话说明删了）
-const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极' };
+const LEVEL_NAME = { novice: '入门', easy: '简单', normal: '中等', hard: '困难', hell: '终极', max: '满级' };
 for (const id in LEVELS) LEVELS[id].id = id;                   // 2.9 每一档知道自己是哪一档（咏春拳的电脑按档打折用）
-const LEVEL_IDS = Object.keys(LEVELS);
+const LEVEL_IDS = Object.keys(LEVELS);                         // 人机的五档（满级不在里面）
+// 2.12 满级（Jack：观战的时候两个电脑的强度必须拉满）：只给观战用，不进人机的五格、不记成就。终极的数是为了真人打得过压过的（瞬间看穿只有 0.2），
+//   观战没有真人，不用留情 —— 从 2.1 那个「完全玩不了」的极难起步（瞬间看穿 0.6 / 习惯招 0.88），反应取困难的 8 帧、不发呆、罚满、连招满、记习惯最准，
+//   咏春拳的接招、拍子、搭手也都最准。别全拉到 1：两边都百分之百看穿就谁也不敢出手、站着对峙（看 40 回合里打空、挡住、发呆的比例）
+LEVELS.max = { react: 7, block: .9, lowRead: .98, parry: .6, push: .6, burst: .95, read: .8, catch: .85, duck: .95, aa: .95, step: .5, low: .3, sup: 1,
+  punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .9, idle: 0, tech: .85, gc: .6, stomp: 1, scoop: .65, roll: .7,
+  slip: .3, gwalk: .35, oki: .95, catchSlip: .85, see: .7, smart: true, airBlock: 1, aaPlan: 1, habit: 1, guard: .6, punishBlock: 1,
+  inst: .7, instMax: .92, instReact: 1,
+  beatSd: .4, brk: .85, brkAcc: .95, touch: .95, feel: 1, jie: .92, jieAcc: .98, jieSd: .5, jieFlat: .25, id: 'max' };
+PLANS.max = PLANS.hell;
 function weighted(list) {
   let sum = 0; for (const [, w] of list) sum += w;
   let r = Math.random() * sum;
@@ -188,9 +200,9 @@ const AI_TUNE = {
   bait: 0.06,               // 2.11 骗接：他听劲的时候在拳够不着的地方空挥一拳（看他会不会接、接了打他收手），× 读招的本事
 };
 // 搭手、甩手直冲以后接着按拍子连几下（难度越高连得越长）
-const W_AFTER = { novice: 3, easy: 3, normal: 3, hard: 5, hell: 5 };
+const W_AFTER = { novice: 3, easy: 3, normal: 3, hard: 5, hell: 5, max: 6 };
 // 连环冲拳每一拳接不接下去（一串八拳，接下去的机会 ^7 是打满的机会；入门、简单的拍子按不准，常常自己断）
-const W_CHAIN = { novice: 0.92, easy: 0.92, normal: 0.91, hard: 0.955, hell: 0.93 };
+const W_CHAIN = { novice: 0.92, easy: 0.92, normal: 0.91, hard: 0.955, hell: 0.93, max: 0.97 };
 const WPLANS = {
   // 咏春拳一下一下都轻，靠连：入门、简单也连，只是按不准拍子、常常连着连着就断了
   novice: [[Jn(3), 3], [Jn(4), 2], [Jn(2), 2], [['kick', 'kick'], 1.5], [['jab', 'kick', 'kick'], 1], [['jab', 'jab', 'heavy'], 1],
@@ -208,6 +220,7 @@ const WPLANS = {
     [['d:kick', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab', 'jab'], 2], [['grab'], 2], [['d:jab', 'jab', 'jab', 'jab', 'jab'], 1], [['f:jab', 'jab', 'jab', 'jab', 'jab', 'jab'], 2],
     [['heavy', 'jab', 'jab', 'jab', 'jab'], 1], [['f:heavy'], 0.5]],
 };
+WPLANS.max = WPLANS.hell;   // 2.12 满级（观战）用终极的连招表
 const KITS = {
   trad: { id: 'trad', plans: PLANS, catchKey: 'grab', runHeavy: true, dashIn: ['jab', 'heavy', 'heavy', 'kick'],
     parry: dist => (dist <= 92 ? pick([['jab', 'jab', 'heavy'], ['jab', 'kick'], ['heavy', 'kick'], ['heavy', 'heavy']]) : ['heavy', 'kick']).slice(),
@@ -295,7 +308,7 @@ class Brain {
     const leg = s.kind === 'kick' || s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
     if ((low && !leg) || s.dive || s.kind === 'grab' || s.kind === 'push' || s.tier === 'super') return false;
     const need = leg ? 'grab' : s.kind === 'heavy' ? 'heavy' : 'jab';
-    const key = exact || R() < L.jieAcc ? need : pick(['jab', 'heavy', 'grab'].filter(k => k !== need));
+    const key = exact || R() < L.jieAcc ? need : wrongCatchKey(L, need);
     const win = key === 'jab' ? WC_CATCH_WIN : WC_CATCH_WIN_H;
     const pd = Math.round(eta + 1 - (win + 1) / 2 + (exact ? 0 : gauss() * L.jieSd));
     if (pd < -1) return false;                                          // 来不及了
@@ -472,7 +485,7 @@ class Brain {
       const d = om.def, leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', low = d.height === 'low';
       const need = d.dive || d.flurry || d.tier === 'super' || (d.beat && (o.flow || 0) >= 3) || om.air ? null : leg ? 'grab' : low ? null : d.kind === 'heavy' ? 'heavy' : d.kind === 'jab' ? 'jab' : null;
       if (need && R() < L.brk * wcReadMul(L)) {
-        this.brkKey = R() < L.brkAcc ? need : pick(['jab', 'heavy', 'grab'].filter(k => k !== need));
+        this.brkKey = R() < L.brkAcc ? need : wrongCatchKey(L, need);
         this.brkLow = leg && low;
         this.brkAt = f.clock + Math.max(0, Math.round(om.S + 1 - om.t - 2 + gauss() * L.jieSd * 0.6));
       }

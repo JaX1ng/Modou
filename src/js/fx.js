@@ -702,6 +702,7 @@ function qiFlow(F) {
   const sp = Math.abs(vx) + (F.airborne ? Math.abs(F.vx || 0) * 0.5 : 0);
   F.qlean = (F.qlean || 0) + (clamp((sp - 1.2) / 5, 0, 1) - (F.qlean || 0)) * lk(0.25);   // 平滑一点，停下来火慢慢立回去
   const back = Math.abs(vx) > 0.6 ? (vx > 0 ? -1 : 1) : -F.facing;
+  F.qback = back;                                                // 2.12 画连招的气（render.js drawHeatAura）用：往身后拖的方向
   return { lean: F.qlean, back };
 }
 // 一条火舌：从 (x, y) 往 (vx, vy) 飘；buoy = 往上浮的劲（斜着冒出去的火慢慢往上卷），drag = 横着的速度每帧剩多少
@@ -751,29 +752,16 @@ function emitQi(F) {
     if (vrnd() < 0.84) lick(x, y, rnd(1.2, 2.6) * (0.8 + a * 0.4), rnd(4, 8) * (0.7 + a * 0.6), rnd(0.22, 0.36) * (0.5 + a * 0.6), rnd(16, 28));
     else addQi({ k: 'ember', f: F.idx, col: P.fx, x, y, vx: bk * rnd(0, 0.8) + rnd(-0.4, 0.4), vy: -rnd(1.4, 3), r: rnd(1.2, 2.2), a: 0.9, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
   }
-  // 连招的火（2.0.2）：3 连才起，只在拳脚上冒；4 连起整个人冒火，一部分火苗烧到身子前面；越往后火苗越多、越大、越浓、窜得越高
+  // 连招的气（2.0.2：3 连才起，4 连起整个人冒火，越往后越旺；2.1 一条一条的火舌）
+  // 2.12（Jack：身上的火别一团一团、颜色不一样，要连贯、有渐变，像大招那一圈；普通连招颜色淡一点、特效小一点）：
+  //   火舌不冒了 —— 连招的气画成贴着剪影一圈连贯的光晕 + 往上升的一道光（render.js drawHeatAura，连得越多越宽越亮），这里只撒几点火星
   if (h > 0.05) {
-    const big = h > 0.6, hm = Math.min(1, h);
-    let k = h * (1.6 + 2.6 * h) * DT;                         // 每帧几个：3 连 1、4 连 2.1、5 连 3.5、6 连 5.3、7 连以上 7.3（2.1：少一点，一条一条火舌看得清）
+    let k = h * (0.5 + 0.9 * h) * DT;                         // 每帧几点火星：3 连 0.36、5 连 1.2、7 连以上 1.9
     while (k > 0) {
       if (k < 1 && vrnd() > k) break;
       k--;
       const [x, y] = spot(h < 0.5 ? QI_LIMBS : QI_BONES);
-      if (vrnd() < 0.86) lick(x, y, rnd(1.5, 3.2) * (0.8 + 0.55 * h), rnd(5.5, 8.5) * (0.8 + 0.55 * h), rnd(0.46, 0.64) * (0.65 + 0.35 * hm), rnd(16, 28),
-        { hot: big && vrnd() < 0.55, fr: big && vrnd() < 0.08 });   // 烧到身前的很少：气再旺，身子也看得清
-      else addQi({ k: 'ember', f: F.idx, col: P.fx, x, y, vx: bk * (rnd(0, 1) + L * 3) + rnd(-0.5, 0.5), vy: -rnd(1.6, 3.6) * (0.8 + 0.45 * h), r: rnd(1, 1.8) * (0.8 + 0.4 * h), a: 1, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
-    }
-    // 5 连起：背上往身后斜着往上喷大火舌（像一件火做的披风；跑起来就整片往后拖）
-    if (h > 0.8) {
-      let p = (h - 0.7) * 2.2 * DT;                           // 5 连每帧 0.44 条、6 连 1、7 连以上 1.5
-      while (p > 0) {
-        if (p < 1 && vrnd() > p) break;
-        p--;
-        const [x, y] = spot(QI_BACK), sp = rnd(1.6, 2.8) * (0.8 + 0.3 * h);
-        const ang = (0.5 + 0.45 * L + rnd(-0.18, 0.18)) * Math.PI / 2;      // 离竖直往后偏多少：站着 45° 左右，跑起来更平
-        flame(F, P.qi, x + bk * 6, y + rnd(0, 8), bk * Math.sin(ang) * sp, -Math.cos(ang) * sp,
-          rnd(13, 20) * (0.55 + 0.45 * h), rnd(0.2, 0.3) * hm, rnd(22, 34), { hot: vrnd() < 0.4, buoy: 0.05, drag: 0.98, len: 1.25 });
-      }
+      addQi({ k: 'ember', f: F.idx, col: P.fx, x, y, vx: bk * (rnd(0, 1) + L * 3) + rnd(-0.5, 0.5), vy: -rnd(1.6, 3.6) * (0.8 + 0.45 * h), r: rnd(1, 1.8) * (0.8 + 0.4 * h), a: 0.9, life: rnd(14, 26) | 0, ph: rnd(0, 6.3) });
     }
   }
 }

@@ -84,6 +84,8 @@ function drawFighter(F, V) {
     ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
+  // 2.12 连招的气：贴着剪影一圈连贯的光晕 + 往上升的一道光（在身体后面；以前是一条一条火舌）
+  drawHeatAura(F, J, P, heat);
   // 气：火苗（在身体后面）
   drawQi(F, false);
   // 残影（2.0.1：自己的气的颜色，淡的，和真身分得开）
@@ -837,6 +839,32 @@ function flameSprite(col, hot, v) {
   const gr = g.createLinearGradient(0, 64, 0, ct); gr.addColorStop(0, `rgba(${core},${hot ? 0.95 : 0.7})`); gr.addColorStop(1, `rgba(${core},0)`);
   g.fillStyle = gr; g.fill();
   return (flameSprites[key] = c);
+}
+/* 2.12 连招的气（Jack：身上的火团别一团一团、颜色不一样，最好连贯且有渐变，像出大招那一圈；普通连招颜色淡一点、特效小一点，大招那个留着）：
+   · 一圈光晕：以胸口为中心的径向渐变（身上透明 → 身子外一圈最亮 → 往外淡掉），稍微竖长一点，一胀一缩；连得越多圈越大越亮
+   · 一道往上升的光：整个人的剪影往上挪一截（动得快就往身后拖，qiFlow 的 lean / back）、模糊了画，越高越淡 —— 连贯的一片，不是一条条火舌；5 连起再高一截
+   全用自己气的颜色（pal(F).qi，身体色的淡色），不盖住身子（身子上面照样画一圈纸色的亮边） */
+function drawHeatAura(F, J, P, heat) {
+  if (heat <= 0.05 || reduceMotion) return;
+  const k = Math.min(1, heat / 1.4), col = P.qi, pulse = 0.86 + 0.14 * Math.sin(F.clock * 0.42), lean = F.qlean || 0, back = F.qback || -F.facing;
+  const cx = (J.hip[0] + J.neck[0]) / 2 + back * lean * 14, cy = (J.hip[1] + J.neck[1]) / 2 - 6;
+  // 一圈光晕
+  const r1 = 34 + 26 * k, r2 = r1 + 30 + 46 * k, a = (0.16 + 0.3 * k) * pulse;
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, 1.22);
+  const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r2);
+  gr.addColorStop(0, rgbaOf(col, 0)); gr.addColorStop(Math.max(0.05, (r1 - 12) / r2), rgbaOf(col, a * 0.35)); gr.addColorStop(r1 / r2, rgbaOf(col, a)); gr.addColorStop(1, rgbaOf(col, 0));
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  // 往上升的光：剪影往上（往后）挪、模糊
+  const tf = ctx.getTransform(), s = Math.hypot(tf.a, tf.b), D = 6000, sway = Math.sin(F.clock * 0.3) * 3;
+  const up = 10 + 14 * k + (heat > 0.8 ? 10 * (heat - 0.8) : 0), dx = back * (6 + 26 * lean) + sway;
+  const path = bodySilhouette(J, 4 + 5 * k);
+  for (const [m, al, bl] of [[0.55, 0.22 + 0.22 * k, 10], [1.15, 0.12 + 0.16 * k, 18]]) {
+    ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = (bl + 10 * k) * s; ctx.shadowOffsetX = D; ctx.shadowOffsetY = 0;
+    ctx.translate(-D / s + dx * m, -up * m * (1 - 0.5 * lean));
+    ctx.globalAlpha = Math.min(1, al * pulse); ctx.fillStyle = col; ctx.fill(path); ctx.globalAlpha = 1;
+    ctx.restore();
+  }
 }
 // 气的粒子。front = false 画身后的火苗，true 画身前的火星
 function drawQi(F, front) {

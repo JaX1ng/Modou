@@ -21,7 +21,19 @@ const TIME_KEYS = ['S', 'A', 'R', 'stun', 'bstun', 'evThrow', 'evPush', 'evSlam'
 const ATK_KEYS = ['S', 'R', 'stun', 'bstun'];
 // 2.6（Jack：拳头在对方身上停留的时间长一点，算在后摇里）：收招的头 HOLD_R（两成）拳脚还停在打出去的地方，之后才往回收
 // （打中时顿帧里本来就停着，顿完了再多停一会儿；打空了就是打出去以后顿一下再收）。空中招的判定一直持续到落地，不用
-const HOLD_R = 0.2;
+const HOLD_R = 0.25;   // 2.12（Jack：打击停在身上的时间再长一点点）：0.2 → 0.25，和顿帧（config.js HITSTOP）一起长
+// 2.12 慢招（config.js SLOW_R 那一段）：表里写 slow: N 的起手招，换算完前摇不到 N 帧就拉到 N（前冲、无敌、霸体等比挪），后摇、硬直再 ×SLOW_R
+function slowDown(o) {
+  if (!o.slow) return;
+  if (o.S < o.slow) {
+    const k = o.slow / o.S; o.S = grid(o.slow);
+    for (const kk of ['inv', 'sinv', 'airInv', 'slipInv']) if (o[kk]) o[kk] = o[kk].map(v => grid(v * k));
+    if (o.lunge) o.lunge = [grid(o.lunge[0] * k), grid(o.lunge[1] * k), o.lunge[2]];
+    if (o.armor) o.armor.from = grid(o.armor.from * k);
+  }
+  // 后摇、挨打硬直 ×SLOW_R（打中以后的帧差不变）；格挡硬直不动 —— 被挡住本来就该罚得出来（BLOCK_PEN 也加了），硬直跟着长的话挡住了反而追不上他接的下一招
+  for (const kk of ['R', 'stun']) if (typeof o[kk] === 'number' && o[kk] > 0) o[kk] = grid(o[kk] * SLOW_R);
+}
 function M(o) {
   o.base = { S: o.S, A: o.A, R: o.R };          // 换算前的基准帧数（测试核对节奏用）
   for (const k of TIME_KEYS) if (typeof o[k] === 'number' && o[k] > 0) o[k] = (o.open && (k === 'S' || k === 'R') ? TFO : TF)(o[k]);
@@ -36,6 +48,7 @@ function M(o) {
     for (const k of ['inv', 'sinv', 'airInv', 'slipInv']) if (o[k]) o[k] = o[k].map(TA);
     if (o.lunge) o.lunge = [TA(o.lunge[0]), TA(o.lunge[1]), o.lunge[2]];
     if (o.armor) o.armor.from = TA(o.armor.from);
+    slowDown(o);
     if (!o.air) {
       const i2 = o.keys.findIndex(k => k[0] === 2);
       if (i2 >= 0) {
@@ -48,7 +61,10 @@ function M(o) {
   o.lead = o.lead || o.tier;
   o.height = o.height || 'mid';
   const at = o.script ? p => p * o.R : p => p <= 1 ? p * o.S : p <= 2 ? o.S + (p - 1) * o.A : o.S + o.A + (p - 2) * o.R;
-  o.keys = o.keys.map(([p, pose, e]) => [at(p), mk(pose, o.pb), e || 'io']);   // pb：这一招的底子姿势（别的拳派用自己的，比如咏春拳的 WBASE，见 wingchun.js）
+  // pb：这一招的底子姿势（别的拳派用自己的，比如咏春拳的 WBASE，见 wingchun.js）。2.12（Jack：打击之间的流畅感）：收招最后那一段没写缓动的用 out ——
+  //   停住（HOLD_R）以后拳脚先快快地收回来、快到位了慢下来，接下一招的第一帧也是从收到一半的姿势往过去走（animate 每帧往目标挪，不硬切）
+  const n = o.keys.length;
+  o.keys = o.keys.map(([p, pose, e], i) => [at(p), mk(pose, o.pb), e || (!o.script && i === n - 1 && p === 3 ? 'out' : 'io')]);
   return o;
 }
 const J_ = (base, o) => Object.assign({}, base, o);
@@ -80,11 +96,14 @@ const MOVES = {
   jab2: M({ kind: 'jab', label: '后手直拳', tag: '后手直拳', S: 4, A: 3, R: 7, dmg: 7, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
     limb: 'bh', fx: 'jab2', lunge: [1, 4, 6],
     keys: [[0, {}], [0.4, { tw: 30, fh: [22, -4], tor: 4 }], [1, P_CROSS, 'back'], [2, P_CROSS], [2.45, J_(P_CROSS, { tor: 12, dx: 8, tw: -24, bh: [38, -3] })], [3, {}]] }),
+  // 摆拳（2.12 重摆，Jack：第三下 J 的胳膊怎么都是弯的 —— 2.4 按勾拳摆的，肘翻到上面（fe -1）、拳心目标又短，肘顶到头上面去了；
+  //   他定的：重摆成直的 —— 拳从身后、身外侧带起来，摆的感觉靠大幅拧腰，到头胳膊伸直、肘在拳下面、拳到下巴那么高。射程、伤害、帧数都没动）
   jab3: M({ kind: 'jab', label: '摆拳', tag: '摆拳', S: 5, A: 3, R: 8, dmg: 8, reach: 90, stun: 14, bstun: 8, kb: 2.8, stop: 5, power: .4,
     limb: 'fh', fx: 'hook', lunge: [1, 5, 5],
-    keys: [[0, {}], [0.5, { fh: [4, -8], fe: -1, tor: 0, dx: -3, head: 4, tw: 0 }],
-      [1, { fh: [46, -14], fe: -1, tor: 24, dx: 10, head: -4, tw: 54, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }, 'back'],
-      [2, { fh: [48, -11], fe: -1, tor: 28, dx: 10, head: -4, tw: 58, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }], [3, {}]] }),
+    keys: [[0, {}], [0.45, { fh: [-6, 8], fe: 1, tor: 2, dx: -4, head: 4, tw: -12, bh: [8, -7] }],
+      [0.8, { fh: [28, 0], fe: 1, tor: 14, dx: 4, head: 0, tw: 24, hy: 69, bh: [7, -7] }],
+      [1, { fh: [63, -4], fe: 1, tor: 24, dx: 10, head: -4, tw: 56, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }, 'back'],
+      [2, { fh: [63, -4], fe: 1, tor: 28, dx: 10, head: -4, tw: 58, hy: 68, ff: [36, 0], bf: [-30, 0], bh: [7, -7] }], [3, {}]] }),
   rushL: M({ kind: 'jab', label: '连珠快拳', S: 3, A: 3, R: 6, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2.4, stop: 3, power: .3,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 2] }), 'back'], [2, J_(P_JAB, { tor: 20, dx: 12, fh: [60, 2] })], [3, { tor: 14 }]] }),
@@ -114,7 +133,7 @@ const MOVES = {
 
   /* ---- 重系（heavy）：前摇里带霸体，能硬吃一记短拳；怕腿 ---- */
   // 重拳：先往后蓄 —— 身子后坐、后手拉到耳朵后面、前手伸出去瞄（拳头上聚墨气），再拧腰把后手砸出去。和短拳反着来，一眼分得开
-  heavy: M({ kind: 'heavy', label: '重拳', open: true, S: 11, A: 4, R: 13, dmg: 13, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
+  heavy: M({ kind: 'heavy', label: '重拳', open: true, slow: 18, S: 11, A: 4, R: 13, dmg: 13, reach: 106, stun: 18, bstun: 11, kb: 5.5, stop: 8, shake: 5, power: .8, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [6, 11, 14], armor: { n: 1, from: 2, vs: ['light'] },
     keys: [[0, {}], [0.3, { tor: 2, dx: -6, hy: 68, head: 4, tw: 34, fh: [32, -4], bh: [-4, -8], ff: [30, 0], bf: [-36, 0] }, 'out'],
       [0.9, { tor: -6, dx: -10, hy: 67, head: 6, tw: 48, fh: [36, -6], bh: [-12, -10], ff: [30, 0], bf: [-40, 0] }],
@@ -150,7 +169,7 @@ const MOVES = {
       [1, { hy: 76, tor: 8, head: -12, fh: [54, -34], bh: [48, -30], ff: [42, 0], bf: [-24, 6], air: 4, dx: 28, tw: 14 }, 'out'],
       [2, { hy: 80, tor: -6, head: -20, fh: [34, -60], bh: [24, -56], ff: [36, 0], bf: [-20, 8], air: 6, dx: 18, tw: 10 }], [3, {}]] }),
   // 跑+重：沉肩靠（2.9 改名：Jack 说招名不要带别的拳派的东西，改成通用的说法）
-  shoulder: M({ kind: 'heavy', label: '沉肩靠', stamp: '沉肩靠', lead: 'heavy', open: true, S: 10, A: 5, R: 16, dmg: 14, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
+  shoulder: M({ kind: 'heavy', label: '沉肩靠', stamp: '沉肩靠', lead: 'heavy', open: true, slow: 16.5, S: 10, A: 5, R: 16, dmg: 14, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
     // 2.4：先缩身蓄一下，再侧过身、压低重心，肩背撞进去（低头、两手收在身前，前脚一大步落地）
     // 2.7.1（Jack：腿别交叉、手也别交叉，就是半蹲着靠过去）：不再转身（spin 56 转过去，两条腿从对面的大腿根出来，交叉成 X；
@@ -170,7 +189,7 @@ const MOVES = {
 
   /* ---- 腿系（kick）：射程远，能打重拳；怕近身短拳，出腿时被拳打中会失衡倒地 ----
      2.0（Jack：腿踢还是超标，尤其距离）：腿踢射程 134 → 126，腿系连招、飞踢也一起短 4~10 */
-  kick: M({ kind: 'kick', label: '腿踢', open: true, S: 13, A: 5, R: 14, dmg: 11, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
+  kick: M({ kind: 'kick', label: '腿踢', open: true, slow: 19.5, S: 13, A: 5, R: 14, dmg: 11, reach: 126, stun: 16, bstun: 10, kb: 4, stop: 7, shake: 4, power: .75,
     limb: 'ff', fx: 'kick', lunge: [6, 13, 12],
     keys: [[0, {}], [0.55, { ff: [30, 62], tor: -8, bf: [-27, 0], fh: [22, -12], bh: [6, -7], head: 3, hy: 74, dx: 3, tw: 10 }],
       [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [36, 44], tor: -14, dx: 13, hy: 74, bf: [-27, 0] }], [3, {}]] }),

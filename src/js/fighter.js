@@ -1068,7 +1068,7 @@ class Fighter {
       //   把探身、前冲（姿势的 dx）收回来一点，踩在地上的脚不动，胳膊、腿照旧伸直；让到头了（dx + STRAIGHT_BACK）还不够，才弯胳膊、折腿
       let cut = 0, lean = (arm || leg) && Math.abs(ax) >= 0.6 ? Math.max(0, Math.max(keep.dx, 8) + STRAIGHT_BACK - moved) : 0;
       for (let it = 0; it < 6; it++) {
-        const sp = strikeParts(this.J, limb), pen = bodyPenT(leg ? sp.slice(0, 1) : sp, tgtHit, fw) - CONTACT_SINK;   // 腿：只看脚（膝盖顶进去像提膝，不管）
+        const sp = strikeParts(this.J, limb), pen = bodyPenT(leg ? sp.slice(0, 1) : sp, tgtHit, fw) - (arm ? CONTACT_SINK_ARM : CONTACT_SINK);   // 腿：只看脚（膝盖顶进去像提膝，不管）；2.12 拳可以多扎进去一点
         if (pen <= 0.4 || cut >= 120) break;
         if (lean > 0.4) { const b = Math.min(pen + 0.6, lean); lean -= b; cut += b; back(b); refit(); continue; }
         const d = Math.min(pen + 0.6, 120 - cut), dl = d / ax, L = this.fkL, e = L[limb]; cut += d;
@@ -1179,6 +1179,7 @@ class Fighter {
     const fdir = a => { const r = a * D2R, x = Math.cos(r) * sc, y = Math.sin(r), X = x * cr - y * sr, Y = x * sr + y * cr, l = Math.hypot(X, Y) || 1; return { 0: X / l * f, 1: Y / l }; };
     J.fpm = p.fp || 0; J.bpm = p.bp || 0; J.fpd = fdir(p.fpa); J.bpd = fdir(p.bpa);
     J.fpr = p.fpr === undefined ? 1 : p.fpr; J.bpr = p.bpr === undefined ? 1 : p.bpr;   // 2.10 掌心朝里 / 侧着 / 朝外（body.js palmShape）
+    J.fz = p.fz || 0;                                                                   // 2.12 前手在里还是在外（搭手翻手：正 = 前手那条胳膊到近侧）
     J.fwa = p.fw || 0; J.bwa = p.bw || 0;                    // 2.10.2 拳头绕手腕往上翘多少度（body.js 画拳头）
     J.fyaw = p.fo || 0; J.byaw = p.bo || 0;                    // 2.5 脚尖跟着膝盖往侧面摆多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
