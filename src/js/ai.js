@@ -82,10 +82,13 @@ const LEVELS = {
   // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
   // 2.2（Jack：降 5~10%）：反应 7 → 8 帧、看穿 0.5 → 0.45（习惯招最多还是 0.8）、挡 0.7 → 0.66、挡住就罚 0.92 → 0.86、记习惯 0.85 → 0.8
   // 2.7 没动（倒地、滚身起改了以后量过：木头玩家占比 12 个种子 2.6 是 26.9%、2.7 是 26.6%）
-  hard: { react: 8, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
+  // 2.12 困难的反应慢 1 帧（8 → 9）：慢招前摇拉长了两三帧（重拳 18、腿踢 19.5）以后，8 帧反应什么慢招都挡得住、慢招打电脑白给，
+  //   木头玩家打困难掉到 25.6%，和终极（21.7%）挨到一起；9 帧量出来 29% 上下（2.6 / 2.7 是 28.5 / 26.5%）。挡 0.66 试过 0.63 / 0.6，对木头玩家的占比没影响，没动；
+  //   中等、终极的反应也试过各慢一帧：对木头玩家的占比没影响，终极反倒打不过困难、坠山击挡不住了，没动
+  hard: { react: 9, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
     punish: .9, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86,
-    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .62, jieAcc: .87, jieSd: 1.05, jieFlat: .5 },
+    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .55, jieAcc: .87, jieSd: 1.05, jieFlat: .5 },   // 2.12 jie 0.62 → 0.55：接住以后那一套疼了（反打 ×1.3、搭手 ×1.35），少接一点，木头玩家照旧打掉两成半上下
   // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
   //（乱换招的木头玩家打掉的血占比，2.5：入门 67% · 简单 53% · 中等 38% · 困难 28% · 终极 22.5%；2.6：66% · 52% · 34% · 28.5% · 23.5%；
   //  2.7（12 个种子；同样 12 个种子量 2.6 是 66% · 53% · 35% · 27% · 23.5%）：84% · 69% · 43% · 26.5% · 22.5%）
@@ -97,7 +100,7 @@ const LEVELS = {
     punish: .93, combo: .93, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
     inst: .2, instMax: .55, instReact: 1,
-    beatSd: .8, brk: .58, brkAcc: .82, touch: .7, feel: 2, jie: .78, jieAcc: .94, jieSd: .75, jieFlat: .35 },   // 2.12 终极的接招再准一点（和困难拉开）
+    beatSd: .8, brk: .58, brkAcc: .82, touch: .7, feel: 2, jie: .6, jieAcc: .9, jieSd: .9, jieFlat: .35 },   // 2.12 接招 jie 0.7 → 0.6（试过 0.78 / 0.94 / 0.75：接住那一套疼了以后木头玩家只剩 15%，太狠；0.6 + 一串少连两拳 → 21%，和传统格斗的终极一样）
 };
 // 2.10 咏春拳：beatSd 连环冲拳按得离拍点差多少帧（标准差；拍子前 WC_EARLY、后 WC_LATE 帧以内算在拍子上）；
 //   touch 搭手里懂不懂行（翻对手型、反拿、甩手）；feel 搭手里手上的反应（帧）：黏着的时候看他几帧以前的样子（比 react 快：手上的感觉比眼睛快）
@@ -198,11 +201,15 @@ const AI_TUNE = {
   vsWcGrab: 0.14,           // 传统格斗对着听劲的人（咏春拳站着按住挡）：抓的机会（接不住擒拿，比抓普通挡的人多一点）
   vsWcLow: 0.12,            // 2.11 对着听劲的人打下段的机会（站着接不住下段；传统格斗对一般挡着的人是 0.05）
   bait: 0.06,               // 2.11 骗接：他听劲的时候在拳够不着的地方空挥一拳（看他会不会接、接了打他收手），× 读招的本事
+  // 2.12（NOTES 待做里的「咏春拳的电脑再往一半靠：多听劲、少主动起手」）：越高的档越像咏春拳该有的打法 —— 贴身先按住挡听劲（他出手就接），
+  //   中立起手的一串少一点（上面的档打满级传统格斗，中立一串多半被挡住、卸力，赚的是接住以后那一套）
+  wcListen: { novice: 0, easy: 0, normal: 0.003, hard: 0.006, hell: 0.008, max: 0.022 },   // 每帧按住挡听劲的机会（听 14～30 帧）；终极留着给真人打（木头玩家还得打掉两成）
+  wcOpen: { novice: 1, easy: 1, normal: 1, hard: 0.9, hell: 0.8, max: 0.6 },              // 中立起手一串的机会打折
 };
 // 搭手、甩手直冲以后接着按拍子连几下（难度越高连得越长）
 const W_AFTER = { novice: 3, easy: 3, normal: 3, hard: 5, hell: 5, max: 6 };
 // 连环冲拳每一拳接不接下去（一串八拳，接下去的机会 ^7 是打满的机会；入门、简单的拍子按不准，常常自己断）
-const W_CHAIN = { novice: 0.92, easy: 0.92, normal: 0.91, hard: 0.955, hell: 0.93, max: 0.97 };
+const W_CHAIN = { novice: 0.92, easy: 0.92, normal: 0.91, hard: 0.955, hell: 0.9, max: 0.97 };   // 2.12 终极 0.93 → 0.9：一串别老打满（满级打满、顺到 8 级，那是观战看的）
 const WPLANS = {
   // 咏春拳一下一下都轻，靠连：入门、简单也连，只是按不准拍子、常常连着连着就断了
   novice: [[Jn(3), 3], [Jn(4), 2], [Jn(2), 2], [['kick', 'kick'], 1.5], [['jab', 'kick', 'kick'], 1], [['jab', 'jab', 'heavy'], 1],
@@ -856,6 +863,8 @@ class Brain {
     }
     this.guardBand = gb;
     if (!s.down && !s.atk && dist <= 100 && R() < L.block * 0.012) { f.noParry = true; this.blockT = 14 + (R() * 14 | 0); this.lowBlock = R() < 0.4; if (!this.lowBlock && R() < L.gwalk) this.gwalkT = this.blockT; H.block = true; H.down = this.lowBlock; return; }
+    // 2.12 咏春拳贴身听劲（按住挡等他出手再接；蹲着的多半是防他打下段）
+    if (this.K.wc && !s.down && !s.atk && !oppUp && dist <= 104 && R() < (AI_TUNE.wcListen[L.id] || 0)) { f.noParry = true; this.blockT = 14 + (R() * 16 | 0); this.lowBlock = R() < 0.3 * L.lowRead; H.block = true; H.down = this.lowBlock; return; }
     // 2.1 他在跳（没想好接法的时候）：别往他底下走、别出地上的招；离得近、他往下落了就看反应站着挡
     if (oppUp && !s.down) {
       if (sj.air && dist <= 170 && sj.vz < 2 && R() < L.airBlock * 0.08) { f.noParry = true; this.lowBlock = false; this.blockT = 12; H.block = true; return; }
@@ -881,7 +890,7 @@ class Brain {
       const legOK = 1 / (1 + 0.6 * this.memo.ctr.leg * L.habit);                      // 2.9 腿老被耕开就少点
       if (dist > kr[0] && dist <= kr[1] && appr < 1 && appr > -1.5 && R() < L.aggr * 0.045 * legOK) { press(dist <= kr[2] && R() < L.low ? 'd:kick' : 'kick'); return; }
       if (this.smart && appr > 1.5 && !s.run && dist > J.reach - 4 && dist <= J.reach + appr * (J.S + 1) && R() < L.read * 0.25) { this.plan = this.K.wc ? Jn(5) : ['jab', 'heavy']; press('jab'); this.plan.shift(); return; }
-      if (dist <= (this.K.wc ? 88 : 92) && R() < L.aggr * 0.09) { this.plan = this.pickPlan(dist); press(this.plan.shift()); return; }
+      if (dist <= (this.K.wc ? 88 : 92) && R() < L.aggr * 0.09 * (this.K.wc ? (AI_TUNE.wcOpen[L.id] || 1) : 1)) { this.plan = this.pickPlan(dist); press(this.plan.shift()); return; }
       if (dist <= 82 && R() < 0.008 * L.aggr) { press('grab'); return; }
     }
     if (--this.desireT <= 0) {

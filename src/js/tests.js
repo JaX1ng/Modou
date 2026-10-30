@@ -1697,7 +1697,7 @@ T('2.2 难度：入门 / 简单 / 中等 / 困难 / 终极（每个两个字）�
   eq(LEVEL_IDS, ['novice', 'easy', 'normal', 'hard', 'hell']);
   eq(LEVEL_IDS.map(id => LEVEL_NAME[id]), ['入门', '简单', '中等', '困难', '终极']);
   for (const id of LEVEL_IDS) { ok(LEVEL_NAME[id].length === 2, id + ' 名字要两个字'); eq(LABEL[id], '电脑 · ' + LEVEL_NAME[id]); }
-  eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [22, 14, 9, 8, 11], '反应帧（2.7 入门、简单、中等慢了）');
+  eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [22, 14, 9, 9, 11], '反应帧（2.7 入门、简单、中等慢了；2.12 困难 8 → 9：慢招前摇长了以后 8 帧反应什么都挡得住）');
   ok(LEVELS.novice.block < LEVELS.easy.block && LEVELS.novice.read < LEVELS.easy.read && LEVELS.novice.punishBlock < LEVELS.easy.punishBlock, '入门比简单挡得少、读招少、罚得少');
   ok(PLANS.novice.every(([p]) => p.length <= 3) && PLANS.novice.filter(([p]) => p.length <= 2).length >= PLANS.novice.length - 1, '入门的连招短（多是一两下）');
   ok(LEVELS.hard.smart && LEVELS.hard.see === 0.45 && !LEVELS.hard.inst, '困难：2.1 的难松一点（看穿 0.5 → 0.45）');
@@ -2600,9 +2600,10 @@ T('2.6 前摇长 5~10%（每一招都长、平均 7~8%）；打中以后拳头�
   const mx = Math.max(...ext); let stay = 0; for (let j = Math.max(0, hitAt); j < ext.length; j++) { if (ext[j] >= mx * 0.85) stay++; else if (stay) break; }
   ok(stay >= 5, '短拳打中后拳头只停了 ' + stay + ' 帧');
 });
-T('2.6 伤害：每一招都略微提高；连招、高级招提得多，和普通招拉开明显差距；对面的木头玩家照样分得出五档', () => {
-  // 2.5：短拳 5、重拳 12、腿踢 10；单招提一点点（≤ 20%），高级招比普通招多出至少三成
-  eq([MOVES.jab.dmg, MOVES.heavy.dmg, MOVES.kick.dmg], [6, 13, 11]);
+T('2.6 伤害：每一招都略微提高；连招、高级招提得多，和普通招拉开明显差距；对面的木头玩家照样分得出五档（2.12 慢招再提：重拳 16、腿踢 13）', () => {
+  // 2.5：短拳 5、重拳 12、腿踢 10；2.6 单招提一点点（≤ 20%），高级招比普通招多出至少三成
+  // 2.12（Jack：招式之间的数值拉开）：慢招慢了（重拳前摇 18、腿踢 19.5，看得见、挡得住），打中就该更疼 —— 重拳 13 → 16、腿踢 11 → 13（比 2.5 多三成上下，≤ 1.4 倍）；短拳照旧 6
+  eq([MOVES.jab.dmg, MOVES.heavy.dmg, MOVES.kick.dmg], [6, 16, 13]);
   const base = { light: MOVES.jab.dmg, heavy: MOVES.heavy.dmg, kick: MOVES.kick.dmg };
   for (const k of ['beng', 'chop', 'hammer', 'upper', 'whip', 'twinKick', 'backKick', 'whirl', 'rushEnd']) {
     const d = MOVES[k], b = base[d.lead] || base[d.kind === 'jab' ? 'light' : d.kind];
@@ -2611,7 +2612,7 @@ T('2.6 伤害：每一招都略微提高；连招、高级招提得多，和普�
   // 整套连招（2.5 的伤害）：拳拳重 23、拳拳腿 20、重腿 26、腿腿 20、腿重 23、拳重 19、重重 24 —— 2.6 至少多两成
   const old = [[80, ['jab', 'jab', 'heavy'], 23], [80, ['jab', 'jab', 'kick'], 20], [96, ['heavy', 'kick'], 26], [118, ['kick', 'kick'], 20], [118, ['kick', 'heavy'], 23], [80, ['jab', 'heavy'], 19], [96, ['heavy', 'heavy'], 24]];
   for (const [dist, acts, was] of old) { arena(dist); combo(acts); tick(0, 0, 90); ok(lost(F2) >= was * 1.2, `${acts.join('+')}：${lost(F2)}（2.5 是 ${was}）`); }
-  for (const [dist, mv, was] of [[80, 'jab', 5], [96, 'heavy', 12], [118, 'kick', 10]]) { arena(dist); combo([mv]); tick(0, 0, 60); ok(lost(F2) > was && lost(F2) <= was * 1.25, `${mv} 单招 ${lost(F2)}（2.5 是 ${was}）`); }
+  for (const [dist, mv, was, cap] of [[80, 'jab', 5, 1.25], [96, 'heavy', 12, 1.4], [118, 'kick', 10, 1.4]]) { arena(dist); combo([mv]); tick(0, 0, 60); ok(lost(F2) > was && lost(F2) <= was * cap, `${mv} 单招 ${lost(F2)}（2.5 是 ${was}）`); }
   ok(MOVES.super.dmg > 40 && BURST_DMG > 18 && THROW_DMG > 10, '泼墨、爆气、擒拿摔也提一点');
 });
 T('2.6 画面（Jack）：跑步手臂别甩那么大；待机后手往前一点；飘带短一点、细一点；人物在屏幕上大一点', () => {
@@ -3125,7 +3126,7 @@ T('2.10 连环冲拳按拍子：两只手轮流、每三拳一记立掌、第 8 
   eq(hits.length, 8, '八下都打中'); ok(F2.state === 'down' || F2.state === 'rise', '寸拳收势打倒');
   ok(!ev.some(e => e.type === 'beat'), '按在拍子上：没有抢拍、过拍');
   ok(hits[6].dmg >= hits[1].dmg, '越打越疼：' + hits.map(e => e.dmg).join(' '));
-  ok(lost(F2) >= 26 && lost(F2) <= 33, '中立起手一整套 30 上下（2.10.1 打八折，2.11 打七折）：' + lost(F2));
+  ok(lost(F2) >= 33 && lost(F2) <= 40, '中立起手一整套 36 上下（2.10.1 打八折，2.11 打七折 29，2.12 回到八折、顺一级 8%）：' + lost(F2));
   const gaps = hitAt.slice(1, 7).map((t, k) => t - hitAt[k]);       // 按游戏里的时间（打中停顿那几帧不算）
   ok(gaps.every(g => g >= WC_BEAT_MIN - 0.5 && g <= WC_BEAT + 0.5), '一拍一拳：' + gaps.join(' '));
   ok(gaps[gaps.length - 1] < gaps[0], '越打越快：' + gaps.join(' '));
@@ -3482,7 +3483,7 @@ T('2.10 电脑会用咏春拳（按拍子打连环冲拳、接招（2.11）进�
       if (type === 'beat') add('beat');
       if (type === 'roll') add('roll');
       if (type === 'grabHit' && A.style === 'wc') add('lap');
-      if (type === 'counterGrab' || type === 'shake') add('follow');
+      if (type === 'counterGrab' || type === 'shake' || (type === 'escape' && A.style === 'trad')) add('follow');   // 2.12 刚被扣住手腕按拿挣脱也算（2.11 起拉手扣住那一下挣得开，困难的电脑多半走这条）
       if (type === 'hit' && A.style === 'wc' && WMOVES[x.name] && WMOVES[x.name].beat) add('beatHit');
       if (type === 'hit') dmg[A.style] += x.dmg;
       if (type === 'grabHit') dmg[A.style] += x.dmg;
@@ -3498,7 +3499,7 @@ T('2.10 电脑会用咏春拳（按拍子打连环冲拳、接招（2.11）进�
   ok((n['trad:low'] || 0) > 20 && (n['trad:grab'] || 0) > 20, '传统格斗的电脑打咏春拳会打下段、抓：' + txt);
   ok((n.roll || 0) > 12 && (n.lap || 0) > 20, '搭手里翻手型、拉手扣住打：' + txt);
   ok((n.beat || 0) < (n.beatHit || 0) * 0.1, '困难的电脑拍子按得准（抢拍、过拍少）：' + txt);
-  ok((n.follow || 0) > 8, '传统格斗的电脑被黏住会反拿、甩手：' + txt);
+  ok((n.follow || 0) > 8, '传统格斗的电脑被黏住会反拿、甩手、挣脱：' + txt);
   console.log('电脑对电脑（困难，六局）：' + txt);
   const share = dmg.wc / (dmg.wc + dmg.trad);
   // 2.10.1 放宽到 35%（电脑不会钓反打）；2.11 接招要读招，电脑按难度接、传统格斗的电脑会骗接 —— 调回 40%
@@ -3517,10 +3518,11 @@ T('2.10 咏春拳的招打中那一刻拳脚也落在身上（最远射程 -12 ~
   ok(!close.length, close.join('；'));
 });
 T('2.10 咏春拳的电脑也一档比一档难：乱换招的木头玩家（传统格斗）打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，和传统格斗的电脑差不多（入门 ≥ 78%、简单 ≥ 62%、中等 ≥ 38%、终极 ≥ 18%）', () => {
-  const sh = {}, seeds = [5, 6, 7, 8], keep = Styles.pvp;
+  // 2.12：8 个种子各 30000 帧（以前 4 个各 20000：困难、终极两档起伏四五个点，换个种子就翻车）
+  const sh = {}, seeds = [5, 6, 7, 8, 9, 10, 11, 12], keep = Styles.pvp;
   try {
     Styles.pvp = ['trad', 'wc'];
-    for (const lv of LEVEL_IDS) { let t = 0; for (const sd of seeds) t += seededRandom(sd, () => mixedPlayer(lv, 20000)); sh[lv] = t / seeds.length; }
+    for (const lv of LEVEL_IDS) { let t = 0; for (const sd of seeds) t += seededRandom(sd, () => mixedPlayer(lv, 30000)); sh[lv] = t / seeds.length; }
   } finally { Styles.pvp = keep; }
   const txt = LEVEL_IDS.map(l => `${LEVEL_NAME[l]} ${(sh[l] * 100).toFixed(1)}%`).join(' · ');
   for (let i = 1; i < LEVEL_IDS.length; i++) ok(sh[LEVEL_IDS[i - 1]] > sh[LEVEL_IDS[i]], '有两档反过来了：' + txt);
@@ -3592,16 +3594,16 @@ T('2.10.1 被挡的一串每一下之间有空（踢也一样）：传统格斗�
   ok(r.ev.some(e => e.type === 'shove' && e.a === 1), '挡住的硬直里推挡推开了');
   ok(r.guards.length < 8, '推开以后这一串断了：挡了 ' + r.guards.length + ' 下');
 });
-T('2.10.1 收益分层（Jack：反打、贴脸最高，主动进攻降一降）：中立起手一串 30 上下 ×' + WC_NEUTRAL_MUL + '（2.11 再降）；截住腿以后反打 ×' + WC_COUNTER_MUL + ' 50 上下；搭手里 ×' + WC_TOUCH_MUL + '：接住进来直接打 55 上下、翻满再打 60 上下', () => {
+T('2.10.1 收益分层（Jack：反打、贴脸最高，主动进攻降一降）：中立起手一串 ×' + WC_NEUTRAL_MUL + ' 36 上下（2.11 ×0.7 是 29，2.12 回到 ×0.8）；截住腿以后反打 ×' + WC_COUNTER_MUL + ' 65 上下（2.11 是 51）；搭手里 ×' + WC_TOUCH_MUL + '：接住进来直接打 66 上下、翻满再打 75 上下（2.11 是 55 / 60；2.12 Jack：咏春上限高）', () => {
   wArena(80); beatChain(8, -1); const neutral = lost(F2);
-  ok(neutral >= 26 && neutral <= 33, '中立起手：' + neutral);
+  ok(neutral >= 33 && neutral <= 40, '中立起手：' + neutral);
   ok(wCatch(100, TAP('kick'), 'grab'), '按手截住腿'); const h0 = F2.hp; beatChain(8, -1); const counter = h0 - F2.hp;
-  ok(counter >= 45 && counter <= 57, '截住腿以后反打一串：' + counter);
+  ok(counter >= 58 && counter <= 72, '截住腿以后反打一串：' + counter);
   wTouch(86, TAP('jab')); const h1 = F2.hp; beatChain(8, -1, null, 300, true); const straight = h1 - F2.hp;
-  ok(straight >= 49 && straight <= 61, '接住进搭手、不翻直接打：' + straight);
+  ok(straight >= 59 && straight <= 73, '接住进搭手、不翻直接打：' + straight);
   wTouch(86, TAP('jab')); const h2 = F2.hp; for (const d of [RIGHT, LEFT, DOWN]) { wRun(1, () => d); waitRoll(); }
   beatChain(8, -1, null, 300, true); const full = h2 - F2.hp;
-  ok(full >= 54 && full <= 66, '搭手里翻满再打：' + full);
+  ok(full >= 68 && full <= 82, '搭手里翻满再打：' + full);
   ok(neutral < counter && neutral < straight && straight < full, `主动进攻 ${neutral} < 反打 ${counter}、搭手 ${straight} < 翻满 ${full}`);
   // 2.11（Jack：削弱平时的拳 / 重 / 踢）寸拳、肘也一样：中立打出去 ×WC_NEUTRAL_MUL，截住腿以后打出去是反打
   const heavyHit = key => { let d = null; CEV.on = (t, A, B, x) => { if (t === 'hit' && A === F1 && d === null) d = x.dmg; }; try { run(40, i => [i === 0 ? key : 0, 0]); } finally { CEV.on = null; } return d; };
@@ -3948,6 +3950,21 @@ T('2.12 观战的满级电脑（Jack：观战时两个电脑的强度必须拉�
     ok(r >= 28 && won[0] >= r * 0.75, `${style}：满级打终极 ${won[0]} : ${won[1]}（${r} 回合）`);   // 6 个种子量过：传统格斗 40 : 7、咏春拳 46 : 2（换种子起伏七八个点）
     ok(hits / r >= 20, `${style}：打得起来（每回合打中 ${(hits / r).toFixed(0)} 下）`);
   }
+});
+
+T('2.12 招式数值拉得开（Jack：招数之间数值拉不开，玩家觉得乱玩都行；拉开的同时兼顾平衡）：传统格斗三个起手 短拳 < 腿踢 < 重拳 一级差一截；慢招（重拳、腿踢、沉肩靠）比 2.11 疼、前摇也长（高风险高收益）；每一系的高级招比普通招多三成以上；同一个局面下的两招伤害不挤在一起；咏春拳的收益分层 起手 < 1 < 反打 < 搭手', () => {
+  const J = MOVES.jab.dmg, K = MOVES.kick.dmg, Hv = MOVES.heavy.dmg;
+  ok(J === 6 && K === 13 && Hv === 16 && MOVES.shoulder.dmg === 17, `起手：短拳 ${J} 腿踢 ${K} 重拳 ${Hv} 沉肩靠 ${MOVES.shoulder.dmg}`);
+  ok(K - J >= 6 && Hv - K >= 2 && Hv >= J * 2.5, '三个起手拉得开');
+  ok(MOVES.heavy.S >= 18 && MOVES.kick.S >= 19 && MOVES.shoulder.S >= 16 && MOVES.jab.S <= 6, '慢招慢、快招快（伤害高的那几招前摇长）');
+  // 同一个起手（lead）、同一系（tier）、同一个打点的两个连招后半不挤在一起（伤害差 ≥ 3）：拳踢 鞭腿 / 拳拳踢 转身蹬；重重 劈山掌 / 重踢 旋风腿（系不同，看倒不倒）
+  ok(MOVES.backKick.dmg - MOVES.whip.dmg >= 3, `拳拳踢 ${MOVES.backKick.dmg} 比 拳踢 ${MOVES.whip.dmg} 多一截`);
+  ok(MOVES.upper.dmg - MOVES.beng.dmg >= 3, `拳拳重 ${MOVES.upper.dmg} 比 拳重 ${MOVES.beng.dmg} 多一截`);
+  ok(MOVES.hammer.dmg - MOVES.twinKick.dmg >= 3, `踢重 ${MOVES.hammer.dmg} 比 踢踢 ${MOVES.twinKick.dmg} 多一截`);
+  ok(MOVES.beng.dmg >= Hv * 1.15 && MOVES.whirl.dmg >= K * 1.5 && MOVES.chop.dmg >= Hv * 1.3 && MOVES.twinKick.dmg >= K * 1.3, '连招后半比起手高一截');
+  // 咏春拳：中立起手打折、反打和搭手里加成，一级比一级高；错招罚得疼
+  ok(WC_NEUTRAL_MUL < 1 && WC_NEUTRAL_MUL >= 0.7 && WC_COUNTER_MUL > 1.2 && WC_TOUCH_MUL > WC_COUNTER_MUL && WC_WRONG_MUL >= 1.3, `咏春收益分层 ${WC_NEUTRAL_MUL} < 1 < ${WC_COUNTER_MUL} < ${WC_TOUCH_MUL}，错 ×${WC_WRONG_MUL}`);
+  ok(FLOW_DMG >= 0.08, '顺一级的伤害加成（越顺越疼，吃操作）：' + FLOW_DMG);
 });
 
 (async function runAll() {

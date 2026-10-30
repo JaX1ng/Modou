@@ -6,7 +6,7 @@
 //   中（2.6.0）：加了新玩法、新模式、新系统（新招式体系、难度体系、破招练习这种），或者改了规则、数值（手感会变）；
 //   小（2.5.1）：画面、动作、声音、界面、小选项、修 bug —— 一次改好几条也是小版本。
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
-const VERSION = '2.11.0';
+const VERSION = '2.12.0';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -229,7 +229,8 @@ const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着�
      最多翻 WC_ROLL_MAX 次。他甩手以后 WC_LAT_WIN 帧里按拳 = 甩手直冲
    · 接招按错、时机不对：这一下 ×WC_WRONG_MUL
    · 2.10.1 一串里拳、踢都按拍子（link 的踢和 beat 的拳一样走抢拍 / 过拍）；收益按一串从哪来：中立起手 ×WC_NEUTRAL_MUL、接招 / 截腿以后 ×WC_COUNTER_MUL、搭手里 ×WC_TOUCH_MUL */
-const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.06, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
+// 2.12 顺一级伤害 +6% → +8%（Jack：咏春上限高、下限略高 —— 顺是按拍子、接住、翻手才涨的，吃操作的那一头）
+const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.08, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
 const WC_BEAT = 8, WC_BEAT_STEP = 0.25, WC_BEAT_MIN = 6.5, WC_EARLY = 3, WC_LATE = 2, WC_EARLY_LAG = 3, WC_GAP = 2, WC_MARGIN = 1.5;
 const WC_PAT_STUN = TFH(19), WC_GAUN_STUN = TFH(21), WC_TRAP_EARLY = TF(4), WC_TRAP_DMG = 3, WC_REEL_HIT = TFH(14);
 const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：听劲慢慢往前压、往后退
@@ -237,7 +238,10 @@ const WC_CATCH_ON = 1, WC_CATCH_WIN = 6, WC_CATCH_WIN_H = 7, WC_CATCH_HIT = 4, W
 const WC_CHARGE = 20, WC_CHARGE_AT = 0.6;
 const WC_TOUCH_OPEN = 16, WC_STEP = 8, WC_ROLL = 6, WC_ROLL_PRE = 3, WC_ROLL_MAX = 3, WC_TOUCH_GRACE = 4, WC_TOUCH_GAP = 66, WC_LAP = 6, WC_LAT_WIN = 10;
 const WC_WRONG_MUL = 1.3;
-const WC_NEUTRAL_MUL = 0.7, WC_COUNTER_MUL = 1.15, WC_TOUCH_MUL = 1.2;   // 2.10.1 一串的收益按从哪来：中立起手打折、接招 / 截腿 / 压起身 ×1.15、搭手里 ×1.2（Jack：反打、贴脸最高，主动进攻降一降）；2.11 中立起手 ×0.8 → ×0.7、寸拳和肘也算（Jack：削弱平时的拳 / 重 / 踢）
+// 2.10.1 一串的收益按从哪来：中立起手打折、接招 / 截腿 / 压起身 ×1.15、搭手里 ×1.2（Jack：反打、贴脸最高，主动进攻降一降）；2.11 中立起手 ×0.8 → ×0.7、寸拳和肘也算（Jack：削弱平时的拳 / 重 / 踢）
+// 2.12（Jack：咏春偏弱，难度留着、上限高、下限略高）：中立起手 ×0.7 → ×0.8（下限：木头咏春打木头传统 38 → 41%）、反打 ×1.15 → ×1.3、搭手 ×1.2 → ×1.35（上限：读对了接住那一套 55 / 60 → 66 / 75）。
+//   量出来的分层、跨派均衡在 NOTES「查平衡」2.12；真人打着再调：太强先降 WC_TOUCH_MUL，太弱先升 WC_COUNTER_MUL
+const WC_NEUTRAL_MUL = 0.8, WC_COUNTER_MUL = 1.3, WC_TOUCH_MUL = 1.35;
 
 // 联机（P2P）
 const NET = {

@@ -118,12 +118,15 @@ function punisher(me, op, blockedByMe) {
   return null;
 }
 
-function makeBot(opt, side) {
-  const st = { i: 0, route: null, started: false, fired: 0, punished: -1 };
-  const O = OPTIONS[opt];
+function makeBot(opt, side, style, rng, mash) {
+  const st = { i: 0, route: null, started: false, fired: 0, punished: -1, rng, mash };
+  const O = (style === 'wc' ? WC_OPTIONS : OPTIONS)[opt];
+  if (style === 'wc') return wcBot(opt, side, O, st);                 // 2.12 咏春拳的选项另一套（下面「四」）
   return () => {
     const me = side ? F2 : F1, op = me.opp, i = st.i++;
     let v = 0;
+    // 2.12 对面是咏春拳：被黏住了（搭手）过几帧甩手（按住挡往后）；刚被扣住手腕按拿挣脱（木头：按得慢、不一定按得到，三成）
+    if (me.stuck) return me.stunT > 0 && i % 7 === 0 && (!mash || rng() < 0.3) ? TAP('grab') : BLOCK_B | aw(me, op);
     // 2.0 闪身的双击（按着挡：按 → 松 → 按），挡住的硬直里也要按完
     if (st.slipSeq && st.slipSeq.length) { const k = st.slipSeq.shift(); return BLOCK_B | (k ? tw(me, op) : 0); }
     // 挡住踩腿 / 截击（1.8.0）
@@ -160,13 +163,15 @@ function makeBot(opt, side) {
   };
 }
 
-function simulate(a, b, dist, qi) {
-  startMatch('pvp'); game.phase = 'fight'; game.paused = true;
+function simulate(a, b, dist, qi, styles) {
+  const keep = Styles.pvp; Styles.pvp = styles || ['trad', 'trad'];     // 2.12 两边各是哪一派
+  try { startMatch('pvp'); } finally { Styles.pvp = keep; }
+  game.phase = 'fight'; game.paused = true;
   const mid = STAGE_W / 2;
   F1.x = mid - dist / 2; F2.x = mid + dist / 2; F1.facing = 1; F2.facing = -1;
   F1.qi = F2.qi = qi || 0;
   FX.length = 0; QI.length = 0;
-  const b1 = makeBot(a, 0), b2 = makeBot(b, 1);
+  const b1 = makeBot(a, 0, F1.style), b2 = makeBot(b, 1, F2.style);
   let kd = [0, 0], was = [false, false];
   for (let t = 0; t < HORIZON; t++) {
     step([b1(), b2()]);
@@ -193,29 +198,56 @@ function solve(A, iters = 40000) {
   return { P, Q, val };
 }
 
+// 2.12 「拉得开」（Jack：招数之间数值拉不开，玩家觉得乱玩都行）：这一个距离上，各选项对随便出的对手平均赚多少 ——
+//   最好的比随便挑一个平均多赚多少（spread）、最好和最差差多少（range）、离散度（sd）；挤在一起的（互相差不到 1.5 血、都比平均赚得多）那几对 ——
+//   只看出招的选项（挡、看招再挡、不动这些防守的本来就该差不多，不算）
+function spreadOf(naive, isAtk) {
+  const vs = naive.map(x => x[1]), mean = vs.reduce((a, b) => a + b, 0) / vs.length, best = Math.max(...vs), worst = Math.min(...vs);
+  const sd = Math.sqrt(vs.reduce((a, v) => a + (v - mean) * (v - mean), 0) / vs.length);
+  const close = [], atk = isAtk ? naive.filter(x => isAtk(x[0])) : naive;
+  for (let i = 0; i < atk.length; i++) for (let j = i + 1; j < atk.length; j++) if (Math.abs(atk[i][1] - atk[j][1]) < 1.5 && Math.max(atk[i][1], atk[j][1]) > mean) close.push([atk[i][0], atk[j][0]]);
+  return { spread: best - mean, range: best - worst, sd, close: close.slice(0, 6) };
+}
 function runBalance(opts) {
   opts = opts || {};
   if (opts.react) REACT = opts.react;
   if (opts.patch) (0, eval)(opts.patch);          // 试改数值：比如 "MOVES.sweep.S = 10"
   if (opts.only) for (const k of Object.keys(OPTIONS)) if (!opts.only.includes(k)) delete OPTIONS[k];
   if (opts.drop) for (const k of opts.drop) delete OPTIONS[k];
-  const names = Object.keys(OPTIONS).filter(k => !OPTIONS[k].need || HAS(OPTIONS[k].need));
+  // 2.12 两边各是哪一派（styles）：行是左边那一派的选项、列是右边那一派的；收益按左边算
+  const styles = opts.styles || ['trad', 'trad'], optsOf = st => st === 'wc' ? WC_OPTIONS : OPTIONS;
+  const usable = O => k => !O[k].mash && (!O[k].need || HAS(O[k].need));
+  const O0 = optsOf(styles[0]), isAtk = k => !O0[k].gc && !O0[k].react && !/^(wait|backDash|gwalkBack|ting|tingLow)$/.test(k);
+  const names = Object.keys(O0).filter(usable(O0));
+  const cols = Object.keys(optsOf(styles[1])).filter(usable(optsOf(styles[1])));
   const dists = opts.dists || [70, 95, 120, 145, 175, 210];
-  const out = { names, dists, rows: [] };
+  const out = { names, cols, dists, styles, rows: [] };
   const avg = Object.fromEntries(names.map(n => [n, 0])), navg = Object.fromEntries(names.map(n => [n, 0]));
+  const cavg = Object.fromEntries(cols.map(n => [n, 0])), cnavg = Object.fromEntries(cols.map(n => [n, 0]));
   for (const d of dists) {
-    const A = names.map(a => names.map(b => simulate(a, b, d, opts.qi)));
+    const A = names.map(a => cols.map(b => simulate(a, b, d, opts.qi, styles)));
     const { P, Q, val } = solve(A);
-    const mix = names.map((n, i) => [n, (P[i] + Q[i]) / 2]).sort((x, y) => y[1] - x[1]);
+    const same = styles[0] === styles[1];
+    const mix = names.map((n, i) => [n, same ? (P[i] + Q[i]) / 2 : P[i]]).sort((x, y) => y[1] - x[1]);
     for (const [n, w] of mix) avg[n] += w / dists.length;
     // 对「随便出」的对手（所有选项等概率）平均能赚多少：越高 = 越容易被滥用
-    const naive = names.map((n, i) => [n, A[i].reduce((s, x) => s + x, 0) / names.length]).sort((x, y) => y[1] - x[1]);
+    const naive = names.map((n, i) => [n, A[i].reduce((s, x) => s + x, 0) / cols.length]).sort((x, y) => y[1] - x[1]);
     for (const [n, v] of naive) navg[n] += v / dists.length;
+    const cmix = cols.map((n, j) => [n, Q[j]]).sort((x, y) => y[1] - x[1]);
+    const cnaive = cols.map((n, j) => [n, -A.reduce((s, row) => s + row[j], 0) / names.length]).sort((x, y) => y[1] - x[1]);
+    if (!same) { for (const [n, w] of cmix) cavg[n] += w / dists.length; for (const [n, v] of cnaive) cnavg[n] += v / dists.length; }
     out.rows.push({ d, val, mix: mix.filter(x => x[1] >= 0.01).map(([n, w]) => n + ' ' + (w * 100).toFixed(0) + '%'),
-      naive: naive.slice(0, 6).map(([n, v]) => n + ' ' + v.toFixed(1)), A: opts.full ? A : undefined });
+      naive: naive.slice(0, 6).map(([n, v]) => n + ' ' + v.toFixed(1)), spread: spreadOf(naive, isAtk),
+      cmix: same ? null : cmix.filter(x => x[1] >= 0.01).map(([n, w]) => n + ' ' + (w * 100).toFixed(0) + '%'),
+      cnaive: same ? null : cnaive.slice(0, 6).map(([n, v]) => n + ' ' + v.toFixed(1)), A: opts.full ? A : undefined });
   }
   out.navg = Object.entries(navg).sort((x, y) => y[1] - x[1]).map(([n, v]) => n + ' ' + v.toFixed(1));
   out.avg = Object.entries(avg).sort((x, y) => y[1] - x[1]).map(([n, w]) => n + ' ' + (w * 100).toFixed(1) + '%');
+  if (styles[0] !== styles[1]) {
+    out.cnavg = Object.entries(cnavg).sort((x, y) => y[1] - x[1]).map(([n, v]) => n + ' ' + v.toFixed(1));
+    out.cavg = Object.entries(cavg).sort((x, y) => y[1] - x[1]).map(([n, w]) => n + ' ' + (w * 100).toFixed(1) + '%');
+  }
+  out.spread = { spread: out.rows.reduce((a, r) => a + r.spread.spread, 0) / dists.length, sd: out.rows.reduce((a, r) => a + r.spread.sd, 0) / dists.length, range: out.rows.reduce((a, r) => a + r.spread.range, 0) / dists.length };
   return out;
 }
 window.runBalance = runBalance;
@@ -324,7 +356,9 @@ const OPT_NAME = { jab: '短拳', heavy: '重拳', kick: '腿踢', sweep: '扫�
   slip: '闪身', reactSlip: '看招：重拳闪身、别的挡', gwalkBack: '边挡边退',
   meatyJab: '压起身·短拳', meatyGrab: '压起身·擒拿', meatyHeavy: '压起身·重拳', guessRoll: '赌他往后滚·冲过去打', reactHit: '看清怎么起再打', waitBlock: '站着等',
   standBlock: '原地起·站挡', crouchBlock: '原地起·蹲挡', wakeJab: '原地起·出拳', rollTo: '往对手那边滚', rollAway: '往后滚' };
-const zh = list => list.map(t => { const i = t.lastIndexOf(' '); return (OPT_NAME[t.slice(0, i)] || t.slice(0, i)) + ' ' + t.slice(i + 1); });
+// 2.12 选项名按拳派查（咏春拳的 kick 是正撑脚、grab 是拉手……；两派共用的键名不一样的叫法）
+const nameOf = (k, st) => (st === 'wc' && WC_OPT_NAME[k]) || OPT_NAME[k] || k;
+const zh = (list, st) => list.map(t => { const i = t.lastIndexOf(' '); return nameOf(t.slice(0, i), st) + ' ' + t.slice(i + 1); });
 // 电脑对打统计：每招用了几次、打中几次、击倒来自哪招、各种加成出现几次
 function aiStats(lv, rounds) {
   const use = {}, kd = {}, lab = {};
@@ -352,17 +386,202 @@ function aiStats(lv, rounds) {
 }
 window.aiStats = aiStats;
 
+/* ============================================================
+   2.12（Jack：优化到最高级别的平衡检测 —— 同派招的数值、跨派的强度、拉得开、咏春上限高下限略高）
+   四、咏春拳的中立选项（WC_OPTIONS）：咏春打咏春、传统格斗打咏春的收益矩阵也求均衡（行列不一样长也能解）
+   五、分层：木头（乱按）/ 中等 / 困难 / 终极 / 满级 两派对打，咏春拳打掉的血占几成 —— 下限看木头、上限看满级
+   七、一招一张表：伤害、前摇、打空 / 被挡被罚的空当、打中以后的帧差；标出「收益差不多、风险也差不多」的那几对
+   ============================================================ */
+// 咏春拳的选项。连环冲拳按拍子连（beatBot）：这一拳走到拍点就按下一拳，连 n 下；接招（catch*）：按住挡听劲，看见他出招（反应 REACT 帧）再按键
+const beatBot = (me, st, n) => {
+  const m = me.move;
+  if (me.state === 'attack' && m && m.def.beat && !m.def.noCancel && !m.qn && st.chain < n && st.beatFor !== m.serial && m.t + 0.75 >= wcBeatAt(me, m)) { st.beatFor = m.serial; st.chain++; return TAP('jab'); }
+  return 0;
+};
+// 搭手里先手：第一拍翻成克他那只手的手型（破：顺 +2），翻完接着按拍子打连环冲拳
+const touchLeadBot = (me, op, st) => {
+  const m = me.move;
+  if (me.state === 'attack' && m && m.name === 'tLat') { st.chain = 1; return TAP('jab'); }       // 他甩手：甩手直冲（来留去送）
+  if (!(me.state === 'attack' && m && m.def.tch)) return 0;
+  if (m.lap) return 0;
+  if (m.rollT > 0 || m.lapT > 0) return 0;
+  if (!(m.rolls >= 1)) {                                                                            // 翻一下再打：翻成克他那只手的手型（破），接住时就是那个手型的就换一个；顿帧里按不进去，一直按着直到翻起来
+    let sh = COUNTER_SHAPE[m.limb] || 'tan'; if (sh === m.shape) sh = sh === 'tan' ? 'fook' : 'tan';
+    return sh === 'tan' ? tw(me, op) : sh === 'bong' ? aw(me, op) : DOWN_B;
+  }
+  if (!st.touchHit) { st.touchHit = 1; st.chain = 1; return TAP('jab'); }
+  return 0;
+};
+// 接招：他这一招按哪个键接（和 wingchun.js catchKeyOf 一样）；mode：'read' 按对、'flat' 按平、'miss' 按错、'guess' 随便按
+function catchPress(me, op, st, mode) {
+  const h = op.history, s = h[Math.max(0, h.length - 1 - REACT)];
+  const om = op.move; if (!s || !(op.state === 'attack' && om) || om.def.script || st.catchFor === om.serial) return 0;
+  const air = om.def.air || op.airborne;
+  // 看见了才接（反应 REACT 帧）：地上的招要看见这一招出手；空中的拳脚太快（出脚到打到不够 REACT 帧），看见他跳过来就够了，键按他出的是什么（读对了）
+  if (air ? !s.air : !(s.atk && s.serial === om.serial)) return 0;
+  if (air) {                                                       // 2.12 空中的拳脚：判定长，等他快够到了再按（按 S 算会按早，接空了挨 ×1.3）
+    if (om.hit || om.blocked) return 0;
+    const dist = Math.abs(op.x - me.x), soon = dist <= om.def.reach + 2 + Math.abs(op.vx) * 2.5 && (om.t >= om.S - 2 || om.def.dive);
+    if (!soon) return 0;
+  } else {
+    const left = om.S + 1 - om.t;                                  // 他还有几帧打到
+    if (left > 3.5 || left < 0) return 0;                          // 打到前三帧按，正好落在接招的窗口里
+  }
+  const need = catchKeyOf(op, om, om.def, !!me.lowBlock);
+  st.catchFor = om.serial;
+  if (!need) return 0;                                             // 接不住的：别按（光挡着）
+  if (mode === 'rand') mode = ['read', 'flat', 'miss'][((st.rng ? st.rng() : Math.random()) * 3) | 0];
+  const key = mode === 'read' ? need : mode === 'flat' ? CATCH_NEXT[need] : CATCH_NEXT[CATCH_NEXT[need]];
+  return TAP(key);
+}
+const WC_OPTIONS = {
+  jab3: { plan: (i, me, op, st) => i === 0 ? (st.chain = 1, TAP('jab')) : beatBot(me, st, 3) },          // 冲拳三下（头两下有空）
+  jab8: { plan: (i, me, op, st) => i === 0 ? (st.chain = 1, TAP('jab')) : beatBot(me, st, 8) },          // 连环冲拳八下
+  cun: { plan: (i) => i === 0 ? TAP('heavy') : 0, route: [] },                                             // 寸拳
+  cunHold: { plan: (i) => i < 16 ? HOLD('heavy') : 0, route: [] },                                         // 寸拳蓄劲 16 帧
+  pai: { plan: (i, me, op) => i === 0 ? tw(me, op) | TAP('heavy') : 0, route: [] },                       // 批肘
+  kick: { plan: (i) => i === 0 ? TAP('kick') : 0, route: [] },                                             // 正撑脚
+  lowKick: { plan: (i) => i === 0 ? DOWN_B | TAP('kick') : 0, route: [] },                                 // 截脚
+  biu: { plan: (i, me, op, st) => i === 0 ? tw(me, op) | TAP('jab') : 0, route: [] },                     // 标指
+  grab: { plan: (i) => i === 0 ? TAP('grab') : 0, route: [] },                                             // 拉手
+  lowGrab: { plan: (i) => i === 0 ? DOWN_B | TAP('grab') : 0, route: [] },                                 // 截腿
+  ting: { plan: (i) => i < 45 ? BLOCK_B : 0, route: [], gc: true },                                        // 听劲（普通挡）
+  tingLow: { plan: (i) => i < 45 ? BLOCK_B | DOWN_B : 0, route: [], gc: true },                            // 蹲着听劲
+  catchRead: { plan: (i, me, op, st) => BLOCK_B | catchPress(me, op, st, 'read'), route: [], react: true, mode: 'read' },   // 读对了接（上限）
+  catchMiss: { plan: (i, me, op, st) => BLOCK_B | catchPress(me, op, st, 'miss'), route: [], react: true, mode: 'miss' },   // 按错的那个键（瞎按三选一 = 读对、平、错三行的平均）
+  catchRand: { plan: (i, me, op, st) => BLOCK_B | catchPress(me, op, st, 'rand'), route: [], react: true, mode: 'rand', mash: true },   // 随便按一个（只给木头用，用它的种子）
+  catchFlat: { plan: (i, me, op, st) => BLOCK_B | catchPress(me, op, st, 'flat'), route: [], react: true, mode: 'flat' },   // 只按平的那个键
+  catchReadLow: { plan: (i, me, op, st) => BLOCK_B | DOWN_B | catchPress(me, op, st, 'read'), route: [], react: true, mode: 'read' },   // 蹲着听劲：下段挡得住，腿看见了耕手接（手上的招蹲着接不了，只是挡）
+  catchRandLow: { plan: (i, me, op, st) => BLOCK_B | DOWN_B | catchPress(me, op, st, 'rand'), route: [], react: true, mode: 'rand', mash: true },
+  jumpKick: { plan: (i, me, op, st) => {
+    if (i === 0) return TAP('up') | tw(me, op);
+    if (i < 4) return tw(me, op);
+    if (me.state === 'air' && !me.airUsed && !st.fired && Math.abs(op.x - me.x) <= me.moves.airKick.reach + 6 && me.vz < 3) { st.fired = 1; return TAP('kick'); }
+    return 0;
+  }, route: [] },
+  dashJab: { plan: (i, me, op, st) => i === 0 || i === 2 ? tw(me, op) : i === 2 + DASH_CANCEL + 1 ? (st.chain = 1, TAP('jab')) : beatBot(me, st, 5) },
+  backDash: { plan: (i, me, op) => i === 0 || i === 2 ? aw(me, op) : 0, route: [] },
+  wait: { plan: () => 0, route: [] },
+  runJab: { plan: (i, me, op, st) => st.fired ? beatBot(me, st, 5) : Math.abs(op.x - me.x) <= 82 ? (st.fired = 1, st.chain = 1, TAP('jab')) : tw(me, op) },
+  runGrab: { plan: (i, me, op, st) => st.fired ? 0 : Math.abs(op.x - me.x) <= 70 ? (st.fired = 1, TAP('grab')) : tw(me, op), route: [] },
+  gwalkBack: { plan: (i, me, op) => i < 45 ? BLOCK_B | aw(me, op) : 0, route: [], gc: true },
+};
+// 咏春拳的机器人：选项之外的事 —— 搭手里先手翻手再打、接住腿以后（parry）反打、被黏住甩手、打中以后接着按拍子连、罚打空的收招
+function wcBot(opt, side, O, st) {
+  st.chain = 0;
+  return () => {
+    const me = side ? F2 : F1, op = me.opp, i = st.i++;
+    if (me.stuck) return me.stunT > 0 && i % 7 === 0 && (!st.mash || st.rng() < 0.3) ? TAP('grab') : BLOCK_B | aw(me, op);   // 被黏住：反拿 / 甩手（木头三成）
+    if (me.state === 'blockstun') return BLOCK_B | (me.lowBlock ? DOWN_B : 0) | (O.react ? catchPress(me, op, st, O.mode || 'read') : 0);   // 挡住的硬直里也能接（接招的几个选项照自己的按法）
+    if (me.state === 'parry') { st.chain = 1; return TAP('jab'); }                                                 // 截住腿、卸开以后：后手冲拳起一串
+    const tl = touchLeadBot(me, op, st); if (tl) return tl;
+    if (me.state === 'attack' && me.move && me.move.def.tch) return 0;
+    // 打中了接着按拍子连（最多 5 下）；罚打空的收招
+    const m = me.move;
+    if (me.state === 'attack' && m && m.def.beat && (m.hit || st.chain > 1)) { const b = beatBot(me, st, 5); if (b) return b; }
+    const key = op.move && op.move.serial;
+    if (me.actionable() && op.move && key !== st.punished) {
+      const p = wcPunisher(me, op, op.move.blocked);
+      if (p) { st.punished = key; st.chain = 1; return p; }
+    }
+    if (i < 45 || O.react) return O.plan(i, me, op, st) || 0;
+    return 0;
+  };
+}
+function wcPunisher(me, op, blockedByMe) {
+  const m = op.move;
+  if (op.state !== 'attack' || !m || m.def.script) return null;
+  const left = m.S + m.def.A + m.def.R + (m.pen || 0) - m.t;
+  if (m.t <= m.S + m.def.A) return null;
+  const dist = Math.abs(op.x - me.x);
+  for (const [k, name] of [['jab', 'wJab'], ['kick', 'wKick'], ['grab', 'grab']]) {
+    const d = me.moves[name]; if (!d) continue;
+    if (dist > d.reach + (d.lunge ? d.lunge[2] : 0) - 4) continue;
+    if (left >= d.S + 1 + (blockedByMe ? 0 : REACT)) return TAP(k) | tw(me, op);
+  }
+  return null;
+}
+const WC_OPT_NAME = { jab3: '冲拳三下', jab8: '连环冲拳八下', cun: '寸拳', cunHold: '寸拳蓄劲', pai: '批肘', kick: '正撑脚', lowKick: '截脚', biu: '标指', grab: '拉手', lowGrab: '截腿',
+  ting: '听劲（挡）', tingLow: '蹲着听劲', catchRead: '读对了接', catchMiss: '接错了', catchFlat: '只按平的那个键', catchRand: '随便按一个接', catchReadLow: '蹲着听劲·读对了接', catchRandLow: '蹲着听劲·随便按一个接', jumpKick: '跳起飞撑脚', dashJab: '冲刺冲拳', backDash: '往后冲', wait: '不动',
+  runJab: '跑过去冲拳', runGrab: '跑过去拉手', gwalkBack: '按着挡往后退' };
+
+// 五、分层：两派对打，咏春拳打掉的血占几成。木头 = 乱按（每次交手随便挑一个选项，打中了接连招，不罚、不看招）；别的档是电脑（ai.js）
+function mashBot(style, side, rng) {
+  const OPTS = style === 'wc' ? WC_OPTIONS : OPTIONS, names = Object.keys(OPTS).filter(k => !OPTS[k].react && !OPTS[k].mash && !/^(wait|backDash|gwalkBack)$/.test(k) && (!OPTS[k].need || HAS(OPTS[k].need)));
+  if (style === 'wc') names.push('catchRand', 'catchRand', 'catchRandLow');                       // 木头咏春也会按住挡、看见出招随便按一个键接（三选一）；偶尔蹲着
+  let bot = null, left = 0;
+  return () => {
+    const me = side ? F2 : F1;
+    if (left <= 0 && me.actionable() && !me.stuck) { const o = names[(rng() * names.length) | 0]; bot = makeBot(o, side, style, rng, true); left = 40 + ((rng() * 30) | 0); }
+    left--;
+    return bot ? bot() : 0;
+  };
+}
+function tierShare(level, styles, rounds, seed) {
+  let s0 = seed >>> 0; const rng = () => (s0 = (Math.imul(s0, 1103515245) + 12345) >>> 0) / 4294967296;
+  const keep = Styles.pvp; Styles.pvp = styles;
+  try { startMatch('pvp'); } finally { Styles.pvp = keep; }
+  game.endless = true;
+  const mr = Math.random; Math.random = rng;                                                      // 电脑也用这个种子
+  try {
+    const bots = [0, 1].map(k => level === 'mash' ? mashBot(styles[k], k, rng) : null);
+    game.brains = level === 'mash' ? [null, null] : [new Brain(F1, level), new Brain(F2, level)];
+    let r = 0, frames = 0, prev = game.phase, dealt = [0, 0], hp = [F1.hp, F2.hp];
+    while (r < rounds && frames < 400000) {
+      step([bots[0] ? bots[0]() : 0, bots[1] ? bots[1]() : 0]); frames++;
+      dealt[0] += Math.max(0, hp[1] - F2.hp); dealt[1] += Math.max(0, hp[0] - F1.hp); hp = [F1.hp, F2.hp];
+      if (game.phase === 'roundEnd' && prev !== 'roundEnd') r++;
+      prev = game.phase;
+      if (game.phase === 'over') { game.wins = [0, 0]; startRound(); hp = [F1.hp, F2.hp]; }
+    }
+    game.brains = [null, null];
+    const wc = styles.indexOf('wc');
+    return { rounds: r, share: dealt[wc] / Math.max(1, dealt[0] + dealt[1]) };
+  } finally { Math.random = mr; }
+}
+// 两边换着站：咏春在左、在右各打一半
+function tierTable(rounds) {
+  const out = [];
+  for (const lv of ['mash', 'normal', 'hard', 'hell', 'max']) {
+    const a = tierShare(lv, ['wc', 'trad'], rounds, 11), b = tierShare(lv, ['trad', 'wc'], rounds, 12);
+    out.push({ level: lv, share: (a.share + b.share) / 2, rounds: a.rounds + b.rounds });
+  }
+  return out;
+}
+window.tierTable = tierTable; window.tierShare = tierShare;
+
+// 七、一招一张表：伤害、前摇、打空的空当（S+A+R：打空了对面能动多久）、被挡的空当（R + 多出来的收招 − 对面挡住的硬直）、打中以后的帧差（硬直 − 后摇）
+function moveTable(style) {
+  const MV = style === 'wc' ? WMOVES : MOVES, rows = [];
+  for (const [k, d] of Object.entries(MV)) {
+    if (d.script || d.tier === 'super' || d.kind === 'grab' || d.push || !d.dmg || d.air) continue;
+    const kd = !!d.launch, pen = d.tier === 'light' ? 0 : (kd ? BLOCK_PEN_KD : BLOCK_PEN);
+    rows.push({ k, label: d.label, tier: d.tier, open: !!d.open, lead: d.lead, height: d.height || 'mid', dmg: d.dmg, S: d.S, whiff: +(d.S + d.A + d.R).toFixed(2), onBlock: +(d.R + pen - (d.bstun || 0) + 1).toFixed(2), onHit: +((d.stun || 0) - d.R - 1).toFixed(2), reach: d.reach + (d.lunge ? d.lunge[2] : 0), kd });
+  }
+  // 收益差不多、风险也差不多的那几对（同一系、同一个起手 lead、同一个打点、都是起手或都不是、都倒或都不倒；伤害差 ≤ 2、前摇差 ≤ 2、打空的空当差 ≤ 3、射程差 ≤ 12）。
+  //   同名的（一串里换手的那几个）只算一个；连珠快拳和后手直拳这种在一串里不同位置的，不是同一个局面下的两个选择，挑出来了也不算挤
+  const alike = [], uniq = rows.filter((r, i) => rows.findIndex(q => q.label === r.label) === i);
+  for (let i = 0; i < uniq.length; i++) for (let j = i + 1; j < uniq.length; j++) {
+    const a = uniq[i], b = uniq[j];
+    if (a.tier === b.tier && a.open === b.open && a.lead === b.lead && a.height === b.height && a.kd === b.kd && Math.abs(a.dmg - b.dmg) <= 2 && Math.abs(a.S - b.S) <= 2 && Math.abs(a.whiff - b.whiff) <= 3 && Math.abs(a.reach - b.reach) <= 12) alike.push(a.label + '≈' + b.label);
+  }
+  return { rows, alike };
+}
+window.moveTable = moveTable;
+
 // 页面：打开 balance.html 自动跑
-if (document.getElementById('out')) {
+if (document.getElementById('out') && location.hash !== '#norun') {
   const out = document.getElementById('out');
   const say = t => { out.textContent += t + '\n'; };
-  say(`墨斗 ${VERSION} 平衡报告（跑完大约三四分钟）\n`);
+  say(`墨斗 ${VERSION} 平衡报告（2.12 起连咏春拳、跨派、分层一起跑，十几分钟）\n`);
   setTimeout(() => {
     const r = runBalance({ qi: 30 });
     say('一、中立局均衡（每一行：两人相距多远 → 均衡里各选项占比）');
     for (const row of r.rows) say(`  相距 ${row.d}：${zh(row.mix).join(' · ')}\n      对随便出的对手最赚：${zh(row.naive).join(' · ')}`);
     say('  各距离平均占比：' + zh(r.avg.slice(0, 12)).join(' · '));
     say('  对随便出的对手平均赚：' + zh(r.navg.slice(0, 12)).join(' · '));
+    say('  拉得开（2.12）：最好的选项比随便挑一个平均多赚 ' + r.spread.spread.toFixed(1) + ' 血、最好和最差差 ' + r.spread.range.toFixed(1) + '、离散度 ' + r.spread.sd.toFixed(1));
+    for (const row of r.rows) if (row.spread.close.length) say(`    相距 ${row.d} 挤在一起的：` + row.spread.close.map(([a, b]) => nameOf(a) + ' ≈ ' + nameOf(b)).join(' · '));
     const o = runOki(), pct = (n, w) => zh([n + ' ' + (w * 100).toFixed(0) + '%'])[0];
     say('\n三、起身攻防（扫堂腿打倒以后，压的人 vs 起来的人，每格 = 压的人赚多少）');
     say('  ' + ['', ...o.bs.map(b => OPT_NAME[b])].join(' ｜ '));
@@ -372,8 +591,36 @@ if (document.getElementById('out')) {
       const a = aiStats('hard', 40);
       say(`\n二、电脑（困难）对打 ${a.rounds} 回合（${Math.round(a.frames / 60)} 秒）`);
       say('  用得最多：' + a.use); say('  击倒来自：' + a.kd); say('  加成出现次数：' + a.bonus);
-      startAttract();
-      window.__done = true;
+      setTimeout(() => {
+        // 2.12 四、咏春拳：咏春打咏春、传统格斗打咏春
+        const w = runBalance({ qi: 30, styles: ['wc', 'wc'] });
+        say('\n四、咏春打咏春的中立均衡（2.12）');
+        for (const row of w.rows) say(`  相距 ${row.d}：${zh(row.mix, 'wc').join(' · ')}\n      对随便出的对手最赚：${zh(row.naive, 'wc').join(' · ')}`);
+        say('  各距离平均占比：' + zh(w.avg.slice(0, 12), 'wc').join(' · '));
+        say('  对随便出的对手平均赚：' + zh(w.navg.slice(0, 12), 'wc').join(' · '));
+        say('  拉得开：最好的比随便挑的多赚 ' + w.spread.spread.toFixed(1) + '、最好最差差 ' + w.spread.range.toFixed(1) + '、离散度 ' + w.spread.sd.toFixed(1));
+        for (const row of w.rows) if (row.spread.close.length) say(`    相距 ${row.d} 挤在一起的：` + row.spread.close.map(([a, b]) => nameOf(a, 'wc') + ' ≈ ' + nameOf(b, 'wc')).join(' · '));
+        const x = runBalance({ qi: 30, styles: ['trad', 'wc'] });
+        say('\n  传统格斗打咏春拳（行 = 传统格斗的选项，列 = 咏春拳的；收益按传统格斗算，均衡值 > 0 = 传统格斗占便宜）');
+        for (const row of x.rows) say(`  相距 ${row.d}：均衡值 ${row.val.toFixed(1)}；传统格斗用 ${zh(row.mix).join(' · ')}；咏春拳用 ${zh(row.cmix, 'wc').join(' · ')}\n      传统格斗对随便出的咏春最赚：${zh(row.naive).join(' · ')}\n      咏春对随便出的传统格斗最赚：${zh(row.cnaive, 'wc').join(' · ')}`);
+        say('  传统格斗各距离平均占比：' + zh(x.avg.slice(0, 10)).join(' · '));
+        say('  咏春拳各距离平均占比：' + zh(x.cavg.slice(0, 10), 'wc').join(' · '));
+        say('  咏春对随便出的传统格斗平均赚：' + zh(x.cnavg.slice(0, 8), 'wc').join(' · ') + '；传统格斗对随便出的咏春平均赚：' + zh(x.navg.slice(0, 8)).join(' · '));
+        say('  均衡值各距离平均：' + (x.rows.reduce((a, r2) => a + r2.val, 0) / x.rows.length).toFixed(1) + '（0 上下 = 两派扯平；正 = 传统格斗赚）');
+        // 五、分层
+        say('\n五、分层：两派对打，咏春拳打掉的血占几成（两边换着站；木头 = 乱按，不罚不看招；别的档是电脑）');
+        const tiers = tierTable(8);
+        say('  ' + tiers.map(t => `${{ mash: '木头', normal: '中等', hard: '困难', hell: '终极', max: '满级' }[t.level]} ${(t.share * 100).toFixed(1)}%（${t.rounds} 回合）`).join(' · '));
+        // 七、一招一张表
+        for (const st of ['trad', 'wc']) {
+          const mt = moveTable(st);
+          say(`\n七、一招一张表（${st === 'wc' ? '咏春拳' : '传统格斗'}）：伤害 · 前摇 · 打空的空当（整招多长） · 被挡的空当（挡的人早几帧能动） · 打中的帧差 · 射程`);
+          for (const q of mt.rows.filter((q2, i, arr) => arr.findIndex(z => z.label === q2.label) === i)) say(`  ${q.label}${q.open ? '（起手）' : ''}${q.kd ? '〔倒〕' : ''}：${q.dmg} · ${q.S} · ${q.whiff} · ${q.onBlock} · ${q.onHit >= 0 ? '+' : ''}${q.onHit} · ${q.reach}`);
+          say('  收益差不多、风险也差不多的：' + (mt.alike.length ? mt.alike.join(' · ') : '没有'));
+        }
+        startAttract();
+        window.__done = true;
+      }, 30);
     }, 30);
   }, 30);
 }
