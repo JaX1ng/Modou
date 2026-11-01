@@ -18,19 +18,30 @@
    ============================================================ */
 
 /* ---------- 底子：单鞭（照 ref/tj_stance_single_whip.png）——
-   前手立掌往前伸、手指朝上（掌心斜着朝前，看得见手指），后手勾手往身后伸、五个指尖捏在一起朝下；大开的马步，两膝都弯；身子正、头正 ---------- */
-const TBASE = { rot: 0, spin: 0, tor: 0, head: 0, hy: 50, dx: 0, air: 0, fe: 1, be: 1, tw: -10, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
+   前手立掌往前伸、手指朝上（掌心斜着朝前，看得见手指），后手勾手往身后伸、五个指尖捏在一起朝下；大开的马步，两膝都弯；身子正、头正。
+   3.0.1（Jack：后腿弯下去太多了，稍微上来点）：后脚往后 6、髋高 2 —— 后腿差不多伸直（只微微弯），后膝离地 15 → 21；前腿照旧弓着 ---------- */
+const TBASE = { rot: 0, spin: 0, tor: 0, head: 0, hy: 52, dx: 0, air: 0, fe: 1, be: 1, tw: -10, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
   fp: 1, bp: 1, fpa: -88, bpa: 96, fpr: 0.45, bpr: 1, fw: 0, bw: 0, fz: 0, fs: 0.4, bs: 0, fhk: 0, bhk: 1, fv: 0, bv: 1,
-  fh: [46, -4], bh: [-44, -18], ff: [50, 0], bf: [-54, 0] };
-const tmk = o => mk(o, TBASE);
-function TM(o) { o.pb = TBASE; o.style = 'taiji'; return M(o); }
+  fh: [46, -4], bh: [-44, -18], ff: [50, 0], bf: [-60, 0] };
+// 3.0.1 后脚往后挪了以后，站高的那几式（髋高 56 ～ 62：拦、捶、靠……）后腿够不着地、脚飘起来 —— 后脚踩在地上的姿势，脚踝伸不到就往回收
+// （收到后腿差一点点伸直），不用一式一式地改
+const T_LEG = (BODY.bone.th + BODY.bone.sh) * 0.985;
+function tjReach(p) {
+  if (p.bf[1] !== 0 || p.air > 0) return p;                    // 脚抬起来的、整个人跳起来的（爆气）不管
+  const dy = p.hy - BODY.bone.ankle, dx = Math.sqrt(Math.max(0, T_LEG * T_LEG - dy * dy)) + BODY.hipSplit;
+  if (-p.bf[0] > dx) p.bf[0] = -dx;
+  return p;
+}
+const tmk = o => tjReach(mk(o, TBASE));
+function TM(o) { o.pb = TBASE; o.style = 'taiji'; const d = M(o); for (const k of d.keys) tjReach(k[1]); return d; }
 const TJ = (base, o) => Object.assign({}, base, o);
 // 一只手：palm 掌（pa 手指朝哪、pr 掌心朝哪、s 手指张开多少）/ 拳（竖拳）/ 勾手
 const tHand = (h, at, kind, pa, pr, s) => kind === 'fist' ? { [h + 'h']: at, [h + 'p']: 0, [h + 'v']: 1, [h + 'hk']: 0 }
   : { [h + 'h']: at, [h + 'p']: 1, [h + 'hk']: kind === 'hook' ? 1 : 0, [h + 'pa']: pa === undefined ? -80 : pa, [h + 'pr']: pr === undefined ? 0.7 : pr, [h + 's']: s === undefined ? 0.25 : s };
-const T_STAND = { hy: 52, ff: [48, 0], bf: [-52, 0] };        // 一般的弓马步（太极的架子低、步子大）
-const T_BOW = { hy: 52, ff: [56, 0], bf: [-46, 0] };           // 弓步：往前送（前腿弓、后腿蹬直）
-const T_SIT = { hy: 53, ff: [44, 0], bf: [-54, 0] };           // 坐步：重心在后腿（蓄、捋往回带）
+// 3.0.1（Jack：后腿弯下去太多了）：三种步子的后脚都往后挪（后腿伸得开、膝盖不往地上塌）；弓步的前脚收回来一点 —— 以前前腿直、后腿弯，和弓步反了
+const T_STAND = { hy: 52, ff: [48, 0], bf: [-60, 0] };        // 一般的弓马步（太极的架子低、步子大）
+const T_BOW = { hy: 52, ff: [50, 0], bf: [-62, 0] };           // 弓步：往前送（前腿弓、后腿蹬直）
+const T_SIT = { hy: 53, ff: [44, 0], bf: [-58, 0] };           // 坐步：重心在后腿（蓄、捋往回带）
 
 /* ---------- 揽雀尾（attack_seq 2 ～ 6）：掤 → 捋 → 挤 → 按 ---------- */
 const P_PENG = TJ(T_STAND, { tor: 2, dx: 2, tw: 14, ...tHand('f', [30, 6], 'palm', -36, 1, 0.2), ...tHand('b', [16, 16], 'palm', -10, 0.8, 0.15), fz: 1 });   // 掤：前臂圆着撑在胸前
@@ -224,7 +235,7 @@ const TMOVES = {
   // 挤（挡着按拳 = 推挡）：后掌贴在前手腕上，往前一挤把他挤开
   shove: TM({ kind: 'push', label: '挤', tier: 'push', S: 2, A: 4, R: 12, dmg: 0, reach: 108, stun: 9, bstun: 0, kb: PUSH_KB, stop: 4, power: .3, push: true,
     limb: 'fh', fx: 'jab', lunge: [0, 4, 10],
-    keys: [[0, P_JI], [1, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-34, 0] }), 'back'], [2, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-34, 0] })], [3, {}]] }),
+    keys: [[0, P_JI], [1, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-58, 0] }), 'back'], [2, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-58, 0] })], [3, {}]] }),
   // 靠（挡住以后按重，花气 —— 传统格斗的截击那一下）：侧过身、肩膀往前一靠，出手前几帧打击无敌，把人靠出去
   tjKao: TM({ kind: 'heavy', label: '靠', stamp: '靠', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 11, reach: 100, stun: 18, bstun: 10, kb: 11, stop: 9, shake: 6, power: .95, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [0, 5, 18], sinv: [0, 6], cost: GC_COST, ender: true, noCancel: true,
@@ -278,12 +289,13 @@ TJ_FLOW.tjChuan = [TJ(P_BALL, { dx: -4 }), TJ(P_BALL, { dx: -6, hy: 62, tw: 2 })
 /* 架势（fighter.js target 用；蓄势、捋、云手在 tjTarget 里现画） */
 const TPOSE = {
   stance: tmk({}),                                                                                     // 单鞭
-  crouch: tmk({ hy: 40, tor: 16, head: -2, tw: 10, ff: [40, 0], bf: [-40, 0], ...tHand('f', [30, 6], 'palm', -60, 0.8), ...tHand('b', [-30, 2], 'hook', 96, 1) }),
+  // 3.0.1（Jack：后腿弯下去太多了）：蹲着的后膝以前跪到地上（离地 2）—— 髋高 40 → 46、后脚往后，后膝离地 15（和传统格斗、咏春蹲着差不多）
+  crouch: tmk({ hy: 46, tor: 16, head: -2, tw: 10, ff: [40, 0], bf: [-62, 0], ...tHand('f', [30, 6], 'palm', -60, 0.8), ...tHand('b', [-30, 2], 'hook', 96, 1) }),
   // 掤（按住挡）：两手十字合在胸前、掌心朝里（十字手）；蹲着是沉屈守中（defense_seq 01）
-  block: tmk({ hy: 56, tor: 2, head: 4, dx: -2, tw: 4, ff: [42, 0], bf: [-48, 0], ...tHand('f', [24, -8], 'palm', -104, 1, 0.1), ...tHand('b', [27, -4], 'palm', -70, 1, 0.1), fz: 1 }),
-  cblock: tmk({ hy: 40, tor: 14, head: 4, tw: 6, ff: [40, 0], bf: [-40, 0], ...tHand('f', [28, 0], 'palm', -84, 0.8, 0.15), ...tHand('b', [22, 6], 'palm', -60, 0.9, 0.1) }),
+  block: tmk({ hy: 56, tor: 2, head: 4, dx: -2, tw: 4, ff: [42, 0], bf: [-54, 0], ...tHand('f', [24, -8], 'palm', -104, 1, 0.1), ...tHand('b', [27, -4], 'palm', -70, 1, 0.1), fz: 1 }),
+  cblock: tmk({ hy: 46, tor: 14, head: 4, tw: 6, ff: [40, 0], bf: [-62, 0], ...tHand('f', [28, 0], 'palm', -84, 0.8, 0.15), ...tHand('b', [22, 6], 'palm', -60, 0.9, 0.1) }),
   // 捋住了（defense_seq 09 转腰牵引）：转腰、两手往身侧后下方带
-  parry: tmk({ tor: -4, head: 2, dx: -8, hy: 54, tw: -34, ff: [44, 0], bf: [-54, 0], ...tHand('f', [16, 10], 'palm', 8, 0.9, 0.25), ...tHand('b', [-12, 16], 'palm', 40, 0.9, 0.25) }),
+  parry: tmk({ tor: -4, head: 2, dx: -8, hy: 54, tw: -34, ff: [44, 0], bf: [-58, 0], ...tHand('f', [16, 10], 'palm', 8, 0.9, 0.25), ...tHand('b', [-12, 16], 'palm', 40, 0.9, 0.25) }),
   // 收势（cloudhands 14 ～ 16）：两脚收拢站直，两掌慢慢往下按
   win: tmk({ tor: 0, head: -2, hy: 74, tw: 0, ff: [12, 0], bf: [-12, 0], ...tHand('f', [16, 26], 'palm', 2, 1, 0.15), ...tHand('b', [12, 28], 'palm', 2, 1, 0.15), bhk: 0 }),
   // 抱球、云手（动作台、教程小图看得到）

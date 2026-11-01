@@ -2414,8 +2414,8 @@ T('2.5 关节靠肢体本身的粗细看得出来（Jack）：大腿根粗、到
   let chest = 0; for (let t = 0.4; t <= 0.95; t += 0.01) chest = Math.max(chest, tw2(t));
   ok(chest / waist < 1.35 && chest > waist + 2, `胸 ${chest.toFixed(1)} / 腰 ${waist.toFixed(1)}`);
 });
-T('2.5 拳头改小（Jack）：比 2.4（13.2 × 11.6）小一圈，比头小得多', () => {
-  ok(BODY.fist.len <= 13.2 * 0.85 && BODY.fist.h <= 11.6 * 0.85, `拳头 ${BODY.fist.len} × ${BODY.fist.h}`);
+T('2.5 拳头改小（Jack）：比 2.4（13.2 × 11.6）小一圈，比头小得多（3.0.1 Jack 让手再大 5%：10.4 × 9.4 → 10.9 × 9.9，还是小一圈）', () => {
+  ok(BODY.fist.len <= 13.2 * 0.86 && BODY.fist.h <= 11.6 * 0.86, `拳头 ${BODY.fist.len} × ${BODY.fist.h}`);
   ok(BODY.fist.len < BONE.head * 2 * 0.5, '拳头不到头的一半');
 });
 T('2.5 扫堂腿（Jack：后面那条腿不是往后，是往侧面 —— z 轴）：蹲着的后腿膝盖、脚尖朝侧面，侧面看是髋底下缩短的一截，不往身后支出去；前腿照旧贴地伸直扫出去', () => {
@@ -4137,6 +4137,43 @@ T('3.0 单鞭：太极拳的架子 —— 前手立掌往前伸（手指朝上�
   ok(P.bhk === 1 && P.bh[0] < -30 && P.bh[1] < 0, '后手勾手、在身后、比肩高');
   ok(P.ff[0] - P.bf[0] >= 100 && P.hy <= 55, '步子大、架子低');
   const { J } = PoseIcon.build({ style: 'taiji', pose: 'stance' }); ok(J.fh[0] > J.sh[0] + 30 && J.bh[0] < J.sh[0] - 25, '两只手一前一后伸开');
+});
+T('3.0.1 太极拳的后腿不往下塌（Jack：后腿弯下去太多了，稍微上来点）：单鞭、挡、捋、抱球、三种步子后腿差不多伸直，后膝离地 19 以上（3.0 的单鞭 15）；弓步后腿比前腿直；站着出的招后脚都踩在地上（不飘）', () => {
+  const leg = (J, hip, knee, ank) => {
+    const ax = ank[0] - hip[0], ay = ank[1] - hip[1], kx = knee[0] - hip[0], ky = knee[1] - hip[1];
+    return Math.abs(ax * ky - ay * kx) / (Math.hypot(ax, ay) || 1);           // 膝盖离髋 → 脚踝那条线多远（弯了多少）
+  };
+  const check = (nm, pose) => {
+    const J = PoseIcon.joints(pose), up = FLOOR - J.bk[1], off = leg(J, J.hipB, J.bk, J.bf);
+    ok(up >= 19 && off <= 13, `${nm}：后膝离地 ${up.toFixed(1)}、弯出去 ${off.toFixed(1)}`);
+    return J;
+  };
+  for (const k of ['stance', 'block', 'parry', 'ball']) check('架势 ' + k, TPOSE[k]);
+  for (const [nm, b] of [['弓马步', T_STAND], ['坐步', T_SIT]]) check(nm, tmk(b));
+  const J = check('弓步', tmk(T_BOW));
+  ok(leg(J, J.hipB, J.bk, J.bf) < leg(J, J.hipF, J.fk, J.ff) - 6, '弓步：前腿弓、后腿蹬直');
+  const bad = [];
+  for (const n in TMOVES) for (const [, p] of TMOVES[n].keys) {
+    if (p.bf[1] !== 0 || p.hy < 50 || p.air > 0) continue;          // 脚抬着的、蹲下去的、整个人跳起来的（爆气）不算
+    const lift = FLOOR - PoseIcon.joints(p).bf[1] - BODY.bone.ankle;
+    if (lift > 0.5) bad.push(`${TMOVES[n].label} ${lift.toFixed(1)}`);
+  }
+  ok(!bad.length, '后脚飘起来：' + bad.slice(0, 8).join('、'));
+});
+T('3.0.1 手（Jack：所有角色的手再大 5% 左右；后面的勾手太小了，像鸡爪）：掌、拳头比 3.0 大 5%；勾手是一整只手折过来 —— 腕到指尖有张开的掌的七成半以上、比手腕粗得多，淡线只两道', () => {
+  ok(Math.abs(HAND.k - 1.05) < 0.02 && BODY.fist.len >= 10.4 * 1.04 && BODY.fist.h >= 9.4 * 1.04, `掌 ×${HAND.k}，拳头 ${BODY.fist.len} × ${BODY.fist.h}`);
+  const { J } = PoseIcon.build({ style: 'taiji', pose: 'stance' }), parts = bodyParts(J, 0).parts;
+  const E = J.fh, d = J.fpd; let palmLen = 0;                                  // 前手立掌：掌根到中指尖
+  for (const q of parts.filter(p => p.k === 'aFH')) for (const [x, y] of q.pts) palmLen = Math.max(palmLen, (x - E[0]) * d[0] + (y - E[1]) * d[1]);
+  ok(palmLen > 15.6 * 1.03 && palmLen < 15.6 * 1.1, `掌长 ${palmLen.toFixed(1)}（3.0 是 15.6）`);
+  const hook = parts.find(p => p.hook), W = J.bh; let far = W, len = 0;
+  for (const [x, y] of hook.pts) { const l = Math.hypot(x - W[0], y - W[1]); if (l > len) { len = l; far = [x, y]; } }
+  const ux = (far[0] - W[0]) / len, uy = (far[1] - W[1]) / len; let lo = 1e9, hi = -1e9;
+  for (const [x, y] of hook.pts) { const s = -(x - W[0]) * uy + (y - W[1]) * ux; lo = Math.min(lo, s); hi = Math.max(hi, s); }
+  const fe = BODY.faPalm[BODY.faPalm.length - 1], wrist = fe[1] + fe[2];
+  ok(len >= palmLen * 0.75, `勾手腕到指尖 ${len.toFixed(1)}（掌 ${palmLen.toFixed(1)}；3.0 只有 10）`);
+  ok(hi - lo >= wrist * 1.25, `勾手粗 ${(hi - lo).toFixed(1)}（手腕 ${wrist.toFixed(1)}；3.0 比手腕还细）`);
+  ok(hook.detail && hook.detail.length <= 2, '勾手的淡线不超过两道（三道往指尖散开像爪子）');
 });
 T('3.0 太极拳的电脑也一档比一档难：乱换招的木头玩家（传统格斗）打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极（入门 ≥ 75%、简单 ≥ 60%、中等 ≥ 36%、终极 ≥ 18%）', () => {
   const sh = {}, seeds = [5, 6, 7, 8, 9, 10, 11, 12], keep = Styles.pvp;
