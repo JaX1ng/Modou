@@ -151,9 +151,10 @@ const MOVES = {
   // 重→重：劈山，上段（蹲着挡不住）
   chop: M({ kind: 'heavy', label: '劈山掌', stamp: '劈山', lead: 'heavy', height: 'high', S: 9, A: 4, R: 14, dmg: 21, reach: 104, stun: 18, bstun: 12, kb: 6, stop: 9, shake: 6, power: .9, heavy: true,
     limb: 'bh', fx: 'chop', ghost: true, lunge: [4, 9, 12], ender: true, noCancel: true,
-    keys: [[0, { tor: 12 }], [0.6, { tor: -16, head: -8, dx: -6, hy: 72, tw: 40, bh: [-6, -60], be: -1, fh: [26, -8], ff: [30, 0], bf: [-32, 0] }],
-      [1, { tor: 40, dx: 22, hy: 60, head: -2, tw: -40, bh: [56, 22], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }, 'out'],
-      [2, { tor: 42, dx: 22, hy: 60, head: -2, tw: -42, bh: [54, 28], fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
+    // 2.13 劈山掌真的是掌（以前画成拳）：手掌立起来、四指并拢，掌沿往下劈（侧面看见掌沿）
+    keys: [[0, { tor: 12 }], [0.6, { tor: -16, head: -8, dx: -6, hy: 72, tw: 40, bh: [-6, -60], be: -1, bp: 1, bpa: -96, bpr: 0.15, bs: 0, fh: [26, -8], ff: [30, 0], bf: [-32, 0] }],
+      [1, { tor: 40, dx: 22, hy: 60, head: -2, tw: -40, bh: [56, 22], bp: 1, bpa: 30, bpr: 0.15, bs: 0, fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }, 'out'],
+      [2, { tor: 42, dx: 22, hy: 60, head: -2, tw: -42, bh: [54, 28], bp: 1, bpa: 38, bpr: 0.15, bs: 0, fh: [-6, -2], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
   // 腿→重：盖步砸拳，击倒
   hammer: M({ kind: 'heavy', label: '盖步砸拳', stamp: '盖步砸拳', lead: 'kick', S: 9, A: 5, R: 15, dmg: 20, reach: 108, stun: 20, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'bh', fx: 'hammerFist', ghost: true, lunge: [2, 9, 26], launch: 5, ender: true, noCancel: true,
@@ -169,9 +170,10 @@ const MOVES = {
   // 蹲+重：托天掌（对空）
   palm: M({ kind: 'heavy', label: '托天掌', stamp: '托天掌', tier: 'aa', lead: 'heavy', open: true, S: 7, A: 5, R: 15, dmg: 11, reach: 96, stun: 15, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
     limb: 'fh', fx: 'palm', ghost: true, lunge: [2, 7, 6], launchAir: 9, antiAir: 160, airInv: [1, 12], ender: true, noCancel: true,
-    keys: [[0, J_(P_LOW, { fh: [20, 10], bh: [10, 14] })], [0.5, J_(P_LOW, { hy: 40, fh: [24, 22], bh: [14, 24], tor: 34 })],
-      [1, { hy: 76, tor: 8, head: -12, fh: [54, -34], bh: [48, -30], ff: [42, 0], bf: [-24, 6], air: 4, dx: 28, tw: 14 }, 'out'],
-      [2, { hy: 80, tor: -6, head: -20, fh: [34, -60], bh: [24, -56], ff: [36, 0], bf: [-20, 8], air: 6, dx: 18, tw: 10 }], [3, {}]] }),
+    // 2.13 托天掌真的是掌：蹲下去两手翻掌，往前上方托上去 —— 掌心朝上、手指朝后（手腕折过来，掌根在上面打人），手指松开一点
+    keys: [[0, J_(P_LOW, { fh: [20, 10], bh: [10, 14] })], [0.5, J_(P_LOW, { hy: 40, fh: [24, 22], bh: [14, 24], tor: 34, fp: 1, bp: 1, fpa: -20, bpa: -20, fpr: 0.5, bpr: 0.5 })],
+      [1, { hy: 76, tor: 8, head: -12, fh: [54, -34], bh: [48, -30], fp: 1, bp: 1, fpa: -150, bpa: -150, fpr: 0.45, bpr: 0.45, fs: 0.35, bs: 0.35, ff: [42, 0], bf: [-24, 6], air: 4, dx: 28, tw: 14 }, 'out'],
+      [2, { hy: 80, tor: -6, head: -20, fh: [34, -60], bh: [24, -56], fp: 1, bp: 1, fpa: -160, bpa: -160, fpr: 0.45, bpr: 0.45, fs: 0.35, bs: 0.35, ff: [36, 0], bf: [-20, 8], air: 6, dx: 18, tw: 10 }], [3, {}]] }),
   // 跑+重：沉肩靠（2.9 改名：Jack 说招名不要带别的拳派的东西，改成通用的说法）
   shoulder: M({ kind: 'heavy', label: '沉肩靠', stamp: '沉肩靠', lead: 'heavy', open: true, slow: 16.5, S: 10, A: 5, R: 16, dmg: 17, reach: 96, stun: 19, bstun: 13, kb: 11, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [2, 11, 44], armor: { n: 2, from: 2, vs: ['light'] }, ender: true, noCancel: true,
@@ -399,8 +401,9 @@ const MOVES = {
     launch: 8, ender: true, noCancel: true, cost: QI_MAX, antiAir: 40,
     keys: [[0, {}], [0.2, { tor: 2, dx: -4, hy: 64, head: 4, tw: 24, bh: [-12, 22], fh: [28, -8], ff: [28, 0], bf: [-38, 0] }, 'out'],
       [0.75, { tor: -6, dx: -8, hy: 60, head: 6, tw: 36, bh: [-22, 28], fh: [32, -10], ff: [30, 0], bf: [-42, 0] }],
-      [1, { tor: 28, dx: 46, hy: 58, head: -6, tw: -50, bh: [78, -2], fh: [4, -4], ff: [62, 0], bf: [-44, 0] }, 'back'],
-      [2, { tor: 28, dx: 46, hy: 58, head: -6, tw: -50, bh: [78, -2], fh: [4, -4], ff: [62, 0], bf: [-44, 0] }], [3, {}]] }),
+      // 2.13 后手单掌真的是掌：立掌推出去、手指张开（掌根打人）
+      [1, { tor: 28, dx: 46, hy: 58, head: -6, tw: -50, bh: [80, -2], bp: 1, bpa: -78, bpr: 0.45, bs: 0.5, fh: [4, -4], ff: [62, 0], bf: [-44, 0] }, 'back'],
+      [2, { tor: 28, dx: 46, hy: 58, head: -6, tw: -50, bh: [80, -2], bp: 1, bpa: -78, bpr: 0.45, bs: 0.5, fh: [4, -4], ff: [62, 0], bf: [-44, 0] }], [3, {}]] }),
 };
 
 /* ============================================================

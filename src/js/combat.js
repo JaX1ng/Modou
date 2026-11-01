@@ -214,7 +214,7 @@ function applyHit(A, B, how) {
   let punish = null;
   if (inRecovery && A.guardOn === bm.serial) punish = ['挡后反击', bm.def.launch ? PUNISH_KD_MUL : PUNISH_MUL];
   else if (inRecovery && bm.def.launch && !bm.hit) punish = ['破绽', WHIFF_KD_MUL];
-  else if (B.state === 'hit' && B.reel && B.reelBy === A.idx && B.reelKind !== 'knee') punish = [REEL_LABEL[B.reelKind] || '卸力反击', B.reelKD ? PUNISH_KD_MUL : PARRY_MUL];
+  else if (B.state === 'hit' && B.reel && B.reelBy === A.idx && B.reelKind !== 'knee') punish = [REEL_LABEL[B.reelKind] || '卸力反击', B.reelKind === 'lu' ? TJ_LU_MUL : B.reelKD ? PUNISH_KD_MUL : PARRY_MUL];   // 3.0 捋（引进落空）另算
   // 「顺」（咏春拳）：这一招是连得上的招（flow）—— 接着连就接着顺；反打（拍开、耕开、卸开、踉跄、起身硬直里的人）第一下就顺 FLOW_COUNTER 级。
   // 连断了（打空、被挡、过拍、挨打、停手 FLOW_IDLE 帧）顺就清零（fighter.js / wingchun.js）
   const flowMove = !!d.flow;
@@ -250,7 +250,7 @@ function applyHit(A, B, how) {
   const offBalance = !!bm && d.tier === 'light' && bm.def.tier === 'kick' && !bm.air && bm.t >= 4 && bm.t < bm.S + bm.def.A + 1;
   const rising = B.state === 'rise';                    // 2.0 打在起身硬直里（打桩面板上写一句）
 
-  B.hp -= dmg; m.hit = true; A.stats.hits++; B.flow = 0;
+  B.hp -= dmg; m.hit = true; A.stats.hits++; B.flow = 0; B.jin = 0;   // 3.0 太极拳挨打劲就散了
   if (d.tier === 'super') A.stats.supers++;             // 泼墨打中（软件版成就用）
   bumpCombo(A, B);
   B.comboTaken = n + 1;
@@ -324,7 +324,7 @@ function guard(A, B, c) {
   const chip = Math.max(1, Math.round(d.dmg * (m.air ? AIR_BONUS : 1) * BLOCK_KEEP));
   B.hp = Math.max(1, B.hp - chip);
   // 1.8.0：击倒招被挡住，两人几乎不被弹开 —— 留在原地吃反击（挡后反击）
-  const kd = !!d.launch, light = d.tier === 'light' || d.kind === 'push';
+  const kd = !!d.launch, light = (d.tier === 'light' && !d.slowGuard) || d.kind === 'push';   // 3.0 slowGuard：太极拳的慢拳（揽雀尾一家）被挡住照重招算 —— 慢招被挡住就该罚得出来
   // 2.1 重系、腿系被挡住推得没那么远、收招更长（BLOCK_PEN）：挡住以后上前一步就打得到它收招（挡后反击）；拳还是推得开、不加收招
   B.state = 'blockstun'; B.stunT = d.bstun + (m.dashIn ? DASH_IN_BSTUN : 0); B.kvx = dir * d.kb * (kd ? 0.5 : light ? 0.9 : 0.6);
   A.kvx = -dir * d.kb * (atWall(B) ? 0.8 : (m.dashIn ? 0.2 : kd ? 0.15 : light ? 0.4 : 0.3));      // 被挡住，攻击方也被弹回一点（冲势冲得进去）
@@ -379,7 +379,7 @@ function parry(A, B, c) {
    拍手（站着、手往前拍）：拍得开手上的招（拳、掌、肘、肩，地上的、跳起来的都行）和跳起来的腿（不算落膝、坠山这种往下砸的）；拍不开地上的腿、下段。
    耕手（蹲着、手往下耕）：耕得开地上的腿（扫堂腿这种下段的也行）、下段的拳；耕不开中段、上段的拳掌（站着打过来的拳照样打中）。
    都防不了擒拿、推挡 */
-const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击' };   // 2.11 接招的五个桩法
+const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击', lu: '引进落空' };   // 2.11 接招的五个桩法
 function handCovers(g, d, m) {
   const hand = /^(fh|bh|fe|be|sh)$/.test(d.limb), leg = d.limb === 'ff' || d.limb === 'bf';
   if (g === 'pat') return d.height !== 'low' && (hand || (m.air && leg && !d.dive));
@@ -700,6 +700,7 @@ function bumpCombo(A, B) {
 // 推挤：软碰撞。身体重叠时每帧最多推开 SOFT_PUSH，跑着能挤过去、换到对面
 function separate(a, b) {
   if (a.carried || b.carried) return;               // 过肩摔扛着的时候不推挤
+  if ((a.luPull && a.state === 'hit') || (b.luPull && b.state === 'hit')) return;   // 3.0 被太极拳捋过去（从他身边带过去）的那几帧不推挤
   const d = b.x - a.x, ad = Math.abs(d), min = PUSH * 2;
   // 两人最远距离：只有双人对战（和菜单背景）要两人都在画面里；人机 / 联机 / 打桩镜头跟着自己，不限
   const maxD = game.mode === 'pvp' || game.mode === 'attract' || game.mode === 'watch' ? MAXD_PVP : Infinity;   // 2.11 观战也是两个人都在画面里

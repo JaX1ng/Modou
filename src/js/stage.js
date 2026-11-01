@@ -1134,7 +1134,8 @@ function swallow(g, x, y, s, ang, k, k2, fold, a) {
   g.save(); g.translate(x, y); g.rotate(ang); g.scale(s, s);
   const col = '30,32,38';
   const wing = (k, al, side) => {
-    const rx = 1.4, ry = -0.5, len = 15 - 4 * fold, el = k * (1.05 - 0.4 * fold);           // 翅根在身子前半截；收起来短一点、扇不大
+    // 2.13（Jack：翅膀扇动的幅度照真的燕子）：上下各扇 35° 上下（以前 60°，像大鸟拍翅膀），平时翅膀微微往上翘一点；收起来短一点、扇得更小
+    const rx = 1.4, ry = -0.5, len = 15 - 4 * fold, el = 0.08 + k * (0.62 - 0.24 * fold);
     // 从侧下方一点看过去：平着的时候近的那只在身子下面、远的那只在上面（张开的样子看得出来），收起来贴着身子
     const tx = rx - len * (0.34 + 0.5 * fold) * (0.8 + 0.2 * Math.cos(el)), ty = ry - len * Math.sin(el) * 0.92 + side * len * 0.42 * Math.cos(el) * (1 - 0.6 * fold);
     const dx = tx - rx, dy = ty - ry, n = Math.hypot(dx, dy) || 1, mx = (rx + tx) / 2, my = (ry + ty) / 2;
@@ -1166,18 +1167,19 @@ function swallowStep(m, dt, y0, y1) {
   }
   const e6 = Math.min(1, dt * 6);
   let tvx, tvy, fold, kk = 2.4;
+  // 2.13（Jack：燕子慢 1.3 倍就够了；飘的时候别飘那么快）：上下的速度都 ÷1.3；飘的时候横着只剩六成（慢慢滑、慢慢往下沉），不再和扇翅膀差不多快
   if (m.mode === 'flap') {
     m.ph += dt * Math.PI * 2 / m.per; m.k = Math.sin(m.ph); m.k2 = Math.sin(m.ph - 0.45);
-    tvx = m.v; tvy = -16; fold = 0.08;
+    tvx = m.v; tvy = -12; fold = 0.08;
   } else if (m.mode === 'glide') {
-    m.k += (0.14 - m.k) * e6; m.k2 += (0.08 - m.k2) * e6;
-    tvx = m.v * 0.8; tvy = 20; fold = 0.28;
+    m.k += (0.1 - m.k) * e6; m.k2 += (0.06 - m.k2) * e6;
+    tvx = m.v * 0.6; tvy = 11; fold = 0.28;
   } else {
     m.k += (0.22 - m.k) * e6; m.k2 += (0.18 - m.k2) * e6;
     const u = 1 - m.tm / m.t0;
-    tvx = m.v * 1.18; tvy = u < 0.5 ? 120 : -95; fold = 0.85; kk = 4;
+    tvx = m.v * 1.15; tvy = u < 0.5 ? 92 : -73; fold = 0.85; kk = 4;
   }
-  if (m.y > y1) tvy = Math.min(tvy, -45); else if (m.y < y0) tvy = Math.max(tvy, 45);
+  if (m.y > y1) tvy = Math.min(tvy, -35); else if (m.y < y0) tvy = Math.max(tvy, 35);
   const e = Math.min(1, dt * kk);
   m.vx += (tvx - m.vx) * e; m.vy += (tvy - m.vy) * e;
   m.fold += (fold - m.fold) * Math.min(1, dt * 7);
@@ -1353,16 +1355,17 @@ const LIVE = {
   },
   peach: {
     // 2.6 燕子（Jack：鸟改成燕子，是背景里的、不跟着人走，飞快点，一会儿飞一会儿飘；2.7 一度换成大雁 —— 2.12 Jack：大雁是大漠孤烟的，桃花源是小燕子飞 + 飘，放回来）：
-    // 中景那一层（镜头一挪，它跟着桃林一起挪），隔几秒从看得见的左边飞进来一只、两只或三只，在桃树上面那一截天上往右飞（一秒两百来像素），
-    // 扇一阵、飘一阵、偶尔俯冲再拉起来，飞出右边就没了；同时最多两群。落英：几片花瓣翻着跟头往右飘、慢慢往下落（在人头顶上面那一截，飘一阵就淡掉）
+    // 中景那一层（镜头一挪，它跟着桃林一起挪），隔几秒从看得见的左边飞进来一只或两只（2.13 以前最多三只、两群），在桃树上面那一截天上往右飞（2.13 一秒一百五上下），
+    // 扇一阵、飘一阵、偶尔俯冲再拉起来，飞出右边就没了；同时只有一群。落英：几片花瓣翻着跟头往右飘、慢慢往下落（在人头顶上面那一截，飘一阵就淡掉）
     mid(g, L, st, dt) {
       const B = st.birds || (st.birds = []), y0 = L.fy - 490, y1 = L.fy - 350;          // 飞在桃树梢上面那一截天（比人头高一截）
       if (st.nextBird === undefined) st.nextBird = st.t + lrand(1, 3);
-      if (dt > 0 && st.t >= st.nextBird && B.length < 2) {
-        const n = LIVE_R() < 0.45 ? 1 : LIVE_R() < 0.65 ? 2 : 3, v = lrand(175, 240), y = lrand(y0 + 20, y1 - 30);
+      // 2.13（Jack：燕子一次飞一两只就够了，慢 1.3 倍）：一次只来一群、一群一只或两只；一秒 135 ～ 185 像素（以前 175 ～ 240）
+      if (dt > 0 && st.t >= st.nextBird && B.length < 1) {
+        const n = LIVE_R() < 0.6 ? 1 : 2, v = lrand(175, 240) / 1.3, y = lrand(y0 + 20, y1 - 30);
         const fl = { m: [] };
         for (let i = 0; i < n; i++) fl.m.push({ x: L.vis[0] - 40 - i * lrand(26, 60), y: y + (i ? lrand(-28, 28) : 0), vx: v, vy: 0, v: v * lrand(0.94, 1.06), s: lrand(1.35, 1.65),
-          mode: 'flap', tm: lrand(0.3, 1), t0: 1, ph: LIVE_R() * 6.28, per: lrand(0.2, 0.26), k: 0, k2: 0, fold: 0.1 });
+          mode: 'flap', tm: lrand(0.3, 1), t0: 1, ph: LIVE_R() * 6.28, per: lrand(0.22, 0.28), k: 0, k2: 0, fold: 0.1 });
         B.push(fl); st.nextBird = st.t + lrand(5, 12);
       }
       for (let i = B.length - 1; i >= 0; i--) {
@@ -1404,6 +1407,8 @@ const LIVE = {
         const n = 5 + Math.floor(LIVE_R() * 4), gap = lrand(20, 26), rise = (LIVE_R() < 0.5 ? 1 : -1) * lrand(4.5, 7.5);
         const fl = { x: st.geeseN ? -n * gap * 1.15 - 30 : lrand(L.w * 0.4, L.w * 0.6), y: L.fy - lrand(330, 375), v: lrand(28, 36), per: lrand(0.55, 0.68), t: 0, m: [] };
         for (let i = 0; i < n; i++) fl.m.push({ dx: -i * gap * 1.15 + lrand(-2, 2), dy: i * rise + lrand(-1.5, 1.5), ph: i * 0.55 + lrand(-0.2, 0.2), s: lrand(1.05, 1.2) });
+        // 2.13 一排往下斜的时候最后那只可能比头雁低五十来像素：整排往上挪，最低的那只也离地 305 以上（在人头顶上面那一截天上）
+        const low = Math.max(...fl.m.map(m => m.dy)); if (fl.y + low > L.fy - 305) fl.y = L.fy - 305 - low;
         G.push(fl); st.geeseN = (st.geeseN || 0) + 1;
       }
       for (let i = G.length - 1; i >= 0; i--) {

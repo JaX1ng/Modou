@@ -108,6 +108,7 @@ class Fighter {
     this.flow = 0; this.reelKind = null; this.parryKind = null;   // 2.9 顺几级（咏春拳）、被什么弄失衡的（拍开 / 耕开 / 截脚……）；2.11 接住以后停在哪一手上（咏春拳的接招）
     this.stuck = false; this.shook = false; this.prone = false; this.carryPose = null;   // 2.10 被咏春拳黏住（搭手）、刚甩开手（画面）、趴着倒地（画面）、被拽 / 被扛的样子（画面）
     this.stagger = false;                                     // 2.0.2 被回身肘打中、背对着踉跄（在 hit 状态里）
+    this.jin = 0; this.jinAt = 0; this.luPress = -999; this.luOK = false; this.luPrev = false; this.luPull = false;   // 3.0 太极拳：劲几级（0 ~ TJ_JIN_MAX）、上一次劲变是什么时候、捋（按着挡按后）
     this.qi = 0; this.reel = false; this.clashed = false; this.noParry = false;
     this.guardOn = -1; this.stompFor = -1; this.reelBy = -1; this.reelKD = false; this.rollDir = 0; this.heldAt = -999;
     this.prevBlock = false; this.blockPress = -999; this.parryOK = false;
@@ -552,7 +553,7 @@ class Fighter {
         if (!locked && this.tryBurst()) break;
         if ((this.stunT -= DT) <= 0) {
           this.freeAt = this.clock;      // 这一步刚恢复，还来不及挡：这一步打中仍算连上
-          this.grabbed = false; this.reel = false; this.clashed = false; this.carried = false; this.stagger = false; this.stuck = false; this.shook = false;   // 踉跄完了：又会自动面向对手
+          this.grabbed = false; this.reel = false; this.clashed = false; this.carried = false; this.stagger = false; this.stuck = false; this.shook = false; this.luPull = false;   // 踉跄完了：又会自动面向对手
           if (this.airborne) { this.state = 'air'; this.airUsed = true; this.vx = 0; } else this.state = 'idle';
         }
         break;
@@ -785,7 +786,7 @@ class Fighter {
   knockDown(vz, kvx, lie, ko) {
     this.state = ko ? 'ko' : 'down'; this.downPhase = 'fall'; this.t = 0;
     this.vz = vz; if (this.alt <= 0) this.alt = 0.01; this.kvx = kvx; this.vx = 0;
-    this.lieT = lie; this.move = null; this.chain = []; this.chainIdle = 99; this.grabbed = false; this.carried = false; this.slam = false; this.stuck = false; this.shook = false; this.prone = false;
+    this.lieT = lie; this.move = null; this.chain = []; this.chainIdle = 99; this.grabbed = false; this.carried = false; this.luPull = false; this.slam = false; this.stuck = false; this.shook = false; this.prone = false;
     this.rollDir = 0; this.stompFor = -1; this.gwalk = 0;
     this.lieKind = this.lieKind ? 0 : 1;                  // 躺姿换着来：一条腿稍弯 / 两腿伸直（只是画面）
     this.reel = false; this.clashed = false; this.stagger = false; this.runT = 0;
@@ -812,6 +813,7 @@ class Fighter {
       dash: !!(m && m.name === 'dash'), run: this.state === 'run' && this.runT >= RUN_CHARGE,
       held: this.grabbed, low: lowProfile(this), lowBlock: this.lowBlock,
       catching: !!(d && d.catchKey),                                // 2.11 咏春拳在接招（按住挡再按键的那个架势；rLeft 是还剩几帧收完手）
+      tjc: !!(m && m.charging), tjp: !!(m && !d.noPeng && (d.tjHua || (d.tjCharge && (m.hua || 0) < TJ_HUA_MAX)) && m.t < m.S + 1), jin: this.jin || 0,   // 3.0 太极拳：在蓄势、身上有掤、攒了几级劲
     };
     this.history.push(s); if (this.history.length > 40) this.history.shift();
   }
@@ -1181,6 +1183,7 @@ class Fighter {
     J.fpr = p.fpr === undefined ? 1 : p.fpr; J.bpr = p.bpr === undefined ? 1 : p.bpr;   // 2.10 掌心朝里 / 侧着 / 朝外（body.js palmShape）
     J.fz = p.fz || 0;                                                                   // 2.12 前手在里还是在外（搭手翻手：正 = 前手那条胳膊到近侧）
     J.fwa = p.fw || 0; J.bwa = p.bw || 0;                    // 2.10.2 拳头绕手腕往上翘多少度（body.js 画拳头）
+    J.fsp = p.fs || 0; J.bsp = p.bs || 0; J.fhk = p.fhk || 0; J.bhk = p.bhk || 0; J.fvt = p.fv || 0; J.bvt = p.bv || 0;   // 2.13 手指张开多少、勾手、竖拳（body.js）
     J.fyaw = p.fo || 0; J.byaw = p.bo || 0;                    // 2.5 脚尖跟着膝盖往侧面摆多少（度）
     J.x = ox; J.alt = this.alt;                      // 这一套骨骼是按哪个位置算的（画面插值用，2.0.1）
   }

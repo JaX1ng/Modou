@@ -15,7 +15,8 @@
    2.10.2 照 ref/wc_stance_side.jpg 重摆：前手（问手）大臂往前下斜、肘沉着不伸直，小臂往上扬，掌张开、手指朝前上（掌心朝里偏下）；
    后手（护手）竖掌、掌心朝里，叠在前手小臂的后半段上；两个肘都朝下，身子正着 ---------- */
 const WBASE = { rot: 0, spin: 0, tor: 2, head: 2, hy: 69, dx: 0, air: 0, fe: 1, be: 1, tw: 20, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 1, bp: 1, fpa: -34, bpa: -84, fpr: 0.85, bpr: 1, fw: 0, bw: 0, fz: 0, fh: [47.3, -2.8], bh: [31, 8], ff: [28, 0], bf: [-32, 0] };
+  fp: 1, bp: 1, fpa: -34, bpa: -84, fpr: 0.85, bpr: 1, fw: 0, bw: 0, fz: 0, fs: 0.25, bs: 0, fhk: 0, bhk: 0, fv: 1, bv: 1,
+  fh: [47.3, -2.8], bh: [31, 8], ff: [28, 0], bf: [-32, 0] };
 const wmk = o => mk(o, WBASE);
 function WM(o) { o.pb = WBASE; o.style = 'wc'; return M(o); }
 const WJ = (base, o) => Object.assign({}, base, o);
@@ -43,7 +44,8 @@ const W_LOOP = [[18, 8], [13, 6.5], [11, 3], [12.5, -0.5], [16.5, -1.6]];
 const W_GUARD_PALM = [23, -0.5];                                // 圈转到上面、张开成竖掌贴在打出去那条胳膊的肘弯上（第 4 格）
 const W_UNDER = [40, 7], W_OVER = [33, -3];                     // 换手（第 5 格）：收回去的那条在下面、还在前面；打出去的那只在上面
 // 一只手的样子：h 'f' 前手 / 'b' 后手，at 拳心（掌是掌根）在哪；palm 掌（pa 手指朝哪、pr 掌心朝哪）；cock 拳头往上翘多少
-const wHand = (h, at, palm, cock, pa, pr) => ({ [h + 'h']: at, [h + 'p']: palm ? 1 : 0, [h + 'w']: palm ? 0 : cock || 0, [h + 'pa']: pa === undefined ? -84 : pa, [h + 'pr']: pr === undefined ? 1 : pr, [h + 'e']: 1 });
+// 2.13 掌都是四指并拢的竖掌（贴在肘弯上的护手、立掌；参考图 ref/wc_chung_seq_4.jpg）：s 0
+const wHand = (h, at, palm, cock, pa, pr) => ({ [h + 'h']: at, [h + 'p']: palm ? 1 : 0, [h + 'w']: palm ? 0 : cock || 0, [h + 'pa']: pa === undefined ? -84 : pa, [h + 'pr']: pr === undefined ? 1 : pr, [h + 'e']: 1, [h + 's']: 0 });
 const wSide = h => h === 'f' ? 1 : -1, wOther = h => h === 'f' ? 'b' : 'f';
 // 打到头：h 那只手打出去（palm：立掌，胳膊直一点、肩多送 6°），另一只手 g 在 gAt（拳或者掌）
 function wStrike(h, palm, gAt, gPalm) {
@@ -73,26 +75,26 @@ const W_LOW = { hy: 52, tor: 18, head: -4, tw: 20, ff: [28, 0], bf: [-26, 0], fh
    2.12（Jack：缠绕是 z 轴上的事，别像蛇一样上下扭，必要时加一点阴影）：四个手型的前手一样高（往下 9），翻手只在里 / 外上走 ——
    fz 正 = 前手到外面（近侧，画在后手前面）、负 = 到里面（远侧，淡一点）：摊、伏在外面，膀转到里面；翻手过零那一下两条小臂交叉、淡色换边 */
 const W_SHAPE = {
-  '': { fh: [44, 9], fpa: -36, fpr: 1, fe: 1, bh: [24, 12], bpa: -46, bpr: 1, be: 1, tw: 10, fz: 0 },                 // 问手（没翻）
-  tan: { fh: [50, 9], fpa: -8, fpr: 0.3, fe: 1, bh: [26, 11], bpa: -46, bpr: 1, be: 1, tw: 16, fz: 1 },             // 摊（在外面）
-  bong: { fh: [46, 9], fpa: 36, fpr: -0.35, fe: 1, bh: [22, 9], bpa: -46, bpr: 1, be: 1, tw: 12, fz: -1 },           // 膀（转到里面；肘沉着、掌心翻朝外下）
-  fook: { fh: [48, 9], fpa: 28, fpr: 0.7, fe: 1, bh: [26, 9], bpa: -46, bpr: 1, be: 1, tw: 14, fz: 1 },              // 伏（在外面，压着）
+  '': { fh: [44, 9], fpa: -36, fpr: 1, fe: 1, bh: [24, 12], bpa: -46, bpr: 1, be: 1, tw: 10, fz: 0, fs: 0.25, bs: 0 },                 // 问手（没翻）
+  tan: { fh: [50, 9], fpa: -8, fpr: 0.3, fe: 1, bh: [26, 11], bpa: -46, bpr: 1, be: 1, tw: 16, fz: 1, fs: 0.45, bs: 0 },             // 摊（在外面；掌心朝上、手指松开一点）
+  bong: { fh: [46, 9], fpa: 36, fpr: -0.35, fe: 1, bh: [22, 9], bpa: -46, bpr: 1, be: 1, tw: 12, fz: -1, fs: 0.2, bs: 0 },           // 膀（转到里面；肘沉着、掌心翻朝外下）
+  fook: { fh: [48, 9], fpa: 28, fpr: 0.7, fe: 1, bh: [26, 9], bpa: -46, bpr: 1, be: 1, tw: 14, fz: 1, fs: 0.15, bs: 0 },              // 伏（在外面，压着）
 };
 /* ---------- 2.11 挡重做（WINGCHUN.md 十五）：按住挡 = 听劲（Jack：长按挡的时候手臂不动，只是往后收一点 —— 不再一直翻盘手）；
    按住挡再按 拳 / 重 / 拿 = 接招，五个桩法照 ref/wc_guard_1 ～ 5.png ---------- */
-const W_TING = { fh: [40, -1], fpa: -40, fpr: 0.85, fe: 1, bh: [26, 8], bpa: -84, bpr: 1, be: 1, tw: 16 };                       // 听劲：问手、护手往胸前收一点
-const W_TING_LOW = { hy: 52, tor: 16, head: 4, tw: 12, ff: [26, 0], bf: [-25, 0], fh: [36, 6], fpa: -30, fpr: 0.85, fe: 1, bh: [22, 2], bpa: -84, bpr: 1, be: 1 };   // 蹲着听劲
+const W_TING = { fh: [40, -1], fpa: -40, fpr: 0.85, fe: 1, bh: [26, 8], bpa: -84, bpr: 1, be: 1, tw: 16, fs: 0.25, bs: 0 };                       // 听劲：问手、护手往胸前收一点
+const W_TING_LOW = { hy: 52, tor: 16, head: 4, tw: 12, ff: [26, 0], bf: [-25, 0], fh: [36, 6], fpa: -30, fpr: 0.85, fe: 1, bh: [22, 2], bpa: -84, bpr: 1, be: 1, fs: 0.25, bs: 0 };   // 蹲着听劲
 const W_CATCH = {
   // 拍手（图 2，按拳接他前手的拳）：前手竖掌往前一拍、拍在他胳膊上往里带，后手竖掌跟在后面护着
-  pat: { tor: 4, dx: 4, hy: 68, tw: 26, fh: [52, 2], fpa: -84, fpr: 0.25, fe: 1, bh: [36, 4], bpa: -86, bpr: 0.95, be: 1, ff: [27, 0], bf: [-32, 0] },
+  pat: { tor: 4, dx: 4, hy: 68, tw: 26, fh: [52, 2], fpa: -84, fpr: 0.25, fe: 1, bh: [36, 4], bpa: -86, bpr: 0.95, be: 1, ff: [27, 0], bf: [-32, 0], fs: 0.55, bs: 0 },   // 2.13 拍出去的手张开（图 2），护手并拢
   // 摊手（图 1，按拳接他后手的拳）：前手往前上方摊出去、手张开把拳托开，后手竖掌护在前手肘弯上
-  tan: { tor: 2, dx: 3, hy: 68, tw: 24, fh: [45, -16], fpa: -48, fpr: 0.1, fe: 1, bh: [30, 3], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-32, 0] },
+  tan: { tor: 2, dx: 3, hy: 68, tw: 24, fh: [45, -16], fpa: -48, fpr: 0.1, fe: 1, bh: [30, 3], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-32, 0], fs: 0.6, bs: 0 },     // 2.13 摊出去的手张开（图 1）
   // 膀手转马（图 4，按重接重拳）：脚跟一拧转马、侧过身，前手膀手 —— 肘在前、小臂往下垂着把劲往外带；后手在上面拦着
-  bong: { spin: 26, tor: 6, dx: 0, hy: 66, tw: 4, fh: [30, 30], fpa: 78, fpr: 0.5, fe: -1, bh: [46, -9], bpa: -64, bpr: 0.5, be: 1, ff: [24, 0], bf: [-34, 0] },
+  bong: { spin: 26, tor: 6, dx: 0, hy: 66, tw: 4, fh: [30, 30], fpa: 78, fpr: 0.5, fe: -1, bh: [46, -9], bpa: -64, bpr: 0.5, be: 1, ff: [24, 0], bf: [-34, 0], fs: 0.15, bs: 0 },   // 2.13 垂下去的手手指松着（图 4）
   // 按手（图 5，站着按拿接中段、上段的腿）：下面一只手往前下方把腿按下去（掌心朝下），上面一只手竖掌拦着
-  gum: { tor: 8, dx: 4, hy: 67, tw: 12, fh: [48, 24], fpa: 22, fpr: -0.3, fe: 1, bh: [44, -15], bpa: -76, bpr: 0.8, be: 1, ff: [27, 0], bf: [-32, 0] },
+  gum: { tor: 8, dx: 4, hy: 67, tw: 12, fh: [48, 24], fpa: 22, fpr: -0.3, fe: 1, bh: [44, -15], bpa: -76, bpr: 0.8, be: 1, ff: [27, 0], bf: [-32, 0], fs: 0.25, bs: 0 },   // 2.13 上面拦着的竖掌并拢（图 5）
   // 耕手（图 3，蹲着按拿接地上的腿）：一只手往下往外耕开，一只手竖掌护在脸前
-  gaun: { hy: 52, tor: 18, head: 2, tw: 6, fh: [34, 40], fpa: 74, fpr: 0.4, fe: 1, bh: [22, -16], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-26, 0] },
+  gaun: { hy: 52, tor: 18, head: 2, tw: 6, fh: [34, 40], fpa: 74, fpr: 0.4, fe: 1, bh: [22, -16], bpa: -86, bpr: 1, be: 1, ff: [27, 0], bf: [-26, 0], fs: 0.1, bs: 0 },     // 2.13 耕下去的手四指并拢（图 3）
 };
 const CATCH_NAME = { pat: '拍手', tan: '摊手', bong: '膀手', gum: '按手', gaun: '耕手' };
 const W_TING_K = WJ({ hy: 68, tor: 2, head: 4, dx: -1, ff: [26, 0], bf: [-32, 0] }, W_TING);   // 站着听劲（整个人）
@@ -136,13 +138,13 @@ const WMOVES = {
   wBiu: WM({ kind: 'jab', label: '标指', open: true, beat: true, flow: true, biu: true, S: 4, A: 3, R: 9, dmg: 3, reach: 100, stun: 8, bstun: 6, kb: 1.2, stop: 2, power: .3,
     limb: 'fh', fx: 'jab', lunge: [1, 4, 10],
     keys: [[0, {}], [0.5, { fh: [36, -8], fpa: -40, fpr: 0.6, tw: 22 }],
-      [1, { tor: 10, dx: 12, hy: 67, tw: 40, fh: [62, -7], fpa: -2, fpr: 0.15, bh: [24, -3], ff: [36, 0], bf: [-30, 0] }, 'back'],
-      [2, { tor: 10, dx: 12, hy: 67, tw: 40, fh: [62, -7], fpa: -2, fpr: 0.15, bh: [24, -3], ff: [36, 0], bf: [-30, 0] }], [3, {}]] }),
+      [1, { tor: 10, dx: 12, hy: 67, tw: 40, fh: [62, -7], fpa: -2, fpr: 0.15, fs: 0, bh: [24, -3], ff: [36, 0], bf: [-30, 0] }, 'back'],
+      [2, { tor: 10, dx: 12, hy: 67, tw: 40, fh: [62, -7], fpa: -2, fpr: 0.15, fs: 0, bh: [24, -3], ff: [36, 0], bf: [-30, 0] }], [3, {}]] }),
   // 低掌（蹲 + 拳）：蹲下去一掌推在小腹底下（下段，要蹲着挡）
   wLowPalm: WM({ kind: 'jab', label: '低掌', open: true, beat: true, flow: true, height: 'low', S: 4, A: 3, R: 8, dmg: 4, reach: 84, stun: 8, bstun: 6, kb: 1.6, stop: 2, power: .3,
     limb: 'fh', fx: 'low', lunge: [1, 4, 6],
-    keys: [[0, W_LOW], [0.5, WJ(W_LOW, { fh: [30, 10], fpa: -50 })], [1, WJ(W_LOW, { tor: 24, dx: 8, hy: 50, tw: 28, fh: [50, 24], fpa: -40, fpr: 0.5, bh: [22, 2] }), 'back'],
-      [2, WJ(W_LOW, { tor: 24, dx: 8, hy: 50, tw: 28, fh: [50, 24], fpa: -40, fpr: 0.5, bh: [22, 2] })], [3, W_LOW]] }),
+    keys: [[0, W_LOW], [0.5, WJ(W_LOW, { fh: [30, 10], fpa: -50 })], [1, WJ(W_LOW, { tor: 24, dx: 8, hy: 50, tw: 28, fh: [50, 24], fpa: -40, fpr: 0.5, fs: 0.1, bh: [22, 2] }), 'back'],
+      [2, WJ(W_LOW, { tor: 24, dx: 8, hy: 50, tw: 28, fh: [50, 24], fpa: -40, fpr: 0.5, fs: 0.1, bh: [22, 2] })], [3, W_LOW]] }),
 
   /* ---- 重：寸拳（按住蓄劲）、批肘、拐肘、沉肘 ---- */
   // 寸拳：沉身、后手拳贴着胸口，一寸一寸炸出去。射程短、疼，前摇里霸体吃一下拳（重克拳）；打中他踉跄一下（reelHit）。
@@ -213,14 +215,14 @@ const WMOVES = {
   grab: WM({ kind: 'grab', label: '拉手', open: true, trap: true, S: 4, A: 4, R: 13, dmg: 0, reach: 82, power: .4,
     limb: 'fh', lunge: [1, 4, 6],
     keys: [[0, {}], [0.5, { fh: [34, -8], fpa: -30, tw: 30 }],
-      [1, { tor: 10, dx: 10, hy: 67, tw: 38, fh: [53, -4], fpa: 6, fpr: 0.5, bh: [24, -2], ff: [34, 0], bf: [-28, 0] }, 'out'],
-      [2, { tor: 10, dx: 10, hy: 67, tw: 38, fh: [53, -4], fpa: 6, fpr: 0.5, bh: [24, -2], ff: [34, 0], bf: [-28, 0] }], [3, {}]] }),
+      [1, { tor: 10, dx: 10, hy: 67, tw: 38, fh: [53, -4], fpa: 6, fpr: 0.5, fs: 0.5, bh: [24, -2], ff: [34, 0], bf: [-28, 0] }, 'out'],
+      [2, { tor: 10, dx: 10, hy: 67, tw: 38, fh: [53, -4], fpa: 6, fpr: 0.5, fs: 0.5, bh: [24, -2], ff: [34, 0], bf: [-28, 0] }], [3, {}]] }),
   // 截腿（蹲 + 拿）：蹲下去两手往前下方一截 —— 截住地上的出腿（他失衡，你先打）；抓住蹲着的人进搭手；站着的抓不到
   lowGrab: WM({ kind: 'grab', label: '截腿', low: true, height: 'low', open: true, S: 6, A: 4, R: 15, dmg: 0, reach: 86, power: .5,
     limb: 'fh', lunge: [1, 6, 12],
     keys: [[0, W_LOW], [0.5, WJ(W_LOW, { hy: 46, tor: 22, fh: [26, 10], bh: [16, 14] })],
-      [1, { hy: 42, tor: 36, dx: 18, head: -10, fh: [56, 38], fpa: 30, bh: [48, 42], bpa: 40, ff: [44, 0], bf: [-34, 0], tw: 10 }, 'out'],
-      [2, { hy: 42, tor: 36, dx: 18, head: -10, fh: [56, 38], fpa: 30, bh: [48, 42], bpa: 40, ff: [44, 0], bf: [-34, 0], tw: 10 }], [3, W_LOW]] }),
+      [1, { hy: 42, tor: 36, dx: 18, head: -10, fh: [56, 38], fpa: 30, fs: 0.45, bh: [48, 42], bpa: 40, bs: 0.45, ff: [44, 0], bf: [-34, 0], tw: 10 }, 'out'],
+      [2, { hy: 42, tor: 36, dx: 18, head: -10, fh: [56, 38], fpa: 30, fs: 0.45, bh: [48, 42], bpa: 40, bs: 0.45, ff: [44, 0], bf: [-34, 0], tw: 10 }], [3, W_LOW]] }),
 
   /* ---- 跳起来（上段：蹲着挡不住；飞撑脚能蹲下躲） ---- */
   airJab: WM({ kind: 'jab', label: '飞身冲拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 11, R: 6, dmg: 6, reach: 94, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.4, stop: 5, power: .45,
@@ -291,8 +293,8 @@ const WMOVES = {
   // 爆气（挨打时按重 + 踢，花半格气）：两只掌往外一撑，从身上炸开
   burst: WM({ kind: 'script', label: '爆气', S: 0, A: 0, R: 22, script: true, inv: [0, 18], evWave: 3,
     keys: [[0, { tor: 24, hy: 54, head: 10, fh: [16, 10], bh: [10, 12], tw: 0 }],
-      [0.14, { tor: -12, head: -16, hy: 76, fh: [50, -14], fpa: -84, bh: [-34, -10], bpa: -100, ff: [40, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
-      [0.5, { tor: -10, head: -14, hy: 74, fh: [48, -12], fpa: -84, bh: [-32, -8], bpa: -100, ff: [40, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
+      [0.14, { tor: -12, head: -16, hy: 76, fh: [50, -14], fpa: -84, fs: 0.7, bh: [-34, -10], bpa: -100, bs: 0.7, ff: [40, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
+      [0.5, { tor: -10, head: -14, hy: 74, fh: [48, -12], fpa: -84, fs: 0.7, bh: [-32, -8], bpa: -100, bs: 0.7, ff: [40, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
   // 连环寸拳（大招，气满按重 + 踢）：往下一沉（出手前几帧打击无敌），第一拳打中 = 一串左右交替的寸拳把人钉住，最后一记寸拳打飞
   super: WM({ kind: 'heavy', label: '连环寸拳', stamp: '连环寸拳', tier: 'super', S: 6, A: 3, R: 20, dmg: 4, reach: 92, stun: 20, bstun: 14, kb: 1, stop: 5, shake: 4, power: 1, heavy: true,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 6, 14], sinv: [0, 6], cost: QI_MAX, launch: 6, ender: true, noCancel: true, antiAir: 40,
@@ -310,8 +312,8 @@ const WMOVES = {
       [2, { tor: 8, dx: 8, hy: 67, tw: -8, fh: [36, -6], fpa: -60, bh: [54, W_LINE], bp: 0 }], [3, {}]] }),
   tTan: WM({ kind: 'jab', label: '摊打', stamp: '摊打', beat: true, flow: true, S: 2, A: 3, R: 7, dmg: 6, reach: 80, stun: 8, bstun: 6, kb: 1.6, stop: 4, shake: 2, power: .5,
     limb: 'bh', fx: 'jab2', lunge: [0, 2, 6],
-    keys: [[0, { tor: 4, dx: 2, hy: 68, tw: 26, fh: [44, -3], fpa: -14, fpr: 0.2, bh: [26, -6] }], [1, { tor: 8, dx: 9, hy: 67, tw: -6, fh: [40, -2], fpa: -6, fpr: 0.2, bh: [56, W_LINE], bp: 0 }, 'back'],
-      [2, { tor: 8, dx: 9, hy: 67, tw: -6, fh: [40, -2], fpa: -6, fpr: 0.2, bh: [56, W_LINE], bp: 0 }], [3, {}]] }),
+    keys: [[0, { tor: 4, dx: 2, hy: 68, tw: 26, fh: [44, -3], fpa: -14, fpr: 0.2, fs: 0.45, bh: [26, -6] }], [1, { tor: 8, dx: 9, hy: 67, tw: -6, fh: [40, -2], fpa: -6, fpr: 0.2, fs: 0.45, bh: [56, W_LINE], bp: 0 }, 'back'],
+      [2, { tor: 8, dx: 9, hy: 67, tw: -6, fh: [40, -2], fpa: -6, fpr: 0.2, fs: 0.45, bh: [56, W_LINE], bp: 0 }], [3, {}]] }),
   tBong: WM({ kind: 'jab', label: '膀转摊打', stamp: '膀转摊打', beat: true, flow: true, S: 2, A: 3, R: 7, dmg: 7, reach: 80, stun: 8, bstun: 6, kb: 1.8, stop: 4, shake: 3, power: .55,
     limb: 'bh', fx: 'jab2', lunge: [0, 2, 6],
     keys: [[0, { tor: 4, dx: 2, hy: 68, tw: 40, fh: [44, 10], fpa: 80, fpr: -0.35, fe: -1, bh: [12, 10], bpa: -70 }], [0.6, { tw: 10, fh: [40, -2], fpa: 0, fpr: 0.2, fe: 1, bh: [34, -4], bp: 0 }],

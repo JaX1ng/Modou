@@ -479,6 +479,96 @@ const WG_FRAMES = ['wJab', 'wJabR', 'wPalmF', 'wCunEnd', 'wBiu', 'wLowPalm', 'wC
 const wcDmg = (k, d) => d.kind === 'grab' ? (k === 'grab' ? `0~${WC_TRAP_DMG}` : '0') : k === 'super' ? `${d.dmg} + 连环` : undefined;
 
 /* ============================================================
+   太极拳（TAIJI.md）
+   ============================================================ */
+const TG_KEYS = [
+  { name: '蓄', how: '[拳] / [重] / [踢] 按住不放', icon: { move: 'tjLan', ph: 0.6 }, desc: `出招走到一大半停住，势接着一式一式往下走：每 ${(TJ_SEG / 60).toFixed(1)} 秒劲 +1，最多 ${TJ_JIN_MAX} 级，蓄满自己发。蓄着不能走、不能转身。` },
+  { name: '发', how: '松开', icon: { move: 'tjLan' }, desc: `从蓄着的样子直接打出去。劲越多越疼：每一级 +${Math.round(TJ_JIN_DMG * 100)}%，劲 2 打倒，劲 3 把人发出去一丈远。` },
+  { name: '掤 · 化', how: '出招的前摇后一半', icon: { move: 'tjLan', ph: 0.6 }, desc: `手上的招前摇走过一半，正面打过来的拳掌、中段上段的腿被化掉：只吃 ${+(TJ_HUA_KEEP * 10).toFixed(1)} 成，招不停，劲 +1。这一招打出去就是借力打力 ×${TJ_JIELI_MUL}。` },
+  { name: '捋', how: '按住 [挡]，他打到之前按一下 [后]', icon: { pose: 'parry' }, desc: '引进落空：他被牵过去，背对着你失衡，劲 +1，你先打。太极拳没有卸力，捋就是它的卸力。' },
+  { name: '采', how: '[拿]', icon: { move: 'grab', ph: 1.6 }, desc: '抓住以后按 [拳] 挒、[重] 野马分鬃、[踢] 采住蹬脚，不按就按出去。他正出腿 = 接住腿，搂膝拗步。' },
+];
+const TG_TIPS = [
+  '太极拳的招都慢，别抢快：站在自己射程边上，他走进来、他先出手，你的招正好等着他。',
+  '按住键是蓄：他看着你蓄，就怕你什么时候松开。他走进来就松，他不动就接着蓄，蓄满了自己发出去。',
+  '出招的前摇后一半身上有掤：他这时候打进来被化掉，你劲 +1，这一招打出去更疼。可是前一半掤还没撑起来，一拳就打断了 —— 要先出，别等他出手了再出。',
+  '掤化不了的：擒拿、下段、跳起来打的、坠山、推挡、大招；一招只化得了两下，他连着打第三下就破了。看见他要抓、要蹲下打你，就别蓄。',
+  '腿上的招没有掤：单腿站着掤不住，起腿的时候挨了拳照样失衡。',
+  '他打过来按住挡，打到之前按一下后是捋：他背对着你失衡，先打搬拦捶再接双峰贯耳。按早了、两次按后隔得太近都没有。',
+  '劲是存得住的：化一下、捋一下攒的劲留到下一招用，放久了慢慢散；挨了打一下散光。',
+];
+const TG_MOVES = [
+  { id: 'tjLan', how: '[拳]', icon: { move: 'tjLan' }, desc: '前手掤出去，两掌按出去。按住蓄：掤、捋、挤、按一式一式走，松开两掌往前按。' },
+  { id: 'tjChuan', how: '[前] + [拳]', icon: { move: 'tjChuan' }, desc: '上一大步，一手架在头上、一手穿掌推出去。射程最长。' },
+  { id: 'tjDao', how: '[后] + [拳]', icon: { move: 'tjDao' }, desc: '往后退一步，后手从耳边推出去：一边退一边打，拉开距离用。' },
+  { id: 'tjXia', how: '[蹲] + [拳]', icon: { move: 'tjXia' }, desc: '坐在后腿上压得很低，前掌顺着前腿往前穿。下段，有掤。' },
+  { id: 'tjBan', how: '[重]', icon: { move: 'tjBan' }, desc: '前手一搬一拦，后手竖拳从腰间冲出去。太极拳最疼的起手。' },
+  { id: 'tjJinJi', how: '[蹲] + [重]', icon: { move: 'tjJinJi' }, ko: true, desc: '一腿提膝、一手往上托：对空，打跳过来的人。太极拳唯一不慢的一招，不蓄。' },
+  { id: 'tjDeng', how: '[踢]', icon: { move: 'tjDeng' }, desc: '提膝、两手十字一分，脚跟往前蹬出去。腿最长；没有掤。' },
+  { id: 'tjFen', how: '[前] + [踢]', icon: { move: 'tjFen' }, desc: '脚尖往前上方一踢，比蹬脚远一点、轻一点。' },
+  { id: 'tjDieCha', how: '[蹲] + [踢]', icon: { move: 'tjDieCha' }, ko: true, desc: '往下一坐，前腿贴地铲出去。下段，打倒。' },
+  { id: 'grab', how: '[拿]', icon: { move: 'grab', ph: 1.6 }, tier: '擒拿', height: '—', dmg: `0~13`, desc: '前手一探扣住腕子往回一采。抓住以后看后面的「采」。他正出腿 = 接住腿，搂膝拗步。' },
+  { id: 'lowGrab', how: '[蹲] + [拿]', icon: { move: 'lowGrab', ph: 1.6 }, tier: '擒拿', dmg: `0~13`, desc: '蹲下去前手往前下方一搂：接住地上的腿，抓得住蹲着的人。抓不到站着的。' },
+  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '跳起来一掌穿出去。空中招都是上段，不蓄、没有掤。' },
+  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '跳起来一拳往下栽，伤害高。' },
+  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '跳起来转一圈一脚，射程远。蹲下躲得开。' },
+  { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '先往上一腾，再一掌指尖朝下往下插。专破蹲着的；怕站着的拳。' },
+  { id: 'burst', how: '挨打时 [重] + [踢]', icon: { move: 'burst', ph: 0.25 }, tier: '—', height: '—', noFrame: true, dmg: BURST_DMG, desc: `花半格气，两掌往外一分，从身上炸开：对面倒地、掉 ${BURST_DMG} 血。` },
+  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: '两手十字一封、往后一坐，两掌一起发出去。整个前摇都有掤，化多少下都行；打中把人发出去。' },
+];
+const TG_COMBOS = [
+  { group: '揽雀尾起手', note: '打中了、化掉了、被挡住了马上按下一招；一串最多三下，每一下也都按得住蓄', list: [
+    { keys: ['jab', 'jab'], name: '高探马', moves: ['tjLan', 'tjGaoTan'] },
+    { keys: ['jab', 'jab', 'jab'], name: '穿掌', moves: ['tjGaoTan', 'tjChuanZ'], tag: '把人打远' },
+    { keys: ['jab', 'heavy'], name: '指裆捶', moves: ['tjLan', 'tjZhiDang'], tag: '往下一捶打倒', ko: true },
+    { keys: ['jab', 'jab', 'heavy'], name: '白鹤亮翅', moves: ['tjGaoTan', 'tjBaiHe'], tag: '一手往上一挑，把人挑倒；也打得到跳起来的', ko: true },
+    { keys: ['jab', 'kick'], name: '分脚', moves: ['tjLan', 'tjFen'] },
+  ] },
+  { group: '搬拦捶起手', list: [
+    { keys: ['heavy', 'jab'], name: '顺拦肘', moves: ['tjBan', 'tjShunLan'], tag: '贴身' },
+    { keys: ['heavy', 'heavy'], name: '双峰贯耳', moves: ['tjBan', 'tjShuangFeng'], tag: '两拳往耳边一合，上段，打倒', ko: true },
+    { keys: ['heavy', 'kick'], name: '转身摆莲', moves: ['tjBan', 'tjBaiLian'], tag: '转身一腿横着摆过去，打倒', ko: true },
+  ] },
+  { group: '蹬脚起手', list: [
+    { keys: ['kick', 'jab'], name: '上步七星', moves: ['tjDeng', 'tjQiXing'], tag: '两拳一交往前一架' },
+    { keys: ['kick', 'heavy'], name: '弯弓射虎', moves: ['tjDeng', 'tjWanGong'], tag: '打倒', ko: true },
+    { keys: ['kick', 'kick'], name: '转身蹬脚', moves: ['tjDeng', 'tjZhuanDeng'], tag: '打倒', ko: true },
+  ] },
+];
+const TG_TECH = [
+  { group: '化 · 捋', list: [
+    { name: '掤 · 化', how: '出招的前摇后一半', icon: { move: 'tjBan', ph: 0.6 }, desc: `正面打过来的拳掌、中段上段的腿被化掉：只吃 ${+(TJ_HUA_KEEP * 10).toFixed(1)} 成，不进硬直，招照样打出去，劲 +1；这一招打中 ×${TJ_JIELI_MUL}，借力打力。`,
+      more: ['蓄着的时候也有掤', `一招只化得了 ${TJ_HUA_MAX} 下，再挨一下就破了`, '化不了：擒拿、下段、跳起来打的、坠山、推挡、大招', '腿上的招没有掤', '前摇的前一半掤还没撑起来：看见他出手再出化不着'] },
+    { name: '捋', how: '按住 [挡]，他打到之前按一下 [后]', icon: { pose: 'parry' }, desc: `他打到之前 ${TJ_LU_WIN} 帧里按后：引进落空，他被牵到你身后，背对着你失衡，劲 +1。接着打中 ×${TJ_LU_MUL}。`,
+      more: [`两次按后要隔 ${TJ_LU_LOCK} 帧以上，乱按没用`, '捋不了：擒拿、下段、跳起来打的、坠山、推挡、大招', '按着挡往后退，云手刚走的那一下也算按后'] },
+    { name: '靠', how: '挡住以后按 [重]', icon: { move: 'tjKao' }, desc: `花 ${GC_COST} 气侧身一靠，出手前打不中你，把人靠出去。` },
+    { name: '挤', how: '挡住以后按 [拳]', icon: { move: 'shove' }, desc: '后掌贴在前手腕上往前一挤，把他挤开，打断他接下来的招。' },
+    { name: '闪通臂', how: '按住 [挡] 朝对手双击 [前]', icon: { move: 'slipElbow' }, desc: '斜飞：侧身斜着从他身边过去，只躲得过重拳一类；躲过了自动闪通臂，他背对着你踉跄。' },
+  ] },
+  { group: '采', list: [
+    { name: '挒', how: '采住以后按 [拳]', icon: { move: 'tjLie', ph: 0.25 }, desc: '扭住胳膊两下肘靠打在他身上，放开的时候他还在硬直里，你先动。' },
+    { name: '野马分鬃', how: '采住以后按 [重]', icon: { move: 'tjYeMa', ph: 0.55 }, desc: '侧身上步，前臂从他腋下往斜上方一分，把他掀出去，落在你前面，躺得久。不换边。' },
+    { name: '采住蹬脚', how: '采住以后按 [踢]', icon: { move: 'tjCaiDeng', ph: 0.45 }, desc: '扣着他提膝一脚蹬在肚子上，蹬出去打倒。' },
+    { name: '按', how: '采住以后不按', icon: { move: 'tjAn', ph: 0.4 }, desc: '两掌把他推出去，你先动一点。' },
+    { name: '搂膝拗步', how: '他出腿的时候按 [拿]', icon: { move: 'tjLouXi', ph: 0.4 }, desc: '前手往外一搂把腿拨开，后手一掌推在他身上，打倒，挣不脱。蹲 + 拿接得住扫堂腿。' },
+  ] },
+];
+const TG_MULS = [
+  ['劲', '这一招打出去带的劲，每一级', `+${Math.round(TJ_JIN_DMG * 100)}%`],
+  ['借力打力', '这一招前摇里化掉过一下', '×' + TJ_JIELI_MUL],
+  ['引进落空', '捋了以后打中背对着你的他', '×' + TJ_LU_MUL],
+  ['化', '掤住打过来的一下，自己只吃', '×' + TJ_HUA_KEEP],
+];
+const TG_VS = [
+  ['太极拳打传统格斗', '他的短拳快，抢不过：别等他出手再出，站在射程边上先出一招等他。重拳、腿慢，看见了就捋。他老举着手挡，采他。'],
+  ['太极拳打咏春拳', '连环冲拳第二拳就破掤，别往他拳里送：等他接招接空、等他收手，或者捋他第一拳。他按着挡听劲的时候，采他、打下段。'],
+  ['打太极拳', '它前摇长：前一半一拳就打断，后一半打进去被化掉、白送劲。它要出手了就抓、就蹲下打下段、就跳起来打；够不着就退开，等它发空了打它收招。它蓄着的时候别往它射程里走，要走就冲刺进去抓。'],
+];
+const TG_FRAMES = ['tjLan', 'tjChuan', 'tjDao', 'tjXia', 'tjBan', 'tjJinJi', 'tjDeng', 'tjFen', 'tjDieCha', 'tjGaoTan', 'tjChuanZ', 'tjZhiDang', 'tjBaiHe', 'tjShunLan', 'tjShuangFeng', 'tjBaiLian',
+  'tjQiXing', 'tjWanGong', 'tjZhuanDeng', 'grab', 'lowGrab', 'tjKao', 'shove', 'stomp', 'slipElbow', 'airJab', 'airHeavy', 'airKick', 'dive', 'super'];
+const tjDmg = (k, d) => d.kind === 'grab' ? '0~13' : undefined;
+
+/* ============================================================
    书：通用一本、每一派一本。page：{ id, name, body(mode) }；以后加拳派在这里加一本
    ============================================================ */
 const keysUse = (list, mode) => GX.p(`按键：<span class="g-keys">${list.map(c => gKbd(c)).join(' ')}</span>`, mode);
@@ -566,6 +656,25 @@ const GUIDE_BOOKS = [
     { id: 'charts', name: '查表', body(mode) {
       return GX.sec('两派对打', GX.dl(WG_VS, mode), mode) +
         GX.sec('帧数表', GX.wide(frameTableHtml(WMOVES, WG_FRAMES, wcDmg), mode) + GX.note(FRAME_NOTE + '直冲、摊打这几招是搭手里打出去的。', mode), mode);
+    } },
+  ] },
+  { id: 'taiji', name: '太极拳', style: 'taiji', pages: [
+    { id: 'start', name: '上手', body(mode) {
+      return GX.p('太极拳：慢而强。招都慢，不跟人抢快 —— 先出一招等他，他打进来被化掉，你按住蓄、松开发；他打过来按住挡、按后是捋。上手容易，难在什么时候松开、什么时候捋。', mode) +
+        GX.tech([{ group: '蓄 · 发 · 化 · 捋 · 采', list: TG_KEYS }], 'taiji', mode) +
+        GX.sec('怎么打', GX.steps(TG_TIPS, mode), mode);
+    } },
+    { id: 'moves', name: '招式', body(mode) {
+      return keysUse(['拳', '重', '踢', '拿', '挡', '蹲', '前', '后'], mode) + GX.p('站着按键出这些招；拳、重、踢按住不放都是蓄，金鸡独立、跳起来的招不蓄。', mode) + GX.moves(TG_MOVES, TMOVES, 'taiji', mode);
+    } },
+    { id: 'combos', name: '势', body(mode) {
+      return GX.pair(['劲', GX.dl([['攒劲', `蓄满一段、化一下、捋一下都 +1，最多 ${TJ_JIN_MAX} 级；头顶上几个墨点就是几级。`], ['发劲', '这一招打出去的那一下用光，打空了也没了。劲 2 打倒，劲 3 把人发出去一丈远。'],
+        ['散', `挨打一下散光；放着不用，${(TJ_JIN_KEEP / 60).toFixed(1)} 秒掉一级。`]], mode)], ['自己的加成', GX.muls(TG_MULS, mode)], mode) + GX.combos(TG_COMBOS, 'taiji', mode);
+    } },
+    { id: 'tech', name: '化 · 捋 · 采', body(mode) { return GX.tech(TG_TECH, 'taiji', mode); } },
+    { id: 'charts', name: '查表', body(mode) {
+      return GX.sec('三派对打', GX.dl(TG_VS, mode), mode) +
+        GX.sec('帧数表', GX.wide(frameTableHtml(TMOVES, TG_FRAMES, tjDmg), mode) + GX.note(FRAME_NOTE + '前摇是不蓄的时候；蓄着的时候停在前摇的六成，松开再走完剩下的。', mode), mode);
     } },
   ] },
 ];

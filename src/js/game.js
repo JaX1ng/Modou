@@ -38,7 +38,7 @@ function applyLooks(mode) {
    solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的；watch（2.11 观战）：两个电脑的。
    训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
    菜单背景里两个电脑互打：每次随机 */
-const STYLE_IDS = ['trad', 'wc'];
+const STYLE_IDS = ['trad', 'wc', 'taiji'];
 const styleOk = id => STYLE_IDS.includes(id);
 const Styles = {
   solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'], watch: ['trad', 'wc'], dummy: 'trad',
@@ -268,7 +268,7 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'vp', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'qback', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'qback', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose', 'lastFlowPose']);
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};

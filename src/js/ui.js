@@ -546,6 +546,7 @@ function setMyLook(id) {
 const STYLE_LINE = {
   trad: '大开大合：重拳霸体、腿长、摔投',
   wc: '按拍子连环冲拳，按住挡接招，手搭上了在手上做文章',
+  taiji: '慢而强：按住蓄、松开发，他打进来就化掉，按住挡按后是捋',
 };
 function styleCard(id, o) {
   const sm = !!o.sm, w = sm ? 52 : 92;
@@ -617,6 +618,7 @@ function renderPrep() {
   for (const i of [0, 1]) {
     const el = $('prepSides').querySelector(`[data-ps="${i}"]`);
     el.innerHTML = (P.rand && i === 1 ? styleCard('random', { on: prep.styles[i] === 'random', sm: true }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === prep.styles[i], sm: true })).join('');
+    el.classList.toggle('many', STYLE_IDS.length >= 3);   // 3.0 三派（电脑那边再加随机）：竖着排（小图在上、名字在下），四张一行放得下，两边一个样
   }
   PoseIcon.fill($('prepSides'));
   $('prepKeys').innerHTML = P.dummy ? '<kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换你的颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换你的拳派，<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换木桩的拳派，也可以直接点；Enter 开始'

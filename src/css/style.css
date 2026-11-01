@@ -430,6 +430,9 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 .styles.sm .styl{width:auto;flex-direction:row;gap:6px;padding:3px 14px 3px 4px;font-size:19px}
 .styles.sm .styl .sicon{width:52px;height:52px}
 .styles.sm .styl.rand .sicon i{width:36px;height:36px;font-size:22px}
+.styles.sm.many{gap:6px}
+.styles.sm.many .styl{flex-direction:column;gap:2px;padding:4px 6px 6px;font-size:17px;min-width:76px}
+.styles.sm.many .styl .sicon{width:46px;height:46px}
 @media (max-width:640px){.styl{width:150px}}
 .stages.sm .stg{font-size:16px;padding:4px 4px 5px}
 .stages.sm .stg img{width:120px;height:60px}

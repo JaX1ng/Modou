@@ -517,7 +517,8 @@ function mashBot(style, side, rng) {
     return bot ? bot() : 0;
   };
 }
-function tierShare(level, styles, rounds, seed) {
+// 3.0 focus：算哪一派打掉的血占几成（不写是咏春拳；太极拳 taiji）
+function tierShare(level, styles, rounds, seed, focus) {
   let s0 = seed >>> 0; const rng = () => (s0 = (Math.imul(s0, 1103515245) + 12345) >>> 0) / 4294967296;
   const keep = Styles.pvp; Styles.pvp = styles;
   try { startMatch('pvp'); } finally { Styles.pvp = keep; }
@@ -535,15 +536,15 @@ function tierShare(level, styles, rounds, seed) {
       if (game.phase === 'over') { game.wins = [0, 0]; startRound(); hp = [F1.hp, F2.hp]; }
     }
     game.brains = [null, null];
-    const wc = styles.indexOf('wc');
-    return { rounds: r, share: dealt[wc] / Math.max(1, dealt[0] + dealt[1]) };
+    const k = styles.indexOf(focus || 'wc');
+    return { rounds: r, share: dealt[k] / Math.max(1, dealt[0] + dealt[1]) };
   } finally { Math.random = mr; }
 }
-// 两边换着站：咏春在左、在右各打一半
-function tierTable(rounds) {
-  const out = [];
+// 两边换着站：咏春在左、在右各打一半（3.0 focus / other：哪一派打哪一派，不写是咏春拳打传统格斗）
+function tierTable(rounds, focus, other) {
+  const out = [], A = focus || 'wc', B = other || 'trad';
   for (const lv of ['mash', 'normal', 'hard', 'hell', 'max']) {
-    const a = tierShare(lv, ['wc', 'trad'], rounds, 11), b = tierShare(lv, ['trad', 'wc'], rounds, 12);
+    const a = tierShare(lv, [A, B], rounds, 11, A), b = tierShare(lv, [B, A], rounds, 12, A);
     out.push({ level: lv, share: (a.share + b.share) / 2, rounds: a.rounds + b.rounds });
   }
   return out;
@@ -609,8 +610,13 @@ if (document.getElementById('out') && location.hash !== '#norun') {
         say('  均衡值各距离平均：' + (x.rows.reduce((a, r2) => a + r2.val, 0) / x.rows.length).toFixed(1) + '（0 上下 = 两派扯平；正 = 传统格斗赚）');
         // 五、分层
         say('\n五、分层：两派对打，咏春拳打掉的血占几成（两边换着站；木头 = 乱按，不罚不看招；别的档是电脑）');
-        const tiers = tierTable(8);
-        say('  ' + tiers.map(t => `${{ mash: '木头', normal: '中等', hard: '困难', hell: '终极', max: '满级' }[t.level]} ${(t.share * 100).toFixed(1)}%（${t.rounds} 回合）`).join(' · '));
+        const tiers = tierTable(8), TN = { mash: '木头', normal: '中等', hard: '困难', hell: '终极', max: '满级' };
+        say('  ' + tiers.map(t => `${TN[t.level]} ${(t.share * 100).toFixed(1)}%（${t.rounds} 回合）`).join(' · '));
+        // 3.0 太极拳打另两派：太极拳打掉的血占几成
+        for (const other of ['trad', 'wc']) {
+          const tt = tierTable(8, 'taiji', other);
+          say(`  太极拳打${STYLES[other].name}：` + tt.map(t => `${TN[t.level]} ${(t.share * 100).toFixed(1)}%（${t.rounds} 回合）`).join(' · '));
+        }
         // 七、一招一张表
         for (const st of ['trad', 'wc']) {
           const mt = moveTable(st);
