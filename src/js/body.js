@@ -374,8 +374,31 @@ function torsoShape(H, N, fx, fy, spin, g) {
   pts.push(...bottom);
   return { pts, at, half, bottom };
 }
-// 外包（凸包）：一圈点里最外面的那些，按顺序连起来
+// 外包（凸包）：一圈点里最外面的那些，按顺序连起来。
+// 3.1.1（Jack：网页版还是有点卡）点多的时候（拳头、勾手一根一根手指的胶囊，一只手两百多个点，量碰没碰到一帧要算二三十回）先扔掉一定在里面的点：
+//   八个方向（左、左下、下、右下、右、右上、上、左上）最靠外的点围成的八边形，离每条边都还在里面一点点的点不可能在外包上 —— 剩下的照旧排序、连起来，
+//   结果和全部点一起算一模一样（同样的点、同样的先后；实测十几万次逐点比过），快三四倍
 function convexHull(P) {
+  const n = P.length;
+  if (n < 24) return hullChain(P);
+  let i0 = 0, i1 = 0, i2 = 0, i3 = 0, i4 = 0, i5 = 0, i6 = 0, i7 = 0;
+  for (let i = 1; i < n; i++) {
+    const x = P[i][0], y = P[i][1];
+    if (x < P[i0][0]) i0 = i; if (x - y < P[i1][0] - P[i1][1]) i1 = i; if (y > P[i2][1]) i2 = i; if (x + y > P[i3][0] + P[i3][1]) i3 = i;
+    if (x > P[i4][0]) i4 = i; if (x - y > P[i5][0] - P[i5][1]) i5 = i; if (y < P[i6][1]) i6 = i; if (x + y < P[i7][0] + P[i7][1]) i7 = i;
+  }
+  const Q = [P[i0], P[i1], P[i2], P[i3], P[i4], P[i5], P[i6], P[i7]], E = [];
+  for (let e = 0; e < 8; e++) { const a = Q[e], c = Q[(e + 1) & 7]; if (a[0] !== c[0] || a[1] !== c[1]) E.push(a[0], a[1], c[0] - a[0], c[1] - a[1], 1e-6 * (Math.abs(c[0] - a[0]) + Math.abs(c[1] - a[1]) + 1)); }
+  if (E.length < 15) return hullChain(P);
+  // 画面坐标 y 朝下：左 → 下 → 右 → 上 这样绕，里面的点对每条边的叉积都小于 -余量（不确定的都留着）
+  const keep = [];
+  for (let i = 0; i < n; i++) {
+    const x = P[i][0], y = P[i][1];
+    for (let k = 0; k < E.length; k += 5) if (E[k + 2] * (y - E[k + 1]) - E[k + 3] * (x - E[k]) >= -E[k + 4]) { keep.push(P[i]); break; }
+  }
+  return hullChain(keep);
+}
+function hullChain(P) {
   const pts = P.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
   if (pts.length < 3) return pts;
   const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
@@ -460,7 +483,7 @@ function bodyParts(J, g, only, coarse) {
           let tx = -(dx - (dx * ux + dy * uy) * ux), ty = -(dy - (dx * ux + dy * uy) * uy), tl = Math.hypot(tx, ty);
           if (tl < 1e-3) { tx = uy * f; ty = -ux * f; tl = 1; }
           const model = HOOK3[key3] || (HOOK3[key3] = hookModel(key3 * D2R));
-          handGroups(parts, key, far, layer, handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, g, HAND.k), g === 0 ? handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, -HAND_SEAM, HAND.k) : null, coarse, { palm: true, hook: true });
+          handGroups(parts, key, far, layer, handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, g, HAND.k), g === 0 && !coarse ? handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, -HAND_SEAM, HAND.k) : null, coarse, { palm: true, hook: true });
         } else {
           // 2.10（Jack：手掌内翻一定要看得出来是往里翻的）：掌心朝里 = 大拇指在靠身子那一边（侧面看，不管手指朝哪都是 -f 那边：
           //     手指朝上 → 拇指在后，手指朝前 → 拇指在上，手指朝下 → 拇指在前）；朝外反过来。2.9 一律画在「前上方」，竖着的掌看着就是往外翻的
@@ -479,7 +502,7 @@ function bodyParts(J, g, only, coarse) {
         const top = [vy * f, -vx * f];
         // 3.1（Jack：拳头要用手指的模型握拳）：一根一根手指卷起来握成的拳（FIST3），绕手腕（W）照小臂的方向摆；竖拳（fv / bv）= 绕小臂转 90°，大拇指朝上
         const roll = ((front ? J.fvt : J.bvt) || 0) * Math.PI / 2 + FIST_ROLL0;
-        handGroups(parts, key, far, layer, handProject(FIST3, W, [vx, vy], top, roll, 0, !far, g, HAND.k), g === 0 ? handProject(FIST3, W, [vx, vy], top, roll, 0, !far, -HAND_SEAM, HAND.k) : null, coarse, { fist: true });
+        handGroups(parts, key, far, layer, handProject(FIST3, W, [vx, vy], top, roll, 0, !far, g, HAND.k), g === 0 && !coarse ? handProject(FIST3, W, [vx, vy], top, roll, 0, !far, -HAND_SEAM, HAND.k) : null, coarse, { fist: true });   // 3.1.1 只要外包（coarse）的时候缝那一圈用不上，不算
       }
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）

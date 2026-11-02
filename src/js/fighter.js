@@ -843,6 +843,7 @@ class Fighter {
       stagger: this.state === 'hit' && this.stagger, stunT: this.stunT, open: !!(d && d.open), dive: !!(d && d.dive), clock: this.clock,
       rLeft: m ? Math.max(0, m.S + (d.A || 0) + (d.R || 0) + (m.pen || 0) - m.t) : 0, landT: this.state === 'land' ? this.landT - this.t : 0,
       air: this.airborne, alt: this.alt, vz: this.vz, vx: this.airborne ? this.vx : 0, squat: this.state === 'jumpsquat', stun: this.state === 'hit' || this.state === 'blockstun',
+      airUsed: this.airborne && this.airUsed,                       // 3.1.1 这一跳已经出过空中招了（落地前出不了第二下）
       dash: !!(m && m.name === 'dash'), run: this.state === 'run' && this.runT >= RUN_CHARGE,
       held: this.grabbed, low: lowProfile(this), lowBlock: this.lowBlock,
       catching: !!(d && d.catchKey),                                // 2.11 咏春拳在接招（按住挡再按键的那个架势；rLeft 是还剩几帧收完手）

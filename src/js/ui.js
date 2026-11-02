@@ -977,6 +977,7 @@ for (const btn of touchEl.querySelectorAll('.tc')) {
 /* ---------- 主循环 ---------- */
 let last = performance.now(), acc = 0, rafAvg = FRAME_MS, aligned = true;
 function loop(now) {
+  AutoRes.watch(now - last);                       // 3.1.1 自动降分辨率（render.js）：一直掉帧就降一点分辨率
   let dt = Math.min(100, now - last); last = now;
   // 2.0.1 / 2.6 帧率：逻辑一秒 SIM_HZ（240）步，和屏幕刷新率无关。rafAvg = 屏幕大概多久刷新一次：
   // 刚好是整数步（60Hz = 4 步、120Hz = 2 步、240Hz = 1 步）就把这一下对齐成正好那么多步，画面不插值（不多一点延迟；

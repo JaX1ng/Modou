@@ -194,7 +194,9 @@ function applyHit(A, B, how) {
   const c = contactPoint(A, B);
   const bm = B.state === 'attack' && B.move && !B.move.def.script ? B.move : null;
   const inStartup = !!bm && bm.t < bm.S + 1;
-  const front = B.facingTo(A);
+  // 3.1.1 挡着的人：对手在身后 FACE_HYST 以内也算正面。挡着的时候对手到了身后超过 FACE_HYST 才转身（autoFace，免得重叠时来回抖），
+  //   以前「正面」只放宽到身后 4 像素 —— 跳过头顶、正好落在身后 4 ～ 6 像素打下来的那一下，挡着的人不转身、又算背后挨打，挡不住
+  const front = B.facingTo(A) || (B.isBlocking() && (A.x - B.x) * B.facing >= -FACE_HYST);
   // 2.10 拳派自己的反应先看：挨打的一方（咏春拳：拍手、黐手黏住进搭手、挨打时黐手破连），出招的一方（咏春拳：标指挑开）。
   // true = 那边管了；数 = 这一下的伤害倍数（黐手破连读错了 ×1.3）
   const STB = styleOf(B), STA = styleOf(A);

@@ -27,11 +27,48 @@ function resize() {
   let k = Math.min(window.devicePixelRatio || 1, 3);
   const CAP = 10.5e6;                                 // 画布最多约 1000 万像素（4K 全屏 + 高 DPR 时降一点分辨率）
   if (cw * ch * k * k > CAP) k = Math.sqrt(CAP / (cw * ch));
+  AutoRes.full = k;
+  k = Math.max(Math.min(k, AUTORES_MIN), k * AutoRes.res);   // 3.1.1 自动降分辨率：一直掉帧就降一点分辨率（见下面 AutoRes）
   const v = viewFor(cw, ch);
   VW = v.vw; VH = v.vh; FY = v.fy;
   cv.width = Math.round(cw * k); cv.height = Math.round(ch * k);
   scale = cw / VW; pxr = k;
 }
+/* 3.1.1（Jack：网页版还是有点卡）自动降分辨率：一直掉帧 —— 最近一秒半里四分之一以上的帧比 25 毫秒还慢（不到 40 帧/秒）—— 画布的分辨率降一档（×0.85，慢得多就 ×0.72），
+   最低到每个 CSS 像素 AUTORES_MIN 个像素（高分屏先从 2 倍、3 倍往下降，普通屏最多糊一点点）。降了一档却没快起来（慢的不是画的像素多）就退回去、不再往下降；
+   降下来以后一直很顺（15 秒里没有一帧掉）再试着升一档，升上去 10 秒内又掉帧就退回来、以后不再往上试。
+   只是画面清不清楚：逻辑照样一秒 240 步，不影响胜负、手感、联机。全按真实时间算（帧率低的时候也一样快地反应） */
+const AUTORES_MIN = 0.75, AUTORES_SLOW = 25;
+const AutoRes = {
+  res: 1, cap: 1, floor: 0, full: 1,     // res 现在的倍数（1 = 不降）；cap 往上最多试到哪；floor 往下最多降到哪（降了没用的那一档以上）；full 不降时的像素比
+  ring: [], sum: 0, cool: 2000, next: 0, good: 0, probeT: 0, before: 0, check: false,   // cool：刚打开的头两秒（字体、背景在画）不算
+  set(r) { this.res = r; this.ring.length = 0; this.sum = 0; this.cool = 700; this.next = 0; resize(); },
+  watch(dt) {
+    if (document.hidden || !(dt > 0) || dt > 1000) { this.ring.length = 0; this.sum = 0; this.cool = 500; return; }
+    if (this.cool > 0) { this.cool -= dt; return; }
+    const R = this.ring; R.push(dt); this.sum += dt;
+    while (this.sum - R[0] >= 1500) this.sum -= R.shift();
+    if (this.sum < 1400 || (this.next -= dt) > 0) return;
+    this.next = 500;                                         // 半秒看一次
+    let slow = 0; for (const x of R) if (x > AUTORES_SLOW) slow++;
+    const frac = slow / R.length, avg = this.sum / R.length;
+    if (this.check) {                                        // 刚降了一档：快起来没有
+      this.check = false;
+      if (avg > this.before * 0.95) { this.floor = this.res * 1.01; this.set(Math.min(1, this.before && this.res / this.stepK)); return; }
+    }
+    if (frac > 0.25) {
+      if (this.probeT > 0) this.cap = this.res * 0.85;       // 刚升上来又掉帧：退回来，以后别再往上试
+      this.good = 0; this.probeT = 0;
+      this.stepK = avg > 2 * AUTORES_SLOW ? 0.72 : 0.85;
+      const next = Math.max(this.res * this.stepK, AUTORES_MIN / this.full);
+      if (next >= this.floor && next < this.res - 1e-3) { this.before = avg; this.check = true; this.set(next); }
+      return;
+    }
+    if (this.probeT > 0) this.probeT -= 500;
+    this.good = slow === 0 ? this.good + 500 : 0;
+    if (this.good >= 15000 && this.res < this.cap - 1e-3) { this.good = 0; this.probeT = 10000; this.set(Math.min(this.cap, this.res / 0.85)); }
+  },
+};
 // 给场景用：这一帧画面多大、地线在哪、最大放大倍数（地面层按这个分辨率画）
 const viewInfo = () => ({ vw: VW, vh: VH, fy: FY, scale, pxr, zmax: ZOOM * zoomBoost() * 1.06 });
 

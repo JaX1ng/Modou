@@ -1701,8 +1701,8 @@ T('2.2 难度：入门 / 简单 / 中等 / 困难 / 终极（每个两个字）�
   eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [22, 14, 9, 9, 11], '反应帧（2.7 入门、简单、中等慢了；2.12 困难 8 → 9：慢招前摇长了以后 8 帧反应什么都挡得住）');
   ok(LEVELS.novice.block < LEVELS.easy.block && LEVELS.novice.read < LEVELS.easy.read && LEVELS.novice.punishBlock < LEVELS.easy.punishBlock, '入门比简单挡得少、读招少、罚得少');
   ok(PLANS.novice.every(([p]) => p.length <= 3) && PLANS.novice.filter(([p]) => p.length <= 2).length >= PLANS.novice.length - 1, '入门的连招短（多是一两下）');
-  ok(LEVELS.hard.smart && LEVELS.hard.see === 0.45 && !LEVELS.hard.inst, '困难：2.1 的难松一点（看穿 0.5 → 0.45）');
-  ok(LEVELS.hell.smart && LEVELS.hell.inst === 0.2 && LEVELS.hell.instMax === 0.55 && LEVELS.hell.instReact === 1, '终极：瞬间看穿 0.6 / 0.88 → 0.3 / 0.55（2.2）→ 基础 0.2（2.3）');
+  ok(LEVELS.hard.smart && LEVELS.hard.see === 0.42 && !LEVELS.hard.inst, '困难：2.1 的难松一点（看穿 0.5 → 0.45；3.1.1 防跳修好以后 → 0.42）');
+  ok(LEVELS.hell.smart && LEVELS.hell.inst === 0.17 && LEVELS.hell.instMax === 0.55 && LEVELS.hell.instReact === 1, '终极：瞬间看穿 0.6 / 0.88 → 0.3 / 0.55（2.2）→ 基础 0.2（2.3）→ 0.17（3.1.1：防跳修好以后整个松一点）');
   ok(LEVELS.hell.react >= LEVELS.hard.react, '终极平时的反应不比人快（看穿靠概率）');
   for (const id of LEVEL_IDS) {
     const L = LEVELS[id];
@@ -1889,9 +1889,11 @@ T('2.1 接腿：腿快踢到了就不去接（以前晚 5 帧也伸手，常常�
 }));
 // 2.4：以前只打 4 回合、赢 3 回合算过 —— 动作、画面一改（随机数用的先后变了）就忽过忽不过。现在两个种子各打 8 回合，16 回合赢 10 回合以上
 T('电脑对电脑：一档比一档强 —— 终极赢困难、困难赢中等、中等赢简单、简单赢入门', () => {
+  // 3.1.1 两个种子（16 回合）→ 六个（48 回合），照样要赢六成二以上：终极、困难只差反应、看穿这几样，终极赢困难七成上下，
+  //   16 回合起伏太大（换一个种子就是 7 : 9 和 12 : 4 的差别），量不出谁强
   for (const [a, b] of [['hell', 'hard'], ['hard', 'normal'], ['normal', 'easy'], ['easy', 'novice']]) {
     const won = [0, 0]; let r = 0;
-    for (const seed of [3, 4]) seededRandom(seed, () => quietly(() => {
+    for (const seed of [3, 4, 5, 6, 7, 8]) seededRandom(seed, () => quietly(() => {
       startMatch('pvp'); game.paused = false; game.endless = true;
       game.brains = [makeBrain(F1, a), makeBrain(F2, b)];
       let k = 0, n = 0, was = game.phase;
@@ -1903,7 +1905,7 @@ T('电脑对电脑：一档比一档强 —— 终极赢困难、困难赢中等
       }
       game.brains = [null, null];
     }));
-    ok(r >= 16 && won[0] >= 10, `${a} 打 ${b}：${won[0]} : ${won[1]}（${r} 回合）`);
+    ok(r >= 48 && won[0] >= r * 0.625, `${a} 打 ${b}：${won[0]} : ${won[1]}（${r} 回合）`);
   }
 });
 
@@ -4280,6 +4282,116 @@ T('3.1 三派强度的形状（量了几个种子的快速版；细的看 NOTES�
   hi /= n; lo /= n;
   ok(hi > 0.5, '满级咏春打格斗术：' + (hi * 100).toFixed(1) + '%');
   ok(lo < 0.48, '木头咏春打格斗术：' + (lo * 100).toFixed(1) + '%');
+});
+
+/* ---------- 3.1.1：一直跳进来（Jack：困难、终极的太极拳打不过一直坠山击、飞踢的人）---------- */
+// 跳进来的木头玩家（格斗术）：走到 120 ～ 230，跳过来出坠山击 / 飞踢（出手早晚随机），打中了照真人那样落地接一整套（短拳、腿、拳、重……一下一下接，接不上就算了）。
+// smart：看见电脑起慢招（前摇 15 帧以上、已经起了 10 帧 —— 人看得见）马上跳过来打它。返回他打掉的血占两人一共掉的血的多少
+function jumpSpam(cpuStyle, level, frames, smart) {
+  return quietly(() => {
+    Styles.pvp = ['trad', cpuStyle];
+    startMatch('pvp'); game.phase = 'fight'; game.paused = true; game.endless = true;
+    game.brains = [null, makeBrain(F2, level)]; F1.x = 700; F2.x = 900;
+    const tw = (me, op) => HOLD(op.x >= me.x ? 'right' : 'left'), FOL = ['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'];
+    let mode = 'walk', target = 0, waitT = 0, st = null, dealt = 0, taken = 0;
+    for (let f = 0; f < frames; f++) {
+      const h1 = F1.hp, h2 = F2.hp, d = Math.abs(F2.x - F1.x), m2 = F2.move;
+      let v = 0;
+      if (mode === 'walk') {
+        if (!target) target = 120 + Math.random() * 110;
+        const slow = smart && F2.state === 'attack' && m2 && !m2.def.script && m2.S >= 15 && m2.t >= 10 && m2.t < m2.S && d >= 70 && d <= 240;
+        if (F1.actionable()) {
+          if (!slow && d > target + 8) v = tw(F1, F2);
+          else if (!slow && d < target - 8) v = HOLD(F2.x >= F1.x ? 'left' : 'right');
+          else if (slow || ++waitT > 4) { mode = 'go'; waitT = 0; st = { i: 0, key: Math.random() < 0.5 ? 'heavy' : 'kick', late: Math.random(), k: 0, wait: -1 }; }
+        }
+        if (F1.x < WALL_L + 40 || F1.x > WALL_R - 40) { F1.x = 800; F2.x = 800 + target * (Math.random() < 0.5 ? 1 : -1); }
+      }
+      if (mode === 'go') {
+        if (st.i === 0) v = TAP('up') | tw(F1, F2);
+        else if (st.i < 4) v = tw(F1, F2);
+        else if (!st.fired && F1.state === 'air' && !F1.airUsed) {
+          if ((d <= MOVES[AIR_OF[st.key]].reach + 6 - st.late * 30 && F1.vz < 3 - st.late * 4) || (F1.vz < -4 && F1.alt < 40)) { st.fired = true; v = TAP(st.key); } else v = tw(F1, F2);
+        }
+        if (st.fired && !st.hit && F1.move && F1.move.air && F1.move.hit) st.hit = true;
+        let following = false;
+        if (st.hit && !st.broken && st.k < FOL.length) {
+          if (st.wait >= 0 && F1.serial !== st.wait) st.wait = -1;
+          if (st.wait < 0) {
+            const nx = FOL[st.k];
+            if (st.k === 0) { if (F1.actionable() && F2.state === 'hit') { if (d <= 88) { st.k++; st.wait = F1.serial; v = TAP(nx); } else v = tw(F1, F2); } else if (F1.actionable()) st.broken = true; }
+            else if (F1.state === 'attack' && F1.move && !F1.move.air && (F1.move.hit || F1.move.blocked) && (F1.canCancel(nx) || soonCancel(F1, nx))) { st.k++; st.wait = F1.serial; v = TAP(nx); }
+            else if (F1.actionable()) st.broken = true;
+          }
+          following = !st.broken && st.k < FOL.length && (F2.state === 'hit' || F1.state === 'attack');
+        }
+        if (st.i > 8 && !following && !F1.airborne && F1.state !== 'attack' && (F1.actionable() || st.i > 120)) { mode = 'walk'; target = 0; }
+        if (++st.i > 260) { mode = 'walk'; target = 0; }
+      }
+      step([v, 0]);
+      dealt += Math.max(0, h2 - F2.hp); taken += Math.max(0, h1 - F1.hp);
+      if (F1.hp < MAX_HP - 200 || F2.hp < MAX_HP - 200) F1.hp = F2.hp = MAX_HP;
+      if (F1.state === 'ko' || F2.state === 'ko' || game.phase !== 'fight') { startRound(); game.phase = 'fight'; F1.hp = F2.hp = MAX_HP; mode = 'walk'; target = 0; }
+    }
+    game.brains = [null, null];
+    return dealt / Math.max(1, dealt + taken);
+  });
+}
+T('3.1.1 一直跳进来坠山击、飞踢（打中了接一整套）：三派的困难、终极都打得过 —— 跳的人打掉的血困难不到 42%、终极不到 36%；看见慢招就跳过来打的人也一样（3.1.0 太极拳的困难 48%、终极 40%）', () => {
+  const cap = { hard: 0.42, hell: 0.36 }, seeds = [11, 12, 13], bad = [], txt = [];
+  const keep = Styles.pvp;
+  try {
+    for (const st of STYLE_IDS) for (const lv of ['hard', 'hell']) for (const smart of [false, true]) {
+      let sh = 0; for (const sd of seeds) sh += seededRandom(sd, () => jumpSpam(st, lv, 9000, smart)) / seeds.length;
+      txt.push(`${STYLES[st].name}${LEVEL_NAME[lv]}${smart ? '（看慢招跳）' : ''} ${(sh * 100).toFixed(0)}%`);
+      if (sh > cap[lv]) bad.push(txt[txt.length - 1]);
+    }
+  } finally { Styles.pvp = keep; }
+  ok(!bad.length, '跳的人打掉的太多：' + bad.join('、') + '（全部：' + txt.join('、') + '）');
+  console.log('一直跳进来：' + txt.join('、'));
+});
+T('3.1.1 慢招（前摇 12 帧以上）看他跳不跳得过来：一直跳的人刚落地（普通落地马上能跳）、收招快收完了 —— 先别出；他挨打、挡住、收招的硬直长到我这一招打出来之前都跳不过来，照常出；快招不管', () => {
+  arena(130);
+  const B = makeBrain(F2, 'hell'); B.memo.jz = 0.05; B.memo.jr = 0.6;          // 一直跳的人
+  F1.record(); const base = F1.history[F1.history.length - 1];
+  const rate = (over, key) => {
+    F1.history = []; for (let i = 0; i < 20; i++) F1.history.push(Object.assign({}, base, over));
+    let n = 0; for (let i = 0; i < 200; i++) { B.slowNo = 0; if (B.slowOK(key)) n++; }
+    return n / 200;
+  };
+  const H = MOVES.heavy.S, L = LEVELS.hell.react;
+  ok(H >= 12, '重拳是慢招');
+  ok(seededRandom(3, () => rate({ landT: 2 }, 'heavy')) < 0.1, '他刚落地（马上能再跳）：重拳照出');
+  ok(seededRandom(3, () => rate({ phase: 'r', rLeft: 6, atk: false }, 'heavy')) < 0.1, '他快收完招了：重拳照出');
+  eq(rate({ stun: true, stunT: L + H }, 'heavy'), 1, '他还在硬直里（重拳出手之前都动不了）：出');
+  eq(rate({ phase: 'r', rLeft: L + H, atk: false }, 'heavy'), 1, '他收招还长：出');
+  eq(rate({ landT: 2 }, 'jab'), 1, '短拳（快招）不管');
+  B.memo.jz = 0.002; B.memo.jr = 0.1;
+  eq(rate({ landT: 2 }, 'heavy'), 1, '不怎么跳的人：照常出');
+});
+T('3.1.1 他起跳那几帧电脑还看不见（反应 react 帧）：地上的拳、腿、擒拿别照真的距离出 —— 照看见的他（站在射程外）算，不从跳过来的人脚底下打空', () => {
+  // 他在 140 站一会儿（电脑看清了他站在射程外），再朝电脑跳过来：跳起来以后 react 帧以内（电脑还看不见他跳），电脑不出地上的招（对空的托天掌不算：那是猜他会跳）
+  let blind = 0, tries = 0;
+  for (const lv of ['hard', 'hell']) seededRandom(7, () => quietly(() => {
+    const keep = Styles.pvp; Styles.pvp = ['trad', 'trad'];
+    for (let k = 0; k < 100; k++) {
+      arena(150); game.endless = true; game.brains = [null, makeBrain(F2, lv)];
+      const R = LEVELS[lv].react;
+      for (let i = 0; i < 40; i++) step([0, 0]);                       // 他站着不动（电脑可能走近一点）
+      if ((F2.state !== 'idle' && F2.state !== 'block' && F2.state !== 'run') || Math.abs(F2.x - F1.x) < 125) { game.brains = [null, null]; continue; }
+      tries++;
+      const ser = F2.serial;
+      for (let i = 0; i < R; i++) {
+        step([i === 0 ? TAP('up') | RIGHT : RIGHT, 0]);
+        const m = F2.move;
+        if (F2.serial !== ser && m && !m.def.script && !m.air && m.def.tier !== 'aa') { blind++; break; }
+      }
+      game.brains = [null, null];
+    }
+    Styles.pvp = keep;
+  }));
+  ok(tries >= 40, '试的次数太少：' + tries);
+  ok(blind <= tries * 0.05, `跳起来以后电脑还看不见的那几帧，它出了地上的招 ${blind} 次（${tries} 次里）`);
 });
 
 (async function runAll() {

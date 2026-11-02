@@ -99,10 +99,12 @@ const LEVELS = {
   // 2.12 困难的反应慢 1 帧（8 → 9）：慢招前摇拉长了两三帧（重拳 18、腿踢 19.5）以后，8 帧反应什么慢招都挡得住、慢招打电脑白给，
   //   木头玩家打困难掉到 25.6%，和终极（21.7%）挨到一起；9 帧量出来 29% 上下（2.6 / 2.7 是 28.5 / 26.5%）。挡 0.66 试过 0.63 / 0.6，对木头玩家的占比没影响，没动；
   //   中等、终极的反应也试过各慢一帧：对木头玩家的占比没影响，终极反倒打不过困难、坠山击挡不住了，没动
+  // 3.1.1 防跳修好以后（越过头顶的空中招也挡、对空按真的轨迹算、慢招前摇里看他会不会跳）困难整个变狠了：木头玩家（格斗术）打困难 26 → 25%、
+  //   打咏春拳的困难 21%，和终极挨得太近 —— 看穿 0.45 → 0.42、连招接下去 0.88 → 0.84、罚 0.9 → 0.86、压起身 0.75 → 0.68、咏春拳的接招 0.55 → 0.48（防跳那一套不动）
   hard: { react: 9, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
-    punish: .9, combo: .88, long: 0.3, longW: 0.8, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
-    slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86,
-    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .55, jieAcc: .87, jieSd: 1.05, jieFlat: .5 },   // 2.12 jie 0.62 → 0.55：接住以后那一套疼了（反打 ×1.3、搭手 ×1.35），少接一点，木头玩家照旧打掉两成半上下
+    punish: .86, combo: .84, long: 0.3, longW: 0.8, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
+    slip: .2, gwalk: .45, oki: .68, catchSlip: .55, see: .42, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86,
+    beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .48, jieAcc: .87, jieSd: 1.05, jieFlat: .5 },   // 2.12 jie 0.62 → 0.55：接住以后那一套疼了（反打 ×1.3、搭手 ×1.35），少接一点，木头玩家照旧打掉两成半上下
   // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
   //（乱换招的木头玩家打掉的血占比，2.5：入门 67% · 简单 53% · 中等 38% · 困难 28% · 终极 22.5%；2.6：66% · 52% · 34% · 28.5% · 23.5%；
   //  2.7（12 个种子；同样 12 个种子量 2.6 是 66% · 53% · 35% · 27% · 23.5%）：84% · 69% · 43% · 26.5% · 22.5%）
@@ -110,10 +112,12 @@ const LEVELS = {
   // 别的本事全开：挡得多、高低几乎不错、罚满、连招满、记习惯最准、主动进攻最聪明。
   // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
   // 2.3（Jack：再降 5~10%）：瞬间看穿基础 0.3 → 0.2（你老出的招最多还是 0.55：别养习惯）、看穿 see 0.55 → 0.48、平时反应 10 → 11 帧、挡 0.8 → 0.74
+  // 3.1.1 防跳修好以后终极也整个变狠了（木头玩家打终极 20 → 17%，Jack 2.7 定的是两成以上）：防跳那一套不动，松的是别的 ——
+  //   罚 0.93 → 0.88、连招接下去 0.93 → 0.84、压起身 0.9 → 0.7、瞬间看穿 0.2 → 0.17（你老出的招最多照旧 0.55）
   hell: { react: 11, block: .74, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
-    punish: .93, combo: .93, long: 0.1, longW: 0.45, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
-    slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
-    inst: .2, instMax: .55, instReact: 1,
+    punish: .88, combo: .84, long: 0.1, longW: 0.45, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
+    slip: .25, gwalk: .4, oki: .7, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
+    inst: .17, instMax: .55, instReact: 1,
     beatSd: .8, brk: .58, brkAcc: .82, touch: .7, feel: 2, jie: .6, jieAcc: .9, jieSd: .9, jieFlat: .35 },   // 2.12 接招 jie 0.7 → 0.6（试过 0.78 / 0.94 / 0.75：接住那一套疼了以后木头玩家只剩 15%，太狠；0.6 + 一串少连两拳 → 21%，和格斗术的终极一样）
 };
 // 2.10 咏春拳：beatSd 连环冲拳按得离拍点差多少帧（标准差；拍子前 WC_EARLY、后 WC_LATE 帧以内算在拍子上）；
@@ -232,7 +236,7 @@ const AI_TUNE = {
 // 搭手、甩手直冲以后接着按拍子连几下（难度越高连得越长）
 const W_AFTER = { novice: 3, easy: 3, normal: 3, hard: 5, hell: 5, max: 6 };
 // 连环冲拳每一拳接不接下去（一串八拳，接下去的机会 ^7 是打满的机会；入门、简单的拍子按不准，常常自己断）
-const W_CHAIN = { novice: 0.92, easy: 0.92, normal: 0.91, hard: 0.955, hell: 0.9, max: 0.97 };   // 2.12 终极 0.93 → 0.9：一串别老打满（满级打满、顺到 8 级，那是观战看的）
+const W_CHAIN = { novice: 0.92, easy: 0.92, normal: 0.91, hard: 0.955, hell: 0.93, max: 0.97 };   // 3.1.1 终极 0.9 → 0.93：上面终极整个松了，咏春拳的终极松得比困难多（排反了），一串多连一点拉回来   // 2.12 终极 0.93 → 0.9：一串别老打满（满级打满、顺到 8 级，那是观战看的）
 const WPLANS = {
   // 咏春拳一下一下都轻，靠连：入门、简单也连，只是按不准拍子、常常连着连着就断了
   novice: [[Jn(3), 3], [Jn(4), 2], [Jn(2), 2], [['kick', 'kick'], 1.5], [['jab', 'kick', 'kick'], 1], [['jab', 'jab', 'heavy'], 1],
@@ -330,7 +334,9 @@ class Brain {
       ctr: { hand: 0, leg: 0 },   // 2.9 我的手上的招 / 腿（和下段）被咏春拳拍开、拉住、黏住 / 耕开了几次（慢慢淡忘）
       meaty: 0,                   // 2.6 自己起身那几帧挨打（被压起身）的次数（慢慢淡忘）
       rev: 0, esc: 0,             // 2.10 咏春拳：搭手里翻手被他反拿了几次、连环冲拳刚起手被他按着挡挡住第三拳几次（都慢慢淡忘）
-      tjRead: 0 };                // 3.0 太极拳：我的慢招被他卸力、闪身躲过了几次（慢慢淡忘）—— 多了就多蓄（蓄多久他不知道，卡不准）、多采
+      tjRead: 0,                  // 3.0 太极拳：我的慢招被他卸力、闪身躲过了几次（慢慢淡忘）—— 多了就多蓄（蓄多久他不知道，卡不准）、多采
+      jz: 0.002,                  // 3.1.1 他站在地上、跳得过来的时候每一帧起跳的机会（慢慢更新，时间常数三秒多）：起慢招之前看他会不会跳过来（slowOK）
+      jr: 0.1 };                  // 3.1.1 我起慢招（前摇 15 帧以上）的时候他跳过来的机会（每起一次更新一次）
     this.wakeLogged = false; this.openSeen = -1; this.afterWatch = null; this.wasBlocked = false; this.pressTurn = -1; this.punishFor = null;
     // 2.1
     this.aa = null; this.jumpSeen = false;           // 防跳：这一跳想好的接法 { plan, at }；看没看见这一跳
@@ -393,6 +399,9 @@ class Brain {
     if ((m.hua || 0) > (this.tjHua || 0)) { this.tjHua = m.hua; if (dist <= reach + 12 && R() < 0.3 + 0.7 * L.read) return false; }
     if (dist <= reach && (s.phase === 'r' || s.stun || (this.appr || 0) > 0.8) && R() < 0.15 + 0.6 * L.read) return false;
     if (s.atk && (s.kind === 'grab' || s.height === 'low' || s.air) && dist <= reach + 20 && R() < L.read) return false;   // 他要抓 / 打下段 / 跳过来：别等了
+    // 3.1.1 看见他起跳（蹲下要跳、已经离地）：蓄着不能挡、不能转身、不能取消，接着蓄就是等着挨他从天上打下来那一下 ——
+    //   马上松开：早发早收招（来得及举手、出金鸡独立）；他刚离地、还不高的时候发出去还打得着他（Jack 3.1.0：一直坠山击、飞踢，太极拳的电脑打不过）
+    if ((s.squat || s.air) && dist <= 260 && (this.smart || R() < 0.3 + 0.7 * L.read)) return false;
     return true;
   }
   // 看见他打过来（还没看穿的时候）：手上的招、中段上段的腿 —— 来得及就先出一招等他打进来（掤，太极拳的「读招」）。
@@ -438,11 +447,15 @@ class Brain {
     const f = this.f, L = this.L, R = Math.random, H = f.inp.held;
     const leg = s.kind === 'kick' || s.limb === 'ff' || s.limb === 'bf', low = s.height === 'low';
     if ((low && !leg) || s.dive || s.kind === 'grab' || s.kind === 'push' || s.tier === 'super') return false;
+    // 3.1.1 跳起来的招：越过头顶、从身后打下来的接不住（接招的架势朝着按下去那一刻他在的那边，他飞过去以后是背后挨打，还 ×1.3）—— 交给挡（举着手会跟着转身）；
+    //   接得住的按他真的够到我的那一帧算（空中招判定很长，常常出来了还要飞几帧才够得着）
+    if (s.air) eta = this.airEta(s, eta, exact);
     const need = leg ? 'grab' : s.kind === 'heavy' ? 'heavy' : 'jab';
     const key = exact || R() < L.jieAcc ? need : wrongCatchKey(L, need);
     const win = key === 'jab' ? WC_CATCH_WIN : WC_CATCH_WIN_H;
     const pd = Math.round(eta + 1 - (win + 1) / 2 + (exact ? 0 : gauss() * L.jieSd));
     if (pd < -1) return false;                                          // 来不及了
+    if (s.air && this.crosses(s, Math.max(0, pd), eta, exact)) return false;
     this.todo = { at: f.clock + Math.max(0, pd), act: 'catch', key, low: low && leg };
     f.noParry = true; this.lowBlock = low && leg; H.block = true; H.down = this.lowBlock;
     return true;
@@ -515,6 +528,12 @@ class Brain {
       if (r < stop + AI_TUNE.wcStopGrab && dist <= this.mvOf('grab').reach + 4) { this.plan = ['grab']; return; }
     }
     if (!this.beatGo) { this.plan = []; return; }
+    // 3.1.1 打空了、他已经走出下一拳的射程（或者看见他跳起来了）：停手。以前一串八拳照拍子打到底，对着跳开 / 走开的人打一长串空拳，
+    //   人在收招里站着（他跳过来就是白挨一整套）
+    if (!m.hit && !m.blocked && !m.absorbed) {
+      const h = f.opp.history, so = h[Math.max(0, h.length - 1 - L.react)];
+      if (dist > this.rk(this.plan[0]) + 8 || (so && (so.air || so.squat))) { this.plan = []; return; }
+    }
     if (m.t >= wcBeatAt(f, m, kk) - 1 + this.beatJit) press(this.plan.shift());
   }
   // 搭手里手上的反应：feel 帧（再晚一两帧）
@@ -694,7 +713,16 @@ class Brain {
       return;
     }
     this.rollPick = null;
-    if (f.state === 'rise') return;
+    // 3.1.1 起身那几帧动不了：他跳过来压起身、想好的接法是挡 / 等 / 退、他近了（来不及看见再挡）—— 先按着挡，站起来那一帧就是挡着的
+    //   （以前起身这几帧什么都不按，站起来那一帧才开始想，压起身的空中招回回打在站起来的头一两帧上）
+    if (f.state === 'rise') {
+      const A = this.aa;
+      if (A && (A.plan === 'block' || this.airThreat(sj, lagJ) || (sj.atk && sj.air))) {
+        if (A.plan === 'palm') A.plan = 'block';                     // 想好的是托天掌：站起来那一帧再按已经晚了（空中招早到了），改挡
+        f.noParry = true; this.lowBlock = false; H.block = true;
+      }
+      return;
+    }
     // 算好时机的那一下（卸力要卡在打到前几帧按下去；闪身要卡在他出手前钻）。挨打了、自己在出招就作废
     if (this.todo) {
       if (f.state === 'hit' || f.state === 'attack' || f.airborne) this.todo = null;
@@ -809,6 +837,7 @@ class Brain {
     if (this.antiDive && f.actionable()) {
       const om = o.move;
       // 3.0 太极拳的拳太慢，迎不上坠山：站着挡（挡得住，他往后翻回去）
+      //   （3.1.1 试过看见坠山往后冲刺躲：冲刺要按三帧、冲出去背对着他，回回被踩在背上，比挡还亏）
       if (this.K.tj) { this.antiDive = false; f.noParry = true; this.lowBlock = false; this.blockT = 30; H.block = true; return; }
       if (!(o.state === 'attack' && om && om.def.dive && !om.hit && !om.blocked)) this.antiDive = false;
       else {
@@ -831,7 +860,8 @@ class Brain {
     // 2.1 极难：这一招有没有被它「瞬间看穿」（每一招只掷一次骰子）—— 看穿了，1 帧就按最赚的破法
     if (L.inst && o.state === 'attack' && o.move && !o.move.def.script && o.move.serial !== this.instFor && f.actionable()) {
       this.instFor = o.move.serial;
-      if (o.facingTo(f) && R() < this.instChance(o.move, dist) && this.instCounter(o, dist, press)) { this.lastSeen = o.move.serial; return; }
+      const om = o.move, aimed = o.facingTo(f) || (om.air && this.comingAt({ facing: o.facing, air: true, x: o.x, vx: o.vx, sLeft: om.S - om.t }, toward));   // 3.1.1 越过头顶打下来的空中招也算
+      if (aimed && R() < this.instChance(om, dist) && this.instCounter(o, dist, press)) { this.lastSeen = om.serial; return; }
     }
     // 极难：冲刺也一样 —— 看穿了就按他冲完爱干什么接（挡 / 蹲 / 等他冲完出拳）
     if (L.inst && o.move && o.move.name === 'dash' && o.move.serial !== this.instFor && f.actionable()) {
@@ -842,9 +872,16 @@ class Brain {
       }
     }
     // 2.11 咏春拳按着挡听劲（等着接）：看见他出招就接 —— 接不接、按对键没有、时机准不准看难度（没接的照样挡着）
-    if (this.K.wc && f.state === 'block' && s.atk && s.serial !== this.lastSeen && s.facing === -toward && dist <= s.reach + 26 + (s.air ? Math.abs(s.vx) * (L.react + 4) : 0)) {
+    if (this.K.wc && f.state === 'block' && s.atk && s.serial !== this.lastSeen && this.comingAt(s, toward) && dist <= s.reach + 26 + (s.air ? Math.abs(s.vx) * (L.react + 4) : 0)) {
       this.lastSeen = s.serial;
       if (this.wcReact(s, dist, s.sLeft - L.react, press)) return;
+      // 3.1.1 没接（不想接、接不住、他要越过头顶）：照样按着挡到这一招打完（挡不挡得住和下面「看见出招 → 挡」一样掷）。以前这一招已经「看过了」，
+      //   下面看见出招那一段不再管它，挡着的时间一到就松手 —— 听劲听到了反而白挨
+      const hb = this.habitShare(openerOf(o, s.name), dist) * L.habit * 0.5;
+      if (s.kind !== 'grab' && s.kind !== 'push' && Math.random() < Math.min(0.98, (s.air ? Math.max(L.block, L.airBlock * 0.9) : L.block) + hb)) {
+        if (s.air || s.height === 'high') this.lowBlock = false; else if (s.height === 'low') this.lowBlock = true;
+        f.noParry = true; this.blockT = Math.max(this.blockT, s.remain + 6);
+      }
     }
     // 2.1 防跳：看见他起跳时想好的接法，到时候照着做
     if (this.aa && this.airDefense(sj, dist, press, go, lagJ)) return;
@@ -897,14 +934,17 @@ class Brain {
     // 2.1 他朝我走过来有多快（看见的）：走过来的人几帧就进了短拳的射程，这时候起腿、扫堂腿（前摇长）会被拳打失衡
     const prev = hist[Math.max(0, hist.length - 3 - L.react)], appr = s.down || s.air ? 0 : (s.x - prev.x) * -toward / 2;
     this.appr = appr;
+    // 3.1.1 看见的他离我多远：照看见的他走过来的速度往前推 react 帧（不比真的近）。他起跳、冲刺扑过来的那几帧我还看不见，
+    //   地上的拳、腿、擒拿别照真的距离出 —— 以前真的距离进了射程就出、看见的他还站在地上，回回从跳过来的人脚底下打空，落地被打一整套
+    const sdist = Math.max(dist, Math.abs(s.x - f.x) - Math.max(0, appr) * L.react);
     // 连招没打中：短时间内继续按完（他跳起来了就算了）
     if (this.plan.length) {
-      if (!oppUp && f.chainIdle < 6 && dist <= this.rk(this.plan[0])) { press(this.plan.shift()); return; }
+      if (!oppUp && f.chainIdle < 6 && dist <= this.rk(this.plan[0]) && this.slowOK(this.plan[0])) { press(this.plan.shift()); return; }
       if (f.chainIdle >= 6 || oppUp) this.plan = [];
     }
     // 看到对手出招（只管朝着我来的）。2.1：空中招朝我飞过来，按他飞过来的速度多算一截（以前离得稍远就当没看见，等看见已经挨上了）
     const reachIn = s.name === 'dive' ? 230 : s.reach + 26 + (s.air ? Math.abs(s.vx) * (L.react + 4) : 0);
-    if (s.atk && s.serial !== this.lastSeen && dist <= reachIn && oppFacesMe) {
+    if (s.atk && s.serial !== this.lastSeen && dist <= reachIn && this.comingAt(s, toward)) {
       this.lastSeen = s.serial;
       const eta = s.sLeft - L.react;          // 大约还有几帧打到
       // 难 / 极难：看穿了就挑最赚的破法（没看穿就往下走普通的反应）
@@ -925,10 +965,11 @@ class Brain {
         if (R() < L.aa) { this.antiDive = true; return; }
         f.noParry = true; this.lowBlock = false; this.blockT = Math.max(10, s.remain + 10); H.block = true; return;
       }
-      // 飞踢：蹲下躲；或者地上出腿迎上去，把它顶得翻滚回去
-      if (s.name === 'airKick' && dist >= 110 && R() < L.aa * 0.35) { press('kick'); return; }
+      // 空中招：接得住就对空（托天掌 / 金鸡独立：对空无敌，打下来倒地）—— 3.1.1 按「出手那几帧他飞到哪」算（aaCatch），以前那条时机几乎从来不成立；
+      // 飞踢：蹲下躲；或者地上出腿迎上去，把它顶得翻滚回去（3.1.1 来得及才起腿：kickMeets）
+      if (!this.K.wc && s.tier === 'air' && this.aaCatch(s, L.react, eta) && R() < L.aa) { press('d:heavy'); return; }
+      if (s.name === 'airKick' && dist >= 110 && this.kickMeets(eta) && R() < L.aa * 0.35) { press('kick'); return; }
       if (s.name === 'airKick' && R() < L.duck) { this.duckT = Math.max(12, s.remain + 8); H.down = true; return; }
-      if (!this.K.wc && s.tier === 'air' && eta >= this.mvOf('d:heavy').S - 6 && dist <= 130 && R() < L.aa) { press('d:heavy'); return; }
       // 2.0.2 重拳：闪身钻过去（躲过了自动回身肘）
       if (slipable(o.moves[s.name]) && eta >= 1 && eta <= 7 && R() < L.slip) { this.slipIn(); H.block = true; return; }
       // 2.10 咏春拳：拍手、耕手、拉手、标指、黐手接（读招的那一下）
@@ -965,9 +1006,9 @@ class Brain {
     if (this.habitGuard(s, dist, press)) return;
     // 对手背对我：趁机打背后
     // （他是跑开了才背对我的话，够不着就别打：打空了白给）
-    if (!s.down && !s.atk && !oppUp && !oppFacesMe && dist <= 110 && R() < L.aggr * 0.2) {
+    if (!s.down && !s.atk && !oppUp && !oppFacesMe && sdist <= 110 && R() < L.aggr * 0.2) {
       const p = this.pickPlan(dist), d0 = this.mvOf(p[0]);
-      if (d0 && dist + Math.max(0, -appr) * (d0.S + 1) <= effRD(d0) - 6) { this.plan = p; press(this.plan.shift()); return; }
+      if (d0 && sdist + Math.max(0, -appr) * (d0.S + 1) <= effRD(d0) - 6 && this.slowOK(p[0])) { this.plan = p; press(this.plan.shift()); return; }
     }
     // 2.11 咏春拳按住挡接招没接着（按早了、被骗出来的）：他正在收手 —— 这时候打他 ×1.3（WC_WRONG_MUL；看见了、来得及才打）
     if (s.catching && this.catchPun !== s.serial && s.rLeft - L.react > this.mvOf('jab').S + 1 && dist <= this.eR('jab') - 4 && R() < L.punish) {
@@ -975,15 +1016,17 @@ class Brain {
     }
     // 惩罚空招（空中招打空了、人还在天上：等他落地，见上面的落地硬直）
     if (s.phase === 'r' && !s.confirmed && !s.air && dist <= 110 && R() < L.punish * 0.3) {
-      this.plan = this.K.wc ? (dist <= 86 ? Jn(5) : ['kick', 'jab', 'jab', 'jab']) : dist <= 90 ? ['jab', 'heavy'] : ['heavy'];
-      press(this.plan.shift()); return;
+      const p = this.K.wc ? (dist <= 86 ? Jn(5) : ['kick', 'jab', 'jab', 'jab']) : dist <= 90 ? ['jab', 'heavy'] : ['heavy'];
+      // 3.1.1 来得及才罚：看见的时候他还剩几帧收完（减去看见要的那几帧）比这一招的前摇长。以前不看：太极拳 22 帧的搬拦捶去罚一个快收完的招，
+      //   打空了反被罚（他收完招一跳就越过去）
+      if (s.rLeft - L.react >= this.mvOf(p[0]).S + 1) { this.plan = p; press(this.plan.shift()); return; }
     }
     // 气满：对手收招或硬直时放泼墨
     if (f.qi >= QI_MAX && dist <= (this.K.wc ? 102 : 130) && !s.down && !s.air && (s.phase === 'r' || s.stun) && R() < L.sup * 0.25) { pair(); return; }
     // 对手龟缩：站挡就擒拿或下段，蹲挡就抄腿或打上段（跳）
     if (s.blocking && !s.lowBlock && dist <= 84 && R() < L.grabBlock * (this.K.wc ? AI_TUNE.wcGrabBlk : o.style === 'wc' ? AI_TUNE.vsWcGrab : 0.12)) { press('grab'); return; }   // 咏春拳拉手扣住挡着的人（进搭手）；打咏春拳的人抓黐手
     if (s.blocking && s.lowBlock && dist <= 88 && R() < L.grabBlock * 0.1) { press('d:grab'); return; }
-    if (s.blocking && !s.lowBlock && dist <= 120 && R() < L.low * (this.K.wc ? AI_TUNE.wcLow : o.style === 'wc' ? AI_TUNE.vsWcLow : 0.05)) { press(dist <= 88 ? 'd:jab' : 'd:kick'); return; }
+    if (s.blocking && !s.lowBlock && dist <= 120 && R() < L.low * (this.K.wc ? AI_TUNE.wcLow : o.style === 'wc' ? AI_TUNE.vsWcLow : 0.05)) { const k = dist <= 88 ? 'd:jab' : 'd:kick'; if (this.slowOK(k)) { press(k); return; } }
     // 2.11 骗接（打咏春拳）：他按着挡听劲，在拳够不着的地方空挥一拳 —— 他按键接了就是接空，收手的时候打他（上面那一段）
     if (!this.K.wc && o.style === 'wc' && s.blocking && !s.lowBlock && dist > this.eR('jab') + 2 && dist <= this.eR('jab') + 30 && R() < L.read * AI_TUNE.bait) { press('jab'); return; }
     // 被贴身压着：闪步拉开，或者偶尔闪到对手身后
@@ -1005,7 +1048,7 @@ class Brain {
         const hi = this.habitShare('lowGrab', dist) * 1.6 + this.habitShare('air', dist) * 0.6;
         this.lowBlock = R() < clamp(0.25 + 0.55 * L.lowRead - hi * L.habit, 0.08, 0.92);
         // 3.0 太极拳：不光举手 —— 他爱先出手的距离上先出一招按住蓄（先出一招等他：他打进来正好在掤里）；他爱抓、爱打下段就少这么干
-        if (this.K.tj && !this.lowBlock && R() < TJ_AI.pre * (1 - Math.min(0.8, (this.habitShare('grab', dist) + this.habitShare('lowJab', dist) + this.habitShare('sweep', dist)) * 1.5 * L.habit))) {
+        if (this.K.tj && !this.lowBlock && R() < TJ_AI.pre * (1 - Math.min(0.8, (this.habitShare('grab', dist) + this.habitShare('lowJab', dist) + this.habitShare('sweep', dist)) * 1.5 * L.habit))  && this.slowOK('jab')) {
           this.tjHua = 0; this.guardBand = gb; press(R() < 0.65 ? 'H:jab' : 'H:heavy'); return;
         }
         // 2.10 咏春拳：贴身先按着挡（黐手：打过来的拳脚黏住、进搭手），偶尔黐着往前挪 —— 他爱抓、爱打下段就少黐
@@ -1034,22 +1077,28 @@ class Brain {
         this.jumpDir = 1; this.airPlan = pick(['kick', 'kick', 'heavy', 'jab', 'd:kick']); return;
       }
       if (dist > 140 && dist < 230 && appr > -1 && R() < L.aggr * 0.004) {   // 冲刺进去，冲刺途中出招（冲势）
-        this.seq = [{ fwd: 1 }, {}, { fwd: 1 }, {}, {}, {}, {}, { fwd: 1, press: pick(this.K.dashIn) }]; return;
+        const k = pick(this.K.dashIn);
+        if (this.slowOK(k)) { this.seq = [{ fwd: 1 }, {}, { fwd: 1 }, {}, {}, {}, {}, { fwd: 1, press: k }]; return; }
       }
-      if (this.K.runHeavy && dist > 150 && dist < 240 && appr > -1 && R() < L.aggr * 0.006) {   // 跑起来沉肩靠
+      if (this.K.runHeavy && dist > 150 && dist < 240 && appr > -1 && R() < L.aggr * 0.006 && this.slowOK('heavy')) {   // 跑起来沉肩靠
         this.seq = []; for (let i = 0; i < 10; i++) this.seq.push({ fwd: 1 });
         this.seq.push({ fwd: 1, press: 'heavy' }); return;
       }
       // 中距离点一腿（他正走过来就别点了：腿还没出去他就进了拳的射程）；聪明的：他走进来正好进短拳射程的那一下出拳迎他
       // 咏春拳的腿短：近一点才点（正撑脚够 100 多一点）
       // 3.0 太极拳：他朝我走过来、快进我的射程了 —— 先出一招按住蓄，等他走进来（或者他打进来被化掉）再发
-      if (this.K.tj && appr > 0.8 && !s.run && dist <= this.eR('jab') + 50 && dist > this.eR('jab') - 10 && R() < L.read * 0.05) { this.tjHua = 0; this.plan = ['jab']; press(R() < 0.7 ? 'H:jab' : 'H:heavy'); this.plan = []; return; }
+      if (this.K.tj && appr > 0.8 && !s.run && dist <= this.eR('jab') + 50 && dist > this.eR('jab') - 10 && R() < L.read * 0.05 && this.slowOK('jab')) { this.tjHua = 0; this.plan = ['jab']; press(R() < 0.7 ? 'H:jab' : 'H:heavy'); this.plan = []; return; }
       const kr = this.K.wc ? [88, 108, 100] : [98, 134, 118], J = this.mvOf('jab');
       const legOK = 1 / (1 + 0.6 * this.memo.ctr.leg * L.habit);                      // 2.9 腿老被耕开就少点
-      if (dist > kr[0] && dist <= kr[1] && appr < 1 && appr > -1.5 && R() < L.aggr * 0.045 * legOK) { press(dist <= kr[2] && R() < L.low ? 'd:kick' : 'kick'); return; }
-      if (this.smart && appr > 1.5 && !s.run && dist > J.reach - 4 && dist <= J.reach + appr * (J.S + 1) && R() < L.read * 0.25) { this.plan = this.K.wc ? Jn(5) : ['jab', 'heavy']; press('jab'); this.plan.shift(); return; }
-      if (dist <= (this.K.wc ? 88 : this.K.tj ? 104 : 92) && R() < L.aggr * 0.09 * (this.K.wc ? (AI_TUNE.wcOpen[L.id] || 1) : 1)) { this.plan = this.pickPlan(dist); press(this.plan.shift()); return; }
-      if (dist <= 82 && R() < 0.008 * L.aggr) { press('grab'); return; }
+      // 3.1.1 腿踢、蹬脚是慢招（前摇 19.5 ～ 22 帧）：他爱跳进来，中距离起慢腿正好被他跳过来打 —— 记得他爱跳就少点（slowOK）
+      // 3.1.1 太极拳的腿（蹬脚、跌岔）是全游戏最慢的起手（前摇 20 ～ 22 帧、没有掤）：中距离少点一半（它站在射程边上等人进来，不靠点腿）
+      if (sdist > kr[0] && sdist <= kr[1] && appr < 1 && appr > -1.5 && R() < L.aggr * 0.045 * legOK * (this.K.tj ? 0.5 : 1)) { const kk = sdist <= kr[2] && R() < L.low ? 'd:kick' : 'kick'; if (this.slowOK(kk)) { press(kk); return; } }
+      if (this.smart && appr > 1.5 && !s.run && sdist > J.reach - 4 && sdist <= J.reach + appr * (J.S + 1) && R() < L.read * 0.25 && this.slowOK('jab')) { this.plan = this.K.wc ? Jn(5) : ['jab', 'heavy']; press('jab'); this.plan.shift(); return; }
+      if (sdist <= (this.K.wc ? 88 : this.K.tj ? 104 : 92) && R() < L.aggr * 0.09 * (this.K.wc ? (AI_TUNE.wcOpen[L.id] || 1) : 1)) {
+        const p = this.pickPlan(dist);
+        if (this.slowOK(p[0])) { this.plan = p; press(this.plan.shift()); return; }   // 3.1.1 慢招起手：他爱跳就先别出
+      }
+      if (sdist <= 82 && R() < 0.008 * L.aggr) { press('grab'); return; }
     }
     if (--this.desireT <= 0) {
       this.desireT = 25 + (R() * 45 | 0);
@@ -1074,6 +1123,8 @@ class Brain {
     const up = s.air || s.squat;
     if (!up) { this.jumpSeen = false; this.aa = null; return; }
     if (this.jumpSeen || !s.air) return;                             // 起跳下蹲那两三帧还看不出往哪跳：等他离地
+    // 3.1.1 我躺在地上的时候他跳起来（跳过来压起身）：站起来以后再想（以前躺着就想好了，倒地那一段又把它清掉，站起来没有接法、白挨）
+    if (this.f.state === 'down') return;
     this.jumpSeen = true;
     const f = this.f, L = this.L, R = Math.random;
     if (s.atk && s.dive) return;                                     // 已经在出坠山：交给下面看见招的那一段
@@ -1087,7 +1138,8 @@ class Brain {
     const wall = f.x - (s.x >= f.x ? 1 : -1) * 110, cornered = wall < WALL_L + 20 || wall > WALL_R - 20;
     const hb = L.habit;                                              // 记得越准，越照他的习惯接
     // 咏春拳没有托天掌：按住挡听劲，他空中的拳脚打过来按键接（看见了接，见 tick「听劲」那一段）
-    const plan = weighted([[this.K.wc ? 'block' : 'palm', L.aa * (0.5 + 1.6 * pA * hb)], ['block', 0.7 + 0.5 * pA * (1 - hb)], ['wait', 0.35 + 1.8 * (pD + pE * 0.6) * hb],
+    // 3.1.1 他爱坠山：托天掌（金鸡独立）少按 —— 按早了他一坠山就踩断对空（×1.5、踩倒）
+    const plan = weighted([[this.K.wc ? 'block' : 'palm', L.aa * (0.5 + 1.6 * pA * hb) * (this.K.wc ? 1 : 1 - 0.8 * pD * hb)], ['block', 0.7 + 0.5 * pA * (1 - hb)], ['wait', 0.35 + 1.8 * (pD + pE * 0.6) * hb],
       ['back', cornered ? 0 : L.step * 0.6]]);
     // 托天掌的时机：反应慢的按得早一点 / 晚一点（随机偏几帧）
     this.aa = { plan, jitter: Math.round((R() - 0.5) * L.react * 0.5), done: false };
@@ -1122,8 +1174,16 @@ class Brain {
       return false;
     }
     if (A.plan === 'wait') {
-      // 站着等：坠山看见了就拳迎（上面），空中招交给「看到对手出招」那一段（挡 / 蹲躲飞踢）。别往前走、别出地上的招
+      // 站着等：坠山看见了就拳迎（上面），空中招交给「看到对手出招」那一段（挡 / 对空 / 蹲躲飞踢）。别往前走、别出地上的招
+      // 3.1.1 他近了、他这时候按空中招我已经来不及看见再挡（airThreat）：先举着手。举着手的时候看见了他的空中招：接得住就对空，接不住接着挡到他落地
+      //   （以前一直站着等：离得近按的空中招、飞踢回回白挨，还会在他底下走来走去）
       if (!o.airborne) { this.aa = null; return false; }
+      if (s.atk) {
+        if (!A.guard) return false;
+        if (!this.K.wc && s.tier === 'air' && this.aaCatch(s, lag, s.sLeft - lag) && Math.random() < L.aa) { this.aa = null; press('d:heavy'); return true; }
+        A.plan = 'block'; return this.airDefense(s, dist, press, go, lag);
+      }
+      if (this.airThreat(s, lag)) { A.guard = true; f.noParry = true; this.lowBlock = false; H.block = true; H.down = false; return true; }
       return false;
     }
     if (A.plan === 'back') {
@@ -1132,9 +1192,71 @@ class Brain {
       if (behind < WALL_L + 20 || behind > WALL_R - 20) { A.plan = 'block'; return this.airDefense(s, dist, press, go, lag); }   // 退不了（到墙了）就站着挡
       // 他往下落、离得不远了：往后冲刺（冲刺前几帧无敌）躲开，他落空、落地有硬直；还远就举着手往后挪（面朝他，照样挡得住）
       // 2.6：冲刺要按三帧（按 → 松 → 按）才冲得出去；空中招前摇长了一点，出手的那一帧往后挪了零点几帧 —— 再晚一帧按，冲刺的无敌还没开始就挨上了，所以早一帧按
+      // 3.1.1 已经看见他出空中招了（或者他快落到我身上了）就别冲刺了：冲刺要按三帧才冲得出去，按到一半是在跑、背对着他挨打 —— 站着挡
+      if (!A.done && (s.atk || (s.vz < 0 && s.alt < 40))) { A.plan = 'block'; return this.airDefense(s, dist, press, go, lag); }
       if (!A.done && dist <= 150 && s.vz < 2 + GRAV) { A.done = true; this.dashAway(); return true; }
       if (dist <= 240) { f.noParry = true; this.lowBlock = false; H.block = true; go(-1); return true; }
       return false;
+    }
+    return false;
+  }
+  // 3.1.1 这一下是不是冲我来的（s 是看见的他）：面朝我的照旧算；空中的招按判定出来那一刻他飞到哪算 ——
+  //   跳过头顶、从身后打下来的那一下（起跳以后按的空中招照落点转身，按的时候背对着我），以前当成「不是打我」，站着白挨
+  //   （Jack 3.1.0：一直坠山击、飞踢，困难、终极的太极拳电脑打不过 —— 跳得近一点就是越过头顶打，三派的电脑都不挡）
+  comingAt(s, toward) {
+    if (s.facing === -toward) return true;
+    if (!s.air) return false;
+    const px = s.x + (s.vx || 0) * Math.max(0, s.sLeft);
+    return s.facing * (this.f.x - px) >= -8;
+  }
+  // 3.1.1 现在按对空招（托天掌 / 金鸡独立）接得住吗：s 是 lag 帧以前的他，他的空中招还要 eta 帧打到我 ——
+  //   对空无敌（airInv）开始之前他就打到了：来不及；出手那几帧（S ～ S + A）他在射程里、不比 antiAir 高（落了地也打得着）才按。
+  //   以前看「还剩几帧出手 ≥ 前摇 - 6」：反应 9 ～ 11 帧的困难、终极看见空中招的时候几乎从来不成立（太极拳的金鸡独立前摇长两帧，一次都不成立）
+  aaCatch(s, lag, eta) {
+    const f = this.f, D = this.mvOf('d:heavy');
+    if (!D || D.tier !== 'aa' || !s.air) return false;
+    if (s.atk && eta < (D.airInv ? D.airInv[0] : D.S) + 0.5) return false;
+    const reach = effRD(D) - 4, top = D.antiAir || AIR_SAFE, vz = s.vz || 0, alt = s.alt || 0;
+    const tLand = (vz + Math.sqrt(Math.max(0, vz * vz + 2 * GRAV * alt))) / GRAV;
+    for (let k = Math.ceil(D.S + 0.5); k <= D.S + D.A; k++) {
+      const t = lag + k, x = s.x + (s.vx || 0) * Math.min(t, tLand), z = t >= tLand ? 0 : alt + vz * t - GRAV * t * t / 2;
+      if (Math.abs(x - f.x) <= reach && z <= top) return true;
+    }
+    return false;
+  }
+  // 3.1.1 地上出腿迎他的飞踢（两条腿撞上 = 把他顶回去）：我的腿要在他踢到的时候已经出来（差 TRADE_LEAD 帧以内）。
+  //   2.12 腿踢成了慢招（格斗术 19.5、太极拳的蹬脚 22），看见飞踢再起腿早就来不及了，以前照样起腿、白挨一脚
+  kickMeets(eta) { const K = this.mvOf('kick'); return !!K && K.S <= eta + TRADE_LEAD; }
+  // 3.1.1 他（s 是看见的他）从 a 帧以后到 b 帧以后（从现在算）这段时间里会不会飞过我头顶、换到我另一边 —— 接招的架势朝着按下去那一刻他在的那边，
+  //   之后他飞过去了就是背后挨打
+  crosses(s, a, b, exact) {
+    const lag = exact ? 0 : this.L.react, x = t => s.x + (s.vx || 0) * (lag + t) - this.f.x;
+    return x(a) * x(b) < 0 && Math.abs(x(b)) > FACE_HYST;
+  }
+  // 3.1.1 他的空中招真的打到我还有几帧（从现在算）：判定出来以后他还在往前飞，我要在他面前、射程以内才挨得上（越过头顶的那一下是飞过去以后才打到）
+  airEta(s, eta, exact) {
+    const d = this.f.opp.moves[s.name]; if (!d) return eta;
+    const lag = exact ? 0 : this.L.react, k0 = Math.max(0, s.sLeft);
+    for (let k = k0; k <= k0 + d.A; k++) {
+      const ahead = (this.f.x - (s.x + (s.vx || 0) * k)) * s.facing;
+      if (ahead >= -(d.reachBack || 6) && ahead <= d.reach) return k - lag;
+    }
+    return eta;
+  }
+  // 3.1.1 他（s：lag 帧以前的他）跳着还没出空中招：要是他现在按下空中招，最快那一下比我看得见（react 帧）还早打到我 —— 那就得先举着手。
+  //   以前「站着等」（他爱坠山、爱空跳的时候想的接法）什么都不按，等看见空中招再挡：反应 9 ～ 11 帧，挥拳前摇 4 帧、飞踢 9 帧，离得近了按的那一下回回白挨
+  airThreat(s, lag) {
+    if (!s.air || s.atk || s.airUsed) return false;
+    const f = this.f, M = f.opp.moves, vx = s.vx || 0, vz = s.vz || 0, alt = s.alt || 0;
+    const tLand = (vz + Math.sqrt(Math.max(0, vz * vz + 2 * GRAV * alt))) / GRAV;   // 从 s 那一刻算还要几帧落地
+    const x0 = s.x + vx * lag, face = f.x >= x0 ? 1 : -1, win = this.L.react + 3;   // 他现在在哪；按的那一下朝着我
+    for (const k of ['airJab', 'airHeavy', 'airKick']) {
+      const d = M[k]; if (!d) continue;
+      for (let t = Math.ceil(d.S); t <= Math.min(d.S + d.A, win); t++) {
+        if (lag + t >= tLand) break;                                     // 打出来之前就落地了
+        const ahead = (f.x - (x0 + vx * t)) * face;
+        if (ahead >= -(d.reachBack || 6) && ahead <= d.reach) return true;
+      }
     }
     return false;
   }
@@ -1160,11 +1282,19 @@ class Brain {
         if (!going) return false;                                     // 他停下了（看见的）：别踢空
         // 腿踢出手那几帧他跑到哪：进了腿的射程就踢（他跑得快，提前按）
         const v = Math.abs(s.x - (f.opp.history[Math.max(0, f.opp.history.length - 2 - L.react)] || s).x) || RUN_MAX;
-        if (dist - v * (this.mvOf('kick').S + 1) <= this.eR('kick') - 4) { this.rush = null; press('kick'); return true; }
+        // 3.1.1 按看见的他推（照他跑的速度往前推 react 帧，不比真的近）：他跑到跟前起跳的那几帧我还看不见，别照真的距离起腿（起了就是从他脚底下踢空）
+        const gap = Math.max(dist, Math.abs(s.x - f.x) - v * L.react);
+        if (gap - v * (this.mvOf('kick').S + 1) <= this.eR('kick') - 4) {
+          this.rush = null;
+          if (this.slowOK('kick')) press('kick');                     // 3.1.1 慢腿：他爱跑过来再跳，就举手等着（跳了接、到跟前了挡）
+          else { f.noParry = true; this.lowBlock = false; this.blockT = 16; H.block = true; }
+          return true;
+        }
         return false;
       }
       if (P.plan === 'jab') {
-        if (dist <= this.mvOf('jab').reach && (going || P.t <= 2) && !s.air && !s.squat) { this.rush = null; press('jab'); return true; }
+        const v = Math.abs(s.x - (f.opp.history[Math.max(0, f.opp.history.length - 2 - L.react)] || s).x);
+        if (Math.max(dist, Math.abs(s.x - f.x) - v * L.react) <= this.mvOf('jab').reach && (going || P.t <= 2) && !s.air && !s.squat) { this.rush = null; if (this.slowOK('jab')) press('jab'); else { f.noParry = true; this.lowBlock = false; this.blockT = 14; H.block = true; } return true; }
         return false;
       }
       if (P.plan === 'duck') { if (dist <= 150) { this.rush = null; this.duckT = 16; H.down = true; return true; } return false; }
@@ -1194,6 +1324,30 @@ class Brain {
     const m = this.memo.open[bandOf(dist)];
     let tot = 0; for (const v of Object.values(m)) tot += v;
     return tot >= 4 ? (m[k] || 0) / tot : 0;
+  }
+  // 3.1.1 我现在起一招 S 帧前摇的慢招，他在这段时间里跳起来的机会（× 记得准不准 habit）—— 两样取大的：
+  //   · 他站在地上、跳得过来的时候每一帧起跳的机会（memo.jz）换算成「S 帧里起跳」：一直跳的人（Jack：一直坠山击、飞踢）一半以上，偶尔跳一下的人很小
+  //   · 以前我起慢招的时候他跳了几成（memo.jr）：看见慢招就跳过来打的人（慢招前摇里起跳越过去，最赚）
+  jumpRisk(S) { return Math.max(1 - Math.pow(1 - this.memo.jz, S + 3), this.memo.jr) * this.L.habit; }
+  // 3.1.1 慢招（前摇 12 帧以上：太极拳全派和它的势、格斗术的重拳和腿踢）现在出吗：他站在地上、跳得起来，又是个爱跳进来的人 ——
+  //   一跳就越过这一招、从天上打下来，收招里挨一整套（Jack 3.1.0：一直坠山击、飞踢，困难、终极的太极拳电脑打不过）。
+  //   他跳得越多越少出（偶尔跳一下的人照常出：跳得少于一成半不管），false = 这一下先别出（举手、等他跳了接）
+  slowOK(a) {
+    const d = this.mvOf(a), h = this.f.opp.history, s = h[Math.max(0, h.length - 1 - this.L.react)];   // 看见的他（不看他这一帧真的在干什么）
+    if (!d || (d.S || 0) < 12) return true;
+    // 他在挨打、挡着、躺着、落地、出招、收招：这几帧跳不起来 —— 3.1.1 要等到我这一招打出来之前他都跳不过去才算（起跳先蹲 3 帧、再飞五六帧才高过地上的招）：
+    //   以前看见他落地、收招就出慢招，他落地马上又跳（普通落地马上能跳），22 帧的搬拦捶还没出手他就在天上了
+    if (s) {
+      const lock = s.down || s.held ? 99 : s.stun ? s.stunT : (s.atk && !s.air) || s.phase === 'r' ? s.rLeft : s.landT;
+      if (lock - this.L.react >= d.S - 9) return true;
+    }
+    // 他跳过来那一下 + 一整套连招差不多 100 血，慢招打中了也就二三十：他起跳的机会过了一成就不划算，三成以上几乎不出
+    const j = this.jumpRisk(d.S);
+    if (j <= 0.1) return true;
+    // 不出的话这一会儿（20 帧）都不出：每一帧都想一次的地方（中立起手、点腿……）不会一帧一帧地掷，掷到一次就出
+    if (this.f.clock < (this.slowNo || 0)) return false;
+    if (Math.random() >= Math.min(0.97, (j - 0.1) * 3.5)) return true;
+    this.slowNo = this.f.clock + 20; return false;
   }
   // 2.1 出招的智能性：挑连招的时候看他在这个距离爱出什么 —— 起手克他习惯招的多用（他爱贴身短拳，就多用重拳霸体起手），
   // 被他克的少用（贴着他还起腿，会被拳打失衡）。记得越准（habit）偏得越多
@@ -1253,8 +1407,8 @@ class Brain {
       case 'tpeng': return dist <= this.mvOf('grab').reach + 2 && R() < 0.5 ? (press('grab'), true) : dist <= this.eR('d:jab') - 4 && R() < 0.5 ? (press('d:jab'), true) : guard(low(), 16);
       case 'tkick': return dist <= 96 && R() < 0.5 ? (press('jab'), true) : guard(low(), 16);
       case 'tlow': return guard(true, 16);
-      case 'jab': case 'lowJab': return R() < 0.35 * (1 - this.handRisk()) && dist <= effR('heavy') - 8 ? (press('heavy'), true) : guard(top === 'lowJab' || low(), 14 + (R() * 10 | 0));
-      case 'heavy': return dist <= effR('kick') - 6 && R() < 0.55 * (1 - this.legRisk()) ? (press('kick'), true) : guard(low(), 18);
+      case 'jab': case 'lowJab': return R() < 0.35 * (1 - this.handRisk()) && dist <= effR('heavy') - 8 && this.slowOK('heavy') ? (press('heavy'), true) : guard(top === 'lowJab' || low(), 14 + (R() * 10 | 0));
+      case 'heavy': return dist <= effR('kick') - 6 && R() < 0.55 * (1 - this.legRisk()) && this.slowOK('kick') ? (press('kick'), true) : guard(low(), 18);
       case 'kick': return dist <= 96 && R() < 0.5 ? (press('jab'), true) : guard(low(), 16);
       case 'sweep': return R() < 0.4 ? (f.inp.press('up', f.clock), true) : guard(true, 18);
       case 'grab': return dist <= effR('jab') - 4 && R() < 0.4 ? (press('jab'), true) : (this.duckT = 14, H.down = true, true);
@@ -1307,7 +1461,7 @@ class Brain {
     const f = this.f, R = Math.random, H = f.inp.held;
     switch (top) {
       case 'jab': case 'heavy': case 'kick': case 'palm': case 'tpeng': case 'tkick':
-        if (dist <= this.eR('jab') + 20 && R() < 0.5) { this.tjHua = 0; press(R() < 0.6 ? 'H:jab' : 'H:heavy'); return true; }
+        if (dist <= this.eR('jab') + 20 && R() < 0.5 && this.slowOK('jab')) { this.tjHua = 0; press(R() < 0.6 ? 'H:jab' : 'H:heavy'); return true; }
         return guard(false, 16 + (R() * 10 | 0));
       case 'lowJab': case 'sweep': case 'lowKick': case 'tlow': return guard(true, 16);
       case 'grab': case 'trap': return R() < 0.4 && dist <= this.mvOf('grab').reach + 4 ? (press('grab'), true) : (this.duckT = 14, H.down = true, true);
@@ -1328,7 +1482,8 @@ class Brain {
   instCounter(o, dist, press) {
     const m = o.move, eta = m.S - m.t;                              // 还有几帧出手
     const snap = { name: m.name, kind: m.def.kind, tier: m.def.tier, height: m.def.height, reach: m.def.reach + (m.def.lunge ? Math.max(0, m.def.lunge[2]) : 0),
-      remain: Math.max(0, m.S + m.def.A - m.t), sLeft: eta, air: m.air, dive: !!m.def.dive, x: o.x, vx: m.air ? o.vx : 0, limb: m.def.limb || null, pierce: !!m.def.pierce };
+      remain: Math.max(0, m.S + m.def.A - m.t), sLeft: eta, air: m.air, dive: !!m.def.dive, x: o.x, vx: m.air ? o.vx : 0, limb: m.def.limb || null, pierce: !!m.def.pierce,
+      atk: true, facing: o.facing, alt: o.alt, vz: o.vz };                // 3.1.1 高度、往上往下多快：算对空接不接得住（aaCatch）
     return this.hellCounter(snap, dist, eta, press, true);
   }
 
@@ -1352,14 +1507,14 @@ class Brain {
     if (!d || eta < 0) return false;
     // 卸力要「刚按下去」：按下去那一帧离上一次按挡隔够 PARRY_LOCK；现在按着挡的话，得先松开一帧再按
     const pd = Math.max(0, eta - 3), freshBlock = f.clock + pd + 1 - f.blockPress >= PARRY_LOCK && (pd >= 1 || !f.prevBlock);
-    if (this.K.tj) opts = this.tjCounterOpts(s, d, dist, eta);
+    const lag = exact ? 0 : this.L.react;                          // 3.1.1 s 是几帧以前的他（瞬间看穿的是现在的他）
+    if (this.K.tj) opts = this.tjCounterOpts(s, d, dist, eta, lag);
     else if (this.K.wc) opts = this.wcCounterOpts(s, d, dist, eta, freshBlock);
     else if (s.name === 'dive') { opts.push([18, 'antiDive']); opts.push([5, 'block']); }
     else if (d.air) {
-      // 托天掌出手那几帧他飞到哪（按他朝我飞的速度推）：够得着才用（远处的飞踢托不着，蹲下躲 / 腿迎）
-      const PM = this.mvOf('d:heavy'), closing = (s.vx || 0) * (f.x >= s.x ? 1 : -1), pdist = dist - Math.max(0, closing) * (PM.S + 1);
-      if (s.name === 'airKick') { opts.push([12, 'duck']); if (dist >= 105 && dist <= 175) opts.push([9, 'kick']); }
-      if (eta >= (exact ? 1 : PM.S - 7) && pdist <= PM.reach + 2) opts.push([16, 'd:heavy']);
+      // 托天掌出手那几帧他飞到哪：够得着才用（远处的飞踢托不着，蹲下躲 / 腿迎）。3.1.1 照真的轨迹算（aaCatch），腿来得及才迎（kickMeets）
+      if (s.name === 'airKick') { opts.push([12, 'duck']); if (dist >= 105 && dist <= 175 && this.kickMeets(eta)) opts.push([9, 'kick']); }
+      if (this.aaCatch(s, lag, eta)) opts.push([16, 'd:heavy']);
       if (freshBlock) opts.push([10, 'parry']);
       opts.push([4, 'block']);
     } else if (d.kind === 'grab') {
@@ -1424,12 +1579,12 @@ class Brain {
   }
   // 3.0 太极拳的电脑看穿了一招：手上的招、中段上段的腿 —— 捋（时机按到帧）、来得及就先出一招等他打进来（掤），腿还能采（接腿 = 搂膝拗步）；
   //   擒拿 —— 蹲下 / 退开；下段 —— 蹲着挡；空中的 —— 金鸡独立 / 站着挡；坠山 —— 站着拳迎；大招 —— 挡
-  tjCounterOpts(s, d, dist, eta) {
+  tjCounterOpts(s, d, dist, eta, lag) {
     const f = this.f, opts = [], G = this.mvOf('grab'), luFresh = f.clock + Math.max(0, eta - 2) - f.luPress >= TJ_LU_LOCK;
     if (s.name === 'dive') opts.push([14, 'block']);                // 拳太慢迎不上坠山：站着挡
     else if (d.air) {
-      const PM = this.mvOf('d:heavy'), closing = (s.vx || 0) * (f.x >= s.x ? 1 : -1), pdist = dist - Math.max(0, closing) * (PM.S + 1);
-      if (eta >= PM.S - 7 && pdist <= PM.reach + 2) opts.push([16, 'd:heavy']);
+      // 3.1.1 金鸡独立接得住才出（照他真的轨迹算；以前「还剩几帧 ≥ 前摇 - 7」看穿了也几乎从来不成立，只剩挡和蹲）
+      if (this.aaCatch(s, lag, eta)) opts.push([16, 'd:heavy']);
       if (s.name === 'airKick') opts.push([10, 'duck']);
       opts.push([8, 'block']);
     } else if (d.kind === 'grab') {
@@ -1519,7 +1674,7 @@ class Brain {
       if (fresh && dist <= 110) {
         const a = M.after, tot = a.hit + a.hold + a.slip + a.move, ph = a.hit / tot, pd = a.hold / tot, ps = a.slip / tot, r = R();
         if (r < ph * 0.85) { f.noParry = true; this.lowBlock = false; this.blockT = 12; f.inp.held.block = true; return true; }
-        if (r < ph * 0.85 + pd * 0.9) { press(dist <= this.mvOf('grab').reach - 4 ? 'grab' : R() < 0.5 ? 'd:jab' : 'd:kick'); return true; }
+        if (r < ph * 0.85 + pd * 0.9) { const k = dist <= this.mvOf('grab').reach - 4 ? 'grab' : R() < 0.5 ? 'd:jab' : 'd:kick'; if (this.slowOK(k)) { press(k); return true; } }
         if (r < ph * 0.85 + pd * 0.9 + ps) { press('jab'); return true; }
       }
     }
@@ -1540,7 +1695,7 @@ class Brain {
         if (pre === 'slip') { this.slipIn(); f.inp.held.block = true; return true; }
         if (pre === 'ting' || pre === 'tingLow') { f.noParry = true; this.lowBlock = pre === 'tingLow'; this.blockT = 16; f.inp.held.block = true; f.inp.held.down = this.lowBlock; return true; }   // 按着挡听劲：他打过来就接（tick「听劲」那一段）
         if (pre === 'up') { f.inp.press('up', f.clock); return true; }
-        if (pre) { press(pre); return true; }
+        if (pre && this.slowOK(pre)) { press(pre); return true; }
       }
     }
     // 4) 他在挡：上下段、擒拿换着来（站挡 → 擒拿 / 下段；蹲挡 → 抄腿 / 劈山（上段））
@@ -1548,10 +1703,10 @@ class Brain {
       const p = R();
       if (!s.lowBlock) {
         if (dist <= this.mvOf('grab').reach - 2 && p < (f.opp.style === 'wc' || this.K.wc ? 0.12 : 0.05)) { press('grab'); return true; }
-        if (p < 0.09) { press(dist <= 90 ? 'd:jab' : 'd:kick'); return true; }
+        if (p < 0.09) { const k = dist <= 90 ? 'd:jab' : 'd:kick'; if (this.slowOK(k)) { press(k); return true; } }
       } else {
         if (dist <= this.mvOf('d:grab').reach - 2 && p < (this.K.wc ? 0.08 : 0.05)) { press('d:grab'); return true; }
-        if (!this.K.wc && dist <= 100 && p < 0.09) { this.plan = ['heavy', 'heavy']; press('heavy'); return true; }
+        if (!this.K.wc && dist <= 100 && p < 0.09 && this.slowOK('heavy')) { this.plan = ['heavy', 'heavy']; press('heavy'); return true; }
       }
     }
     return false;
@@ -1591,7 +1746,16 @@ class Brain {
       }
     }
     // 他起跳（每一跳记一次；2.6 电脑一帧看一次，起跳那一步不一定正好看到，所以记着这一跳看过没有）
-    if (o.state === 'jumpsquat') { if (!this.jsSeen) { this.jsSeen = true; band.jump = (band.jump || 0) + w; } } else this.jsSeen = false;
+    const jd = Math.abs(o.x - f.x);
+    if (o.state === 'jumpsquat') { if (!this.jsSeen) { this.jsSeen = true; band.jump = (band.jump || 0) + w; if (jd <= 280) M.jz = M.jz * 0.995 + 0.005; } }
+    else { this.jsSeen = false; if (o.actionable() && !o.airborne && jd >= 40 && jd <= 280) M.jz *= 0.995; }   // 3.1.1 他能跳、跳得过来、这一帧没跳
+    // 3.1.1 我起了慢招（他那时在地上、能动、跳得过来）：看他在我出手之前跳没跳
+    const fm = f.state === 'attack' ? f.move : null;
+    if (fm && fm.serial !== this.swSer && !fm.def.script && !fm.air && (fm.S || 0) >= 15 && fm.t < 2 && o.actionable() && !o.airborne && jd >= 40 && jd <= 280) { this.swSer = fm.serial; this.sw = fm.serial; }
+    if (this.sw !== undefined && this.sw >= 0) {
+      const up = o.state === 'jumpsquat' || o.airborne, done = !fm || fm.serial !== this.sw || fm.t >= fm.S;
+      if (up || done) { M.jr = M.jr * 0.8 + (up ? 0.2 : 0); this.sw = -1; }
+    }
     // 2.1 他在这个距离能出手的时候多常出手（一贴近就出手的人，近身就要多护着）
     const started = !!om && om.serial !== this.hzSer && !om.def.script;
     if (om) this.hzSer = om.serial;
