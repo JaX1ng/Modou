@@ -59,7 +59,7 @@ const BODY = {
   // 肘关节和肩膀那一小块再淡一点点（farJoint）—— 两条胳膊交叉的时候看得出哪条在里哪条在外
   // （Jack：用稍微一点点的阴影表示左右，在肘关节、手臂和肩膀那一点点位置，不要太多阴影）；farR 肘上那一块多大、farRs 肩上那一块多大
   // 2.13 手上的淡线（指缝、拳头的指节、勾手）：多宽、往纸色混多少（比亮边再亮一点点才看得出来，Jack：拳头的手指细节可以不明显，但是要有）
-  shade: { tone: 0.11, rim: 1.3, rimArm: 1.05, line: 1.3, up: 0.3, far: 0.07, farJoint: 0.12, farR: 5.2, farRs: 5.6, finger: 0.42, fingerTone: 0.2 },
+  shade: { tone: 0.11, rim: 1.3, rimArm: 1.05, line: 1.3, up: 0.3, far: 0.07, farJoint: 0.12, farR: 5.2, farRs: 5.6, finger: 0.42, fingerTone: 0.2, seamTone: 0.13 },
 };
 // 以前的名字（别的文件、测试还在用）：头半径、大臂、小臂、大腿、小腿、躯干、脖子
 const BONE = { torso: BODY.bone.torso, neck: BODY.bone.neck, head: BODY.bone.head, ua: BODY.bone.ua, fa: BODY.bone.fa, th: BODY.bone.th, sh: BODY.bone.sh };
@@ -71,7 +71,8 @@ const BODY_TONES = {};
 function bodyTones(col) {
   if (BODY_TONES[col]) return BODY_TONES[col];
   return (BODY_TONES[col] = { base: col, hl: bodyMix(col, C.paper, BODY.shade.tone), far: bodyMix(col, C.paper, BODY.shade.far), farJ: bodyMix(col, C.paper, BODY.shade.farJoint),
-    det: bodyMix(col, C.paper, BODY.shade.fingerTone), detF: bodyMix(col, C.paper, BODY.shade.fingerTone + BODY.shade.far) });
+    det: bodyMix(col, C.paper, BODY.shade.fingerTone), detF: bodyMix(col, C.paper, BODY.shade.fingerTone + BODY.shade.far),
+    seam: bodyMix(col, C.paper, BODY.shade.seamTone), seamF: bodyMix(col, C.paper, BODY.shade.seamTone + BODY.shade.far) });
 }
 
 /* ---------- 外形 ---------- */
@@ -236,6 +237,101 @@ function hookShape(H, dx, dy, out, g) {
   const creases = [line([[2.4, -2.0], [6.2, -1.8], [9.8, -1.2]]), line([[5.4, 1.0], [8.0, 0.9], [10.2, 0.6]])];   // 大拇指的边；食指和中指之间（离中线多远）
   return { pts, creases };
 }
+/* 3.1 手的骨架（Jack：拳头要用手指的模型握成拳，不是在拳头上画几道线表示手指握拳；勾手张开一点，不必并拢，别像鸡爪）：
+   拳头、勾手都是真的一根一根手指 —— 一只手 = 手腕 + 掌骨那一块 + 四根手指各三节 + 大拇指三节，每一节是一根「胶囊」（两头圆的棒），
+   在手自己的三维坐标里摆好：u 顺着小臂往指根、v 手背那一面、w 大拇指那一边，原点在手腕（小臂画到的那一点）。
+   照这只手转了多少（拳心朝下 / 竖拳是绕 u 转 roll；勾手再绕手背那根轴偏一点 yaw，手指才分得开）、哪一面冲着镜头，投到画面上 ——
+   胶囊从哪个方向看都还是一个两头圆的长条（正交投影），一根手指一组，远的先画、近的后画（handSeams：手指叠在手指、掌上的地方露一道淡淡的缝）。
+   · 拳头：四指卷进掌心 —— 掌骨那一排关节（拳峰）鼓在手背前头，第一节竖着排成拳面，中间一节横在拳面底下往回收，指尖藏进掌心；
+     大拇指横压在食指、中指的中间一节上（拳面底下靠前）。侧面看得见几个拳峰的包、拳面底下卷起来的手指和压着的大拇指；
+     哪一面冲着镜头：拳心朝下时，远侧那只手（前手）看见大拇指那一侧，近侧那只手（后手）看见小指那一侧；竖拳时远侧看见掌心（卷着的手指、压着的拇指）、近侧看见手背
+   · 勾手：手腕往下折，四指自然垂着、每一节微微弯，指尖往里收但不捏死，手指之间留一点缝；大拇指往食指、中指那边虚虚地对着 */
+const FIST3 = (() => {
+  const S = 1.06;                                           // 整只拳头再按这个放大（拳头大小和 3.0.1 的圆角方块差不多）
+  const s = a => [a[0] * S, a[1] * S, a[2] * S];
+  const fingers = [   // [掌骨根, 指根关节（拳峰）, 第二个关节, 第三个关节, 指尖], 半径 [掌骨头（拳峰）, 第一节, 中间一节, 指尖那节]；食指 → 小指
+    [[0.8, 1.0, 2.1], [6.5, 2.0, 2.6], [7.8, -2.3, 2.5], [5.2, -3.5, 2.3], [4.0, -1.8, 2.2], [1.62, 1.2, 1.05, 0.9]],
+    [[0.8, 1.1, 0.7], [6.8, 2.2, 0.85], [8.2, -2.5, 0.8], [5.4, -3.8, 0.75], [4.1, -2.0, 0.7], [1.68, 1.25, 1.1, 0.95]],
+    [[0.8, 1.0, -0.7], [6.6, 2.0, -0.9], [7.9, -2.4, -0.95], [5.2, -3.7, -1.0], [4.0, -2.0, -1.0], [1.58, 1.18, 1.03, 0.9]],
+    [[0.8, 0.7, -2.0], [6.1, 1.55, -2.5], [7.1, -1.9, -2.6], [5.0, -3.1, -2.5], [4.0, -1.8, -2.4], [1.42, 1.0, 0.9, 0.8]],
+  ];
+  const groups = [];
+  // 手腕 + 掌（掌心那一块软的）+ 四根掌骨：一组（手背那一块，最靠里）
+  const blk = [[[-1.4, 0.2, 0], [1.2, 0.4, 0], 3.05], [[1.2, -0.9, 0.6], [5.0, -1.2, 0], 2.2]];
+  for (const f of fingers) blk.push([f[0], f[1], f[5][0]]);
+  groups.push({ id: 'palm', segs: blk.map(([a, b, r]) => [s(a), s(b), r * S]) });
+  fingers.forEach((f, i) => groups.push({ id: 'f' + i, segs: [[f[1], f[2], f[5][1]], [f[2], f[3], f[5][2]], [f[3], f[4], f[5][3]]].map(([a, b, r]) => [s(a), s(b), r * S]) }));
+  // 大拇指：掌根那一块（鱼际）→ 第一节 → 指尖横压在食指、中指的中间一节上
+  const th = [[1.0, -1.3, 3.0], [4.0, -2.7, 3.9], [6.5, -3.95, 2.9], [7.7, -4.15, 1.0]], tr = [1.45, 1.22, 1.08];
+  groups.push({ id: 'thumb', segs: [0, 1, 2].map(i => [s(th[i]), s(th[i + 1]), tr[i] * S]) });
+  return groups;
+})();
+// 勾手（照真人的手：掌长、指长和张开的掌一样）—— 腕折 flex（弧度，往掌心那边折）、手指每一节弯多少、张开多少都按参数现搭
+function hookModel(flex) {
+  const rot = ([u, v, w]) => [u * Math.cos(flex) + v * Math.sin(flex), -u * Math.sin(flex) + v * Math.cos(flex), w];   // 绕 w 轴往掌心那边折
+  const groups = [], blk = [[[-1.2, 0.1, 0], [1.3, 0.2, 0], 2.9]];
+  // [掌骨长, 指根离中线多远（w）, 张开（度，正 = 往大拇指那边）, 三节长, 三节半径, 掌骨半径]；第一节弯 8°、第二节 13°、第三节 7°（自然垂着、微微弯，不勾成爪；Jack：张开一点、不必并拢）
+  const F = [[7.9, 2.45, 10, [3.1, 2.0, 1.6], [1.05, 0.95, 0.85], 1.35], [8.3, 0.8, 2, [3.4, 2.2, 1.6], [1.1, 1.0, 0.88], 1.4],
+    [8.0, -0.85, -8, [3.2, 2.1, 1.55], [1.03, 0.93, 0.83], 1.32], [7.4, -2.35, -17, [2.5, 1.65, 1.35], [0.9, 0.82, 0.74], 1.2]];   // 3.1 手指张开一点（Jack：不必并拢）
+  const bend = [8, 13, 7].map(d => d * D2R);
+  const fingers = [];
+  for (const [ml, w0, ab, L, R, mr] of F) {
+    const M = [ml, 0.35, w0 * 1.05];
+    blk.push([[0.9, 0.3, w0 * 0.75], M, mr]);
+    const a = ab * D2R, segs = []; let p = M, acc = 0;
+    for (let k = 0; k < 3; k++) {
+      acc += bend[k];
+      const d = [Math.cos(a) * Math.cos(acc), -Math.sin(acc), Math.sin(a) * Math.cos(acc)];
+      const q = [p[0] + d[0] * L[k], p[1] + d[1] * L[k], p[2] + d[2] * L[k]];
+      segs.push([p, q, R[k]]); p = q;
+    }
+    fingers.push(segs);
+  }
+  blk.push([[1.4, -0.7, 0.4], [5.6, -0.9, 0], 2.15]);
+  groups.push({ id: 'palm', segs: blk.map(([a, b, r]) => [rot(a), rot(b), r]) });
+  fingers.forEach((sg, i) => groups.push({ id: 'f' + i, segs: sg.map(([a, b, r]) => [rot(a), rot(b), r]) }));
+  // 大拇指：从掌根往前、往掌心那边伸出去，虚虚地对着食指中指（不捏住）
+  const th = [[1.4, -0.6, 2.7], [4.4, -1.8, 3.9], [6.6, -3.0, 3.0], [7.9, -3.9, 1.9]];
+  groups.push({ id: 'thumb', segs: [0, 1, 2].map(i => [rot(th[i]), rot(th[i + 1]), [1.4, 1.15, 0.95][i]]) });
+  return groups;
+}
+const HOOK3 = {};                                            // 腕折多少度 → 搭好的勾手（整度缓存）
+// 胶囊投到画面上：两个端点 a、b（画面坐标）、半径 r → 一圈点（两头半圆，一头 5 个点）
+function capsule2(a, b, r) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+  const ux = L > 1e-4 ? dx / L : 1, uy = L > 1e-4 ? dy / L : 0, an = Math.atan2(uy, ux), pts = [];
+  for (let i = 0; i <= 5; i++) { const t = an - Math.PI / 2 + Math.PI * i / 5; pts.push([b[0] + Math.cos(t) * r, b[1] + Math.sin(t) * r]); }
+  for (let i = 0; i <= 5; i++) { const t = an + Math.PI / 2 + Math.PI * i / 5; pts.push([a[0] + Math.cos(t) * r, a[1] + Math.sin(t) * r]); }
+  return pts;
+}
+/* 一只手投到画面上：O 手腕（画面坐标），U 顺着小臂往前（单位向量），T 手背那一面朝哪（和 U 垂直），roll 绕小臂转多少（0 拳心朝下 / 手背朝 T，π/2 竖拳：大拇指朝 T），
+   yaw 再绕 T 偏多少（勾手：手指张开的那个方向才露出来），near：这只手是不是在近侧（近侧冲着镜头的是小指那一侧 / 竖拳时是手背），g 胖瘦。
+   返回一组一组（从远到近排好）：{ id, polys: [每一节的一圈点], z 远近 } */
+function handProject(groups, O, U, T, roll, yaw, near, g, K) {
+  const cr = Math.cos(roll), sr = Math.sin(roll), cy = Math.cos(yaw), sy = Math.sin(yaw), ns = near ? 1 : -1;
+  const P = ([u, v, w]) => {
+    const tv = v * cr + w * sr, dz = -w * cr + v * sr;          // 绕 u 转 roll：往 T 的分量、往镜头的分量（近侧的手 dz 正 = 冲着镜头）
+    const x = u * cy - ns * dz * sy, z = ns * dz * cy + u * sy;  // 再绕 T 偏 yaw
+    return [O[0] + (U[0] * x + T[0] * tv) * K, O[1] + (U[1] * x + T[1] * tv) * K, z];
+  };
+  const out = groups.map(gr => {
+    let zs = 0; const polys = gr.segs.map(([a, b, r]) => { const A = P(a), B = P(b); zs += A[2] + B[2]; return capsule2(A, B, Math.max(0.15, r * K + g)); });
+    return { id: gr.id, polys, z: zs / (2 * gr.segs.length) };
+  });
+  return out.sort((a, b) => a.z - b.z);
+}
+const HAND_SEAM = 0.3, HAND_TONE = 0.075;                 // 手指和手指叠着的地方露多宽的缝（handSeams）；离镜头最近的那根手指比最远的淡多少
+const FIST_ROLL0 = 0.14;                                    // 拳心朝下的拳头也稍微转一点点（8° 上下）：拳面底下卷起来的手指、拳峰一个一个看得出来
+const HOOK_YAW = 0.62;                                      // 勾手绕手背那根轴偏多少（弧度）：侧面看手指一根一根分得开（正侧面四根叠成一根，就是一只爪）
+// 投好的一组一组手指加进 parts（画的时候一组一组从远到近，见 handSeams）；coarse：只要一个外包
+function handGroups(parts, key, far, layer, hs, hin, coarse, flags) {
+  if (coarse) {
+    const all = []; for (const h of hs) for (const q of h.polys) for (const p of q) all.push(p);
+    parts.push(Object.assign({ k: key + 'H', pts: convexHull(all), far, layer }, flags));
+    return;
+  }
+  hs.forEach((h, i) => h.polys.forEach((q, j) => parts.push(Object.assign({ k: key + 'H', pts: q, far, layer, grp: key + h.id, gz: i, gzz: h.z, inPts: hin ? hin[i].polys[j] : null }, flags))));
+}
 // 鞋：脚踝 K 是原点，x 往脚尖、y 往鞋底。参考图那种圆头鞋：脚跟圆、鞋口盖住脚踝、鞋面往脚尖斜下去、鞋头圆（2.5.1 小了、薄了，鞋头矮一点）
 const FOOT_PTS = (() => {
   const Fo = BODY.foot, a = BODY.bone.ankle, top = a - Fo.h, H = Fo.heel, T = Fo.toe, th = Fo.toeH;
@@ -319,9 +415,11 @@ function seatShape(tor, legs, g) {
    （层：farArm / farLeg / torso / nearLeg / head / nearArm —— 画的时候一层是一整条胳膊、一整条腿合在一起画）
    only（可选，Set）：只要这几块（量碰没碰到时一帧要算好几回，只算用得着的）。块的名字：
    aFU / aFL / aFH 前手大臂 / 小臂 / 拳，aB* 后手；FU / FL / FF 前腿大腿 / 小腿 / 脚，B* 后腿；torso、neck、head */
-function bodyParts(J, g, only) {
+// 3.1 coarse：手只要一个外包（量碰没碰到、拳脚停在身上用 —— 一根一根手指的胶囊几百个点，一帧量好几回太慢）；传了 only 也是
+function bodyParts(J, g, only, coarse) {
   g = g || 0;
   const need = k => !only || only.has(k);
+  coarse = coarse || !!only;
   const B = BODY.bone, f = J.facing * (J.turned ? -1 : 1);
   // 脊柱、朝前
   const sx = J.neck[0] - J.hip[0], sy = J.neck[1] - J.hip[1], sl = Math.hypot(sx, sy) || 1;
@@ -356,9 +454,13 @@ function bodyParts(J, g, only) {
         const c = clamp(dx * ux + dy * uy, -1, 1), MAXB = (hook ? 115 : 100) * D2R;
         if (Math.acos(c) > MAXB) { const cr = ux * dy - uy * dx >= 0 ? 1 : -1, a = Math.atan2(uy, ux) + cr * MAXB; dx = Math.cos(a); dy = Math.sin(a); }
         if (hook) {
-          // 勾手：手背在折过去的外侧（顺着小臂那一面接下去）
-          const sh = hookShape(E, dx, dy, [ux - dx, uy - dy], g);
-          parts.push({ k: key + 'H', pts: sh.pts, far, layer, palm: true, hook: true, detail: g === 0 ? sh.creases : null });
+          // 3.1 勾手（Jack：还是鸡爪，可以张开一点，不必并拢）：一只真的手往下折 —— 手腕折多少照手指朝哪（最多 115°），手背在折过去的外侧；
+          //     手指自然垂着微微弯、指尖往里收不捏死，绕手背那根轴偏一点（HOOK_YAW）手指才一根一根分得开
+          const fl = Math.acos(clamp(dx * ux + dy * uy, -1, 1)), key3 = Math.round(fl / D2R);
+          let tx = -(dx - (dx * ux + dy * uy) * ux), ty = -(dy - (dx * ux + dy * uy) * uy), tl = Math.hypot(tx, ty);
+          if (tl < 1e-3) { tx = uy * f; ty = -ux * f; tl = 1; }
+          const model = HOOK3[key3] || (HOOK3[key3] = hookModel(key3 * D2R));
+          handGroups(parts, key, far, layer, handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, g, HAND.k), g === 0 ? handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, -HAND_SEAM, HAND.k) : null, coarse, { palm: true, hook: true });
         } else {
           // 2.10（Jack：手掌内翻一定要看得出来是往里翻的）：掌心朝里 = 大拇指在靠身子那一边（侧面看，不管手指朝哪都是 -f 那边：
           //     手指朝上 → 拇指在后，手指朝前 → 拇指在上，手指朝下 → 拇指在前）；朝外反过来。2.9 一律画在「前上方」，竖着的掌看着就是往外翻的
@@ -375,7 +477,9 @@ function bodyParts(J, g, only) {
         if (wa) { const a = -wa * D2R * f, c = Math.cos(a), s = Math.sin(a); vx = ux * c - uy * s; vy = ux * s + uy * c; C0 = [W[0] + vx * BODY.wrist, W[1] + vy * BODY.wrist]; }
         // 2.13 拳头的上面：朝前出拳时朝上（-f × 法线，往后、往下打的跟着转）
         const top = [vy * f, -vx * f];
-        parts.push({ k: key + 'H', pts: fistShape(C0, vx, vy, g), far, layer, fist: true, detail: g === 0 ? fistLines(C0, vx, vy, top, front ? J.fvt : J.bvt) : null });
+        // 3.1（Jack：拳头要用手指的模型握拳）：一根一根手指卷起来握成的拳（FIST3），绕手腕（W）照小臂的方向摆；竖拳（fv / bv）= 绕小臂转 90°，大拇指朝上
+        const roll = ((front ? J.fvt : J.bvt) || 0) * Math.PI / 2 + FIST_ROLL0;
+        handGroups(parts, key, far, layer, handProject(FIST3, W, [vx, vy], top, roll, 0, !far, g, HAND.k), g === 0 ? handProject(FIST3, W, [vx, vy], top, roll, 0, !far, -HAND_SEAM, HAND.k) : null, coarse, { fist: true });
       }
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）
@@ -456,7 +560,7 @@ function distToPoly(x, y, pts) {
   return m;
 }
 function bodyGap(polys, J2) {
-  const tgt = bodyParts(J2, 0).parts.map(p => p.pts);
+  const tgt = bodyParts(J2, 0, null, true).parts.map(p => p.pts);
   let best = 1e9;
   for (const poly of polys) for (const [x, y] of poly) {
     let inside = 0, out = 1e9;
@@ -471,7 +575,7 @@ function bodyGap(polys, J2) {
 // 按横着的一条条线量（这个高度上对方身子最靠近打过来那一边的边），拳头整个穿过去到了身子后面也算得出来（bodyGap 那时候以为又「没碰到」了）。
 // noArms：对方的胳膊不算（没在挡的人，拳头从他护着的手上面过去打在身上）
 // 对方的外形（量 bodyPen 用）：每一块的点 + 上下范围（这一块不在这个高度上就不用一条边一条边看）
-const bodyTargets = (J2, noArms, parts) => (parts || bodyParts(J2, 0).parts).filter(p => !(noArms && p.k[0] === 'a')).map(p => {
+const bodyTargets = (J2, noArms, parts) => (parts || bodyParts(J2, 0, null, true).parts).filter(p => !(noArms && p.k[0] === 'a')).map(p => {
   let y0 = 1e9, y1 = -1e9; for (const q of p.pts) { if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
   return { pts: p.pts, y0, y1 };
 });
@@ -627,13 +731,37 @@ function drawBody(J, col, band, bp0, paths0) {
       paint(T.base, ip, cut, leg ? beltCut : null);
     }
     // 2.13 手指：指缝、拳头上的指节、勾手捏在一起的指尖（淡淡的几道，和亮边一个意思；只在这一层的外形里面，叠在身上也看得见）
-    if (arm) handLines(parts, T, L === 'farArm');
+    if (arm) { handSeams(parts, T, L === 'farArm'); handLines(parts, T, L === 'farArm'); }
     ctx.restore();
     under.addPath(ip); if (L === 'farArm' || L === 'farLeg') underLimb.addPath(ip);
     any = true;
     if (L === 'nearLeg' && tr) drawWaistBelt(tr, band);       // 腰带箍在腰上：盖住两条大腿根
     if (L === 'head') drawHeadGear(J, band);
   }
+}
+/* 3.1 一根一根的手指（拳头、勾手）：一组一组从远到近画 —— 先把这一组整个涂成缝的颜色，再把往里收了 HAND_SEAM 的那一圈涂回本色：
+   近的手指叠在远的手指、掌上的地方剩一道窄窄的淡缝（就是这根手指的轮廓，不是另外画上去的线）。
+   只在整只手往里收过的外形里面画：手的外沿照旧是整条胳膊那一道亮边，不多一圈 */
+function handSeams(parts, T, far) {
+  const all = parts.filter(p => p.grp && p.inPts);
+  if (!all.length) return;
+  const hp = all.filter(p => !p.grp.endsWith('palm'));        // 掌那一块（手腕、掌骨、掌心）不露缝：手背是一整块皮，手指从它上面卷下来
+  ctx.save();
+  ctx.clip(polysPath(all.map(p => p.inPts)));
+  const base = far ? T.far : T.base, seam = far ? T.seamF : T.seam;
+  // 不画线：离镜头越近的手指颜色越淡一点点（和远侧那条胳膊淡一点一个意思），一根叠在一根上，深浅一换就看得出是一根一根的手指；
+  // 最近的那根再留一道很淡的边（这根手指自己的轮廓）
+  let zmax = -1e9, zmin = 1e9; for (const p of hp) { if (p.gzz > zmax) zmax = p.gzz; if (p.gzz < zmin) zmin = p.gzz; }
+  const col0 = T.base, span = Math.max(1, zmax - zmin);
+  for (let i = 0; i < hp.length;) {
+    let j = i; while (j < hp.length && hp[j].grp === hp[i].grp) j++;
+    const grp = hp.slice(i, j), near = clamp((grp[0].gzz - zmin) / span, 0, 1);
+    const tone = bodyMix(col0, C.paper, (far ? BODY.shade.far : 0) + HAND_TONE * near);
+    if (near > 0.85) { ctx.fillStyle = seam; ctx.fill(polysPath(grp.map(p => p.pts))); ctx.fillStyle = tone; ctx.fill(polysPath(grp.map(p => p.inPts))); }
+    else { ctx.fillStyle = tone; ctx.fill(polysPath(grp.map(p => p.pts))); }
+    i = j;
+  }
+  ctx.restore();
 }
 // 2.13 手上的几道淡线（parts 里带 detail 的：掌心那一块带着指缝、拳头带着指节、勾手带着往指尖收的线）
 function handLines(parts, T, far) {

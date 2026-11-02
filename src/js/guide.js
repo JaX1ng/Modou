@@ -4,7 +4,7 @@
    2.10（Jack：以后会有更多更多的拳派进来，底下的教程得重新做，不要用括号往里塞）：按拳派分成一本一本的书 ——
    · 「通用」一本：键位、两个克制圈、规矩、身法和倒地，哪一派都一样的东西
    · 每一派一本：上手、招式、连招、攻防、查表，页数和页名每一派自己定（咏春拳是连环拳、接招 · 搭手）
-   · 先选书（通用 / 传统格斗 / 咏春拳 ……），再翻页；以后加拳派，在 GUIDE_BOOKS 里加一本就行，两种排法都从这里来
+   · 先选书（通用 / 格斗术 / 咏春拳 ……），再翻页；以后加拳派，在 GUIDE_BOOKS 里加一本就行，两种排法都从这里来
    · 文字不用括号塞补充：要补充的单独成句，或者放进表格的一格（测试会查）
    · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] [冲] 换成按键（按你自己设的单人键位显示）
    · 前摇、伤害、倍率都直接读招式表和 config.js 的常数：改了数值，教程跟着变；动作小图 PoseIcon 用游戏自己的姿势和画法
@@ -25,7 +25,7 @@ const PoseIcon = {
     copyPose(F.disp, pose); F.alt = alt || 0; F.vz = 0; F.x = 0; F.facing = 1; F.state = 'idle'; F.J = null; F.ikS = null;
     F.fk(); return cloneJ(F.J);
   },
-  // spec：{ move: 招名, ph: 阶段（默认出手那一下）, alt: 离地高 } 或 { pose: 架势名 } 或 { run: true }；style：哪一派（不写是传统格斗）
+  // spec：{ move: 招名, ph: 阶段（默认出手那一下）, alt: 离地高 } 或 { pose: 架势名 } 或 { run: true }；style：哪一派（不写是格斗术）
   build(s) {
     let pose, trail = null;
     const ST = s.style && STYLES[s.style], MV = ST ? ST.moves : MOVES, PS = ST && ST.poses || POSE;
@@ -146,7 +146,7 @@ const GX = {
           `<tr><td class="ck">${comboKeys(c.keys, c.times)}</td><th>${c.name}${c.ko ? '<small>击倒</small>' : ''}</th><td>${c.tag || ''}</td><td class="strip">${c.moves.map(m => ic(m, 58, 62)).join('')}</td></tr>`).join('')).join('')}</tbody></table>`;
     }
     return groups.map(G => `<section class="g-sec"><h3>${G.group}${G.note ? `<small>${G.note}</small>` : ''}</h3><div class="g-grid combos">${G.list.map(c =>
-      `<article class="g-combo${c.ko ? ' ko' : ''}"><div class="gc-strip">${c.moves.map(m => ic(m, 86, 92)).join('<i class="gc-arrow">›</i>')}</div>
+      `<article class="g-combo${c.ko ? ' ko' : ''}${c.wide ? ' wide' : ''}"><div class="gc-strip">${c.moves.map(m => ic(m, c.wide ? 70 : 86, c.wide ? 76 : 92)).join('<i class="gc-arrow">›</i>')}</div>
         <div class="gc-body"><div class="gc-keys">${comboKeys(c.keys, c.times)}</div><h4>${c.name}</h4>${c.tag ? `<p>${c.tag}</p>` : ''}</div></article>`).join('')}</div></section>`).join('');
   },
   // 技巧：[{ group, list: [{ name, how, icon, desc, more? }] }]
@@ -225,14 +225,14 @@ const G_FIRST = [
   '他老举着手挡，贴上去拿他，或者蹲下打下段。',
   '挡住他一下以后他还在收招，马上打回去。',
   '被打倒了，起身的时候按住方向滚开，别在原地站起来挨打。',
-  '训练场里能对着木桩随便练；破招练习一招一招教怎么破传统格斗的招。想看高手怎么打，点「观战」看两个终极电脑互打。',
+  '训练场里能对着木桩随便练；破招练习一招一招教怎么破格斗术的招。想看高手怎么打，点「观战」看两个终极电脑互打。',
 ];
 const G_RULES = [
   ['胜负', `血量 ${MAX_HP}，五局三胜。人机、联机、观战每回合 ${ROUND_FRAMES / 3600} 分钟；双人对战、训练场不限时。`],
   ['交手', '两边同时打中，先比主系：克制的一方叫「克」，单方面打中。主系一样再比起手：克制的一方叫「压」，被压的吃全额、被打退，压人的只吃三成还能接着打。都一样就是拼招，各掉五成、互相震退。'],
   ['起手和主系', '单招两者一样；连招的起手是第一下，主系是最后一下。'],
   ['高低', '中段站着、蹲着都能挡；下段要蹲着挡；上段要站着挡。每一招是哪一段，看那一派的招式页。'],
-  ['连击衰减', '同一套里每多挨一下，硬直更短、被推得更远、伤害更低，连四五下就断。咏春拳的连环冲拳衰减得慢。'],
+  ['越连越疼', `同一套里每多连一下，这一下多 ${Math.round(COMBO_ESC * 100)}%，第 8 下 ×${comboEsc(7).toFixed(2)}：连得越长越赚，一套最多 ${COMBO_MAX} 下，短拳连着最多 ${JAB_CHAIN_MAX} 下。同一套里同一招再用一次只算一半、硬直也短。挨得越多硬直越短、被推得越远，离得远了后面就接不上。咏春拳的连环冲拳按「顺」算，顺一级 +${Math.round(FLOW_DMG * 100)}%。`],
   ['势破', `被挡住的那个人，下一记短拳的前摇多 ${SLOW_JAB_ADD} 帧，头上一个「势」字。`],
   ['朝向', '按着方向不出招就是跑，马上朝那边跑，没有后退。不按左右、格挡的时候自动面向对手；出招时对手在近身范围里，一律朝他打，乱按方向也不打空。'],
   ['气', `挨打、格挡、打中都会涨，挨打涨得最多。半格 ${QI_BURST} 能爆气，满格 ${QI_MAX} 能放大招。`],
@@ -251,10 +251,10 @@ const G_MULS = [
   ['截住闪身', '他钻过来的时候被短拳、腿、下段、擒拿打中', '×' + SLIP_CAUGHT_MUL],
   ['格挡', '挡住了只吃', Math.round(BLOCK_KEEP * 10) + ' 成'],
 ];
-// 身法和倒地：图用传统格斗的动作（哪一派都一样的按法）
+// 身法和倒地：图用格斗术的动作（哪一派都一样的按法）
 const G_BODY = [
   { group: '身法', list: [
-    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害。每一派的挡不一样：传统格斗刚按下挡的那一下是卸力；咏春拳按住挡再按键是接招，看咏春拳那本。`,
+    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害。每一派的挡不一样：格斗术刚按下挡的那一下是卸力；咏春拳按住挡再按键是接招，看咏春拳那本。`,
       more: ['下段要按住 [蹲] 挡，上段要站着挡', '背对着挡不住'] },
     { name: '冲刺', how: '双击 [前] 或 [后]', icon: { move: 'dash', ph: 0.3 }, desc: '贴地滑出一大步；前几帧谁也打不中你，能穿到对面身后。' },
     { name: '冲势', how: '冲刺里出招', icon: { move: 'dash', ph: 0.6 }, desc: `冲刺途中、刚冲完出的第一招 ×${DASH_IN_MUL}，被挡也压得住。` },
@@ -277,7 +277,7 @@ const G_BODY = [
 ];
 
 /* ============================================================
-   传统格斗
+   格斗术
    ============================================================ */
 const G_MOVES = [
   { id: 'jab', how: '[拳]', icon: { move: 'jab' }, desc: '最快的一下，贴身抢先手；能打断对面出腿。' },
@@ -320,6 +320,13 @@ const G_COMBOS = [
   ] },
   { group: '下段', list: [
     { keys: ['d:jab', 'd:kick'], name: '下盘拳接扫堂腿', moves: ['lowJab', 'sweep'], tag: '两下都是下段' },
+  ] },
+  // 3.1（Jack：连招越连收益越高，可以到六段到八段）：贴身打中以后一口气连下去，后面每一下都比前面疼
+  { group: '长连招', note: '贴身打中了才接得满，一步以内；越往后一下越疼，同一招再用只算一半', list: [
+    { keys: ['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'], name: '七连 · 冲天炮', moves: ['jab', 'whip', 'stepPunch', 'beng', 'elbow', 'jab2', 'upper'], tag: '110 上下，单出一记重拳才 16；打上天', ko: true, wide: true },
+    { keys: ['kick', 'jab', 'heavy', 'jab', 'kick', 'jab', 'jab', 'heavy'], name: '八连 · 冲天炮', moves: ['kick', 'stepPunch', 'beng', 'elbow', 'whip', 'stepPunch', 'jab2', 'upper'], tag: '125 上下：腿要先踢中；落步冲拳用了两次，第二次只算一半', ko: true, wide: true },
+    { keys: ['heavy', 'jab', 'kick', 'jab', 'heavy', 'kick'], name: '重起六连 · 旋风腿', moves: ['heavy', 'elbow', 'whip', 'stepPunch', 'beng', 'whirl'], tag: '107 上下，转身一腿扫倒', ko: true, wide: true },
+    { keys: ['jab', 'kick', 'jab', 'jab', 'jab', 'kick'], name: '拳腿六连 · 转身蹬', moves: ['jab', 'whip', 'stepPunch', 'jab2', 'jab3', 'backKick'], tag: '78 上下，把人蹬远', wide: true },
   ] },
 ];
 const G_TECH = [
@@ -462,8 +469,8 @@ const WG_FOLLOW = [
 ];
 const WG_LAP = { name: '拉手跪马', how: '扣住手腕以后按 [蹲]', icon: { move: 'tDrag', ph: 0.5 }, desc: '扣着他的手腕往回往下一拽，自己退一步沉身跪马：他往前扑倒，脸朝下趴在你面前，那只手还在你手里。' };
 const WG_VS = [
-  ['咏春拳打传统格斗', '他的重拳、腿慢，看得见：按住挡听劲，他出重拳按 [重]、起腿按 [拿]，接住了在手上做文章。他老举着手挡，就拉手扣他手腕，接拉手跪马。他贴身连拳，挨了第一下按住挡，下一拳打过来之前按 [拳] 接住。'],
-  ['传统格斗打咏春拳', '他按住挡的时候别老出同一招，按对键就被接住。擒拿抓得住按着挡的人，下段的拳接不住，扫堂腿他要蹲着才接得住；在他够不着的地方空挥一拳骗他接，打他收手的那一下。被他黏住了，在他翻手那一拍里按 [拿] 反拿；他连环冲拳刚起手，挨了两拳马上按住挡，第三拳就挡住了。'],
+  ['咏春拳打格斗术', '他的重拳、腿慢，看得见：按住挡听劲，他出重拳按 [重]、起腿按 [拿]，接住了在手上做文章。他老举着手挡，就拉手扣他手腕，接拉手跪马。他贴身连拳，挨了第一下按住挡，下一拳打过来之前按 [拳] 接住。'],
+  ['格斗术打咏春拳', '他按住挡的时候别老出同一招，按对键就被接住。擒拿抓得住按着挡的人，下段的拳接不住，扫堂腿他要蹲着才接得住；在他够不着的地方空挥一拳骗他接，打他收手的那一下。被他黏住了，在他翻手那一拍里按 [拿] 反拿；他连环冲拳刚起手，挨了两拳马上按住挡，第三拳就挡住了。'],
 ];
 const WG_MULS = [
   ['顺', '按在拍子上打中一下涨一级，每一级', `+${Math.round(FLOW_DMG * 100)}%`],
@@ -517,7 +524,7 @@ const TG_MOVES = [
   { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: '两手十字一封、往后一坐，两掌一起发出去。整个前摇都有掤，化多少下都行；打中把人发出去。' },
 ];
 const TG_COMBOS = [
-  { group: '揽雀尾起手', note: '打中了、化掉了、被挡住了马上按下一招；一串最多三下，每一下也都按得住蓄', list: [
+  { group: '揽雀尾起手', note: '打中了、化掉了、被挡住了马上按下一招；一串最多五下，每一下也都按得住蓄', list: [
     { keys: ['jab', 'jab'], name: '高探马', moves: ['tjLan', 'tjGaoTan'] },
     { keys: ['jab', 'jab', 'jab'], name: '穿掌', moves: ['tjGaoTan', 'tjChuanZ'], tag: '把人打远' },
     { keys: ['jab', 'heavy'], name: '指裆捶', moves: ['tjLan', 'tjZhiDang'], tag: '往下一捶打倒', ko: true },
@@ -533,6 +540,12 @@ const TG_COMBOS = [
     { keys: ['kick', 'jab'], name: '上步七星', moves: ['tjDeng', 'tjQiXing'], tag: '两拳一交往前一架' },
     { keys: ['kick', 'heavy'], name: '弯弓射虎', moves: ['tjDeng', 'tjWanGong'], tag: '打倒', ko: true },
     { keys: ['kick', 'kick'], name: '转身蹬脚', moves: ['tjDeng', 'tjZhuanDeng'], tag: '打倒', ko: true },
+  ] },
+  // 3.1 势一式接一式，最多五下：越往后越疼
+  { group: '长势', note: '贴身打中了才走得完；越往后一下越疼', list: [
+    { keys: ['heavy', 'jab', 'jab', 'heavy', 'kick'], name: '搬拦捶五式', moves: ['tjBan', 'tjShunLan', 'tjGaoTan', 'tjBaiHe', 'tjDeng'], tag: '95 上下：顺拦肘、高探马、白鹤亮翅，蹬脚收', ko: true, wide: true },
+    { keys: ['jab', 'kick', 'jab', 'jab', 'heavy'], name: '揽雀尾五式', moves: ['tjLan', 'tjFen', 'tjQiXing', 'tjGaoTan', 'tjBaiHe'], tag: '83 上下：分脚、上步七星、高探马，白鹤亮翅挑倒', ko: true, wide: true },
+    { keys: ['heavy', 'kick', 'kick', 'kick'], name: '搬拦捶四腿', moves: ['tjBan', 'tjBaiLian', 'tjDeng', 'tjZhuanDeng'], tag: '88 上下：转身摆莲、蹬脚、转身蹬脚', ko: true, wide: true },
   ] },
 ];
 const TG_TECH = [
@@ -560,7 +573,7 @@ const TG_MULS = [
   ['化', '掤住打过来的一下，自己只吃', '×' + TJ_HUA_KEEP],
 ];
 const TG_VS = [
-  ['太极拳打传统格斗', '他的短拳快，抢不过：别等他出手再出，站在射程边上先出一招等他。重拳、腿慢，看见了就捋。他老举着手挡，采他。'],
+  ['太极拳打格斗术', '他的短拳快，抢不过：别等他出手再出，站在射程边上先出一招等他。重拳、腿慢，看见了就捋。他老举着手挡，采他。'],
   ['太极拳打咏春拳', '连环冲拳第二拳就破掤，别往他拳里送：等他接招接空、等他收手，或者捋他第一拳。他按着挡听劲的时候，采他、打下段。'],
   ['打太极拳', '它前摇长：前一半一拳就打断，后一半打进去被化掉、白送劲。它要出手了就抓、就蹲下打下段、就跳起来打；够不着就退开，等它发空了打它收招。它蓄着的时候别往它射程里走，要走就冲刺进去抓。'],
 ];
@@ -572,6 +585,52 @@ const tjDmg = (k, d) => d.kind === 'grab' ? '0~13' : undefined;
    书：通用一本、每一派一本。page：{ id, name, body(mode) }；以后加拳派在这里加一本
    ============================================================ */
 const keysUse = (list, mode) => GX.p(`按键：<span class="g-keys">${list.map(c => gKbd(c)).join(' ')}</span>`, mode);
+/* 3.1 六边形（Jack：每个拳派一张，要严谨）：数在 config.js 的 HEXAGON（balance.js hexagon 量的），轴和锚在 HEX_AXES。
+   hexSVG(id, w, big)：一张 SVG —— 三圈参考线、红的是这一派的分（0～10），每个轴上一小段黑线是 95% 置信区间；big 在轴名后面写分 */
+function hexSVG(id, w, big) {
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H) return '';
+  const h = Math.round(w * (big ? 0.86 : 0.84)), cx = w / 2, cy = h / 2 + 1, r = w * (big ? 0.29 : 0.27);
+  const ang = i => -Math.PI / 2 + i * Math.PI / 3, pt = (i, v) => [cx + Math.cos(ang(i)) * r * v / 10, cy + Math.sin(ang(i)) * r * v / 10];
+  const f = n => n.toFixed(1), poly = vs => vs.map((v, i) => pt(i, v).map(f).join(',')).join(' ');
+  let g = '';
+  for (const v of [10 / 3, 20 / 3, 10]) g += `<polygon class="hx-g${v === 10 ? ' o' : ''}" points="${poly([v, v, v, v, v, v])}"/>`;
+  HEX_AXES.forEach((ax, i) => { const [x, y] = pt(i, 10); g += `<line class="hx-g" x1="${f(cx)}" y1="${f(cy)}" x2="${f(x)}" y2="${f(y)}"/>`; });
+  const sc = HEX_AXES.map(ax => H[ax.id][0]);
+  g += `<polygon class="hx-d" points="${poly(sc)}"/>`;
+  HEX_AXES.forEach((ax, i) => { const a = pt(i, H[ax.id][1]), b = pt(i, H[ax.id][2]); g += `<line class="hx-ci" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"/>`; });
+  sc.forEach((v, i) => { const [x, y] = pt(i, v); g += `<circle class="hx-p" cx="${f(x)}" cy="${f(y)}" r="${big ? 2.6 : 1.9}"/>`; });
+  HEX_AXES.forEach((ax, i) => {
+    const [x, y] = pt(i, 10 + (big ? 2.6 : 2.4)), side = i === 0 || i === 3 ? 'middle' : i < 3 ? 'start' : 'end';
+    g += `<text x="${f(x)}" y="${f(y + (i === 0 ? -2 : i === 3 ? 3 : 0))}" text-anchor="${side}" dominant-baseline="middle">${ax.name}${big ? `<tspan class="hx-n"> ${H[ax.id][0].toFixed(1)}</tspan>` : ''}</text>`;
+  });
+  const label = STYLES[id].name + '：' + HEX_AXES.map(ax => ax.name + ' ' + H[ax.id][0].toFixed(1)).join('、') + '（满分 10）；难度 ' + H.stars + ' 星';
+  return `<svg class="hex${big ? ' big' : ''}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${label}">${g}</svg>`;
+}
+// 难度：五颗星，半颗一档（画的，不靠字体里的半颗星）
+function hexStars(n, size) {
+  const s = size || 11; let g = '';
+  const star = (x, cls) => { let p = ''; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? s * 0.21 : s * 0.5; p += (x + s / 2 + Math.cos(a) * rr).toFixed(1) + ',' + (s / 2 + 0.5 + Math.sin(a) * rr).toFixed(1) + ' '; } return `<polygon class="${cls}" points="${p.trim()}"/>`; };
+  for (let i = 0; i < 5; i++) {
+    const x = i * (s + 1);
+    g += star(x, 'st-o');
+    if (n >= i + 1) g += star(x, 'st-f');
+    else if (n > i) g += `<clipPath id="hs${i}${s}"><rect x="${x}" y="0" width="${s / 2}" height="${s + 1}"/></clipPath><g clip-path="url(#hs${i}${s})">${star(x, 'st-f')}</g>`;
+  }
+  return `<svg class="hstars" viewBox="0 0 ${5 * (s + 1)} ${s + 1}" width="${5 * (s + 1)}" height="${s + 1}" aria-label="难度 ${n} 星（满 5 星）">${g}</svg>`;
+}
+// 教程「上手」页里那一块：大六边形 + 每一轴量出来的原数（95% 置信区间）+ 怎么量的
+function hexBlock(id, mode) {
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H) return '';
+  const pct = (a, k) => k === 'def' || k === 'ctl' || k === 'top';
+  const val = (ax) => { const a = H[ax.id], u = ax.unit; return `${a[3]}${u}<small>${a[4]}～${a[5]}${u}</small>`; };
+  const anchor = ax => { const p = pct(null, ax.id), u = ax.unit; const v = x => p ? +(x * 100).toFixed(0) : x; return `${v(ax.lo)}${u} → 0 分、${v(ax.hi)}${u} → 10 分`; };
+  const rows = HEX_AXES.map(ax => [ax.name, ax.what, val(ax), H[ax.id][0].toFixed(1) + `<small>${H[ax.id][1].toFixed(1)}～${H[ax.id][2].toFixed(1)}</small>`, anchor(ax)]);
+  const how = `怎么量的：满级电脑对满级电脑，这一派对三派各打一局、连自己这一派也打，左右轮着站，${HEX_N.seeds} 个种子、每局 ${HEX_N.rounds} 回合，一个种子算一个样本；上限、难度用满级和木头两档对另两派打，木头就是乱按。小字是 95% 置信区间，重抽 2000 次。三派用同一把尺：每一轴先定好多少算 0 分、多少算 10 分，不是拿三派里的最大最小拉满。`;
+  const stars = `难度 ${H.stars} 星，区间 ${H.starsCI[0]}～${H.starsCI[1]} 星：满级比木头多打掉 ${H.gap[0]} 个点，区间 ${H.gap[1]}～${H.gap[2]} —— 多得越多越吃操作；−10 个点 1 星、0 个点 3 星、+10 个点 5 星`;
+  if (mode === 'man') return `<div class="mn-hex">${hexSVG(id, 260, true)}<div><p>${hexStars(H.stars, 14)} ${stars}</p><table class="mn-t"><thead><tr><th>轴</th><th>量的是什么</th><th>量出来</th><th>分</th><th>尺</th></tr></thead><tbody>${rows.map(r => `<tr><th>${r[0]}</th><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td class="mn-dim">${r[4]}</td></tr>`).join('')}</tbody></table>${GX.note(how, mode)}</div></div>`;
+  return `<div class="g-hex">${hexSVG(id, 280, true)}<div class="gh-body"><p class="gh-stars">${hexStars(H.stars, 16)}<span>${stars}</span></p><table class="g-mul hex-t"><thead><tr><th>轴</th><th>量的是什么</th><th>量出来</th><th>分</th></tr></thead><tbody>${rows.map(r => `<tr><th>${r[0]}</th><td>${r[1]}<small>${r[4]}</small></td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table><p class="g-note">${how}</p></div></div>`;
+}
+
 const GUIDE_BOOKS = [
   { id: 'all', name: '通用', pages: [
     { id: 'start', name: '上手', body(mode) {
@@ -612,9 +671,10 @@ const GUIDE_BOOKS = [
     } },
     { id: 'body', name: '身法', body(mode) { return GX.tech(G_BODY, 'trad', mode); } },
   ] },
-  { id: 'trad', name: '传统格斗', style: 'trad', pages: [
+  { id: 'trad', name: '格斗术', style: 'trad', pages: [
     { id: 'start', name: '上手', body(mode) {
-      return GX.p('传统格斗：拳、重、腿三系的招式多、连招多，大开大合，重拳霸体、腿长、摔投，靠读招和破招。', mode) +
+      return GX.p('格斗术：拳、重、腿三系的招式多、连招多，大开大合，重拳霸体、腿长、摔投，靠读招和破招。', mode) +
+        GX.sec('六边形', hexBlock('trad', mode), mode, '量出来的') +
         GX.sec('怎么打', GX.steps(G_TRAD_TIPS, mode), mode) +
         GX.sec('自己的加成', GX.muls(G_TRAD_MULS, mode), mode);
     } },
@@ -623,7 +683,7 @@ const GUIDE_BOOKS = [
     } },
     { id: 'combos', name: '连招', body(mode) {
       return GX.p(`打中或者被挡住以后马上按下一招就接上了；没打中的话，0.4 秒内接着出也算。连招的<b>起手</b>是第一下、<b>主系</b>是最后一下，交手时按这两个比克制。<span class="g-keys">${['拳', '重', '踢', '蹲'].map(c => gKbd(c)).join(' ')}</span>`, mode) +
-        GX.combos(G_COMBOS, 'trad', mode) + GX.note('连击衰减：同一套里挨得越多，硬直越短、推得越远，一套最多五下左右。', mode);
+        GX.combos(G_COMBOS, 'trad', mode) + GX.note(`越连越疼：每多连一下 +${Math.round(COMBO_ESC * 100)}%，同一招在一套里再用一次只算一半；一套最多 ${COMBO_MAX} 下。长连招要离得近，一步以内才接得满，远了推开就断。`, mode);
     } },
     { id: 'tech', name: '攻防', body(mode) { return GX.tech(G_TECH, 'trad', mode); } },
     { id: 'charts', name: '查表', body(mode) {
@@ -637,6 +697,7 @@ const GUIDE_BOOKS = [
     { id: 'start', name: '上手', body(mode) {
       const lap = GX.tech([{ group: '咏春拳的摔', list: [WG_LAP] }], 'wc', mode);
       return GX.p('咏春拳：手短、快、贴身。连环冲拳按拍子打，不看打没打中；手一搭上就在手上做文章。', mode) +
+        GX.sec('六边形', hexBlock('wc', mode), mode, '量出来的') +
         GX.tech([{ group: '五个键和搭手', list: WG_KEYS }], 'wc', mode) +
         GX.sec('怎么打', GX.steps(WG_TIPS, mode), mode) + lap;
     } },
@@ -661,6 +722,7 @@ const GUIDE_BOOKS = [
   { id: 'taiji', name: '太极拳', style: 'taiji', pages: [
     { id: 'start', name: '上手', body(mode) {
       return GX.p('太极拳：慢而强。招都慢，不跟人抢快 —— 先出一招等他，他打进来被化掉，你按住蓄、松开发；他打过来按住挡、按后是捋。上手容易，难在什么时候松开、什么时候捋。', mode) +
+        GX.sec('六边形', hexBlock('taiji', mode), mode, '量出来的') +
         GX.tech([{ group: '蓄 · 发 · 化 · 捋 · 采', list: TG_KEYS }], 'taiji', mode) +
         GX.sec('怎么打', GX.steps(TG_TIPS, mode), mode);
     } },

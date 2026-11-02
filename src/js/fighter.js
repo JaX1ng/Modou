@@ -86,10 +86,43 @@ function runArm(u, tor, amp) {
 const FIT_KEYS = ['hip', 'neck', 'head', 'shF', 'shB', 'fe', 'be', 'fh', 'bh', 'fk', 'bk', 'ff', 'bf'];   // fitContact 粗看一眼用的关节
 const ARM_KEEP = 0.4 * (BODY.bone.ua + BODY.bone.fa);   // 2.11 贴身出拳：拳头最多收到离肩膀这么远（顺着胳膊量，胳膊长的四成），肘在下面；再近就扎进去一点，胳膊不往回折到肩膀后面
 const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
+/* 3.1 脚踩实（Jack：动作还是不够专业、比较僵硬）：以前招式往前冲（lunge）、姿势里髋往前挪（dx）的时候，两只脚跟着整个人在地上平着滑 ——
+   业余动画最典型的毛病（「溜冰」）。现在踩在地上的脚钉在原地（世界坐标），姿势要它去的地方离它超过 STEP_TOL 才迈一步：
+   STEP_T 帧走过去，前脚抬起来 STEP_H[0]、后脚擦着地跟上（STEP_H[1]，蹬地跟步）；腿够不着了也迈。
+   刚落地、刚站起来、挨完打就在当时的地方踩住。只是画面（plant 在 SNAP_SKIP 里，战斗、联机都不看） */
+const STEP_TOL = 9, STEP_T = 4, STEP_H = [5, 1.6];
+/* 3.1 发力顺序（动势链；Jack：动作僵硬）：以前一个关键帧到下一个关键帧，全身每一样一起出发、一起到 —— 像木偶。真打拳是蹬地、转胯、送肩、出手一节带一节，
+   打到以后手先收回来、身子慢半拍才回来。现在身子那几样（髋、前移、前倾、拧腰、转身、头，还有不出招的那条腿）按「早 lead 帧」的姿势取，
+   手和出招的那条腿照原来的时间走：出手前身子先动、打到那一下全身对齐（判定那几帧和以前一模一样），收招时身子拖半拍。
+   lead 最多前摇的 CHAIN_LEAD（CHAIN_LEAD_MAX 帧），收招拖最多 CHAIN_LAG（CHAIN_LAG_MAX 帧），两头都是 0（不跳） */
+const CHAIN_LEAD = 0.2, CHAIN_LEAD_MAX = 3, CHAIN_LAG = 0.16, CHAIN_LAG_MAX = 2.5;
+const ARM_K = ['fe', 'be', 'fp', 'bp', 'fpa', 'bpa', 'fpr', 'bpr', 'fw', 'bw', 'fz', 'fs', 'bs', 'fhk', 'bhk', 'fv', 'bv'];
+const LEG_K = { ff: ['fn', 'ft', 'fo'], bf: ['bn', 'bt', 'bo'] };
+function chainLead(d, bt) {
+  if (d.spinny === undefined) d.spinny = !!(d.keys && d.keys.some(k => k[1] && Math.abs(k[1].spin || 0) > 30));   // 转身的招（回身肘、转身蹬……）整个人一起转，身子、手不分先后
+  if (d.script || d.limb === 'sh' || d.noChain || d.spinny) return 0;
+  const S = d.S, A = d.A, R = d.R;
+  if (bt < S) return Math.min(CHAIN_LEAD_MAX, CHAIN_LEAD * S) * Math.sin(Math.PI * clamp(bt / S, 0, 1));
+  if (bt <= S + A || !R) return 0;
+  return -Math.min(CHAIN_LAG_MAX, CHAIN_LAG * R) * Math.sin(Math.PI * clamp((bt - S - A) / R, 0, 1));
+}
+const CP_TMP = mk();
+// 关键帧按发力顺序取：身子按 bt + lead，手（和出招的那条腿）按 bt
+function evalChain(t, d, bt) {
+  const lead = chainLead(d, bt);
+  if (!lead) return copyPose(t, evalKeys(d.keys, bt));
+  copyPose(t, evalKeys(d.keys, bt + lead));
+  const a = copyPose(CP_TMP, evalKeys(d.keys, bt));
+  t.fh[0] = a.fh[0]; t.fh[1] = a.fh[1]; t.bh[0] = a.bh[0]; t.bh[1] = a.bh[1];
+  for (const k of ARM_K) t[k] = a[k];
+  const lg = d.limb === 'ff' || d.limb === 'bf' ? d.limb : null;
+  if (lg) { t[lg][0] = a[lg][0]; t[lg][1] = a[lg][1]; for (const k of LEG_K[lg]) t[k] = a[k]; }
+  return t;
+}
 class Fighter {
   constructor(idx, cfg) {
     this.idx = idx; this.setLook(cfg.look);
-    this.style = cfg.style || STYLE_DEFAULT;   // 2.7.1 拳派（现在只有「传统格斗」trad，见 moves.js 的 STYLES）：出招、取消、连招变招都查这一派的表
+    this.style = cfg.style || STYLE_DEFAULT;   // 2.7.1 拳派（现在只有「格斗术」trad，见 moves.js 的 STYLES）：出招、取消、连招变招都查这一派的表
     this.inp = new Input(); this.opp = null;
     this.disp = mk(); this.tgt = mk();
     this.maxHp = MAX_HP;
@@ -101,7 +134,7 @@ class Fighter {
     this.dashEnd = -999; this.info = null; this.comboDmg = 0; this.maxComboDmg = 0; this.prevCombo = null; this.freeAt = -999;
     this.chain = []; this.chainIdle = 99; this.slowJab = 0; this.airUsed = false; this.lowBlock = false;
     this.stunT = 0; this.hurtHeavy = false; this.grabbed = false; this.downPhase = null; this.lieT = LIE_GROUND; this.landT = 4; this.riseT = RISE;
-    this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.rushStamped = false;
+    this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.comboSeen = '|'; this.rushStamped = false;   // 3.1 comboSeen：这一套里挨过哪几招（同一招再用打折）
     this.clock = 0; this.serial = 0; this.walkPhase = 0; this.runT = 0; this.airT = 0; this.leapJump = false;
     this.carried = false; this.carry0 = 0; this.carryRot = 0; this.slam = false; this.qiGlow = 0; this.heat = 0; this.hitFlash = 0; this.hitShake = 0;
     this.lieKind = 0; this.gwalk = 0; this.slipGot = false;   // 2.0：躺姿（画面）、边挡边走（画面）、闪身躲过了重拳（接着回身肘）
@@ -131,7 +164,7 @@ class Fighter {
     this.look = p.id; this.color = p.color; this.sash = palOf(p.color).band; this.text = p.text; this.name = p.name;
   }
   get airborne() { return this.alt > 0 || this.vz > 0; }
-  get moves() { return styleOf(this).moves; }        // 2.7.1 自己这一派的招式表（传统格斗 MOVES，咏春拳 WMOVES）
+  get moves() { return styleOf(this).moves; }        // 2.7.1 自己这一派的招式表（格斗术 MOVES，咏春拳 WMOVES）
   get poses() { return styleOf(this).poses || POSE; } // 2.9 自己这一派的架势（站、蹲、挡……；咏春拳是问手 + 护手、竖掌）
   actionable() { return ACTIONABLE.has(this.state); }
   rollLen(dir) { return dir === this.facing ? ROLL_DIST : ROLL_BACK; }   // 2.7 滚身起滚多远：往前（面朝的方向）96、往后 64
@@ -358,7 +391,7 @@ class Fighter {
     const after = m.t + DT - 1 - m.S;
     if (after < 1 || after >= m.def.A + 13) return false;
     if (ST.chainMax) { if (this.chain.filter(c => c !== 'pc').length >= ST.chainMax) return false; }   // 一串最多几下
-    else if (kind === 'jab' && this.jabRun() >= JAB_CHAIN_MAX) return false;
+    else if ((kind === 'jab' && this.jabRun() >= JAB_CHAIN_MAX) || this.chain.length >= COMBO_MAX) return false;   // 3.1 一套最多 COMBO_MAX 下
     return (ST.cancel[m.def.kind] || []).includes(kind);
   }
   startAttack(kind, cancel) {
@@ -563,7 +596,7 @@ class Fighter {
         // 2.0 闪身：挡住的硬直里按着挡、朝对手双击 → 不等硬直完，直接从他身边钻过去
         if (!locked && h.block && !h.down && this.clock - this.dashT < 4 && this.dashDir === this.oppSide()) { this.dashT = -999; this.beginSlip(); break; }
         if (!locked && this.stompReady() && this.takePress(['kick'])) { this.beginMove('stomp', 'kick'); break; }        // 蹲挡住扫堂腿 → 踩腿
-        // 挡住后按重 → 截击（传统格斗，花 25 气）；拳派表里 blockHeavy 写 null 的没有这一下（2.10 咏春拳）
+        // 挡住后按重 → 截击（格斗术，花 25 气）；拳派表里 blockHeavy 写 null 的没有这一下（2.10 咏春拳）
         { const bst = styleOf(this), bh = bst.blockHeavy === undefined ? 'jieQuan' : bst.blockHeavy;
           if (bh && !locked && this.qi >= (this.moves[bh].cost || 0) && this.takePress(['heavy'])) { this.beginMove(bh, null); break; } }
         if (!locked && !styleOf(this).catchGuard && this.takePress(['jab'])) { this.beginMove('shove', null); break; }   // 2.11 咏春拳挡着按拳是接招（wcDefend 看按键），不是推挡
@@ -885,7 +918,7 @@ class Fighter {
         const m = this.move;
         // 连环寸拳打中以后那一串：左右手交替（一拳一个姿势，写在招式的 flurry 里），最后一记寸拳
         if (m.flurry) { const FL = m.def.flurry; return copyPose(t, m.fi >= FL.n - 1 ? FL.endPose : FL.poses[m.fi % 2]); }
-        copyPose(t, evalKeys(m.def.keys, this.baseTime()));
+        evalChain(t, m.def, this.baseTime());                   // 3.1 发力顺序：身子先动、手后到；打到那一下全身对齐
         // 1.9.4 坠山近身踩得陡（见 aimDive）：身子跟着立直一点，脚冲着底下的人，不是斜着往前伸
         if (m.def.dive && !m.bounce && m.dvx !== undefined) t.rot *= 0.3 + 0.7 * m.dvx / DIVE_VX;
         // 坠山踩中：顺着这一脚蹲着落下来；被挡：往后翻一个跟头弹开
@@ -912,7 +945,16 @@ class Fighter {
         if (this.clashed) return copyPose(t, POSE.recoil);
         if (this.airborne) return copyPose(t, POSE.hurtAir);
         if (this.grabbed && this.stunT > 12) return copyPose(t, POSE.pulled);
-        return copyPose(t, this.hurtHeavy ? POSE.hurtH : POSE.hurtL);
+        {
+          // 3.1 挨打的反应（见 hurtStart）：头一两成猛地到位，后面慢慢缓回到护着的架势
+          const u = clamp((this.clock - (this.hurtAt || 0)) / (this.hurtLen || 12), 0, 1), kind = this.hurtKind || (this.hurtHeavy ? 'mid' : 'high');
+          const P0 = kind === 'low' ? POSE.hurtLow : kind === 'mid' ? (this.hurtHeavy ? POSE.hurtH : POSE.hurtM) : (this.hurtHeavy ? POSE.hurtHH : POSE.hurtL);
+          const back = EASE.io(clamp((u - 0.3) / 0.7, 0, 1));
+          copyPose(t, P0);
+          if (back > 0) lerpPose(t, POSE.hurtRec, back * 0.85, t, false);
+          if (this.hurtAlt) { t.head += 4 * (1 - back); t.tw -= 8 * (1 - back); }
+          return t;
+        }
       case 'down': case 'ko': {
         const lie = this.prone ? POSE.lieProne : this.lieKind ? POSE.lieFlat : POSE.lie;   // 2.10 被拉手跪马拽倒的：脸朝下趴着
         if (this.downPhase === 'fall') return copyPose(t, this.slam ? lie : POSE.fall);   // 被摔：背着地直接砸下去
@@ -940,9 +982,12 @@ class Fighter {
       const k = st === 'attack' || st === 'tumble' ? 0.78 : this.carried ? 0.85 : (st === 'hit' || st === 'blockstun' || st === 'parry') ? 0.6
         : (st === 'down' || st === 'ko') ? (this.slam && this.downPhase === 'fall' ? 0.6 : 0.3) : st === 'run' ? (this.runT < 5 ? 0.5 : 0.88) : st === 'air' ? 0.32 : 0.4;
       if (!hold) lerpPose(this.disp, tg, lk(k), this.disp, true);       // 每帧往目标挪 k → 每步挪 lk(k)（2.6）
+      if (hold) this.hurtStart();                                         // 3.1 刚挨了一下：挨打的样子从这一下重新算（打哪、多重）
       const hy0 = this.hipY, ik0 = this.ikS ? this.ikS.slice() : null;
+      const pl = this.plantFeet();                                        // 3.1 脚踩实：踩在地上的脚不跟着滑，离得远了迈一步
       this.fk();
       this.fitContact(hy0, ik0);
+      if (pl) { const p = this.disp; p.ff[0] = pl[0]; p.ff[1] = pl[1]; p.bf[0] = pl[2]; p.bf[1] = pl[3]; }
       emitQi(this);
       // 拳脚轨迹 + 残影（只在出招时有；跑步不留残影）
       const m = this.move;
@@ -963,6 +1008,43 @@ class Fighter {
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - DT);          // 挨打白闪 / 抖动（只是画面），打中停顿里也照常倒数
     if (this.hitShake > 0) this.hitShake = Math.max(0, this.hitShake - DT);
     this.updateRibbons();
+  }
+  // 3.1 脚踩实（见 STEP_TOL）：改的是这一步的 disp.ff / bf（画完这一帧还回去，下一步照旧从姿势本来的位置往目标走）。返回改之前的 [ffx, ffy, bfx, bfy]
+  plantFeet() {
+    const p = this.disp, st = this.state, m = this.move;
+    const ok = !this.airborne && !this.gwalk && !this.carried && Math.abs(wrapDeg(p.spin)) < 20 && Math.abs(wrapDeg(p.rot)) < 6 &&
+      (st === 'idle' || st === 'crouch' || st === 'block' || st === 'parry' || st === 'land' || st === 'rise' || st === 'jumpsquat' ||
+        (st === 'attack' && !!m && !m.air && !m.def.dive && !(m.def.script && m.def.lunge && m.def.lunge[2] > 40)));
+    if (!ok) { this.plant = null; return null; }
+    const f = this.facing, P = this.plant && this.plant.f === f ? this.plant : (this.plant = { f, ff: null, bf: null });
+    const keep = [p.ff[0], p.ff[1], p.bf[0], p.bf[1]];
+    const legLen = BODY.bone.th + BODY.bone.sh - 1.5, A = BODY.bone.ankle;
+    ['ff', 'bf'].forEach((k, i) => {
+      const lift = p[k][1], xd = this.x + f * (p.dx + p[k][0]);
+      if (lift > 1.5) { P[k] = null; return; }                         // 姿势自己抬着的脚（踢、提膝）：不管
+      let s = P[k];
+      if (!s) { P[k] = { x: xd, from: xd, to: xd, t: 1 }; return; }
+      const hipX = this.x + f * (p.dx + (k === 'ff' ? BODY.hipSplit : -BODY.hipSplit));
+      const far = Math.hypot(s.x - hipX, p.hy - A - lift) > legLen;
+      if (s.t >= 1 && (Math.abs(xd - s.x) > STEP_TOL || far)) { s.from = s.x; s.t = 0; }
+      let up = 0;
+      if (s.t < 1) {
+        s.to = xd; s.t = Math.min(1, s.t + DT / STEP_T);
+        s.x = s.from + (s.to - s.from) * EASE.io(s.t);
+        up = STEP_H[i] * Math.sin(Math.PI * s.t) * clamp(Math.abs(s.to - s.from) / 18, 0.35, 1);
+      }
+      p[k][0] = (s.x - this.x) * f - p.dx; p[k][1] = Math.max(lift, up);
+    });
+    return keep;
+  }
+  /* 3.1 挨打（Jack：动作僵硬）：以前挨了打就是一个姿势（轻的往后仰、重的弯腰）一直摆到硬直完。现在照打在哪、多重：
+     打头（上段、拳）—— 头往后一甩、下巴扬起来；打身子（重拳、腿、中段）—— 胸口往里一缩、弯腰；打腿（下段）—— 前腿一软往下沉。
+     头一两成的时间猛地到位，后面慢慢缓回来、手往回护（硬直快完的时候已经是半个架势）。左右两种轮着来（不每次一样）。只是画面 */
+  hurtStart() {
+    const om = this.opp && this.opp.move, d = om && om.def;
+    this.hurtAt = this.clock; this.hurtLen = Math.max(4, this.stunT || 12);
+    this.hurtKind = !d ? 'mid' : d.height === 'low' ? 'low' : (d.kind === 'kick' || d.heavy || d.tier === 'heavy') ? (d.height === 'high' ? 'high' : 'mid') : 'high';
+    this.hurtAlt = (this.hurtAlt || 0) ^ 1;
   }
   // 2.0.1 画面插值：记下上一帧画出来的样子（骨骼、发带、位置），render.js 在两帧之间按时间插着画 ——
   // 显示器比 60Hz 快（120 / 144Hz）时人跑起来不再一顿一顿、看着有重影。只是画面（vp 在 SNAP_SKIP 里）
@@ -997,7 +1079,7 @@ class Fighter {
     const ax = Math.cos(p.spin * D2R) * Math.cos(p.rot * D2R);   // 姿势里往前（x）挪 1，画面上往前挪多少（转身、翻滚时变小、反过来）
     const keep = { dx: p.dx, fh: p.fh.slice(), bh: p.bh.slice(), ff: p.ff.slice(), bf: p.bf.slice() };
     const noArms = !o.isBlocking();                             // 挡着的：拳头停在他的胳膊上；没挡：从护着的手上面过去，停在身上
-    const oParts = bodyParts(OJ, 0).parts, tgtBody = bodyTargets(OJ, true, oParts), tgtHit = noArms ? tgtBody : bodyTargets(OJ, false, oParts);
+    const oParts = bodyParts(OJ, 0, null, true).parts, tgtBody = bodyTargets(OJ, true, oParts), tgtHit = noArms ? tgtBody : bodyTargets(OJ, false, oParts);
     const CORE = FIT_CORE, FEET = FIT_FEET;
     const refit = () => { this.hipY = hy0; if (ik0) for (let i = 0; i < 4; i++) this.ikS[i] = ik0[i]; this.fk(); };
     // 脚踝目标放到 x（姿势的坐标），腿够不着就往髋底下收到刚好够着（不然脚会被拽离地）
@@ -1102,7 +1184,8 @@ class Fighter {
      两个大腿根前后错开一点。手的目标点 fh / bh 是相对「两肩中间」sh 的；脚的目标点是脚踝（离鞋底 BODY.bone.ankle）。
      转身 spin：每个点除了前后（x）、上下（y）还有左右（z：后手肩、前腿根在近侧），绕竖轴转过去再投到画面上 ——
      转到一半时肩膀、两腿左右分开（正面看的样子），以前只是把 x 压扁 */
-  fk() {
+  // keepHip（3.1 别手 wcBind 重摆手的时候用）：髋的高低不再往目标挪一步（这一步 animate 已经挪过了），只重算骨骼
+  fk(keepHip) {
     const p = this.disp, L = BODY.bone;
     const tor = p.tor * D2R, hd = (p.tor + p.head) * D2R;
     const tx = Math.sin(tor), ty = -Math.cos(tor);            // 脊柱往上的方向
@@ -1165,7 +1248,7 @@ class Fighter {
     let hipT;
     if (this.airborne) hipT = Math.min(-(this.alt + p.hy), -maxY);
     else hipT = -maxY - p.air;
-    this.hipY = this.airborne ? hipT : this.hipY + (hipT - this.hipY) * lk(this.state === 'run' ? 0.85 : 0.55);
+    if (!keepHip || this.airborne) this.hipY = this.airborne ? hipT : this.hipY + (hipT - this.hipY) * lk(this.state === 'run' ? 0.85 : 0.55);
     if (!this.J) this.hipY = hipT;
     // 2.9 查别扭的动作时发现：从蹲着一下子站起来（托天掌、冲天炮、闪身、回身肘、过肩摔），髋跟得慢半拍，脚往地里陷 4 ~ 10 像素 —— 在地上时脚不往地里陷
     else if (!this.airborne && this.hipY > -maxY) this.hipY = -maxY;

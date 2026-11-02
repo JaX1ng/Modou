@@ -1,7 +1,7 @@
 'use strict';
 /* ============================================================
    太极拳（3.0；设计稿 TAIJI.md）—— 第三派。Jack：太极从现实层面就是「慢而强」，游戏里操作的特点要体现出来；
-   每一派都要有自己的操作难度、自己的上限（传统格斗 = 攻击多样；咏春 = 防守反打 + 连续进攻，难、上限高）。
+   每一派都要有自己的操作难度、自己的上限（格斗术 = 攻击多样；咏春 = 防守反打 + 连续进攻，难、上限高）。
    太极的操作是「蓄 · 化 · 发」：
    · 慢：全派都是慢招（前摇 18 帧起，没有快招），按 2.12 的标尺，对面反应过来看得见、挡得住每一招 —— 太极不靠快打中人
    · 蓄：拳 / 重 / 踢按住不放，前摇走到六成停住、势接着一式一式往下走（揽雀尾 掤 → 捋 → 挤 → 按，搬拦捶 搬 → 拦 → 捶……），
@@ -67,23 +67,23 @@ const TJ_FLOW = {};
 const TMOVES = {
   /* ---- 拳：揽雀尾一家（掌）。tjCharge：按住蓄、前摇里有掤（化）；松开发劲 ---- */
   // 揽雀尾：前手掤出去、两掌按出去。蓄着：掤 → 捋 → 挤 → 按（收回胸前），松开两掌往前按出去
-  tjLan: TM({ kind: 'jab', slowGuard: true, label: '揽雀尾', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 12, dmg: 14, reach: 96, stun: 19, bstun: 12, kb: 5, stop: 7, shake: 4, power: .75,
+  tjLan: TM({ kind: 'jab', slowGuard: true, label: '揽雀尾', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 12, dmg: 15, reach: 96, stun: 19, bstun: 12, kb: 3.5, stop: 7, shake: 4, power: .75,
     limb: 'fh', fx: 'palm', lunge: [8.6, 12, 12],
     keys: [[0, {}], [0.3, P_BALL], [0.6, P_PENG], [1, P_AN, 'out'], [2, P_AN], [3, {}]] }),
   // 玉女穿梭（前 + 拳）：上步，一手架在头上、一手穿掌推出去 —— 射程长、往前冲一大步
-  tjChuan: TM({ kind: 'jab', slowGuard: true, label: '玉女穿梭', stamp: '玉女穿梭', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 11, reach: 100, stun: 18, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
+  tjChuan: TM({ kind: 'jab', slowGuard: true, label: '玉女穿梭', stamp: '玉女穿梭', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 12, reach: 100, stun: 18, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'palm', lunge: [8.6, 12, 26],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: 0, dx: -4, tw: 10, ...tHand('f', [20, 16], 'palm', 4, 1, 0.2), ...tHand('b', [24, -4], 'palm', 176, 1, 0.2) })],
       [1, TJ(T_BOW, { tor: 12, dx: 20, tw: 26, ...tHand('f', [54, -2], 'palm', -74, 0.6, 0.35), ...tHand('b', [16, -30], 'palm', -170, 0.9, 0.2) }), 'out'],
       [2, TJ(T_BOW, { tor: 12, dx: 20, tw: 26, ...tHand('f', [54, -2], 'palm', -74, 0.6, 0.35), ...tHand('b', [16, -30], 'palm', -170, 0.9, 0.2) })], [3, {}]] }),
   // 倒卷肱（后 + 拳）：往后退一步，后手从耳边推掌出去、前手收回腰间 —— 一边退一边打（拉开距离用）
-  tjDao: TM({ kind: 'jab', slowGuard: true, label: '倒卷肱', stamp: '倒卷肱', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 11, dmg: 9, reach: 94, stun: 17, bstun: 10, kb: 6, stop: 6, shake: 3, power: .6,
+  tjDao: TM({ kind: 'jab', slowGuard: true, label: '倒卷肱', stamp: '倒卷肱', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 11, dmg: 10, reach: 94, stun: 17, bstun: 10, kb: 6, stop: 6, shake: 3, power: .6,
     limb: 'bh', fx: 'palm', lunge: [6, 14, -26],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: -2, dx: -4, tw: 24, ...tHand('f', [34, 2], 'palm', -60, 0.8, 0.2), ...tHand('b', [-10, -10], 'palm', -60, 0.8, 0.2) })],
       [1, TJ(T_SIT, { tor: 4, dx: 0, tw: -30, ...tHand('b', [50, -2], 'palm', -76, 0.55, 0.3), ...tHand('f', [6, 22], 'palm', 4, 1, 0.2) }), 'out'],
       [2, TJ(T_SIT, { tor: 4, dx: 0, tw: -30, ...tHand('b', [50, -2], 'palm', -76, 0.55, 0.3), ...tHand('f', [6, 22], 'palm', 4, 1, 0.2) })], [3, {}]] }),
   // 下势（蹲 + 拳）：坐在后腿上压得很低，前腿伸直，前掌顺着前腿往前穿（下段）；后手勾手留在后面
-  tjXia: TM({ kind: 'jab', slowGuard: true, label: '下势', stamp: '下势', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 10, reach: 100, stun: 18, bstun: 11, kb: 4, stop: 6, shake: 3, power: .65, height: 'low',
+  tjXia: TM({ kind: 'jab', slowGuard: true, label: '下势', stamp: '下势', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 11, reach: 100, stun: 18, bstun: 11, kb: 4, stop: 6, shake: 3, power: .65, height: 'low',
     limb: 'fh', fx: 'low', lunge: [8.6, 12, 10],
     keys: [[0, {}], [0.6, { hy: 50, tor: 18, head: -4, tw: 10, ff: [40, 0], bf: [-34, 0], ...tHand('f', [22, 10], 'palm', -30, 0.8, 0.2), ...tHand('b', [-34, 0], 'hook', 96, 1) }],
       [1, { hy: 38, tor: 30, head: -8, dx: 6, tw: 20, ff: [62, 0], bf: [-26, 0], ...tHand('f', [56, 38], 'palm', 14, 0.5, 0.15), ...tHand('b', [-34, 4], 'hook', 96, 1) }, 'out'],
@@ -91,11 +91,11 @@ const TMOVES = {
 
   /* ---- 重：搬拦捶一家（拳） ---- */
   // 搬拦捶：前手一搬、一拦，后手竖拳从腰间冲出去。蓄着：搬 → 拦 → 往下沉（拳收在腰后），松开捶出去
-  tjBan: TM({ kind: 'heavy', label: '搬拦捶', stamp: '搬拦捶', open: true, tjCharge: true, slow: 22, S: 14, A: 4, R: 14, dmg: 18, reach: 102, stun: 21, bstun: 13, kb: 6, stop: 9, shake: 6, power: .95, heavy: true,
+  tjBan: TM({ kind: 'heavy', label: '搬拦捶', stamp: '搬拦捶', open: true, tjCharge: true, slow: 22, S: 14, A: 4, R: 14, dmg: 20, reach: 102, stun: 21, bstun: 13, kb: 4, stop: 9, shake: 6, power: .95, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [8.6, 14, 16],
     keys: [[0, {}], [0.3, P_BAN], [0.6, P_LAN], [1, P_CHUI, 'out'], [2, P_CHUI], [3, {}]] }),
   // 金鸡独立（蹲 + 重，对空）：一腿提膝、一手往上托掌 —— 打跳过来的人（太极唯一不慢的一招，对空无敌）
-  tjJinJi: TM({ kind: 'heavy', label: '金鸡独立', stamp: '金鸡独立', tier: 'aa', lead: 'heavy', open: true, S: 9, A: 5, R: 15, dmg: 13, reach: 92, stun: 16, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
+  tjJinJi: TM({ kind: 'heavy', label: '金鸡独立', stamp: '金鸡独立', tier: 'aa', lead: 'heavy', open: true, S: 9, A: 5, R: 15, dmg: 14, reach: 92, stun: 16, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
     limb: 'fh', fx: 'palm', lunge: [2, 8, 6], launchAir: 9, antiAir: 160, airInv: [1, 12], ender: true, noCancel: true,
     keys: [[0, { hy: 52, tor: 16, head: -2, tw: 10, ff: [34, 0], bf: [-30, 0], ...tHand('f', [22, 10], 'palm', -60, 1, 0.2), ...tHand('b', [12, 14], 'palm', 0, 1, 0.2) }],
       [1, { hy: 76, tor: 2, head: -10, dx: 8, tw: 14, ff: [20, 46], bf: [-2, 0], ...tHand('f', [30, -46], 'palm', -96, 0.5, 0.3), ...tHand('b', [8, 26], 'palm', 4, 1, 0.2) }, 'out'],
@@ -103,15 +103,15 @@ const TMOVES = {
 
   /* ---- 踢：蹬脚一家（脚跟） ---- */
   // 蹬脚：提膝（两手十字合在胸前）→ 分手 → 脚跟往前蹬出去（中段，太极腿最长）
-  tjDeng: TM({ kind: 'kick', label: '蹬脚', open: true, tjCharge: true, noPeng: true, slow: 22, S: 15, A: 5, R: 14, dmg: 15, reach: 122, stun: 20, bstun: 12, kb: 6, stop: 8, shake: 5, power: .85,
+  tjDeng: TM({ kind: 'kick', label: '蹬脚', open: true, tjCharge: true, noPeng: true, slow: 22, S: 15, A: 5, R: 14, dmg: 17, reach: 122, stun: 20, bstun: 12, kb: 4, stop: 8, shake: 5, power: .85,
     limb: 'ff', fx: 'kick', lunge: [10.1, 16, 8],
     keys: [[0, {}], [0.6, P_TIXI], [1, P_DENG, 'out'], [2, P_DENG], [2.4, TJ(P_TIXI, { ff: [24, 34] })], [3, {}]] }),
   // 分脚（前 + 踢、拳后接踢）：脚尖往前上方一踢（比蹬脚远一点、轻一点）
-  tjFen: TM({ kind: 'kick', label: '分脚', tag: '分脚', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 5, R: 14, dmg: 12, reach: 126, stun: 19, bstun: 11, kb: 5, stop: 7, shake: 4, power: .75,
+  tjFen: TM({ kind: 'kick', label: '分脚', tag: '分脚', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 5, R: 14, dmg: 13, reach: 126, stun: 19, bstun: 11, kb: 3, stop: 7, shake: 4, power: .75,
     limb: 'ff', fx: 'whip', lunge: [9.4, 14, 10],
     keys: [[0, {}], [0.6, P_TIXI], [1, TJ(P_DENG, { ff: [96, 58], ft: -10, tor: -18 }), 'out'], [2, TJ(P_DENG, { ff: [96, 58], ft: -10, tor: -18 })], [2.4, TJ(P_TIXI, { ff: [24, 34] })], [3, {}]] }),
   // 跌岔（蹲 + 踢）：往下一坐、前腿贴地铲出去（下段，打倒）
-  tjDieCha: TM({ kind: 'kick', label: '跌岔', stamp: '跌岔', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 4, R: 18, dmg: 11, reach: 114, stun: 18, bstun: 10, kb: 4, stop: 7, shake: 5, power: .8, height: 'low',
+  tjDieCha: TM({ kind: 'kick', label: '跌岔', stamp: '跌岔', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 4, R: 18, dmg: 12, reach: 114, stun: 18, bstun: 10, kb: 4, stop: 7, shake: 5, power: .8, height: 'low',
     limb: 'ff', fx: 'sweep', lunge: [9.4, 14, 10], launch: 3.5, lie: 22, ender: true,
     keys: [[0, {}], [0.6, { hy: 52, tor: 14, head: -2, tw: 10, ff: [30, 0], bf: [-30, 0], ...tHand('f', [26, 8], 'palm', -40, 0.8), ...tHand('b', [10, -14], 'palm', -100, 0.8) }],
       [1, { hy: 30, tor: 12, head: 2, dx: 8, tw: 4, ff: [74, 0], ft: 30, bf: [-30, 0], bo: 40, ...tHand('f', [44, 14], 'palm', -10, 0.6, 0.3), ...tHand('b', [-28, -18], 'palm', -120, 0.6, 0.3) }, 'out'],
@@ -119,52 +119,52 @@ const TMOVES = {
 
   /* ---- 势（连下去最多三下；每一下也都按得住蓄）：拳拳 高探马 → 穿掌；拳重 指裆捶；拳拳重 白鹤亮翅；重拳 顺拦肘；重重 双峰贯耳；重踢 转身摆莲；
      踢拳 上步七星；踢重 弯弓射虎；踢踢 转身蹬脚；拳踢 分脚 ---- */
-  tjGaoTan: TM({ kind: 'jab', slowGuard: true, label: '高探马', tag: '高探马', tjCharge: true, S: 11, A: 4, R: 11, dmg: 10, reach: 98, stun: 19, bstun: 11, kb: 4, stop: 6, shake: 3, power: .65,
+  tjGaoTan: TM({ kind: 'jab', slowGuard: true, label: '高探马', tag: '高探马', tjCharge: true, S: 11, A: 4, R: 11, dmg: 11, reach: 98, stun: 19, bstun: 11, kb: 2.5, stop: 6, shake: 3, power: .65,
     limb: 'bh', fx: 'jab2', lunge: [6.6, 11, 10],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tw: 22, ...tHand('b', [8, -16], 'palm', -60, 0.8), ...tHand('f', [30, 4], 'palm', -10, 1) })],
       [1, TJ(T_BOW, { tor: 10, dx: 12, tw: -30, ...tHand('b', [56, -6], 'palm', -72, 0.5, 0.3), ...tHand('f', [10, 22], 'palm', 4, 1, 0.2) }), 'out'],
       [2, TJ(T_BOW, { tor: 10, dx: 12, tw: -30, ...tHand('b', [56, -6], 'palm', -72, 0.5, 0.3), ...tHand('f', [10, 22], 'palm', 4, 1, 0.2) })], [3, {}]] }),
-  tjChuanZ: TM({ kind: 'jab', slowGuard: true, label: '穿掌', stamp: '穿掌', tjCharge: true, S: 11, A: 4, R: 14, dmg: 14, reach: 102, stun: 20, bstun: 12, kb: 9, stop: 8, shake: 5, power: .8,
+  tjChuanZ: TM({ kind: 'jab', slowGuard: true, label: '穿掌', stamp: '穿掌', tjCharge: true, S: 11, A: 4, R: 14, dmg: 15, reach: 102, stun: 20, bstun: 12, kb: 9, stop: 8, shake: 5, power: .8,
     limb: 'fh', fx: 'jab2', lunge: [6.6, 11, 14], ender: true, noCancel: true,
     keys: [[0, {}], [0.6, TJ(T_SIT, { tw: -10, ...tHand('f', [16, 12], 'palm', 10, 0.9, 0), ...tHand('b', [30, -2], 'palm', -80, 0.8, 0.1) })],
       [1, TJ(T_BOW, { tor: 12, dx: 18, tw: 40, ...tHand('f', [60, 0], 'palm', -4, 0.25, 0), ...tHand('b', [14, 14], 'palm', -60, 0.9, 0.1) }), 'out'],
       [2, TJ(T_BOW, { tor: 12, dx: 18, tw: 40, ...tHand('f', [60, 0], 'palm', -4, 0.25, 0), ...tHand('b', [14, 14], 'palm', -60, 0.9, 0.1) })], [3, {}]] }),
-  tjZhiDang: TM({ kind: 'heavy', label: '指裆捶', stamp: '指裆捶', tjCharge: true, S: 13, A: 4, R: 15, dmg: 17, reach: 98, stun: 21, bstun: 12, kb: 6, stop: 9, shake: 6, power: .95, heavy: true,
+  tjZhiDang: TM({ kind: 'heavy', label: '指裆捶', stamp: '指裆捶', tjCharge: true, S: 13, A: 4, R: 15, dmg: 19, reach: 98, stun: 21, bstun: 12, kb: 6, stop: 9, shake: 6, power: .95, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [7.8, 13, 14], launch: 4, ender: true, noCancel: true,
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: 6, hy: 60, tw: 22, ...tHand('b', [-4, 28], 'fist'), ...tHand('f', [30, 6], 'palm', -60, 0.8) })],
       [1, TJ(T_BOW, { tor: 26, dx: 16, hy: 56, head: -4, tw: -30, ...tHand('b', [52, 30], 'fist'), ...tHand('f', [22, 2], 'palm', -82, 0.8) }), 'out'],
       [2, TJ(T_BOW, { tor: 26, dx: 16, hy: 56, head: -4, tw: -30, ...tHand('b', [52, 30], 'fist'), ...tHand('f', [22, 2], 'palm', -82, 0.8) })], [3, {}]] }),
-  tjBaiHe: TM({ kind: 'heavy', label: '白鹤亮翅', stamp: '白鹤亮翅', tjCharge: true, S: 12, A: 5, R: 16, dmg: 18, reach: 96, stun: 21, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+  tjBaiHe: TM({ kind: 'heavy', label: '白鹤亮翅', stamp: '白鹤亮翅', tjCharge: true, S: 12, A: 5, R: 16, dmg: 20, reach: 96, stun: 21, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'upper', lunge: [7.2, 12, 10], launch: 5, ender: true, noCancel: true, antiAir: 100,
     keys: [[0, {}], [0.6, TJ(P_BALL, { hy: 60, tor: 4 })],
       [1, { hy: 70, tor: -2, head: -6, dx: 10, tw: 16, ff: [30, 0], bf: [-38, 0], ...tHand('f', [30, -44], 'palm', -100, 0.6, 0.35), ...tHand('b', [12, 26], 'palm', 10, 1, 0.2) }, 'out'],
       [2, { hy: 72, tor: -4, head: -8, dx: 10, tw: 16, ff: [30, 0], bf: [-38, 0], ...tHand('f', [24, -54], 'palm', -100, 0.6, 0.35), ...tHand('b', [12, 26], 'palm', 10, 1, 0.2) }], [3, {}]] }),
-  tjShunLan: TM({ kind: 'jab', slowGuard: true, label: '顺拦肘', tag: '顺拦肘', tjCharge: true, S: 10, A: 4, R: 12, dmg: 12, reach: 80, stun: 19, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
+  tjShunLan: TM({ kind: 'jab', slowGuard: true, label: '顺拦肘', tag: '顺拦肘', tjCharge: true, S: 10, A: 4, R: 12, dmg: 13, reach: 80, stun: 19, bstun: 11, kb: 2.5, stop: 7, shake: 4, power: .7,
     limb: 'fe', fx: 'elbow', lunge: [6, 10, 14],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tw: -16, ...tHand('f', [8, 14], 'fist'), fe: 1, ...tHand('b', [22, 6], 'palm', -80, 0.8) })],
       [1, TJ(T_BOW, { tor: 18, dx: 22, hy: 60, tw: 56, ...tHand('f', [12, -4], 'fist'), fe: -1, ...tHand('b', [24, 4], 'palm', -86, 0.8, 0.1) }), 'out'],
       [2, TJ(T_BOW, { tor: 18, dx: 22, hy: 60, tw: 56, ...tHand('f', [12, -4], 'fist'), fe: -1, ...tHand('b', [24, 4], 'palm', -86, 0.8, 0.1) })], [3, {}]] }),
-  tjShuangFeng: TM({ kind: 'heavy', label: '双峰贯耳', stamp: '双峰贯耳', tjCharge: true, S: 13, A: 4, R: 16, dmg: 20, reach: 96, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 7, power: 1, heavy: true, height: 'high',
+  tjShuangFeng: TM({ kind: 'heavy', label: '双峰贯耳', stamp: '双峰贯耳', tjCharge: true, S: 13, A: 4, R: 16, dmg: 22, reach: 96, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 7, power: 1, heavy: true, height: 'high',
     limb: 'fh', fx: 'hook', lunge: [7.8, 13, 14], launch: 4.5, ender: true, noCancel: true,
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: 6, hy: 60, tw: 0, ...tHand('f', [20, 26], 'fist'), ...tHand('b', [16, 28], 'fist') })],
       [1, TJ(T_BOW, { tor: 14, dx: 18, tw: 6, ...tHand('f', [46, -14], 'fist'), fe: -1, ...tHand('b', [42, -12], 'fist'), be: -1 }), 'out'],
       [2, TJ(T_BOW, { tor: 14, dx: 18, tw: 6, ...tHand('f', [46, -14], 'fist'), fe: -1, ...tHand('b', [42, -12], 'fist'), be: -1 })], [3, {}]] }),
-  tjBaiLian: TM({ kind: 'kick', label: '转身摆莲', stamp: '转身摆莲', tjCharge: true, noPeng: true, S: 13, A: 6, R: 16, dmg: 19, reach: 122, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 8, power: 1, heavy: true,
+  tjBaiLian: TM({ kind: 'kick', label: '转身摆莲', stamp: '转身摆莲', tjCharge: true, noPeng: true, S: 13, A: 6, R: 16, dmg: 21, reach: 122, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'ff', fx: 'whirl', ghost: true, lunge: [7.8, 13, 10], launch: 5, ender: true, noCancel: true,
     keys: [[0, {}], [0.6, { spin: 150, hy: 70, tor: 4, tw: 0, ff: [16, 20], bf: [-6, 0], ...tHand('f', [24, -10], 'palm', -90, 1), ...tHand('b', [20, -6], 'palm', -80, 1) }],
       [1, { spin: 360, hy: 76, tor: -18, head: 8, dx: 10, tw: 0, ff: [84, 72], ft: 10, bf: [-18, 0], ...tHand('f', [56, -40], 'palm', -10, 0.6, 0.4), ...tHand('b', [44, -36], 'palm', -10, 0.6, 0.4) }, 'out'],
       [2, { spin: 360, hy: 76, tor: -18, head: 8, dx: 10, tw: 0, ff: [84, 72], ft: 10, bf: [-18, 0], ...tHand('f', [56, -40], 'palm', -10, 0.6, 0.4), ...tHand('b', [44, -36], 'palm', -10, 0.6, 0.4) }], [3, { spin: 360 }]] }),
-  tjQiXing: TM({ kind: 'jab', slowGuard: true, label: '上步七星', tag: '上步七星', tjCharge: true, S: 11, A: 4, R: 12, dmg: 11, reach: 98, stun: 19, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
+  tjQiXing: TM({ kind: 'jab', slowGuard: true, label: '上步七星', tag: '上步七星', tjCharge: true, S: 11, A: 4, R: 12, dmg: 12, reach: 98, stun: 19, bstun: 11, kb: 2.5, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'jab2', lunge: [6.6, 11, 18],
     keys: [[0, { ff: [30, 30] }], [0.6, TJ(T_SIT, { tw: 0, ...tHand('f', [16, 20], 'fist'), ...tHand('b', [12, 22], 'fist') })],
       [1, TJ(T_BOW, { tor: 10, dx: 16, tw: 4, ...tHand('f', [46, -2], 'fist'), ...tHand('b', [42, 2], 'fist'), fz: 1 }), 'out'],
       [2, TJ(T_BOW, { tor: 10, dx: 16, tw: 4, ...tHand('f', [46, -2], 'fist'), ...tHand('b', [42, 2], 'fist'), fz: 1 })], [3, {}]] }),
-  tjWanGong: TM({ kind: 'heavy', label: '弯弓射虎', stamp: '弯弓射虎', tjCharge: true, S: 13, A: 4, R: 16, dmg: 20, reach: 100, stun: 21, bstun: 12, kb: 7, stop: 9, shake: 6, power: 1, heavy: true,
+  tjWanGong: TM({ kind: 'heavy', label: '弯弓射虎', stamp: '弯弓射虎', tjCharge: true, S: 13, A: 4, R: 16, dmg: 22, reach: 100, stun: 21, bstun: 12, kb: 7, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [7.8, 13, 14], launch: 4.5, ender: true, noCancel: true,
     keys: [[0, { ff: [30, 30] }], [0.6, TJ(T_SIT, { tw: 26, ...tHand('b', [-12, -6], 'fist'), ...tHand('f', [10, 22], 'fist') })],
       [1, TJ(T_BOW, { tor: 14, dx: 16, tw: -22, ...tHand('b', [54, -6], 'fist'), ...tHand('f', [46, 14], 'fist') }), 'out'],
       [2, TJ(T_BOW, { tor: 14, dx: 16, tw: -22, ...tHand('b', [54, -6], 'fist'), ...tHand('f', [46, 14], 'fist') })], [3, {}]] }),
-  tjZhuanDeng: TM({ kind: 'kick', label: '转身蹬脚', stamp: '转身蹬脚', tjCharge: true, noPeng: true, S: 13, A: 5, R: 16, dmg: 18, reach: 120, stun: 21, bstun: 12, kb: 8, stop: 9, shake: 6, power: .95,
+  tjZhuanDeng: TM({ kind: 'kick', label: '转身蹬脚', stamp: '转身蹬脚', tjCharge: true, noPeng: true, S: 13, A: 5, R: 16, dmg: 20, reach: 120, stun: 21, bstun: 12, kb: 8, stop: 9, shake: 6, power: .95,
     limb: 'ff', fx: 'backKick', ghost: true, lunge: [7.8, 13, 10], launch: 4.5, ender: true, noCancel: true,
     keys: [[0, { ff: [26, 30] }], [0.6, TJ(P_TIXI, { spin: 160 })], [1, TJ(P_DENG, { spin: 360 }), 'out'], [2, TJ(P_DENG, { spin: 360 })], [3, { spin: 360 }]] }),
 
@@ -214,11 +214,16 @@ const TMOVES = {
     keys: [[0, J_(JT, { fp: 1, bp: 1, fpa: -60, bpa: -60, fh: [26, 10], bh: [16, 14] })], [0.55, J_(JT, { rot: 2, tor: 4, fh: [22, -4], fpa: -30, bh: [20, 6], tw: 20 })],
       [1, { rot: 18, tor: 24, head: -6, dx: 6, fh: [56, 12], fp: 1, fpa: 8, fpr: 0.3, fs: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }, 'back'],
       [2, { rot: 20, tor: 26, head: -6, dx: 6, fh: [54, 15], fp: 1, fpa: 8, fpr: 0.3, fs: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }], [3, JD]] }),
-  airHeavy: TM({ kind: 'heavy', label: '进步栽捶', stamp: '进步栽捶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 12, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
-    limb: 'bh', fx: 'hammer', air: true,
-    keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.7, { rot: -6, tor: -22, head: -10, bh: [-8, -56], bp: 0, be: -1, fh: [24, -20], ff: [18, 54], bf: [2, 48], tw: -20 }],
-      [1, { rot: 24, tor: 42, head: 12, dx: 12, bh: [50, 34], bp: 0, bv: 1, fh: [30, 8], fpa: -80, ff: [22, 26], bf: [-24, 36], tw: -20 }, 'out'],
-      [2, { rot: 26, tor: 44, head: 12, dx: 12, bh: [48, 38], bp: 0, bv: 1, fh: [30, 8], fpa: -80, ff: [22, 26], bf: [-24, 36], tw: -20 }], [3, JD]] }),
+  // 3.1 转身撇身捶（Jack：三派跳起来按重长得太像）：太极不往前翻 —— 身子在空中拧过去（后背先朝他），拳从另一边的胯下面
+  // 走一个立着的大圆：往上过头顶、再转身甩下来，拳背砸在他头上（杨式转身撇身捶：两手在身前划一个立圆，拳背从上往下盖过来）；
+  // 另一只手立掌护着脸。整个人立着，腿一前一后在空中分开
+  airHeavy: TM({ kind: 'heavy', label: '转身撇身捶', stamp: '撇身捶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 12, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+    limb: 'fh', fx: 'hammerFist', air: true,
+    keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })],
+      [0.2, { rot: -4, tor: 6, head: 4, tw: -50, fh: [-4, 30], fp: 0, fe: 1, bh: [20, -12], bp: 1, bpa: -80, bpr: 0.5, ff: [16, 52], bf: [-6, 44] }],
+      [0.52, { rot: -6, tor: -10, head: -6, tw: -10, fh: [2, -52], fp: 0, fe: -1, bh: [22, -6], bp: 1, bpa: -80, bpr: 0.5, ff: [22, 46], bf: [-14, 40] }],
+      [1, { rot: 4, tor: 20, head: 8, dx: 14, tw: 36, fh: [50, 18], fp: 0, fe: -1, bh: [16, -4], bp: 1, bpa: -80, bpr: 0.5, ff: [30, 30], bf: [-30, 34] }, 'out'],
+      [2, { rot: 6, tor: 24, head: 8, dx: 14, tw: 38, fh: [48, 22], fp: 0, fe: -1, bh: [16, -2], bp: 1, bpa: -80, bpr: 0.5, ff: [30, 28], bf: [-30, 32] }], [3, J_(JD, { fp: 1, bp: 1 })]] }),
   airKick: TM({ kind: 'kick', label: '旋风脚', stamp: '旋风脚', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 11, reach: 120, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.6, { rot: -6, spin: 180, tor: 10, head: -4, ff: [10, 60], bf: [-6, 46], fh: [34, -16], bh: [18, -6], tw: 10 }],
@@ -236,8 +241,8 @@ const TMOVES = {
   shove: TM({ kind: 'push', label: '挤', tier: 'push', S: 2, A: 4, R: 12, dmg: 0, reach: 108, stun: 9, bstun: 0, kb: PUSH_KB, stop: 4, power: .3, push: true,
     limb: 'fh', fx: 'jab', lunge: [0, 4, 10],
     keys: [[0, P_JI], [1, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-58, 0] }), 'back'], [2, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-58, 0] })], [3, {}]] }),
-  // 靠（挡住以后按重，花气 —— 传统格斗的截击那一下）：侧过身、肩膀往前一靠，出手前几帧打击无敌，把人靠出去
-  tjKao: TM({ kind: 'heavy', label: '靠', stamp: '靠', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 11, reach: 100, stun: 18, bstun: 10, kb: 11, stop: 9, shake: 6, power: .95, heavy: true,
+  // 靠（挡住以后按重，花气 —— 格斗术的截击那一下）：侧过身、肩膀往前一靠，出手前几帧打击无敌，把人靠出去
+  tjKao: TM({ kind: 'heavy', label: '靠', stamp: '靠', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 12, reach: 100, stun: 18, bstun: 10, kb: 11, stop: 9, shake: 6, power: .95, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [0, 5, 18], sinv: [0, 6], cost: GC_COST, ender: true, noCancel: true,
     keys: [[0, TJ(T_SIT, { tor: 4, tw: -10, ...tHand('f', [20, 10], 'palm', -40, 0.9), ...tHand('b', [12, 14], 'palm', -40, 0.9) })],
       [1, TJ(T_BOW, { tor: 22, head: -6, dx: 24, hy: 60, spin: 30, tw: 60, ...tHand('f', [8, 14], 'fist'), ...tHand('b', [4, 18], 'palm', -40, 0.9) }), 'back'],
@@ -289,7 +294,7 @@ TJ_FLOW.tjChuan = [TJ(P_BALL, { dx: -4 }), TJ(P_BALL, { dx: -6, hy: 62, tw: 2 })
 /* 架势（fighter.js target 用；蓄势、捋、云手在 tjTarget 里现画） */
 const TPOSE = {
   stance: tmk({}),                                                                                     // 单鞭
-  // 3.0.1（Jack：后腿弯下去太多了）：蹲着的后膝以前跪到地上（离地 2）—— 髋高 40 → 46、后脚往后，后膝离地 15（和传统格斗、咏春蹲着差不多）
+  // 3.0.1（Jack：后腿弯下去太多了）：蹲着的后膝以前跪到地上（离地 2）—— 髋高 40 → 46、后脚往后，后膝离地 15（和格斗术、咏春蹲着差不多）
   crouch: tmk({ hy: 46, tor: 16, head: -2, tw: 10, ff: [40, 0], bf: [-62, 0], ...tHand('f', [30, 6], 'palm', -60, 0.8), ...tHand('b', [-30, 2], 'hook', 96, 1) }),
   // 掤（按住挡）：两手十字合在胸前、掌心朝里（十字手）；蹲着是沉屈守中（defense_seq 01）
   block: tmk({ hy: 56, tor: 2, head: 4, dx: -2, tw: 4, ff: [42, 0], bf: [-54, 0], ...tHand('f', [24, -8], 'palm', -104, 1, 0.1), ...tHand('b', [27, -4], 'palm', -70, 1, 0.1), fz: 1 }),
@@ -677,7 +682,7 @@ const T_BENCH_GROUPS = [
 ];
 STYLES.taiji = {
   id: 'taiji', name: '太极拳', moves: TMOVES, relation: tjRelation, cancel: TJ_CANCEL, variant: tjVariant, poses: TPOSE, base: TBASE,
-  chainMax: 3, blockHeavy: 'tjKao', parry: false,
+  chainMax: 5, blockHeavy: 'tjKao', parry: false,   // 3.1 一串最多三下 → 五下（Jack：连招可以长；太极的势一式接一式：搬拦捶 → 顺拦肘 → 分脚 → 上步七星 → 弯弓射虎）
   input: tjInput, defend: tjDefend, strike: tjStrike, grab: tjGrab, target: tjTarget, drawCue: tjDrawCue,
   benchGroups: T_BENCH_GROUPS, benchHit: ['tjLan', 'tjChuan', 'tjDao', 'tjXia', 'tjBan', 'tjJinJi', 'tjDeng', 'tjFen', 'tjDieCha', 'tjGaoTan', 'tjChuanZ', 'tjZhiDang', 'tjBaiHe',
     'tjShunLan', 'tjShuangFeng', 'tjBaiLian', 'tjQiXing', 'tjWanGong', 'tjZhuanDeng', 'tjKao', 'slipElbow', 'super', 'stomp', 'airJab', 'airHeavy', 'airKick', 'dive'],

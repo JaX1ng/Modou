@@ -4,7 +4,7 @@
 
 const TESTS = [];
 Looks.solo = { me: 'ink', cpu: 'random' }; Looks.pvp = ['ink', 'indigo'];   // 测试不读这台电脑存的颜色
-Styles.solo = { me: 'trad', cpu: 'trad' }; Styles.pvp = ['trad', 'trad'];     // 2.9 拳派也一样（老测试都是传统格斗打传统格斗；咏春拳的测试自己换）
+Styles.solo = { me: 'trad', cpu: 'trad' }; Styles.pvp = ['trad', 'trad'];     // 2.9 拳派也一样（老测试都是格斗术打格斗术；咏春拳的测试自己换）
 const T = (name, fn) => TESTS.push({ name, fn });
 function eq(a, b, msg) {
   const A = JSON.stringify(a), B = JSON.stringify(b);
@@ -262,10 +262,11 @@ T('连击衰减：一直被短拳打，也会断开，被打的一方有机会�
     step([i % 2 ? 0 : TAP('jab'), 0]);
     if (F2.actionable()) { cur = 0; if (F2.hp < MAX_HP) freeAfterHit++; } else longest = Math.max(longest, ++cur);
   }
-  ok(longest < 60, `最长连续不能动 ${longest} 帧`); ok(freeAfterHit > 30, `被打后能动的帧数 ${freeAfterHit}`);
+  // 3.1（Jack：连招可以到六段到八段）短拳一串最多 JAB_CHAIN_MAX（6）下：一直按短拳最长被连 6 下（80 帧上下），断了就能动
+  ok(longest < 100, `最长连续不能动 ${longest} 帧`); ok(freeAfterHit > 30, `被打后能动的帧数 ${freeAfterHit}`);
 });
 T('被短拳压着时按住格挡，后面的都能挡住', () => {
-  arena(80); run(240, i => [TAP('jab'), i > 30 ? BLOCK : 0]);
+  arena(80); run(300, i => [TAP('jab'), i > 30 ? BLOCK : 0]);   // 3.1 短拳一串六下（连珠快拳、寸劲收尾），第一串打完要三百帧
   const firstCombo = lost(F2);
   run(200, () => [TAP('jab'), BLOCK]);
   ok(lost(F2) - firstCombo <= 6, `格挡之后还掉了 ${lost(F2) - firstCombo}`);
@@ -1977,7 +1978,7 @@ T('2.10 教程按拳派分书（Jack：以后会有更多更多的拳派进来�
       ok(!br, `${B.name} · ${P.name} · ${mode} 里有括号：${br && br[0]}`);
     }
   }
-  for (const g of G_MOVES) ok(MOVES[g.id], '传统格斗的书里没有这一招：' + g.id);
+  for (const g of G_MOVES) ok(MOVES[g.id], '格斗术的书里没有这一招：' + g.id);
   for (const g of WG_MOVES) ok(WMOVES[g.id], '咏春拳的书里没有这一招：' + g.id);
   for (const G of G_COMBOS) for (const c of G.list) {
     for (const m of c.moves) ok(MOVES[m], c.name + ' 的小图用了不存在的招：' + m);
@@ -2348,7 +2349,7 @@ T('2.5 一个连贯的整体的人（Jack：不能看出是一块块拼起来的
   }
   // 远侧 / 近侧：站着时前手、后腿在远侧，后手、前腿在近侧；转过身来两边对调
   arena(400); copyPose(F1.disp, POSE.stance); F1.J = null; F1.fk();
-  const far = J => bodyParts(J, 0).parts.filter(q => q.far).map(q => q.k).join(',');
+  const far = J => [...new Set(bodyParts(J, 0).parts.filter(q => q.far).map(q => q.k))].join(',');   // 3.1 手是一节一节的手指（同一个 k 好几块）：只看哪几样在远侧
   eq(far(F1.J), 'aFU,aFL,aFH,BU,BL,BF');
   F1.disp.spin = 180; F1.fk(); eq(far(F1.J), 'aBU,aBL,aBH,FU,FL,FF');
   // 画出来量：几个姿势、两种颜色
@@ -2979,12 +2980,12 @@ T('2.7.1 → 2.9 沉肩靠（Jack：腿别交叉、手也别交叉，就是半�
   ok(!bad.length, bad.slice(0, 6).join('；'));
   ok(low <= 64, '打中时没蹲下去（髋离地 ' + low.toFixed(0) + '，站着 73）');
 });
-T('2.7.1 拳派铺垫（Jack：以后还会做更多和这个一样完整的拳派，这一套是「传统格斗」，到时候跨派的克制、反应都要重新算）：每个人身上记着自己是哪一派，出招查自己这一派的表；不同派之间没专门算过谁克谁就不许交手', () => {
+T('2.7.1 拳派铺垫（Jack：以后还会做更多和这个一样完整的拳派，这一套是「格斗术」，到时候跨派的克制、反应都要重新算）：每个人身上记着自己是哪一派，出招查自己这一派的表；不同派之间没专门算过谁克谁就不许交手', () => {
   startMatch('pvp'); game.brains = [null, null];
-  eq(STYLES.trad.name, '传统格斗', '现在这一派'); ok(STYLES.trad.moves === MOVES, '传统格斗的招式表就是 MOVES');
-  eq([F1.style, F2.style], ['trad', 'trad'], '两个人都是传统格斗');
+  eq(STYLES.trad.name, '格斗术', '现在这一派'); ok(STYLES.trad.moves === MOVES, '格斗术的招式表就是 MOVES');
+  eq([F1.style, F2.style], ['trad', 'trad'], '两个人都是格斗术');
   ok(F1.moves === MOVES && styleOf(F2) === STYLES.trad, '出招查自己这一派的表');
-  // 临时造一派「测试派」：短拳伤害改成 77，别的照抄传统格斗 —— 用这一派的人打出来的就是这一派自己的短拳
+  // 临时造一派「测试派」：短拳伤害改成 77，别的照抄格斗术 —— 用这一派的人打出来的就是这一派自己的短拳
   const jab = Object.assign({}, MOVES.jab, { dmg: 77 });
   STYLES.test = Object.assign({}, STYLES.trad, { id: 'test', name: '测试派', moves: Object.assign({}, MOVES, { jab }) });
   try {
@@ -2992,8 +2993,8 @@ T('2.7.1 拳派铺垫（Jack：以后还会做更多和这个一样完整的拳�
     F1.beginMove('jab', 'jab'); F2.beginMove('jab', 'jab');
     let why = '';
     try { clashRelation(F1, F2); } catch (e) { why = e.message; }
-    ok(/还没算/.test(why), '不同派、没写 MATCHUPS 也能交手（会悄悄套用传统格斗的规矩）');
-    MATCHUPS['trad|test'] = { relation: () => -1 };      // 算过了（随便定）：这一对测试派克传统格斗
+    ok(/还没算/.test(why), '不同派、没写 MATCHUPS 也能交手（会悄悄套用格斗术的规矩）');
+    MATCHUPS['trad|test'] = { relation: () => -1 };      // 算过了（随便定）：这一对测试派克格斗术
     eq(clashRelation(F1, F2), -1, '照 MATCHUPS 算'); eq(clashRelation(F2, F1), 1, '反过来那一对取负号');
     arena(80); F1.style = 'trad'; F2.style = 'test';
     const hp = F1.hp;
@@ -3008,7 +3009,7 @@ T('2.7.1 拳派铺垫（Jack：以后还会做更多和这个一样完整的拳�
    2.10 咏春拳（WINGCHUN.md）：按键语法是它自己的 —— 连环冲拳按拍子、挡 = 拍手 / 黐手 / 耕手、挨打时黐手破连、
    搭手里翻手型打人、拉手扣住手腕往下拽（拉手跪马）。Jack：前手掌心朝里要看得出来、过肩摔换成拉拽、招名贴近咏春拳的打法
    ============================================================ */
-// 咏春拳打传统格斗（不写就是 P1 咏春、P2 传统）
+// 咏春拳打格斗术（不写就是 P1 咏春、P2 传统）
 function wArena(dist, s1, s2) {
   const keep = Styles.pvp; Styles.pvp = [s1 || 'wc', s2 || 'trad'];
   try { arena(dist); } finally { Styles.pvp = keep; }
@@ -3087,14 +3088,14 @@ function wRun(n, sched, v2) { return wWatch(() => { for (let i = 0; i < n; i++) 
 function waitRoll() { let k = 0; while (k++ < 20 && F1.move && F1.move.def.tch && (F1.move.rollT > 0 || F1.move.lapT > 0)) step([0, 0]); }
 const W_DIR = { 1: RIGHT, 2: LEFT, 3: DOWN };      // P1 在左边、朝右：前 / 后 / 蹲
 
-T('2.10 咏春拳是一整套自己的招：招式表、架势（问手 + 护手，两只掌）、按键语法（前 + 拳 = 标指、前 + 重 = 批肘、后 + 重 = 拐肘、蹲 + 重 = 沉肘……）、和传统格斗打的规矩', () => {
+T('2.10 咏春拳是一整套自己的招：招式表、架势（问手 + 护手，两只掌）、按键语法（前 + 拳 = 标指、前 + 重 = 批肘、后 + 重 = 拐肘、蹲 + 重 = 沉肘……）、和格斗术打的规矩', () => {
   eq(STYLES.wc.name, '咏春拳'); ok(STYLES.wc.moves === WMOVES, '招式表'); ok(!STYLES.ying, '没有迎春拳了');
-  ok(!!MATCHUPS['trad|wc'], '传统格斗 × 咏春拳的规矩写了');
+  ok(!!MATCHUPS['trad|wc'], '格斗术 × 咏春拳的规矩写了');
   eq(STYLE_IDS, ['trad', 'wc', 'taiji']);   // 3.0 太极拳
   for (const n of ['grab', 'lowGrab', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'stomp', 'dash', 'slip', 'slipElbow', 'burst', 'super',
     'tch', 'tChung', 'tTan', 'tBong', 'tFook', 'tPai', 'tKick', 'tLapDa', 'tLapPai', 'tLapKick', 'tDrag', 'tButterfly', 'tLat', 'tLatChung', 'tMess', 'tSep', 'wCunEnd', 'wCunEndF'])
     ok(!!WMOVES[n] && WMOVES[n].keys && WMOVES[n].keys.length, '战斗里按名字找的招都要有：' + n);
-  ok(!WMOVES.sweep && !WMOVES.palm && !WMOVES.heavy && !WMOVES.kick && !WMOVES.jab && !WMOVES.throwBack && !WMOVES.hold, '没有照搬传统格斗的招（也没有过肩摔）');
+  ok(!WMOVES.sweep && !WMOVES.palm && !WMOVES.heavy && !WMOVES.kick && !WMOVES.jab && !WMOVES.throwBack && !WMOVES.hold, '没有照搬格斗术的招（也没有过肩摔）');
   for (const [n, d] of Object.entries(WMOVES)) ok(d.style === 'wc', n + ' 是咏春拳的招');
   const P = WPOSE.stance; ok(P.fp === 1 && P.bp === 1, '待机两只手都是掌（问手、护手）'); ok(P.fpr > 0 && P.bpr > 0, '掌心朝里');
   const V = STYLES.wc.variant;
@@ -3141,7 +3142,7 @@ T('2.10 连环冲拳按拍子：两只手轮流、每三拳一记立掌、第 8 
   eq(hits.length, 8, '八下都打中'); ok(F2.state === 'down' || F2.state === 'rise', '寸拳收势打倒');
   ok(!ev.some(e => e.type === 'beat'), '按在拍子上：没有抢拍、过拍');
   ok(hits[6].dmg >= hits[1].dmg, '越打越疼：' + hits.map(e => e.dmg).join(' '));
-  ok(lost(F2) >= 33 && lost(F2) <= 40, '中立起手一整套 36 上下（2.10.1 打八折，2.11 打七折 29，2.12 回到八折、顺一级 8%）：' + lost(F2));
+  ok(lost(F2) >= 48 && lost(F2) <= 58, '中立起手一整套 53 上下（2.10.1 打八折，2.11 打七折 29，2.12 回到八折 36；3.1 冲拳 4 → 5 血、中立 ×0.85、顺一级 8% → 10%）：' + lost(F2));
   const gaps = hitAt.slice(1, 7).map((t, k) => t - hitAt[k]);       // 按游戏里的时间（打中停顿那几帧不算）
   ok(gaps.every(g => g >= WC_BEAT_MIN - 0.5 && g <= WC_BEAT + 0.5), '一拍一拳：' + gaps.join(' '));
   ok(gaps[gaps.length - 1] < gaps[0], '越打越快：' + gaps.join(' '));
@@ -3348,7 +3349,7 @@ T('2.10 被黏住的一方（2.11 接住进来的搭手他头 ' + WC_CATCH_GRACE
   ok(ev.some(e => e.type === 'dead'), '黏死'); ok(!ev.some(e => e.type === 'shake') && F2.stuck, '黏死以后甩手也甩不开');
 });
 T('2.11 挨打、被挡住的硬直里也能接（新的黐手破连）：按住挡，他下一下打过来之前 ' + WC_CATCH_HIT + ' 帧以内按对键 = 接住进搭手（顺 ' + FLOW_COUNTER + '）；按错键、几个键乱按这一下 ×' + WC_WRONG_MUL + '；顺三级以上的连环冲拳太快，接不住', () => {
-  // P2（传统格斗）短拳 → 后手直拳；P1 挨了第一拳以后按住挡，挨打以后第 k 帧按 keys
+  // P2（格斗术）短拳 → 后手直拳；P1 挨了第一拳以后按住挡，挨打以后第 k 帧按 keys
   const play = (k, keys) => {
     wArena(86); let hitAt = -1, pressed = false;
     return wWatchUntil(e => e.type === 'touch' || (e.type === 'hit' && e.a === 1 && e.name !== 'jab'), 60, i => {
@@ -3424,7 +3425,7 @@ T('2.10 截腿（蹲 + 拿）截住地上的腿：他失衡、你先打；截脚
   }
   ok(got, '截住腿'); eq(F2.reelKind, 'gaun');
   wArena(80); F1.beginMove('wLowKick', 'kick'); F2.beginMove('kick', 'kick');
-  eq(clashRelation(F1, F2), 1, '截脚截住传统格斗的腿');
+  eq(clashRelation(F1, F2), 1, '截脚截住格斗术的腿');
 });
 T('2.10 连环寸拳（气满 重 + 踢）：第一拳打中就一串打满、最后寸劲打倒（和泼墨差不多疼）；第一拳被挡就停', () => {
   wArena(84); F1.qi = QI_MAX;
@@ -3458,7 +3459,7 @@ T('2.10 咏春拳进存档（联机回滚）：顺、拍子、搭手、拉手、
   ins.forEach((v, i) => { if (i % 600 === 300) { const snap = saveState(); for (const j of junk.slice(0, 200)) step(j); loadState(snap); } step(v); });
   eq(fullState(), want, '存档漏了咏春拳的字段');
 });
-T('2.10 选拳派：人机、训练场、双人、联机各按自己选的开打；电脑选「随机」每局换；破招练习两边都是传统格斗；存过的「迎春拳」自动换成咏春拳', () => {
+T('2.10 选拳派：人机、训练场、双人、联机各按自己选的开打；电脑选「随机」每局换；破招练习两边都是格斗术；存过的「迎春拳」自动换成咏春拳', () => {
   const keep = JSON.parse(JSON.stringify({ solo: Styles.solo, pvp: Styles.pvp }));
   let saved = null; try { saved = localStorage.getItem('modou.styles'); } catch (e) {}
   try {
@@ -3470,7 +3471,7 @@ T('2.10 选拳派：人机、训练场、双人、联机各按自己选的开打
     eq([...seen].sort(), [...STYLE_IDS].sort(), '随机：每一派都会出现');
     const keepDummy = Styles.dummy; Styles.dummy = 'trad'; startMatch('train'); eq([F1.style, F2.style], ['wc', 'trad'], '训练场：木桩是准备页里选的那一派（2.11 不再跟着电脑）');
     Styles.dummy = 'wc'; startMatch('train'); eq(F2.style, 'wc', '木桩选咏春拳'); Styles.dummy = keepDummy;
-    Drill.start(DRILLS[0].id, false); eq([F1.style, F2.style], ['trad', 'trad'], '破招练习两边都是传统格斗');
+    Drill.start(DRILLS[0].id, false); eq([F1.style, F2.style], ['trad', 'trad'], '破招练习两边都是格斗术');
     Drill.stop(); eq(F1.style, 'wc', '回到自由练换回自己的拳派');
     Styles.pvp = ['wc', 'trad']; startMatch('pvp'); eq([F1.style, F2.style], ['wc', 'trad'], '双人');
     Net.styles = { h: 'trad', g: 'wc' }; applyStyles('online'); eq([F1.style, F2.style], ['trad', 'wc'], '联机：房主是 P1');
@@ -3511,13 +3512,13 @@ T('2.10 电脑会用咏春拳（按拍子打连环冲拳、接招（2.11）进�
   ok(Object.keys(n).filter(k => k.startsWith('catch:')).length >= 4, '五个桩法用得上好几个：' + txt);
   const miss = Object.keys(n).filter(k => k.startsWith('miss:')).reduce((a, k) => a + n[k], 0);
   ok(miss > 0 && miss < n.catch, '也会接错（被骗、读错），比接住的少：' + txt);
-  ok((n['trad:low'] || 0) > 20 && (n['trad:grab'] || 0) > 20, '传统格斗的电脑打咏春拳会打下段、抓：' + txt);
+  ok((n['trad:low'] || 0) > 20 && (n['trad:grab'] || 0) > 20, '格斗术的电脑打咏春拳会打下段、抓：' + txt);
   ok((n.roll || 0) > 12 && (n.lap || 0) > 20, '搭手里翻手型、拉手扣住打：' + txt);
   ok((n.beat || 0) < (n.beatHit || 0) * 0.1, '困难的电脑拍子按得准（抢拍、过拍少）：' + txt);
-  ok((n.follow || 0) > 8, '传统格斗的电脑被黏住会反拿、甩手、挣脱：' + txt);
+  ok((n.follow || 0) > 8, '格斗术的电脑被黏住会反拿、甩手、挣脱：' + txt);
   console.log('电脑对电脑（困难，六局）：' + txt);
   const share = dmg.wc / (dmg.wc + dmg.trad);
-  // 2.10.1 放宽到 35%（电脑不会钓反打）；2.11 接招要读招，电脑按难度接、传统格斗的电脑会骗接 —— 调回 40%
+  // 2.10.1 放宽到 35%（电脑不会钓反打）；2.11 接招要读招，电脑按难度接、格斗术的电脑会骗接 —— 调回 40%
   ok(share > 0.42 && share < 0.58, `困难对困难，咏春拳打掉的血占 ${(share * 100).toFixed(1)}%（要差不多一半）`);
 });
 T('2.10 咏春拳的招打中那一刻拳脚也落在身上（最远射程 -12 ~ +1）；贴身打拳、踢腿也不穿过去', () => {
@@ -3532,7 +3533,7 @@ T('2.10 咏春拳的招打中那一刻拳脚也落在身上（最远射程 -12 ~
   }
   ok(!close.length, close.join('；'));
 });
-T('2.10 咏春拳的电脑也一档比一档难：乱换招的木头玩家（传统格斗）打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，和传统格斗的电脑差不多（入门 ≥ 78%、简单 ≥ 62%、中等 ≥ 38%、终极 ≥ 18%）', () => {
+T('2.10 咏春拳的电脑也一档比一档难：乱换招的木头玩家（格斗术）打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极，和格斗术的电脑差不多（入门 ≥ 78%、简单 ≥ 62%、中等 ≥ 38%、终极 ≥ 18%）', () => {
   // 2.12：8 个种子各 30000 帧（以前 4 个各 20000：困难、终极两档起伏四五个点，换个种子就翻车）
   const sh = {}, seeds = [5, 6, 7, 8, 9, 10, 11, 12], keep = Styles.pvp;
   try {
@@ -3555,7 +3556,7 @@ T('2.10 招名贴近咏春拳的打法（Jack）：冲拳、立掌、标指、�
 });
 
 /* ---------- 2.10.1：Jack 打了 2.10.0 以后的反馈（WINGCHUN.md 十三） ---------- */
-T('2.10.1 换手照传统格斗的普通攻击那样（Jack：连下去不是只有一只手在出拳）：拳 踢 拳 踢 也是一串，踢完接的拳换另一只手；一串断了重新起手（2.10.3 起手是后手）', () => {
+T('2.10.1 换手照格斗术的普通攻击那样（Jack：连下去不是只有一只手在出拳）：拳 踢 拳 踢 也是一串，踢完接的拳换另一只手；一串断了重新起手（2.10.3 起手是后手）', () => {
   wArena(80); F2.noParry = true;
   let r = wSeq(['jab', 'kick', 'jab', 'kick', 'jab', 'kick', 'jab'], -1);
   const jabs = r.names.filter(n => WMOVES[n.name].kind === 'jab');
@@ -3598,7 +3599,7 @@ T('2.10.1 头两下有空对踢也成立：拳 踢 以后一直按着挡的人�
   eq(r.guards.length, 0, '连上三下以后一直按着挡也挡不住：' + r.hits.length + ' 下');
   ok(r.hits.length >= 6, '六下都打中：' + r.hits.map(e => e.name).join(' '));
 });
-T('2.10.1 被挡的一串每一下之间有空（踢也一样）：传统格斗在挡住的硬直里推挡推得开，一串不是按死在挡里；一串还是最多八下', () => {
+T('2.10.1 被挡的一串每一下之间有空（踢也一样）：格斗术在挡住的硬直里推挡推得开，一串不是按死在挡里；一串还是最多八下', () => {
   wArena(80); F2.noParry = true;
   let freeBlock = 0;
   let r = wSeq(['jab', 'kick', 'jab', 'kick', 'jab', 'kick', 'jab', 'kick'], -1, (i, hits) => { if (F2.state === 'block') freeBlock++; return BLOCK; });
@@ -3609,16 +3610,16 @@ T('2.10.1 被挡的一串每一下之间有空（踢也一样）：传统格斗�
   ok(r.ev.some(e => e.type === 'shove' && e.a === 1), '挡住的硬直里推挡推开了');
   ok(r.guards.length < 8, '推开以后这一串断了：挡了 ' + r.guards.length + ' 下');
 });
-T('2.10.1 收益分层（Jack：反打、贴脸最高，主动进攻降一降）：中立起手一串 ×' + WC_NEUTRAL_MUL + ' 36 上下（2.11 ×0.7 是 29，2.12 回到 ×0.8）；截住腿以后反打 ×' + WC_COUNTER_MUL + ' 65 上下（2.11 是 51）；搭手里 ×' + WC_TOUCH_MUL + '：接住进来直接打 66 上下、翻满再打 75 上下（2.11 是 55 / 60；2.12 Jack：咏春上限高）', () => {
+T('2.10.1 收益分层（Jack：反打、贴脸最高，主动进攻降一降）：中立起手一串 ×' + WC_NEUTRAL_MUL + ' 53 上下（2.11 ×0.7 是 29，2.12 ×0.8 是 36）；截住腿以后反打 ×' + WC_COUNTER_MUL + ' 109 上下（2.12 是 65）；搭手里 ×' + WC_TOUCH_MUL + '：接住进来直接打 107 上下、翻满再打 119 上下（2.12 是 66 / 75；3.1 冲拳 4 → 5 血、顺一级 10%：和格斗术最长的一串差不多，咏春上限最高）', () => {
   wArena(80); beatChain(8, -1); const neutral = lost(F2);
-  ok(neutral >= 33 && neutral <= 40, '中立起手：' + neutral);
+  ok(neutral >= 48 && neutral <= 58, '中立起手：' + neutral);
   ok(wCatch(100, TAP('kick'), 'grab'), '按手截住腿'); const h0 = F2.hp; beatChain(8, -1); const counter = h0 - F2.hp;
-  ok(counter >= 58 && counter <= 72, '截住腿以后反打一串：' + counter);
+  ok(counter >= 100 && counter <= 118, '截住腿以后反打一串：' + counter);
   wTouch(86, TAP('jab')); const h1 = F2.hp; beatChain(8, -1, null, 300, true); const straight = h1 - F2.hp;
-  ok(straight >= 59 && straight <= 73, '接住进搭手、不翻直接打：' + straight);
+  ok(straight >= 98 && straight <= 116, '接住进搭手、不翻直接打：' + straight);
   wTouch(86, TAP('jab')); const h2 = F2.hp; for (const d of [RIGHT, LEFT, DOWN]) { wRun(1, () => d); waitRoll(); }
   beatChain(8, -1, null, 300, true); const full = h2 - F2.hp;
-  ok(full >= 68 && full <= 82, '搭手里翻满再打：' + full);
+  ok(full >= 110 && full <= 128, '搭手里翻满再打：' + full);
   ok(neutral < counter && neutral < straight && straight < full, `主动进攻 ${neutral} < 反打 ${counter}、搭手 ${straight} < 翻满 ${full}`);
   // 2.11（Jack：削弱平时的拳 / 重 / 踢）寸拳、肘也一样：中立打出去 ×WC_NEUTRAL_MUL，截住腿以后打出去是反打
   const heavyHit = key => { let d = null; CEV.on = (t, A, B, x) => { if (t === 'hit' && A === F1 && d === null) d = x.dmg; }; try { run(40, i => [i === 0 ? key : 0, 0]); } finally { CEV.on = null; } return d; };
@@ -3962,13 +3963,13 @@ T('2.12 观战的满级电脑（Jack：观战时两个电脑的强度必须拉�
         game.brains = [null, null];
       }));
     } finally { Styles.pvp = keep; }
-    // 6 个种子量过：传统格斗 40 : 7、咏春拳 46 : 2（换种子起伏七八个点）；3.0 太极拳 22 : 10 —— 慢派两边都等着化、等着捋，档位差得没那么开，门槛 0.65
+    // 6 个种子量过：格斗术 40 : 7、咏春拳 46 : 2（换种子起伏七八个点）；3.0 太极拳 22 : 10 —— 慢派两边都等着化、等着捋，档位差得没那么开，门槛 0.65
     ok(r >= 28 && won[0] >= r * (style === 'taiji' ? 0.65 : 0.75), `${style}：满级打终极 ${won[0]} : ${won[1]}（${r} 回合）`);
     ok(hits / r >= 20, `${style}：打得起来（每回合打中 ${(hits / r).toFixed(0)} 下）`);
   }
 });
 
-T('2.12 招式数值拉得开（Jack：招数之间数值拉不开，玩家觉得乱玩都行；拉开的同时兼顾平衡）：传统格斗三个起手 短拳 < 腿踢 < 重拳 一级差一截；慢招（重拳、腿踢、沉肩靠）比 2.11 疼、前摇也长（高风险高收益）；每一系的高级招比普通招多三成以上；同一个局面下的两招伤害不挤在一起；咏春拳的收益分层 起手 < 1 < 反打 < 搭手', () => {
+T('2.12 招式数值拉得开（Jack：招数之间数值拉不开，玩家觉得乱玩都行；拉开的同时兼顾平衡）：格斗术三个起手 短拳 < 腿踢 < 重拳 一级差一截；慢招（重拳、腿踢、沉肩靠）比 2.11 疼、前摇也长（高风险高收益）；每一系的高级招比普通招多三成以上；同一个局面下的两招伤害不挤在一起；咏春拳的收益分层 起手 < 1 < 反打 < 搭手', () => {
   const J = MOVES.jab.dmg, K = MOVES.kick.dmg, Hv = MOVES.heavy.dmg;
   ok(J === 6 && K === 13 && Hv === 16 && MOVES.shoulder.dmg === 17, `起手：短拳 ${J} 腿踢 ${K} 重拳 ${Hv} 沉肩靠 ${MOVES.shoulder.dmg}`);
   ok(K - J >= 6 && Hv - K >= 2 && Hv >= J * 2.5, '三个起手拉得开');
@@ -3986,13 +3987,13 @@ T('2.12 招式数值拉得开（Jack：招数之间数值拉不开，玩家觉�
 /* ============================================================
    3.0 太极拳（TAIJI.md）：慢而强 —— 蓄（按住）· 发（松开）· 掤（前摇后一半化掉正面的拳掌和中段上段的腿）· 捋（按住挡、打到之前按后）· 采
    ============================================================ */
-// 太极拳打传统格斗（不写就是 P1 太极、P2 传统）
+// 太极拳打格斗术（不写就是 P1 太极、P2 传统）
 function tArena(dist, s1, s2) { wArena(dist, s1 || 'taiji', s2 || 'trad'); }
 T('3.0 太极拳挂上了：第三派、和另两派的跨派规矩都写了；每一派要有的那几招都有（擒拿、空中招、坠山、推挡、踩腿、冲刺、闪身、爆气、大招……），招都是这一派的', () => {
   eq(STYLE_IDS, ['trad', 'wc', 'taiji']);
   ok(!!MATCHUPS['trad|taiji'] && !!MATCHUPS['wc|taiji'], '三派两两都有规矩');
   const ST = STYLES.taiji;
-  ok(ST.name === '太极拳' && ST.parry === false && ST.chainMax === 3 && ST.blockHeavy === 'tjKao', '没有卸力（捋是它的卸力）、一串最多三下、挡住按重是靠');
+  ok(ST.name === '太极拳' && ST.parry === false && ST.chainMax === 5 && ST.blockHeavy === 'tjKao', '没有卸力（捋是它的卸力）、一串最多五下（3.1 以前三下）、挡住按重是靠');
   for (const k of ['grab', 'lowGrab', 'hold', 'airJab', 'airHeavy', 'airKick', 'dive', 'shove', 'stomp', 'dash', 'slip', 'slipElbow', 'burst', 'super']) ok(!!TMOVES[k], '缺 ' + k);
   for (const [n, d] of Object.entries(TMOVES)) ok(d.style === 'taiji', n + ' 是太极拳的招');
   tArena(200); eq([F1.style, F2.style], ['taiji', 'trad']);
@@ -4006,10 +4007,10 @@ T('3.0 太极拳的招名（太极拳的叫法）：揽雀尾、搬拦捶、蹬�
   eq([L('grab'), L('lowGrab'), L('tjLie'), L('tjYeMa'), L('tjCaiDeng'), L('tjAn'), L('tjLouXi'), L('tjKao'), L('shove'), L('slip'), L('slipElbow'), L('dash'), L('super')],
     ['采', '搂膝', '挒', '野马分鬃', '采住蹬脚', '按', '搂膝拗步', '靠', '挤', '斜飞', '闪通臂', '进步', '如封似闭']);
 });
-T('3.0 慢而强：太极拳站着出的起手都是慢招（前摇 18 帧以上，比传统格斗的短拳慢三倍；金鸡独立对空不算），一下比传统格斗的同一系疼', () => {
+T('3.0 慢而强：太极拳站着出的起手都是慢招（前摇 18 帧以上，比格斗术的短拳慢三倍；金鸡独立对空不算），一下比格斗术的同一系疼', () => {
   for (const n of ['tjLan', 'tjChuan', 'tjDao', 'tjXia', 'tjBan', 'tjDeng', 'tjFen', 'tjDieCha']) ok(TMOVES[n].S >= 18, `${TMOVES[n].label} 前摇 ${TMOVES[n].S}`);
   ok(TMOVES.tjLan.S >= MOVES.jab.S * 3, '揽雀尾比短拳慢三倍');
-  ok(TMOVES.tjLan.dmg >= MOVES.jab.dmg * 2 && TMOVES.tjBan.dmg >= MOVES.heavy.dmg && TMOVES.tjDeng.dmg >= MOVES.kick.dmg, '一下比传统格斗同一系的起手疼');
+  ok(TMOVES.tjLan.dmg >= MOVES.jab.dmg * 2 && TMOVES.tjBan.dmg >= MOVES.heavy.dmg && TMOVES.tjDeng.dmg >= MOVES.kick.dmg, '一下比格斗术同一系的起手疼');
   ok(TMOVES.tjJinJi.S < 12 && TMOVES.tjJinJi.tier === 'aa', '金鸡独立是对空（不慢）');
 });
 T('3.0 蓄 · 发：拳按住不放，前摇走到六成停住，每 TJ_SEG 帧劲 +1、最多 3，蓄满自己发出去；劲 3 打中 ×1.6、打倒、把人发出去；松开就发（点一下照常出）', () => {
@@ -4166,16 +4167,17 @@ T('3.0.1 手（Jack：所有角色的手再大 5% 左右；后面的勾手太小
   const E = J.fh, d = J.fpd; let palmLen = 0;                                  // 前手立掌：掌根到中指尖
   for (const q of parts.filter(p => p.k === 'aFH')) for (const [x, y] of q.pts) palmLen = Math.max(palmLen, (x - E[0]) * d[0] + (y - E[1]) * d[1]);
   ok(palmLen > 15.6 * 1.03 && palmLen < 15.6 * 1.1, `掌长 ${palmLen.toFixed(1)}（3.0 是 15.6）`);
-  const hook = parts.find(p => p.hook), W = J.bh; let far = W, len = 0;
+  // 3.1 勾手也是一节一节的手指（掌、四根手指、大拇指各几块胶囊）：量所有的块合起来
+  const hooks = parts.filter(p => p.hook), hook = { pts: hooks.flatMap(p => p.pts), detail: hooks.flatMap(p => p.detail || []) }, W = J.bh; let far = W, len = 0;
   for (const [x, y] of hook.pts) { const l = Math.hypot(x - W[0], y - W[1]); if (l > len) { len = l; far = [x, y]; } }
   const ux = (far[0] - W[0]) / len, uy = (far[1] - W[1]) / len; let lo = 1e9, hi = -1e9;
   for (const [x, y] of hook.pts) { const s = -(x - W[0]) * uy + (y - W[1]) * ux; lo = Math.min(lo, s); hi = Math.max(hi, s); }
   const fe = BODY.faPalm[BODY.faPalm.length - 1], wrist = fe[1] + fe[2];
   ok(len >= palmLen * 0.75, `勾手腕到指尖 ${len.toFixed(1)}（掌 ${palmLen.toFixed(1)}；3.0 只有 10）`);
   ok(hi - lo >= wrist * 1.25, `勾手粗 ${(hi - lo).toFixed(1)}（手腕 ${wrist.toFixed(1)}；3.0 比手腕还细）`);
-  ok(hook.detail && hook.detail.length <= 2, '勾手的淡线不超过两道（三道往指尖散开像爪子）');
+  ok(hook.detail.length <= 2, '勾手的淡线不超过两道（三道往指尖散开像爪子；3.1 起手指是一节一节建出来的，不画线）');
 });
-T('3.0 太极拳的电脑也一档比一档难：乱换招的木头玩家（传统格斗）打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极（入门 ≥ 75%、简单 ≥ 60%、中等 ≥ 36%、终极 ≥ 18%）', () => {
+T('3.0 太极拳的电脑也一档比一档难：乱换招的木头玩家（格斗术）打掉的血占比 入门 > 简单 > 中等 > 困难 > 终极（入门 ≥ 75%、简单 ≥ 60%、中等 ≥ 36%、终极 ≥ 18%）', () => {
   const sh = {}, seeds = [5, 6, 7, 8, 9, 10, 11, 12], keep = Styles.pvp;
   try {
     Styles.pvp = ['trad', 'taiji'];
@@ -4185,6 +4187,99 @@ T('3.0 太极拳的电脑也一档比一档难：乱换招的木头玩家（传�
   for (let i = 1; i < LEVEL_IDS.length; i++) ok(sh[LEVEL_IDS[i - 1]] > sh[LEVEL_IDS[i]], '有两档反过来了：' + txt);
   ok(sh.novice >= 0.75 && sh.easy >= 0.6 && sh.normal >= 0.36 && sh.hell >= 0.18, txt);
   console.log('太极拳五档：' + txt);
+});
+
+/* ---------- 3.1：连招越连越疼、长连招、三派跳起来按重分开、别手、拳头用手指握、六边形、三派强度 ---------- */
+T('3.1 「传统格斗」改名「格斗术」（id 还是 trad）：拳派名、教程每一页、准备页那一句话都不再出现「传统格斗」', () => {
+  eq(STYLES.trad.name, '格斗术'); ok(STYLE_IDS.includes('trad'), 'id 不变');
+  for (const B of GUIDE_BOOKS) for (const P of B.pages) for (const mode of ['web', 'man']) ok(!/传统格斗/.test(P.body(mode)), `${B.name} · ${P.name} · ${mode} 还有「传统格斗」`);
+  for (const id of STYLE_IDS) ok(!/传统格斗/.test(guideStyleLine(id)), id + ' 那一句话');
+  ok(!/传统格斗/.test(JSON.stringify(MATCHUPS)) && !/传统格斗/.test(document.body.innerHTML), '跨派规矩、页面上');
+});
+T('3.1 越连越疼（Jack：注重普通攻击和连招的收益差距，连招越连收益越高，可以到六段到八段）：七下连 100 以上（单出一记重拳 ' + MOVES.heavy.dmg + '），后面那几下比单出疼；同一招再用一次只算一半', () => {
+  // 一下一下接：上一招打中了、能接了就按下一个（重招的顿帧长，按下去到新招出来多等一会儿）
+  const press = keys => { for (const a of keys) { let k = 0; while (k++ < 150 && !(F1.actionable() || F1.canCancel(a) || soonCancel(F1, a))) tick(); const s0 = F1.serial; tick(TAP(a)); k = 0; while (k++ < 60 && F1.serial === s0) tick(); k = 0; const s1 = F1.serial; while (k++ < 80 && F1.move && F1.move.serial === s1 && !(F1.move.hit || F1.move.blocked)) tick(); } tick(0, 0, 60); };
+  const dmg = []; CEV.on = (t, A, B, x) => { if (t === 'hit' && A === F1) dmg.push([x.name, x.dmg]); };
+  try { arena(80); press(['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy']); }
+  finally { CEV.on = null; }
+  eq(dmg.map(d => d[0]), ['jab', 'whip', 'stepPunch', 'beng', 'elbow', 'jab2', 'upper'], '七下');
+  eq(dmg.length, 7, '七下都打中：' + dmg.map(d => d.join(':')).join(' '));
+  const tot = dmg.reduce((a, d) => a + d[1], 0);
+  ok(tot >= 100 && tot <= 125, '七下一共 ' + tot);
+  ok(dmg[6][1] >= Math.round(MOVES.upper.dmg * comboEsc(6)) - 1, '第七下冲天炮 ×' + comboEsc(6).toFixed(2) + '：' + dmg[6][1]);
+  ok(dmg[4][1] > MOVES.elbow.dmg, '第五下顶肘比单出疼：' + dmg[4][1]);
+  // 同一招再用：鞭腿打两次，第二次只算一半
+  const d2 = []; CEV.on = (t, A, B, x) => { if (t === 'hit' && A === F1) d2.push([x.name, x.dmg]); };
+  try { arena(80); press(['jab', 'heavy', 'jab', 'kick', 'jab', 'kick']); } finally { CEV.on = null; }
+  const wh = d2.filter(d => d[0] === 'whip');
+  ok(wh.length === 2 && wh[1][1] <= Math.ceil(MOVES.whip.dmg * comboEsc(5) * REPEAT_MUL), '第二次鞭腿只算一半：' + d2.map(d => d.join(':')).join(' '));
+});
+T('3.1 一套最多 ' + COMBO_MAX + ' 下：格斗术八下连打满以后接不上第九下；太极拳的势最多五下', () => {
+  arena(80); let n = 0, most = 0;
+  for (const a of ['kick', 'jab', 'heavy', 'jab', 'kick', 'jab', 'jab', 'heavy']) {
+    let k = 0; while (k++ < 150 && !(F1.actionable() || F1.canCancel(a) || soonCancel(F1, a))) tick();
+    const s0 = F1.serial; tick(TAP(a)); k = 0; while (k++ < 60 && F1.serial === s0) tick();
+    if (F1.serial !== s0) n++; most = Math.max(most, F1.chain.length);
+    k = 0; const s1 = F1.serial; while (k++ < 80 && F1.move && F1.move.serial === s1 && !(F1.move.hit || F1.move.blocked)) tick();
+  }
+  eq(n, 8, '八下都出了'); ok(most >= COMBO_MAX - 1, '一套连着记了 ' + most + ' 下（第八下冲天炮是收尾招，出来就清零）');
+  ok(!F1.canCancel('jab') && !F1.canCancel('kick') && !F1.canCancel('heavy'), '第九下接不上');
+  eq(STYLES.taiji.chainMax, 5);
+});
+T('3.1 三派跳起来按重长得不一样（Jack：跳起来按 K 的动作长得都太像了）：格斗术坠山击整个人往前翻着砸；咏春飞身盖肘不翻身、肘尖往前下；太极转身撇身捶拳先走到头顶上再盖下来', () => {
+  const act = st => { const MV = STYLES[st].moves, d = MV.airHeavy; return copyPose(mk(), evalKeys(d.keys, d.S + d.A * 0.5)); };   // evalKeys 给的是一个借用的对象：拷出来
+  const T0 = act('trad'), W0 = act('wc'), J0 = act('taiji');
+  ok(T0.rot + T0.tor >= 60, '坠山击：整个人往前翻（rot + tor ' + (T0.rot + T0.tor) + '）');
+  ok(W0.rot + W0.tor <= 30 && STYLES.wc.moves.airHeavy.limb === 'be', '飞身盖肘：身子立着、打人的是肘（rot + tor ' + (W0.rot + W0.tor) + '）');
+  ok(J0.rot + J0.tor <= 35 && STYLES.taiji.moves.airHeavy.limb === 'fh', '转身撇身捶：身子立着');
+  const d = STYLES.taiji.moves.airHeavy, mid = copyPose(mk(), evalKeys(d.keys, d.S * 0.55));
+  ok(mid.fh[1] < -35, '撇身捶的拳先走到头顶上：' + mid.fh[1].toFixed(0));
+  eq([STYLES.wc.moves.airHeavy.label, STYLES.taiji.moves.airHeavy.label], ['飞身盖肘', '转身撇身捶']);
+});
+T('3.1 别手（Jack：咏春的别手要把对面的模型别住）：搭手的时候两个人的小臂真的搭在一起（离 3 像素以内），被搭的那条胳膊换到近侧画；截住腿以后对面的小腿在咏春的手底下', () => {
+  const segD = (a, b, c, d) => {
+    const P = (p, s0, s1) => { const vx = s1[0] - s0[0], vy = s1[1] - s0[1], L = vx * vx + vy * vy || 1, t = clamp(((p[0] - s0[0]) * vx + (p[1] - s0[1]) * vy) / L, 0, 1); return Math.hypot(p[0] - s0[0] - vx * t, p[1] - s0[1] - vy * t); };
+    let m = 1e9; for (let i = 0; i <= 20; i++) { const t = i / 20; m = Math.min(m, P([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], c, d), P([c[0] + (d[0] - c[0]) * t, c[1] + (d[1] - c[1]) * t], a, b)); }
+    return m;
+  };
+  ok(wTouch(86, TAP('jab')), '接住进搭手');
+  let worst = 0, n = 0;
+  for (let k = 0; k < 10; k++) { step([0, 0]); if (F1.move && F1.move.def.tch && F2.stuck) { n++; worst = Math.max(worst, segD(F1.J.fe, F1.J.fh, F2.J.fe, F2.J.fh)); ok(F2.J.fz > 0, '被搭的前手画在近侧'); } }
+  ok(n >= 5 && worst < 3, `搭手里两条小臂搭着：最远 ${worst.toFixed(1)}（量了 ${n} 帧）`);
+  // 截住腿（按手）：对面的小腿（膝 → 脚踝）离咏春前手不到 10
+  ok(wCatch(100, TAP('kick'), 'grab'), '按手截住腿');
+  let leg = 1e9; for (let k = 0; k < 6; k++) { step([0, 0]); if (F2.state === 'hit' && F2.reel) leg = Math.min(leg, segD(F2.J.fk, F2.J.ff, F1.J.fe, F1.J.fh)); }
+  ok(leg < 10, '他的小腿在我手底下：' + leg.toFixed(1));
+});
+T('3.1 拳头是手指握起来的（Jack：不是在拳头上画几条线）：拳由掌、四根手指、大拇指一节一节拼成，不画线；勾手的手指张开一点', () => {
+  arena(400); copyPose(F1.disp, POSE.stance); F1.J = null; F1.ikS = null; F1.fk();
+  const parts = bodyParts(F1.J, 0).parts, fist = parts.filter(p => p.k === 'aBH');
+  ok(fist.length >= 6, '拳头一共 ' + fist.length + ' 块（掌、四根手指、大拇指）');
+  ok(!fist.some(p => p.detail && p.detail.length), '拳头上不画线');
+  const { J } = PoseIcon.build({ style: 'taiji', pose: 'stance' }), hook = bodyParts(J, 0).parts.filter(p => p.hook);
+  ok(hook.length >= 6, '勾手也是一节一节的手指：' + hook.length);
+});
+T('3.1 六边形（Jack：每个拳派一张，要严谨）：三派都量了、六个轴都有分（0～10）、置信区间包住均值；咏春速最快、守最好、上限最高、难度最高；格斗术、太极拳攻得重', () => {
+  for (const id of STYLE_IDS) {
+    const H = HEXAGON[id]; ok(H, id + ' 没量');
+    for (const ax of HEX_AXES) { const a = H[ax.id]; ok(a && a[0] >= 0 && a[0] <= 10 && a[1] <= a[0] + 0.05 && a[2] >= a[0] - 0.05 && a[4] <= a[3] && a[5] >= a[3], `${id} ${ax.name}：${a}`); }
+    ok(H.stars >= 1 && H.stars <= 5, id + ' 难度 ' + H.stars);
+  }
+  const W = HEXAGON.wc, Tr = HEXAGON.trad, Tj = HEXAGON.taiji;
+  ok(W.spd[0] > Tr.spd[0] && Tr.spd[0] > Tj.spd[0], '速：咏春 > 格斗术 > 太极拳');
+  ok(W.def[0] > Tr.def[0] && W.def[0] > Tj.def[0], '守：咏春最好');
+  ok(W.top[0] > Tr.top[0] && W.top[0] > Tj.top[0], '上限：咏春最高');
+  ok(W.stars > Tr.stars && W.stars > Tj.stars, '难度：咏春最难');
+  ok(Tr.atk[0] > W.atk[0] && Tj.atk[0] > W.atk[0], '攻：格斗术、太极拳一下比咏春重');
+  // 画得出来：准备页的小图、教程里的大图
+  ok(/<svg class="hex"/.test(hexSVG('wc', 112)) && /<svg class="hex big"/.test(hexSVG('taiji', 260, true)) && /hstars/.test(hexStars(4.5)), '画得出来');
+});
+T('3.1 三派强度的形状（量了几个种子的快速版；细的看 NOTES「查平衡」3.1）：满级咏春打格斗术占一半以上，木头咏春打格斗术不到一半', () => {
+  let hi = 0, lo = 0; const n = 4;
+  quietly(() => { for (let s = 0; s < n; s++) { hi += tierShare('max', s % 2 ? ['trad', 'wc'] : ['wc', 'trad'], 4, 1000 + s * 7919, 'wc').share; lo += tierShare('mash', s % 2 ? ['trad', 'wc'] : ['wc', 'trad'], 4, 1000 + s * 7919, 'wc').share; } });
+  hi /= n; lo /= n;
+  ok(hi > 0.5, '满级咏春打格斗术：' + (hi * 100).toFixed(1) + '%');
+  ok(lo < 0.48, '木头咏春打格斗术：' + (lo * 100).toFixed(1) + '%');
 });
 
 (async function runAll() {

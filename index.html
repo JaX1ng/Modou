@@ -551,6 +551,33 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 html.desktop,html.desktop body{overflow:hidden;height:100%}
 html.desktop .wrap{padding:0;max-width:none}
 html.desktop .guide{display:none}
+
+/* 3.1 六边形（教程每一派「上手」页、准备页拳派旁边）：三圈参考线、红的是分、黑的一小段是 95% 置信区间；难度五颗星 */
+.hex{display:block;overflow:visible;flex:none}
+.hex .hx-g{fill:none;stroke:var(--ink);stroke-opacity:.13;stroke-width:1}
+.hex .hx-g.o{stroke-opacity:.32}
+.hex .hx-d{fill:var(--cinnabar);fill-opacity:.2;stroke:var(--cinnabar);stroke-width:1.6;stroke-linejoin:round}
+.hex .hx-ci{stroke:var(--ink);stroke-width:1.7;stroke-linecap:round}
+.hex .hx-p{fill:var(--cinnabar)}
+.hex text{font:500 11px/1 var(--ui);fill:var(--ink-soft)}
+.hex.big text{font-size:13.5px;fill:var(--ink)}
+.hex .hx-n{font-weight:700;fill:var(--cinnabar)}
+.hstars{display:block;flex:none}
+.hstars .st-o{fill:none;stroke:var(--ink-soft);stroke-opacity:.7;stroke-width:1}
+.hstars .st-f{fill:var(--gamboge)}
+.ps-hex{display:flex;flex-direction:column;align-items:center;gap:1px;margin-left:4px}
+.ps-hex small{font:500 11px/1 var(--ui);color:var(--ink-soft)}
+.g-hex{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.g-hex .gh-body{flex:1;min-width:300px}
+.gh-stars{display:flex;align-items:center;gap:12px;margin:2px 0 10px;font-size:14px;color:#33342f}
+.hex-t td small{display:block;color:var(--ink-soft);font-size:12px;margin-top:2px}
+.hex-t td:nth-child(3),.hex-t td:nth-child(4){white-space:nowrap;font-variant-numeric:tabular-nums}
+.mn-hex{display:flex;gap:22px;align-items:flex-start}
+.mn-hex>div{flex:1}
+.mn-hex td small{display:block;color:var(--ink-soft);font-size:12px}
+.g-combo.wide{grid-column:1/-1}
+.g-combo.wide .gc-strip{flex-wrap:wrap}
+@media (max-width:720px){.ps-hex{display:none}}
 </style>
 </head>
 <body>
@@ -654,7 +681,7 @@ html.desktop .guide{display:none}
         </details>
         <div class="netbox" id="netLobby" hidden>
           <p class="status" id="netStatus">已连接</p>
-          <p class="step">选你的拳派 · <span id="netOppStyle">对方：传统格斗</span></p>
+          <p class="step">选你的拳派 · <span id="netOppStyle">对方：格斗术</span></p>
           <div class="styles sm" id="netStyles"></div>
           <p class="step">选你的颜色（对方选了的那个会变暗，点不了）</p>
           <div class="swatches" id="netLooks"></div>
@@ -855,7 +882,7 @@ html.desktop .guide{display:none}
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
 // 3.0.0（2026-11-01）：第三派太极拳（加一派照规矩是大版本；Godot 版不做了，网页版接着用 3.x 的号）
 // 3.0.1：手大 5%、勾手重画、太极拳的后腿不往下塌（Jack 打了 3.0.0 提的；只是画面）
-const VERSION = '3.0.1';
+const VERSION = '3.1.0';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -1021,11 +1048,19 @@ const COUNTER_MUL = 1.2;   // 破招：打在对方前摇里；迎击：打在�
 const BEAT_MUL = 1.3;      // 克：主系克制，克制方单方面打中
 const ARMOR_KEEP = 0.5;    // 霸体硬吃短拳时吃的伤害比例
 
-// 连击衰减（防止一套连到死）：同一套连击里每多挨一下
-const STUN_DECAY = TA(3), STUN_FLOOR = TA(3);    // 硬直少 3 帧，最少 3 帧（2.6 ×ATK_TEMPO：3.25）
+// 连击（3.1 重做，Jack：注重普通攻击和连招的收益差距，连招越连收益越高；连招不一定只有两三下，可以到六段到八段）：
+//   以前同一套里每多挨一下伤害 -8%（最低五成）、硬直 -3.25 帧 —— 越连越不值、四五下就断，普通攻击和连招差不多一个价。
+//   现在倒过来：同一套里第 n 下（从 0 数）伤害 ×(1 + COMBO_ESC × n)，最多算到第 COMBO_ESC_CAP 下（第 8 下 ×1.7）—— 连得越长每一下越疼；
+//   硬直只少一点点（STUN_DECAY，最少 STUN_FLOOR），够长的套路接得下去，乱接的照样会断；一套最多 COMBO_MAX 下（再长就是无限连）。
+//   击退照旧越连越远（KB_GROW 小了）：后半套要用前冲够得着的招（进步冲拳、落步冲拳、鞭腿）把距离追回来 —— 长连招要会走路线
+const STUN_DECAY = TA(0.5), STUN_FLOOR = TA(3);    // 硬直每多挨一下少一点、最少 3 帧（3.0：每下少 3.25）
 const AIR_STUN = TA(4);                  // 跳起来打中多几帧硬直（2.6 以前写在 combat.js 里：4）
-const KB_GROW = 0.3;                     // 击退 +30%，连着打会把人越推越远
-const DMG_DECAY = 0.08, DMG_FLOOR = 0.5; // 伤害 -8%，最低五成
+const KB_GROW = 0.12;                    // 击退每多挨一下 +12%（3.0：+30%）
+const COMBO_ESC = 0.08, COMBO_ESC_CAP = 7, COMBO_MAX = 8;
+//   同一套里同一招再用一次（REPEAT）：这一下伤害 ×REPEAT_MUL、硬直少 REPEAT_STUN —— 进步冲拳、顶肘来回绕的「循环」不值钱，长连招要换着招走
+//   （格斗术就是攻击的多样性；咏春拳按拍子连的冲拳本来就是一拳一拳轮着打，不算）
+const REPEAT_MUL = 0.5, REPEAT_STUN = TA(3);
+const comboEsc = n => 1 + COMBO_ESC * Math.min(n, COMBO_ESC_CAP);
 const JAB_CHAIN_MAX = 6;                 // 一串最多 6 拳，第 6 拳是收势「寸劲」
 
 // 防守反击
@@ -1079,7 +1114,7 @@ const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着�
    · 接招按错、时机不对：这一下 ×WC_WRONG_MUL
    · 2.10.1 一串里拳、踢都按拍子（link 的踢和 beat 的拳一样走抢拍 / 过拍）；收益按一串从哪来：中立起手 ×WC_NEUTRAL_MUL、接招 / 截腿以后 ×WC_COUNTER_MUL、搭手里 ×WC_TOUCH_MUL */
 // 2.12 顺一级伤害 +6% → +8%（Jack：咏春上限高、下限略高 —— 顺是按拍子、接住、翻手才涨的，吃操作的那一头）
-const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.08, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
+const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.1, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
 const WC_BEAT = 8, WC_BEAT_STEP = 0.25, WC_BEAT_MIN = 6.5, WC_EARLY = 3, WC_LATE = 2, WC_EARLY_LAG = 3, WC_GAP = 2, WC_MARGIN = 1.5;
 const WC_PAT_STUN = TFH(19), WC_GAUN_STUN = TFH(21), WC_TRAP_EARLY = TF(4), WC_TRAP_DMG = 3, WC_REEL_HIT = TFH(14);
 const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：听劲慢慢往前压、往后退
@@ -1092,7 +1127,7 @@ const WC_WRONG_MUL = 1.3;
 //   量出来的分层、跨派均衡在 NOTES「查平衡」2.12；真人打着再调：太强先降 WC_TOUCH_MUL，太弱先升 WC_COUNTER_MUL
 // 3.0（Jack：最强人机咏春的优势不明显 —— 上限要高，赢的概率要大，但不能每次都是咏春赢；加强咏春本身，不动电脑）：反打 ×1.3 → ×1.43、搭手 ×1.35 → ×1.47。
 //   满级对满级（两边电脑一样聪明）各 40 场：咏春赢 63% → 87.5% 场（回合 65% → 71.5%，伤害占比 53.2% → 54.8%；量的时候两个都是 1.45）；试过 1.5 / 1.55 + 顺 0.09：95% 场，几乎场场赢，太多
-const WC_NEUTRAL_MUL = 0.8, WC_COUNTER_MUL = 1.43, WC_TOUCH_MUL = 1.47;   // 两个平均 ×1.45；搭手还是比反打高一点（收益分层 起手 < 1 < 反打 < 搭手）
+const WC_NEUTRAL_MUL = 0.85, WC_COUNTER_MUL = 1.43, WC_TOUCH_MUL = 1.47;   // 两个平均 ×1.45；搭手还是比反打高一点（收益分层 起手 < 1 < 反打 < 搭手）
 
 /* 3.0 太极拳（taiji.js，设计稿 TAIJI.md）—— 规则里用到的数：
    · 蓄势：拳 / 重 / 踢按住不放，前摇走到 TJ_HOLD_AT 那么多停住，势接着往下走（最多 TJ_CHARGE 帧，走到头自己发）；每蓄满 TJ_SEG 帧劲 +1
@@ -1104,7 +1139,7 @@ const WC_NEUTRAL_MUL = 0.8, WC_COUNTER_MUL = 1.43, WC_TOUCH_MUL = 1.47;   // 两
      两次按后隔不到 TJ_LU_LOCK 帧没有捋（和卸力一样防乱按） */
 const TJ_HOLD_AT = 0.6, TJ_SEG = 12, TJ_CHARGE = 36, TJ_JIN_MAX = 3, TJ_JIN_DMG = 0.2, TJ_JIN_KEEP = 150;
 const TJ_HUA_KEEP = 0.25, TJ_HUA_MAX = 2, TJ_JIELI_MUL = 1.25, TJ_PENG_FROM = 6;   // TJ_PENG_FROM：出招第几帧起身上才有掤（前摇的前一半掤劲还没撑起来，一拳打得断；看见他出手才出招化不了，要先出）
-const TJ_LU_WIN = 6, TJ_LU_LOCK = 24, TJ_LU_STUN = TFH(25), TJ_LU_PULL = 8, TJ_LU_GAP = 44, TJ_LU_MUL = 1.15;   // TJ_LU_MUL：捋了以后打中他（引进落空）的倍数 —— 比卸力反击（PARRY_MUL）低，捋本身还给一级劲   // 失衡比卸力（PARRY_STUN）长三帧：太极拳最慢的搬拦捶打得上；牵过去那几帧另算   // TJ_LU_GAP：他被牵过去落在你身后多远
+const TJ_LU_WIN = 6, TJ_LU_LOCK = 24, TJ_LU_STUN = TFH(25), TJ_LU_PULL = 8, TJ_LU_GAP = 44, TJ_LU_MUL = 1.3;   // TJ_LU_MUL：捋了以后打中他（引进落空）的倍数 —— 比卸力反击（PARRY_MUL）低，捋本身还给一级劲   // 失衡比卸力（PARRY_STUN）长三帧：太极拳最慢的搬拦捶打得上；牵过去那几帧另算   // TJ_LU_GAP：他被牵过去落在你身后多远
 const TJ_FA_KV = [0, 0, 14, 30];          // 发劲把人打出去多快（劲 2 / 3；击退每帧剩八成二，一共滑出去差不多 5.5 倍：77 / 165 像素）
 
 // 联机（P2P）
@@ -1160,6 +1195,29 @@ const rnd = (a, b) => a + vrnd() * (b - a);
 const vpick = arr => arr[(vrnd() * arr.length) | 0];
 const pick = arr => arr[(Math.random() * arr.length) | 0];
 const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* 3.1 六边形（Jack：每个拳派一张，要严谨，用最严谨的统计和测试方案做）—— 教程每一派「上手」页一张大的、准备页拳派旁边一张小的。
+   六个轴都是量出来的数，三派共用一把绝对的尺（lo → 0 分、hi → 10 分，不拿三派里的最大最小拉满）：
+   量法（balance.js hexagon / 工具 hex.cjs）：满级对满级，这一派对三派（连自己）各打一局，左右轮着站，HEX_N.seeds 个种子、每局 HEX_N.rounds 回合，一个种子一个样本；
+   上限、难度用分层 tierShare 的满级 / 木头两档对另两派打。每个数 = 均值 + 95% bootstrap 置信区间（2000 次重抽、定种子）。改了数值重新量、抄回来 */
+const HEX_AXES = [
+  { id: 'atk', name: '攻', lo: 0, hi: 50, unit: '血', what: '打开一次平均打掉多少血：打中第一下起，连带后面接上的' },
+  { id: 'def', name: '守', lo: 0, hi: 0.75, unit: '%', what: '对面打过来，被挡住、卸开、接住、捋、化掉、闪开的占几成；一串只算第一下' },
+  { id: 'spd', name: '速', lo: 22, hi: 4, unit: '帧', what: '出的招平均前摇几帧，按实际出招的次数加权' },
+  { id: 'cmb', name: '连', lo: 1, hi: 4, unit: '下', what: '打开一次平均连几下' },
+  { id: 'ctl', name: '控', lo: 0, hi: 0.5, unit: '%', what: '对面被你打得、挡得、摔得动不了的时间占几成' },
+  { id: 'top', name: '上限', lo: 0.4, hi: 0.6, unit: '%', what: '满级对满级，打另两派打掉的血平均占几成' },
+];
+const HEX_N = { seeds: 20, rounds: 4 };
+// 每一轴：[分, 分的下限, 分的上限, 量出来的数, 下限, 上限]（百分数的轴写的是 %）；stars 难度（星）、gap 满级比木头多几个点
+const HEXAGON = {
+  trad: { stars: 2.5, starsCI: [2, 3], gap: [-2.4, -4.6, -0.2],
+    atk: [9.2, 8.9, 9.5, 45.8, 44.3, 47.4], def: [5.2, 5, 5.5, 39.2, 37.3, 40.9], spd: [7.2, 7.2, 7.3, 9, 8.9, 9.1], cmb: [6.3, 6, 6.7, 2.9, 2.8, 3], ctl: [7, 6.8, 7.2, 35, 34.1, 35.8], top: [4.6, 3.4, 5.7, 49.2, 46.8, 51.4] },
+  wc: { stars: 4.5, starsCI: [3.5, 5], gap: [6.7, 3.7, 9.4],
+    atk: [4.7, 4.5, 4.9, 23.5, 22.4, 24.7], def: [6, 5.9, 6.2, 45.2, 43.9, 46.5], spd: [9.9, 9.8, 9.9, 4.2, 4.2, 4.3], cmb: [3.6, 3.4, 3.9, 2.1, 2, 2.2], ctl: [7.2, 7, 7.3, 35.9, 35.2, 36.7], top: [6.1, 5, 7.3, 52.3, 50, 54.7] },
+  taiji: { stars: 1.5, starsCI: [1, 2], gap: [-6.5, -9, -3.8],
+    atk: [9.3, 9.1, 9.5, 46.4, 45.3, 47.5], def: [5.2, 4.9, 5.4, 38.9, 37.1, 40.7], spd: [3.3, 3.3, 3.4, 16, 15.9, 16.1], cmb: [3.7, 3.5, 3.9, 2.1, 2.1, 2.2], ctl: [6.8, 6.6, 7.1, 34.2, 33, 35.4], top: [3.3, 2.4, 4.3, 46.7, 44.7, 48.5] },
+};
 </script>
 <script>
 'use strict';
@@ -1223,7 +1281,7 @@ const BODY = {
   // 肘关节和肩膀那一小块再淡一点点（farJoint）—— 两条胳膊交叉的时候看得出哪条在里哪条在外
   // （Jack：用稍微一点点的阴影表示左右，在肘关节、手臂和肩膀那一点点位置，不要太多阴影）；farR 肘上那一块多大、farRs 肩上那一块多大
   // 2.13 手上的淡线（指缝、拳头的指节、勾手）：多宽、往纸色混多少（比亮边再亮一点点才看得出来，Jack：拳头的手指细节可以不明显，但是要有）
-  shade: { tone: 0.11, rim: 1.3, rimArm: 1.05, line: 1.3, up: 0.3, far: 0.07, farJoint: 0.12, farR: 5.2, farRs: 5.6, finger: 0.42, fingerTone: 0.2 },
+  shade: { tone: 0.11, rim: 1.3, rimArm: 1.05, line: 1.3, up: 0.3, far: 0.07, farJoint: 0.12, farR: 5.2, farRs: 5.6, finger: 0.42, fingerTone: 0.2, seamTone: 0.13 },
 };
 // 以前的名字（别的文件、测试还在用）：头半径、大臂、小臂、大腿、小腿、躯干、脖子
 const BONE = { torso: BODY.bone.torso, neck: BODY.bone.neck, head: BODY.bone.head, ua: BODY.bone.ua, fa: BODY.bone.fa, th: BODY.bone.th, sh: BODY.bone.sh };
@@ -1235,7 +1293,8 @@ const BODY_TONES = {};
 function bodyTones(col) {
   if (BODY_TONES[col]) return BODY_TONES[col];
   return (BODY_TONES[col] = { base: col, hl: bodyMix(col, C.paper, BODY.shade.tone), far: bodyMix(col, C.paper, BODY.shade.far), farJ: bodyMix(col, C.paper, BODY.shade.farJoint),
-    det: bodyMix(col, C.paper, BODY.shade.fingerTone), detF: bodyMix(col, C.paper, BODY.shade.fingerTone + BODY.shade.far) });
+    det: bodyMix(col, C.paper, BODY.shade.fingerTone), detF: bodyMix(col, C.paper, BODY.shade.fingerTone + BODY.shade.far),
+    seam: bodyMix(col, C.paper, BODY.shade.seamTone), seamF: bodyMix(col, C.paper, BODY.shade.seamTone + BODY.shade.far) });
 }
 
 /* ---------- 外形 ---------- */
@@ -1400,6 +1459,101 @@ function hookShape(H, dx, dy, out, g) {
   const creases = [line([[2.4, -2.0], [6.2, -1.8], [9.8, -1.2]]), line([[5.4, 1.0], [8.0, 0.9], [10.2, 0.6]])];   // 大拇指的边；食指和中指之间（离中线多远）
   return { pts, creases };
 }
+/* 3.1 手的骨架（Jack：拳头要用手指的模型握成拳，不是在拳头上画几道线表示手指握拳；勾手张开一点，不必并拢，别像鸡爪）：
+   拳头、勾手都是真的一根一根手指 —— 一只手 = 手腕 + 掌骨那一块 + 四根手指各三节 + 大拇指三节，每一节是一根「胶囊」（两头圆的棒），
+   在手自己的三维坐标里摆好：u 顺着小臂往指根、v 手背那一面、w 大拇指那一边，原点在手腕（小臂画到的那一点）。
+   照这只手转了多少（拳心朝下 / 竖拳是绕 u 转 roll；勾手再绕手背那根轴偏一点 yaw，手指才分得开）、哪一面冲着镜头，投到画面上 ——
+   胶囊从哪个方向看都还是一个两头圆的长条（正交投影），一根手指一组，远的先画、近的后画（handSeams：手指叠在手指、掌上的地方露一道淡淡的缝）。
+   · 拳头：四指卷进掌心 —— 掌骨那一排关节（拳峰）鼓在手背前头，第一节竖着排成拳面，中间一节横在拳面底下往回收，指尖藏进掌心；
+     大拇指横压在食指、中指的中间一节上（拳面底下靠前）。侧面看得见几个拳峰的包、拳面底下卷起来的手指和压着的大拇指；
+     哪一面冲着镜头：拳心朝下时，远侧那只手（前手）看见大拇指那一侧，近侧那只手（后手）看见小指那一侧；竖拳时远侧看见掌心（卷着的手指、压着的拇指）、近侧看见手背
+   · 勾手：手腕往下折，四指自然垂着、每一节微微弯，指尖往里收但不捏死，手指之间留一点缝；大拇指往食指、中指那边虚虚地对着 */
+const FIST3 = (() => {
+  const S = 1.06;                                           // 整只拳头再按这个放大（拳头大小和 3.0.1 的圆角方块差不多）
+  const s = a => [a[0] * S, a[1] * S, a[2] * S];
+  const fingers = [   // [掌骨根, 指根关节（拳峰）, 第二个关节, 第三个关节, 指尖], 半径 [掌骨头（拳峰）, 第一节, 中间一节, 指尖那节]；食指 → 小指
+    [[0.8, 1.0, 2.1], [6.5, 2.0, 2.6], [7.8, -2.3, 2.5], [5.2, -3.5, 2.3], [4.0, -1.8, 2.2], [1.62, 1.2, 1.05, 0.9]],
+    [[0.8, 1.1, 0.7], [6.8, 2.2, 0.85], [8.2, -2.5, 0.8], [5.4, -3.8, 0.75], [4.1, -2.0, 0.7], [1.68, 1.25, 1.1, 0.95]],
+    [[0.8, 1.0, -0.7], [6.6, 2.0, -0.9], [7.9, -2.4, -0.95], [5.2, -3.7, -1.0], [4.0, -2.0, -1.0], [1.58, 1.18, 1.03, 0.9]],
+    [[0.8, 0.7, -2.0], [6.1, 1.55, -2.5], [7.1, -1.9, -2.6], [5.0, -3.1, -2.5], [4.0, -1.8, -2.4], [1.42, 1.0, 0.9, 0.8]],
+  ];
+  const groups = [];
+  // 手腕 + 掌（掌心那一块软的）+ 四根掌骨：一组（手背那一块，最靠里）
+  const blk = [[[-1.4, 0.2, 0], [1.2, 0.4, 0], 3.05], [[1.2, -0.9, 0.6], [5.0, -1.2, 0], 2.2]];
+  for (const f of fingers) blk.push([f[0], f[1], f[5][0]]);
+  groups.push({ id: 'palm', segs: blk.map(([a, b, r]) => [s(a), s(b), r * S]) });
+  fingers.forEach((f, i) => groups.push({ id: 'f' + i, segs: [[f[1], f[2], f[5][1]], [f[2], f[3], f[5][2]], [f[3], f[4], f[5][3]]].map(([a, b, r]) => [s(a), s(b), r * S]) }));
+  // 大拇指：掌根那一块（鱼际）→ 第一节 → 指尖横压在食指、中指的中间一节上
+  const th = [[1.0, -1.3, 3.0], [4.0, -2.7, 3.9], [6.5, -3.95, 2.9], [7.7, -4.15, 1.0]], tr = [1.45, 1.22, 1.08];
+  groups.push({ id: 'thumb', segs: [0, 1, 2].map(i => [s(th[i]), s(th[i + 1]), tr[i] * S]) });
+  return groups;
+})();
+// 勾手（照真人的手：掌长、指长和张开的掌一样）—— 腕折 flex（弧度，往掌心那边折）、手指每一节弯多少、张开多少都按参数现搭
+function hookModel(flex) {
+  const rot = ([u, v, w]) => [u * Math.cos(flex) + v * Math.sin(flex), -u * Math.sin(flex) + v * Math.cos(flex), w];   // 绕 w 轴往掌心那边折
+  const groups = [], blk = [[[-1.2, 0.1, 0], [1.3, 0.2, 0], 2.9]];
+  // [掌骨长, 指根离中线多远（w）, 张开（度，正 = 往大拇指那边）, 三节长, 三节半径, 掌骨半径]；第一节弯 8°、第二节 13°、第三节 7°（自然垂着、微微弯，不勾成爪；Jack：张开一点、不必并拢）
+  const F = [[7.9, 2.45, 10, [3.1, 2.0, 1.6], [1.05, 0.95, 0.85], 1.35], [8.3, 0.8, 2, [3.4, 2.2, 1.6], [1.1, 1.0, 0.88], 1.4],
+    [8.0, -0.85, -8, [3.2, 2.1, 1.55], [1.03, 0.93, 0.83], 1.32], [7.4, -2.35, -17, [2.5, 1.65, 1.35], [0.9, 0.82, 0.74], 1.2]];   // 3.1 手指张开一点（Jack：不必并拢）
+  const bend = [8, 13, 7].map(d => d * D2R);
+  const fingers = [];
+  for (const [ml, w0, ab, L, R, mr] of F) {
+    const M = [ml, 0.35, w0 * 1.05];
+    blk.push([[0.9, 0.3, w0 * 0.75], M, mr]);
+    const a = ab * D2R, segs = []; let p = M, acc = 0;
+    for (let k = 0; k < 3; k++) {
+      acc += bend[k];
+      const d = [Math.cos(a) * Math.cos(acc), -Math.sin(acc), Math.sin(a) * Math.cos(acc)];
+      const q = [p[0] + d[0] * L[k], p[1] + d[1] * L[k], p[2] + d[2] * L[k]];
+      segs.push([p, q, R[k]]); p = q;
+    }
+    fingers.push(segs);
+  }
+  blk.push([[1.4, -0.7, 0.4], [5.6, -0.9, 0], 2.15]);
+  groups.push({ id: 'palm', segs: blk.map(([a, b, r]) => [rot(a), rot(b), r]) });
+  fingers.forEach((sg, i) => groups.push({ id: 'f' + i, segs: sg.map(([a, b, r]) => [rot(a), rot(b), r]) }));
+  // 大拇指：从掌根往前、往掌心那边伸出去，虚虚地对着食指中指（不捏住）
+  const th = [[1.4, -0.6, 2.7], [4.4, -1.8, 3.9], [6.6, -3.0, 3.0], [7.9, -3.9, 1.9]];
+  groups.push({ id: 'thumb', segs: [0, 1, 2].map(i => [rot(th[i]), rot(th[i + 1]), [1.4, 1.15, 0.95][i]]) });
+  return groups;
+}
+const HOOK3 = {};                                            // 腕折多少度 → 搭好的勾手（整度缓存）
+// 胶囊投到画面上：两个端点 a、b（画面坐标）、半径 r → 一圈点（两头半圆，一头 5 个点）
+function capsule2(a, b, r) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+  const ux = L > 1e-4 ? dx / L : 1, uy = L > 1e-4 ? dy / L : 0, an = Math.atan2(uy, ux), pts = [];
+  for (let i = 0; i <= 5; i++) { const t = an - Math.PI / 2 + Math.PI * i / 5; pts.push([b[0] + Math.cos(t) * r, b[1] + Math.sin(t) * r]); }
+  for (let i = 0; i <= 5; i++) { const t = an + Math.PI / 2 + Math.PI * i / 5; pts.push([a[0] + Math.cos(t) * r, a[1] + Math.sin(t) * r]); }
+  return pts;
+}
+/* 一只手投到画面上：O 手腕（画面坐标），U 顺着小臂往前（单位向量），T 手背那一面朝哪（和 U 垂直），roll 绕小臂转多少（0 拳心朝下 / 手背朝 T，π/2 竖拳：大拇指朝 T），
+   yaw 再绕 T 偏多少（勾手：手指张开的那个方向才露出来），near：这只手是不是在近侧（近侧冲着镜头的是小指那一侧 / 竖拳时是手背），g 胖瘦。
+   返回一组一组（从远到近排好）：{ id, polys: [每一节的一圈点], z 远近 } */
+function handProject(groups, O, U, T, roll, yaw, near, g, K) {
+  const cr = Math.cos(roll), sr = Math.sin(roll), cy = Math.cos(yaw), sy = Math.sin(yaw), ns = near ? 1 : -1;
+  const P = ([u, v, w]) => {
+    const tv = v * cr + w * sr, dz = -w * cr + v * sr;          // 绕 u 转 roll：往 T 的分量、往镜头的分量（近侧的手 dz 正 = 冲着镜头）
+    const x = u * cy - ns * dz * sy, z = ns * dz * cy + u * sy;  // 再绕 T 偏 yaw
+    return [O[0] + (U[0] * x + T[0] * tv) * K, O[1] + (U[1] * x + T[1] * tv) * K, z];
+  };
+  const out = groups.map(gr => {
+    let zs = 0; const polys = gr.segs.map(([a, b, r]) => { const A = P(a), B = P(b); zs += A[2] + B[2]; return capsule2(A, B, Math.max(0.15, r * K + g)); });
+    return { id: gr.id, polys, z: zs / (2 * gr.segs.length) };
+  });
+  return out.sort((a, b) => a.z - b.z);
+}
+const HAND_SEAM = 0.3, HAND_TONE = 0.075;                 // 手指和手指叠着的地方露多宽的缝（handSeams）；离镜头最近的那根手指比最远的淡多少
+const FIST_ROLL0 = 0.14;                                    // 拳心朝下的拳头也稍微转一点点（8° 上下）：拳面底下卷起来的手指、拳峰一个一个看得出来
+const HOOK_YAW = 0.62;                                      // 勾手绕手背那根轴偏多少（弧度）：侧面看手指一根一根分得开（正侧面四根叠成一根，就是一只爪）
+// 投好的一组一组手指加进 parts（画的时候一组一组从远到近，见 handSeams）；coarse：只要一个外包
+function handGroups(parts, key, far, layer, hs, hin, coarse, flags) {
+  if (coarse) {
+    const all = []; for (const h of hs) for (const q of h.polys) for (const p of q) all.push(p);
+    parts.push(Object.assign({ k: key + 'H', pts: convexHull(all), far, layer }, flags));
+    return;
+  }
+  hs.forEach((h, i) => h.polys.forEach((q, j) => parts.push(Object.assign({ k: key + 'H', pts: q, far, layer, grp: key + h.id, gz: i, gzz: h.z, inPts: hin ? hin[i].polys[j] : null }, flags))));
+}
 // 鞋：脚踝 K 是原点，x 往脚尖、y 往鞋底。参考图那种圆头鞋：脚跟圆、鞋口盖住脚踝、鞋面往脚尖斜下去、鞋头圆（2.5.1 小了、薄了，鞋头矮一点）
 const FOOT_PTS = (() => {
   const Fo = BODY.foot, a = BODY.bone.ankle, top = a - Fo.h, H = Fo.heel, T = Fo.toe, th = Fo.toeH;
@@ -1483,9 +1637,11 @@ function seatShape(tor, legs, g) {
    （层：farArm / farLeg / torso / nearLeg / head / nearArm —— 画的时候一层是一整条胳膊、一整条腿合在一起画）
    only（可选，Set）：只要这几块（量碰没碰到时一帧要算好几回，只算用得着的）。块的名字：
    aFU / aFL / aFH 前手大臂 / 小臂 / 拳，aB* 后手；FU / FL / FF 前腿大腿 / 小腿 / 脚，B* 后腿；torso、neck、head */
-function bodyParts(J, g, only) {
+// 3.1 coarse：手只要一个外包（量碰没碰到、拳脚停在身上用 —— 一根一根手指的胶囊几百个点，一帧量好几回太慢）；传了 only 也是
+function bodyParts(J, g, only, coarse) {
   g = g || 0;
   const need = k => !only || only.has(k);
+  coarse = coarse || !!only;
   const B = BODY.bone, f = J.facing * (J.turned ? -1 : 1);
   // 脊柱、朝前
   const sx = J.neck[0] - J.hip[0], sy = J.neck[1] - J.hip[1], sl = Math.hypot(sx, sy) || 1;
@@ -1520,9 +1676,13 @@ function bodyParts(J, g, only) {
         const c = clamp(dx * ux + dy * uy, -1, 1), MAXB = (hook ? 115 : 100) * D2R;
         if (Math.acos(c) > MAXB) { const cr = ux * dy - uy * dx >= 0 ? 1 : -1, a = Math.atan2(uy, ux) + cr * MAXB; dx = Math.cos(a); dy = Math.sin(a); }
         if (hook) {
-          // 勾手：手背在折过去的外侧（顺着小臂那一面接下去）
-          const sh = hookShape(E, dx, dy, [ux - dx, uy - dy], g);
-          parts.push({ k: key + 'H', pts: sh.pts, far, layer, palm: true, hook: true, detail: g === 0 ? sh.creases : null });
+          // 3.1 勾手（Jack：还是鸡爪，可以张开一点，不必并拢）：一只真的手往下折 —— 手腕折多少照手指朝哪（最多 115°），手背在折过去的外侧；
+          //     手指自然垂着微微弯、指尖往里收不捏死，绕手背那根轴偏一点（HOOK_YAW）手指才一根一根分得开
+          const fl = Math.acos(clamp(dx * ux + dy * uy, -1, 1)), key3 = Math.round(fl / D2R);
+          let tx = -(dx - (dx * ux + dy * uy) * ux), ty = -(dy - (dx * ux + dy * uy) * uy), tl = Math.hypot(tx, ty);
+          if (tl < 1e-3) { tx = uy * f; ty = -ux * f; tl = 1; }
+          const model = HOOK3[key3] || (HOOK3[key3] = hookModel(key3 * D2R));
+          handGroups(parts, key, far, layer, handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, g, HAND.k), g === 0 ? handProject(model, E, [ux, uy], [tx / tl, ty / tl], 0, HOOK_YAW, !far, -HAND_SEAM, HAND.k) : null, coarse, { palm: true, hook: true });
         } else {
           // 2.10（Jack：手掌内翻一定要看得出来是往里翻的）：掌心朝里 = 大拇指在靠身子那一边（侧面看，不管手指朝哪都是 -f 那边：
           //     手指朝上 → 拇指在后，手指朝前 → 拇指在上，手指朝下 → 拇指在前）；朝外反过来。2.9 一律画在「前上方」，竖着的掌看着就是往外翻的
@@ -1539,7 +1699,9 @@ function bodyParts(J, g, only) {
         if (wa) { const a = -wa * D2R * f, c = Math.cos(a), s = Math.sin(a); vx = ux * c - uy * s; vy = ux * s + uy * c; C0 = [W[0] + vx * BODY.wrist, W[1] + vy * BODY.wrist]; }
         // 2.13 拳头的上面：朝前出拳时朝上（-f × 法线，往后、往下打的跟着转）
         const top = [vy * f, -vx * f];
-        parts.push({ k: key + 'H', pts: fistShape(C0, vx, vy, g), far, layer, fist: true, detail: g === 0 ? fistLines(C0, vx, vy, top, front ? J.fvt : J.bvt) : null });
+        // 3.1（Jack：拳头要用手指的模型握拳）：一根一根手指卷起来握成的拳（FIST3），绕手腕（W）照小臂的方向摆；竖拳（fv / bv）= 绕小臂转 90°，大拇指朝上
+        const roll = ((front ? J.fvt : J.bvt) || 0) * Math.PI / 2 + FIST_ROLL0;
+        handGroups(parts, key, far, layer, handProject(FIST3, W, [vx, vy], top, roll, 0, !far, g, HAND.k), g === 0 ? handProject(FIST3, W, [vx, vy], top, roll, 0, !far, -HAND_SEAM, HAND.k) : null, coarse, { fist: true });
       }
     } else {
       // 脚：站在地上（身子直着、脚踝贴近地面）脚底放平；离了地按小腿的方向（脚尖微微绷着）
@@ -1620,7 +1782,7 @@ function distToPoly(x, y, pts) {
   return m;
 }
 function bodyGap(polys, J2) {
-  const tgt = bodyParts(J2, 0).parts.map(p => p.pts);
+  const tgt = bodyParts(J2, 0, null, true).parts.map(p => p.pts);
   let best = 1e9;
   for (const poly of polys) for (const [x, y] of poly) {
     let inside = 0, out = 1e9;
@@ -1635,7 +1797,7 @@ function bodyGap(polys, J2) {
 // 按横着的一条条线量（这个高度上对方身子最靠近打过来那一边的边），拳头整个穿过去到了身子后面也算得出来（bodyGap 那时候以为又「没碰到」了）。
 // noArms：对方的胳膊不算（没在挡的人，拳头从他护着的手上面过去打在身上）
 // 对方的外形（量 bodyPen 用）：每一块的点 + 上下范围（这一块不在这个高度上就不用一条边一条边看）
-const bodyTargets = (J2, noArms, parts) => (parts || bodyParts(J2, 0).parts).filter(p => !(noArms && p.k[0] === 'a')).map(p => {
+const bodyTargets = (J2, noArms, parts) => (parts || bodyParts(J2, 0, null, true).parts).filter(p => !(noArms && p.k[0] === 'a')).map(p => {
   let y0 = 1e9, y1 = -1e9; for (const q of p.pts) { if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; }
   return { pts: p.pts, y0, y1 };
 });
@@ -1791,13 +1953,37 @@ function drawBody(J, col, band, bp0, paths0) {
       paint(T.base, ip, cut, leg ? beltCut : null);
     }
     // 2.13 手指：指缝、拳头上的指节、勾手捏在一起的指尖（淡淡的几道，和亮边一个意思；只在这一层的外形里面，叠在身上也看得见）
-    if (arm) handLines(parts, T, L === 'farArm');
+    if (arm) { handSeams(parts, T, L === 'farArm'); handLines(parts, T, L === 'farArm'); }
     ctx.restore();
     under.addPath(ip); if (L === 'farArm' || L === 'farLeg') underLimb.addPath(ip);
     any = true;
     if (L === 'nearLeg' && tr) drawWaistBelt(tr, band);       // 腰带箍在腰上：盖住两条大腿根
     if (L === 'head') drawHeadGear(J, band);
   }
+}
+/* 3.1 一根一根的手指（拳头、勾手）：一组一组从远到近画 —— 先把这一组整个涂成缝的颜色，再把往里收了 HAND_SEAM 的那一圈涂回本色：
+   近的手指叠在远的手指、掌上的地方剩一道窄窄的淡缝（就是这根手指的轮廓，不是另外画上去的线）。
+   只在整只手往里收过的外形里面画：手的外沿照旧是整条胳膊那一道亮边，不多一圈 */
+function handSeams(parts, T, far) {
+  const all = parts.filter(p => p.grp && p.inPts);
+  if (!all.length) return;
+  const hp = all.filter(p => !p.grp.endsWith('palm'));        // 掌那一块（手腕、掌骨、掌心）不露缝：手背是一整块皮，手指从它上面卷下来
+  ctx.save();
+  ctx.clip(polysPath(all.map(p => p.inPts)));
+  const base = far ? T.far : T.base, seam = far ? T.seamF : T.seam;
+  // 不画线：离镜头越近的手指颜色越淡一点点（和远侧那条胳膊淡一点一个意思），一根叠在一根上，深浅一换就看得出是一根一根的手指；
+  // 最近的那根再留一道很淡的边（这根手指自己的轮廓）
+  let zmax = -1e9, zmin = 1e9; for (const p of hp) { if (p.gzz > zmax) zmax = p.gzz; if (p.gzz < zmin) zmin = p.gzz; }
+  const col0 = T.base, span = Math.max(1, zmax - zmin);
+  for (let i = 0; i < hp.length;) {
+    let j = i; while (j < hp.length && hp[j].grp === hp[i].grp) j++;
+    const grp = hp.slice(i, j), near = clamp((grp[0].gzz - zmin) / span, 0, 1);
+    const tone = bodyMix(col0, C.paper, (far ? BODY.shade.far : 0) + HAND_TONE * near);
+    if (near > 0.85) { ctx.fillStyle = seam; ctx.fill(polysPath(grp.map(p => p.pts))); ctx.fillStyle = tone; ctx.fill(polysPath(grp.map(p => p.inPts))); }
+    else { ctx.fillStyle = tone; ctx.fill(polysPath(grp.map(p => p.pts))); }
+    i = j;
+  }
+  ctx.restore();
 }
 // 2.13 手上的几道淡线（parts 里带 detail 的：掌心那一块带着指缝、拳头带着指节、勾手带着往指尖收的线）
 function handLines(parts, T, far) {
@@ -1866,7 +2052,7 @@ const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 71, dx: 0, air: 0, fe: 1, b
 const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo', 'fp', 'bp', 'fpa', 'bpa', 'fpr', 'bpr', 'fw', 'bw', 'fz',
   'fs', 'bs', 'fhk', 'bhk', 'fv', 'bv'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
-// base：这一招的底子（不写 = 传统格斗的 BASE；别的拳派的招用自己的底子，比如咏春拳的 WBASE，见 wingchun.js）
+// base：这一招的底子（不写 = 格斗术的 BASE；别的拳派的招用自己的底子，比如咏春拳的 WBASE，见 wingchun.js）
 function mk(o, base) {
   const p = Object.assign({}, base || BASE, o || {});
   for (const k of ARRK) p[k] = p[k].slice();
@@ -1941,6 +2127,13 @@ const POSE = {
   // 挨打：轻的 —— 头往后一甩、上身往后仰、手松开；重的 —— 弯腰缩成一团
   hurtL: mk({ tor: -20, head: -24, dx: -10, hy: 72, tw: -10, fh: [12, -6], bh: [-4, -2], ff: [30, 0], bf: [-32, 0] }),
   hurtH: mk({ tor: 36, head: 28, dx: -14, hy: 62, tw: 0, fh: [22, 22], bh: [10, 26], ff: [22, 0], bf: [-38, 0] }),
+  /* 3.1 挨打分打在哪（fighter.js hurtStart）：重的打在头上 —— 头往后猛甩、下巴扬起、两手往外甩开、前脚跟着离地一点；
+     轻的打在身子上 —— 胸口往里一缩、半弯腰、两手往下护肚子；打在腿上 —— 前腿一软、整个人往下一沉；
+     缓回来：两手往回护、身子还往后靠着（硬直快完时已经是半个架势） */
+  hurtHH: mk({ tor: -28, head: -34, dx: -16, hy: 70, tw: -18, fh: [4, -22], fe: -1, bh: [-16, -12], ff: [34, 5], bf: [-36, 0] }),
+  hurtM: mk({ tor: 22, head: 14, dx: -10, hy: 66, tw: 8, fh: [22, 10], bh: [12, 14], ff: [26, 0], bf: [-36, 0] }),
+  hurtLow: mk({ tor: 16, head: 4, dx: -4, hy: 61, tw: 12, fh: [26, 4], bh: [8, 0], ff: [22, 0], bf: [-34, 0] }),
+  hurtRec: mk({ tor: -2, head: 6, dx: -6, hy: 69, tw: 12, fh: [18, -14], bh: [12, -12], ff: [26, 0], bf: [-34, 0] }),
   hurtAir: mk({ rot: -30, tor: -14, head: -26, tw: 0, fh: [-10, -30], bh: [-24, -16], ff: [32, 28], bf: [2, 14] }),
   pulled: mk({ tor: 30, head: 18, dx: 8, hy: 64, tw: 0, fh: [20, 16], bh: [8, 20], ff: [36, 0], bf: [-14, 0] }),
   reel: mk({ tor: -32, head: -30, dx: -14, hy: 74, tw: -16, fh: [-16, -32], bh: [-30, -20], ff: [38, 4], bf: [-26, 0] }),   // 失衡：被卸力/推开
@@ -1951,8 +2144,8 @@ const POSE = {
      整个人转 -90°（rot）就是仰面平躺：身体坐标里「往下」= 地上往脚那边，「往前」= 往上，「往后」= 往地里。
      2.4 人变厚了：后背比腿厚，腿的中线要比脊柱低一点（脚往「后」放一点）才贴得着地；头往后仰一点（head -20），后脑勺垫在地上。
      2.5.1 腿长了一点（小腿 37 → 39、大腿 39 → 38）：髋到脚 82 → 83.5、稍弯的那只脚 [-6, 4] → [-7, 3]，膝盖还稍微拱着，大腿贴着地 */
-  lie: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-7, 3], bf: [-7, -2], fh: [-6, 46], bh: [-5, 45.5], fe: 1, be: 1 }),
-  lieFlat: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-6, -2], bf: [-7, -1], fh: [-6, 46], bh: [-5, 45.5], fe: 1, be: 1 }),
+  lie: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-7, 3], bf: [-7, -2], fh: [-6, 46], bh: [-6, 45.5], fe: 1, be: 1 }),   // 3.1 手是一节一节的手指了，后手往地上再贴 1
+  lieFlat: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-6, -2], bf: [-7, -1], fh: [-6, 46], bh: [-6, 45.5], fe: 1, be: 1 }),
   // 起身硬直（2.0）：从蹲着站起来、两手还垂在下面没护住 —— 一看就知道「现在打得着他」
   rise: mk({ hy: 56, tor: 18, head: -2, dx: -2, tw: 0, ff: [26, 0], bf: [-28, 0], fh: [22, 14], bh: [10, 20] }),
   win: mk({ tor: -2, head: -14, hy: 74, tw: 10, fh: [6, -54], bh: [10, -4], ff: [22, 0], bf: [-26, 0] }),
@@ -2138,7 +2331,7 @@ const MOVES = {
     limb: 'bh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_CROSS, { tor: 22, dx: 12 }), 'back'], [2, J_(P_CROSS, { tor: 22, dx: 12 })], [3, { tor: 14 }]] }),
   // 2.9（Jack：「寸功」改成「寸劲」）：一直叫寸劲，只是以前是飘的小字（18 号毛笔字里「劲」看着像「功」）—— 改成盖印章，大字看得清
-  rushEnd: M({ kind: 'jab', label: '寸劲', stamp: '寸劲', S: 5, A: 3, R: 12, dmg: 10, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
+  rushEnd: M({ kind: 'jab', label: '寸劲', stamp: '寸劲', S: 5, A: 3, R: 12, dmg: 14, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'rushEnd', ghost: true, lunge: [1, 5, 8], ender: true, noCancel: true,
     keys: [[0, { tor: 6, dx: -6, fh: [10, -4], tw: 0 }], [1, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }, 'back'],
       [2, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
@@ -2148,12 +2341,12 @@ const MOVES = {
       [2, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] })], [3, J_(P_LOW, { fh: [24, -6] })]] }),
   // 重→拳：贴身顶肘
   elbow: M({ kind: 'jab', label: '顶肘', tag: '顶肘', lead: 'heavy', S: 4, A: 3, R: 9, dmg: 9, reach: 84, stun: 14, bstun: 8, kb: 4, stop: 5, shake: 2, power: .5,
-    limb: 'fe', fx: 'elbow', lunge: [1, 4, 10],
+    limb: 'fe', fx: 'elbow', lunge: [1, 4, 16],
     keys: [[0, { tor: 14 }], [0.5, { tor: 2, dx: -4, tw: -10, fh: [8, -12] }],
       [1, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }, 'back'],
       [2, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }], [3, {}]] }),
   // 腿→拳：踢完落步往前冲拳
-  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 8, reach: 100, stun: 14, bstun: 8, kb: 3.5, stop: 5, power: .5,
+  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 8, reach: 100, stun: 14, bstun: 8, kb: 2.5, stop: 5, power: .5,
     limb: 'bh', fx: 'jab2', lunge: [1, 5, 24],
     keys: [[0, { tor: -4, ff: [32, 30] }], [1, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }, 'back'],
       [2, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }], [3, {}]] }),
@@ -2166,7 +2359,7 @@ const MOVES = {
       [0.9, { tor: -6, dx: -10, hy: 67, head: 6, tw: 48, fh: [36, -6], bh: [-12, -10], ff: [30, 0], bf: [-40, 0] }],
       [1, P_HEAVY, 'back'], [2, P_HEAVY], [2.5, J_(P_HEAVY, { tor: 16, dx: 14, tw: -30, bh: [44, -2] })], [3, {}]] }),
   // 拳→重
-  beng: M({ kind: 'heavy', label: '进步冲拳', stamp: '进步冲拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 19, reach: 112, stun: 19, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
+  beng: M({ kind: 'heavy', label: '进步冲拳', stamp: '进步冲拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 19, reach: 112, stun: 19, bstun: 12, kb: 3.5, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [4, 9, 18],
     keys: [[0, {}], [0.5, { fh: [2, 4], tor: 2, hy: 64, dx: -6, tw: -10, bh: [6, -6] }],
       [1, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }, 'back'],
@@ -2186,7 +2379,7 @@ const MOVES = {
       [2, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }], [3, { spin: 0 }]] }),
   // 拳拳重：冲天炮（对空，击倒）
   upper: M({ kind: 'heavy', label: '冲天炮', stamp: '冲天炮', tier: 'aa', lead: 'light', S: 8, A: 4, R: 16, dmg: 22, reach: 98, stun: 19, bstun: 12, kb: 3, stop: 10, shake: 7, power: 1, heavy: true,
-    limb: 'bh', fx: 'upper', ghost: true, lunge: [4, 8, 9], launch: 9, noCancel: true, ender: true, antiAir: 120,
+    limb: 'bh', fx: 'upper', ghost: true, lunge: [4, 8, 15], launch: 9, noCancel: true, ender: true, antiAir: 120,
     keys: [[0, {}], [0.5, { bh: [14, 30], hy: 50, tor: 26, fh: [16, -10], dx: 4, tw: 34 }],
       [1, { bh: [60, -30], hy: 78, tor: 6, dx: 29, bf: [-20, 10], head: -10, fh: [10, -8], air: 6, tw: -44, ff: [42, 0] }, 'out'],
       [2, { bh: [30, -62], hy: 82, tor: -10, dx: 22, bf: [-14, 14], head: -18, fh: [8, -8], air: 8, tw: -40, ff: [38, 0] }], [3, {}]] }),
@@ -2223,7 +2416,7 @@ const MOVES = {
     keys: [[0, {}], [0.55, { ff: [30, 62], tor: -8, bf: [-27, 0], fh: [22, -12], bh: [6, -7], head: 3, hy: 74, dx: 3, tw: 10 }],
       [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [36, 44], tor: -14, dx: 13, hy: 74, bf: [-27, 0] }], [3, {}]] }),
   // 拳→踢
-  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 15, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
+  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 15, reach: 122, stun: 17, bstun: 10, kb: 3.5, stop: 8, shake: 5, power: .85,
     limb: 'bf', fx: 'whip', lunge: [5, 10, 10],
     keys: [[0, {}], [0.5, { bf: [10, 56], tor: -10, ff: [22, 0], fh: [20, -14], bh: [6, -6], spin: 20, hy: 74, tw: 0 }],
       [1, { bf: [94, 96], tor: -40, dx: 22, ff: [8, 0], fh: [-4, -22], bh: [2, -10], head: 16, spin: 30, hy: 76, tw: -10 }, 'back'],
@@ -2407,8 +2600,8 @@ const MOVES = {
     stop: 8, shake: 4, power: .8, limb: 'fe', fx: 'slipElbow', ghost: true, lunge: [0, 5, 18], stagger: true, ender: true, noCancel: true,
     keys: [[0, { spin: 165, tor: 24, hy: 58, head: 2, fh: [14, -18], bh: [16, -12], fe: -1, ff: [30, 0], bf: [-32, 0], tw: 0 }],
       [0.55, { spin: 95, tor: 6, hy: 66, head: -4, dx: -4, fh: [-8, -8], bh: [8, -10], ff: [24, 0], bf: [-36, 0], tw: -20 }],
-      [1, { spin: 8, tor: 26, dx: 24, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }, 'back'],
-      [2, { spin: 4, tor: 26, dx: 24, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }], [3, {}]] }),
+      [1, { spin: 8, tor: 26, dx: 27, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }, 'back'],   // 3.1 dx 24 → 27：他重拳收招时身子晚半拍才收（随动），肘再往前送一点贴到背上
+      [2, { spin: 4, tor: 26, dx: 27, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }], [3, {}]] }),
   // 爆气：挨打时按「重+踢」，花 50 气从身上炸开 —— 2.1（Jack）：把对方炸倒、打掉 18（以前只是震开）
   burst: M({ kind: 'script', label: '爆气', S: 0, A: 0, R: 22, script: true, inv: [0, 18], evWave: 3,
     keys: [[0, { tor: 28, hy: 54, head: 10, fh: [8, 12], bh: [4, 14], tw: 0 }],
@@ -2529,7 +2722,7 @@ function pickVariant(kind, chain, air, mod) {
 const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, 'd:kick': 120, 'd:heavy': 100, 'd:grab': 96 })[k] || 90;
 
 /* ============================================================
-   拳派（2.7.1 铺垫；Jack：以后还会做更多和这个一样完整的拳派，现在这一套只是「传统格斗」，
+   拳派（2.7.1 铺垫；Jack：以后还会做更多和这个一样完整的拳派，现在这一套只是「格斗术」，
    到时候各种克制关系、发生的反应都要重新算）
    一个拳派 = 一整套：招式表 moves（上面的 MOVES）、交手关系 relation（主系克制 TIER_WIN + 起手压）、
    取消规则 cancel（CANCEL）、连招变招 variant（pickVariant）。
@@ -2538,12 +2731,12 @@ const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, '
    · 两个人同一派：交手照这一派自己的 relation（clashRelation，combat.js 交手时调）。
    · 两个人不同派：不套用任何一派的表 —— 在 MATCHUPS['甲|乙'] 里专门写这一对谁克谁（relation(dA, dB)：1 甲赢 / -1 乙赢 / 0 平，
      ±0.5 压），没写就报错（tests.js 查），不会悄悄用某一派自己的规矩。
-   · 现在只有 trad 一派，电脑 AI、破招练习、教程、平衡报告都直接读 MOVES（都是传统格斗专用的）；各种「反应」
+   · 现在只有 trad 一派，电脑 AI、破招练习、教程、平衡报告都直接读 MOVES（都是格斗术专用的）；各种「反应」
      （接腿、卸力、翻滚回去、倒栽葱、踩蹲、拳迎坠山、闪身躲重拳……）写在 combat.js，按招名、系别认 ——
      加新派的时候这些都要按新的一派重新算，清单见 NOTES「拳派」
    ============================================================ */
 const STYLES = {
-  trad: { id: 'trad', name: '传统格斗', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant },
+  trad: { id: 'trad', name: '格斗术', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant },
 };
 const STYLE_DEFAULT = 'trad';
 const MATCHUPS = {};                     // 跨派的规矩（以后加）：'trad|taiji': { relation(dA, dB) { … } }
@@ -2562,8 +2755,8 @@ function clashRelation(A, B) {
 <script>
 'use strict';
 /* ============================================================
-   咏春拳（2.10 重做；2.9 叫「迎春拳」，那一版只是换了动作的传统格斗）—— 设计稿在 WINGCHUN.md，改玩法先改那里。
-   和传统格斗不一样的是按键语法，不只是招：
+   咏春拳（2.10 重做；2.9 叫「迎春拳」，那一版只是换了动作的格斗术）—— 设计稿在 WINGCHUN.md，改玩法先改那里。
+   和格斗术不一样的是按键语法，不只是招：
    · 拳：连环冲拳看拍子，不看打没打中 —— 按在拍子上两只手轮流打、越打越快越顺；抢拍晚出，过拍断
    · 重：寸拳（按住蓄劲）；前 + 重 批肘，后 + 重 拐肘，蹲 + 重 沉肘
    · 挡：点一下拍手，按住黐手 —— 黏住打过来的手脚就进「搭手」；挨打的硬直里按住挡 + 对的方向 = 黐手破连
@@ -2602,7 +2795,7 @@ const W_ARM = wArm(W_UA, W_FA), W_ARM_PALM = wArm(8, 8);        // 推掌胳膊�
 const wFrom = (side, tw, at) => { const s = side * BODY.shoulderW * Math.sin(tw * D2R), t = W_TOR * D2R; return [+(s * Math.cos(t) + at[0]).toFixed(2), +(s * Math.sin(t) + at[1]).toFixed(2)]; };
 const W_BODY = { tor: W_TOR, head: 2, hy: W_HY, dx: W_DX, ff: [29, 0], bf: [-31, 0] };
 // 收回来的那只拳绕的小圆（肩膀内侧、胸口前面；从下面往后、往上绕）：底下 → 后下 → 最后面 → 后上 → 上面；转到上面再往前贴到肘弯上张开成竖掌
-const W_LOOP = [[18, 8], [13, 6.5], [11, 3], [12.5, -0.5], [16.5, -1.6]];
+const W_LOOP = [[18, 10], [13, 7.5], [11, 3.5], [12.5, -0.5], [16.5, -1.6]];   // 3.1 圈底再低 2（收着的拳要在打出去那条胳膊的肘底下；手按手指搭以后拳心高了一点）
 const W_GUARD_PALM = [23, -0.5];                                // 圈转到上面、张开成竖掌贴在打出去那条胳膊的肘弯上（第 4 格）
 const W_UNDER = [40, 7], W_OVER = [33, -3];                     // 换手（第 5 格）：收回去的那条在下面、还在前面；打出去的那只在上面
 // 一只手的样子：h 'f' 前手 / 'b' 后手，at 拳心（掌是掌根）在哪；palm 掌（pa 手指朝哪、pr 掌心朝哪）；cock 拳头往上翘多少
@@ -2665,22 +2858,22 @@ const WMOVES = {
   /* ---- 拳：连环冲拳（beat：按拍子接，见下面「拍子」）。flow：打中了顺加一级 ---- */
   // 冲拳（起手）：2.10.3（Jack：第一拳只是把问手的掌变成拳，要换一只手出）—— 后手出：护手收成拳，从问手的小臂上面打出去，
   // 问手从底下收回来、在肩膀内侧绕一个小圆，转到上面张开成竖掌贴在后手的肘弯上。身子从架势往前一点点（dx 0 → W_DX），收完招回到架势
-  wJab: WM({ kind: 'jab', label: '冲拳', open: true, beat: true, flow: true, S: 3, A: 3, R: 7, dmg: 4, reach: 84, stun: 8, bstun: 6, kb: 1.4, stop: 2, power: .3,
+  wJab: WM({ kind: 'jab', label: '冲拳', open: true, beat: true, flow: true, S: 3, A: 3, R: 7, dmg: 5, reach: 84, stun: 8, bstun: 6, kb: 1.4, stop: 2, power: .3,
     limb: 'bh', fx: 'jab', lunge: [1, 3, 6],
     keys: wChainKeys('b', false, {}) }),
   // 连下去（第 4 → 5 → 6 格，两只手轮流）：贴在肘弯上的那只手收成拳、从这条小臂上面滚出去，这条从底下抽回胸口、绕一个小圆；
   // 到头以后（判定那几帧）它转到上面张开成竖掌，贴到打出去那条胳膊的肘弯上，等下一拳。身子一直不动
-  wJabR: WM({ kind: 'jab', label: '冲拳', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.2, stop: 2, power: .3,
+  wJabR: WM({ kind: 'jab', label: '冲拳', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 5, reach: 86, stun: 6, bstun: 6, kb: 1.2, stop: 2, power: .3,
     limb: 'bh', fx: 'rush', lunge: [1, 3, 7],
     keys: wChainKeys('b', false) }),
-  wJabF: WM({ kind: 'jab', label: '冲拳', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.2, stop: 2, power: .3,
+  wJabF: WM({ kind: 'jab', label: '冲拳', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 5, reach: 86, stun: 6, bstun: 6, kb: 1.2, stop: 2, power: .3,
     limb: 'fh', fx: 'rush', lunge: [1, 3, 10],
     keys: wChainKeys('f', false) }),
   // 立掌（每三下的第三下）：走同一条路推出去，到头是竖掌、掌根往前（侧面看是掌边，掌心微微朝里）；推掌胳膊伸得直一点、肩送得多一点
-  wPalmF: WM({ kind: 'jab', label: '立掌', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.3, stop: 2, power: .35,
+  wPalmF: WM({ kind: 'jab', label: '立掌', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 5, reach: 86, stun: 6, bstun: 6, kb: 1.3, stop: 2, power: .35,
     limb: 'fh', fx: 'rush', lunge: [1, 3, 7],
     keys: wChainKeys('f', true) }),
-  wPalmR: WM({ kind: 'jab', label: '立掌', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 4, reach: 86, stun: 6, bstun: 6, kb: 1.3, stop: 2, power: .35,
+  wPalmR: WM({ kind: 'jab', label: '立掌', beat: true, flow: true, S: 3, A: 3, R: 6, dmg: 5, reach: 86, stun: 6, bstun: 6, kb: 1.3, stop: 2, power: .35,
     limb: 'bh', fx: 'rush', lunge: [1, 3, 7],
     keys: wChainKeys('b', true) }),
   // 寸拳（收势：连环拳第 8 下、连环拳里按重）：身子往下一沉、拳贴着胸口，一寸一寸地炸出去 —— 霸体吃不住，打倒。
@@ -2792,11 +2985,14 @@ const WMOVES = {
     keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.55, J_(JT, { rot: 2, tor: 4, fh: [22, -4], fp: 0, bh: [20, 6], tw: 20 })],
       [1, { rot: 18, tor: 24, head: -6, dx: 6, fh: [56, 12], fp: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }, 'back'],
       [2, { rot: 20, tor: 26, head: -6, dx: 6, fh: [54, 15], fp: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }], [3, JD]] }),
-  airHeavy: WM({ kind: 'heavy', label: '落掌', stamp: '落掌', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 8, A: 10, R: 9, dmg: 10, reach: 100, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 4.5, stop: 8, shake: 5, power: .9, heavy: true,
-    limb: 'bh', fx: 'hammer', air: true,
-    keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.7, { rot: -6, tor: -22, head: -10, bh: [-8, -56], bpa: -70, be: -1, fh: [24, -20], ff: [18, 54], bf: [2, 48], tw: -20 }],
-      [1, { rot: 24, tor: 42, head: 12, dx: 12, bh: [52, 32], bpa: 50, bpr: 0.6, fh: [30, 8], ff: [22, 26], bf: [-24, 36], tw: -20 }, 'out'],
-      [2, { rot: 26, tor: 44, head: 12, dx: 12, bh: [50, 36], bpa: 56, bpr: 0.6, fh: [30, 8], ff: [22, 26], bf: [-24, 36], tw: -20 }], [3, JD]] }),
+  // 3.1 飞身盖肘（Jack：三派跳起来按重长得太像 —— 都是整个人往前翻着砸）：咏春不翻身 —— 人在空中立着、两膝收起来护住中线，
+  // 后手的肘先抬过头（拳收在耳边），再以肩为轴往前下方盖下去，肘尖领着、拳留在脸边，打在他锁骨、脸上（标指里的盖肘 kop jarn），前手竖掌护在胸前
+  airHeavy: WM({ kind: 'heavy', label: '飞身盖肘', stamp: '盖肘', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 8, A: 10, R: 9, dmg: 10, reach: 100, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 4.5, stop: 8, shake: 5, power: .9, heavy: true,
+    limb: 'be', fx: 'chop', air: true,
+    keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })],
+      [0.7, { rot: -4, tor: -8, head: -2, fh: [24, 4], fp: 1, fpa: -80, fpr: 0.2, bh: [-2, -18], bp: 0, be: 1, ff: [20, 58], bf: [-2, 48], tw: -36 }],
+      [1, { rot: 8, tor: 12, head: 0, dx: 30, fh: [22, 18], fp: 1, fpa: -70, fpr: 0.2, bh: [20, -10], bp: 0, be: 1, ff: [24, 50], bf: [4, 44], tw: 60 }, 'out'],
+      [2, { rot: 10, tor: 16, head: 0, dx: 30, fh: [22, 20], fp: 1, fpa: -70, fpr: 0.2, bh: [20, -6], bp: 0, be: 1, ff: [24, 48], bf: [2, 42], tw: 62 }], [3, J_(JD, { fp: 1, bp: 1 })]] }),
   airKick: WM({ kind: 'kick', label: '飞撑脚', stamp: '飞撑脚', tier: 'air', lead: 'kick', height: 'high', open: true, S: 7, A: 11, R: 8, dmg: 9, reach: 110, vreach: AIR_VREACH, stun: 17, bstun: 10, kb: 5, stop: 7, shake: 4, power: .85,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.6, { rot: -6, tor: 10, head: -4, ff: [10, 60], bf: [-6, 46], fh: [34, -16], bh: [18, -6], tw: 10 }],
@@ -2860,7 +3056,7 @@ const WMOVES = {
   // 连环寸拳（大招，气满按重 + 踢）：往下一沉（出手前几帧打击无敌），第一拳打中 = 一串左右交替的寸拳把人钉住，最后一记寸拳打飞
   super: WM({ kind: 'heavy', label: '连环寸拳', stamp: '连环寸拳', tier: 'super', S: 6, A: 3, R: 20, dmg: 4, reach: 92, stun: 20, bstun: 14, kb: 1, stop: 5, shake: 4, power: 1, heavy: true,
     limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 6, 14], sinv: [0, 6], cost: QI_MAX, launch: 6, ender: true, noCancel: true, antiAir: 40,
-    flurry: { n: 10, every: 2.25, dmg: 4, last: 20, kb: 1.2, lastKb: 9, endStamp: '寸拳' }, pierce: true,
+    flurry: { n: 10, every: 2.25, dmg: 3, last: 20, kb: 1.2, lastKb: 9, endStamp: '寸拳' }, pierce: true,   // 3.1 一下 4 → 3：以前每下按连击衰减越打越少（一串 50 上下），现在每下一样疼 —— 3 × 10 + 20 = 50（和泼墨一样）
     keys: [[0, {}], [0.4, { tor: 2, dx: -4, hy: 63, tw: 10, fh: [26, 0], fp: 0, bh: [18, 4], bp: 0, ff: [30, 0], bf: [-34, 0] }, 'out'],
       [1, WJ(W_PF, { dx: 12, hy: 64, fh: [56, -4] }), 'back'], [2, WJ(W_PF, { dx: 12, hy: 64, fh: [56, -4] })], [3, {}]] }),
 
@@ -2899,32 +3095,32 @@ const WMOVES = {
       [2, { tor: -8, head: 4, dx: 8, hy: 72, tw: 20, ff: [84, 26], ft: 30, bf: [-26, 0], fh: [38, -8], fpa: -60 }], [3, {}]] }),
   // 扣住手腕以后：拳 = 拉打（前手拽着，后手连冲两拳）
   tLapDa: WM({ kind: 'script', label: '拉打', stamp: '拉打', S: 0, A: 0, R: 20, script: true, evHit: 4, evHit2: 11, lap: 'da',
-    keys: [[0, { fh: [32, 2], fp: 0, bh: [22, 2], bp: 0, tor: 4, dx: 2, hy: 67, tw: 10 }],
-      [0.18, { fh: [22, 8], fp: 0, bh: [54, -4], bp: 0, tor: 8, dx: 8, hy: 67, tw: -24 }, 'out'],
-      [0.36, { fh: [24, 8], fp: 0, bh: [26, 0], bp: 0, tor: 4, dx: 4, hy: 67, tw: 0 }],
-      [0.56, { fh: [20, 8], fp: 0, bh: [56, -4], bp: 0, tor: 10, dx: 10, hy: 66, tw: -28 }, 'out'],
+    keys: [[0, { fh: [16, 14], fp: 0, bh: [22, 2], bp: 0, tor: 2, dx: -2, hy: 67, tw: 14 }],
+      [0.18, { fh: [10, 16], fp: 0, bh: [54, -4], bp: 0, tor: 8, dx: 6, hy: 67, tw: -24 }, 'out'],
+      [0.36, { fh: [12, 16], fp: 0, bh: [26, 0], bp: 0, tor: 4, dx: 2, hy: 67, tw: 0 }],
+      [0.56, { fh: [8, 16], fp: 0, bh: [56, -4], bp: 0, tor: 10, dx: 8, hy: 66, tw: -28 }, 'out'],
       [0.75, { fh: [30, -6], bh: [32, 0], bp: 0, tor: 6, dx: 6, hy: 67, tw: 0 }], [1, {}]] }),
   // 重 = 拉手批肘（前手往回一拽，后手肘从上往下劈 —— 打倒）
   tLapPai: WM({ kind: 'script', label: '拉手批肘', stamp: '拉手批肘', S: 0, A: 0, R: 24, script: true, evHit: 8, lap: 'pai',
-    keys: [[0, { fh: [32, 2], fp: 0, bh: [22, 2], tor: 4, dx: 2, hy: 67, tw: 10 }],
-      [0.2, { fh: [14, 8], fp: 0, bh: [4, -46], bp: 0, be: -1, tor: -6, dx: -4, hy: 70, tw: -10 }],
+    keys: [[0, { fh: [16, 14], fp: 0, bh: [22, 2], tor: 2, dx: -2, hy: 67, tw: 14 }],
+      [0.2, { fh: [8, 14], fp: 0, bh: [4, -46], bp: 0, be: -1, tor: -6, dx: -4, hy: 70, tw: -10 }],
       [0.36, { fh: [12, 10], fp: 0, bh: [13, -8], bp: 0, be: 1, tor: 24, dx: 10, hy: 63, head: -4, tw: -40 }, 'back'],
       [0.6, { fh: [12, 10], fp: 0, bh: [13, -6], bp: 0, be: 1, tor: 24, dx: 10, hy: 63, head: -4, tw: -40 }], [1, {}]] }),
   // 踢 = 拉手撑脚（前手拽住，前腿一脚撑在他肚子上 —— 把他撑开、失衡）
   tLapKick: WM({ kind: 'script', label: '拉手撑脚', stamp: '拉手撑脚', S: 0, A: 0, R: 18, script: true, evHit: 6, lap: 'kick',
-    keys: [[0, { fh: [32, 2], fp: 0, bh: [22, 2], tor: 4, dx: 2, hy: 67, tw: 10 }],
-      [0.2, { fh: [22, 6], fp: 0, ff: [24, 40], tor: -2, hy: 71, bf: [-26, 0] }],
+    keys: [[0, { fh: [16, 14], fp: 0, bh: [22, 2], tor: 2, dx: -2, hy: 67, tw: 14 }],
+      [0.2, { fh: [14, 12], fp: 0, ff: [24, 40], tor: -2, hy: 71, bf: [-26, 0] }],
       [0.36, { fh: [18, 6], fp: 0, tor: -12, head: 6, dx: 10, hy: 73, tw: 20, ff: [86, 40], ft: 30, bf: [-26, 0] }, 'back'],
       [0.6, { fh: [26, 0], fp: 0, tor: -8, dx: 8, hy: 72, ff: [40, 26], bf: [-26, 0] }], [1, {}]] }),
   // 蹲 / 拿 = 拉手跪马（咏春的摔，不是过肩摔）：扣住手腕往回一拽、退半步沉身跪马，把他的手往下往前带 —— 他往前扑倒、脸朝下趴在你面前
   tDrag: WM({ kind: 'script', label: '拉手跪马', stamp: '拉手跪马', S: 0, A: 0, R: 30, script: true, evSlam: 14, lap: 'drag', lunge: [0, 6, -30],
-    keys: [[0, { fh: [32, 2], fp: 0, bh: [22, 2], tor: 4, dx: 2, hy: 67, tw: 10 }],
-      [0.22, { fh: [12, 6], fp: 0, bh: [24, -6], tor: -6, dx: -10, hy: 66, tw: 26, ff: [26, 0], bf: [-38, 0] }, 'out'],
+    keys: [[0, { fh: [16, 14], fp: 0, bh: [22, 2], tor: 2, dx: -2, hy: 67, tw: 14 }],
+      [0.22, { fh: [8, 10], fp: 0, bh: [24, -6], tor: -6, dx: -10, hy: 66, tw: 26, ff: [26, 0], bf: [-38, 0] }, 'out'],
       [0.46, { fh: [28, 36], fp: 0, bh: [24, 18], tor: 24, dx: -6, hy: 44, head: 2, tw: 18, ff: [30, 0], bf: [-34, 0] }],
       [0.7, { fh: [30, 40], fp: 0, bh: [26, 22], tor: 26, dx: -6, hy: 44, head: 0, tw: 18, ff: [30, 0], bf: [-34, 0] }], [1, {}]] }),
   // 扣住手腕以后什么都不按：蝴蝶掌（两只掌并排推出去，把人推开）
   tButterfly: WM({ kind: 'script', label: '蝴蝶掌', S: 0, A: 0, R: 16, script: true, evPush: 4, lap: 'push',
-    keys: [[0, { fh: [32, 2], fp: 0, bh: [22, 2], tor: 4, dx: 2, hy: 67, tw: 10 }],
+    keys: [[0, { fh: [16, 14], fp: 0, bh: [22, 2], tor: 2, dx: -2, hy: 67, tw: 14 }],
       [0.25, { tor: 14, dx: 18, hy: 64, tw: 0, fh: [55, W_LINE - 3], fpa: -84, fpr: 0.35, bh: [53, W_LINE + 3], bpa: -80, bpr: 0.35, ff: [44, 0], bf: [-34, 0] }, 'back'],
       [0.5, { tor: 14, dx: 18, hy: 64, tw: 0, fh: [55, W_LINE - 3], fpa: -84, fpr: 0.35, bh: [53, W_LINE + 3], bpa: -80, bpr: 0.35, ff: [44, 0], bf: [-34, 0] }], [1, {}]] }),
   // 他甩手了：等着，WC_LAT_WIN 帧里按拳 = 甩手直冲
@@ -2976,7 +3172,7 @@ const wcDir = F => wcDirVs(F, F.opp, false);
    ============================================================ */
 const wcBeat = flow => Math.max(WC_BEAT_MIN, WC_BEAT - WC_BEAT_STEP * flow);
 // 下一拳出哪一招：两只手轮流（上一拳是后手 → 这一拳前手），每三拳的第三拳是立掌；第 8 下（ci 7）寸拳收势。
-// 2.10.1（Jack：换手照传统格斗的普通攻击那样，连下去就两只手轮流）：一串里夹着踢也算，踢记着上一拳是哪只手（m.hand），踢完接的拳换另一只
+// 2.10.1（Jack：换手照格斗术的普通攻击那样，连下去就两只手轮流）：一串里夹着踢也算，踢记着上一拳是哪只手（m.hand），踢完接的拳换另一只
 function beatNext(prevLimb, ci) {
   const front = prevLimb === 'bh' || prevLimb === 'be', palm = ci % 3 === 2;
   if (ci >= 7) return cunNext(prevLimb);
@@ -3349,7 +3545,7 @@ function touchStep(L, m, k, locked) {
   m.age += DT; if (m.catchT > 0) m.catchT = Math.max(0, m.catchT - DT);
   F.stunT = Math.max(F.stunT, 4); F.kvx = 0; L.kvx = 0;
   F.x = clamp(F.x + (L.x + L.facing * WC_TOUCH_GAP - F.x) * PULL_K, WALL_L, WALL_R);
-  // 刚扣住手腕那几帧他按拿挣得脱（和传统格斗的擒住一样，提前几帧按的也算）；甩手、反拿要等手搭稳了（WC_TOUCH_GRACE）
+  // 刚扣住手腕那几帧他按拿挣得脱（和格斗术的擒住一样，提前几帧按的也算）；甩手、反拿要等手搭稳了（WC_TOUCH_GRACE）
   if (m.lap && m.lapEsc && m.age < HOLD_ESC + 1 && F.takePress(['grab'])) { F.stuck = false; escapeGrab(L, F); return true; }
   if (!m.dead && m.age >= (m.grace || WC_TOUCH_GRACE) + 1 && touchFollower(L, m, F)) return true;
   if (m.rollT > 0) { m.rollT = Math.max(0, m.rollT - DT); if (m.rollT === 0) { m.shape = m.rollTo; m.win = WC_STEP; } }
@@ -3462,6 +3658,7 @@ function touchCue(F, text, own) {
 
 /* ---------- 扣着手腕的那几下（拉打、拉手批肘、拉手撑脚、拉手跪马、蝴蝶掌）：他一直被黏着，到点了打在他身上 ---------- */
 function lapFire(L, F, name) {
+  L.lapLimb = L.move && L.move.limb || 'lead';                 // 3.1 扣着的是他哪只手（别手 wcBind 画用，只是画面）
   F.stuck = true; F.stunT = Math.max(F.stunT, 60);
   L.startScript(name);
   return true;
@@ -3530,6 +3727,160 @@ function dragSlam(L, F) {
   if (!game.quiet) { dust(F.x, FLOOR, 10, true); stamp(L.J.head[0] - L.facing * 52, L.J.head[1] - 46, '拉手跪马', 28, L); }
   Sound.hit(0.9);
 }
+/* ============================================================
+   3.1 别手（Jack：咏春的别手没有把对面的模型别住 —— 一个人的手臂对另一个人的手臂的格挡、扭曲、控制，要非常细致）。
+   以前接招、搭手、扣手腕的时候两个人各摆各的样子，两条胳膊碰不到一起。现在两个人这一步的骨骼算好以后再「别」一遍（只是画面，
+   改的是这一步的 J，disp 用完还回去 —— 战斗、联机都不看）：
+   ① 先把他被别住的那只手放到被别的地方（双方肩膀中间那一带，照手法：摊手托高、伏手压低、拍手拍得往下往里、膀手往上往外滑开、
+      扣手腕被拽到我胸前、身子往前栽），肘自己弯（IK）；
+   ② 再把我的手放到他小臂上该碰的那一点：拍手、伏手是掌（掌根）压在他小臂上面；摊手、膀手、问手是我小臂靠手腕那一截贴在他小臂下面 / 上面；
+      扣手腕是我的手攥住他手腕（我的手不动，他的手被拽过来）；
+   ③ 来回对两遍（他的胳膊动了接触点跟着动），接触的地方贴着（WC_BIND_OK 以内）。
+   手法的数：[他手到哪（离两人肩膀中间往他那边 x、比肩膀低 y）, 碰在他小臂的哪（肘 0 → 手 1）, 我贴在上面 1 / 下面 -1, 我用掌 1 / 小臂 0, 他上身往前栽多少, 拧多少]
+   参考：ref/wc_moves_12.png、wc_defense_combos.png、wc_dummy_combos.png；WINGCHUN.md 十七
+   ============================================================ */
+const WC_BIND = {
+  wen: [-10, 12, 0.9, 1, 0, 0, 0],         // 问手：两人手腕搭在一起，我的小臂靠手腕那截搭在他手腕上面（他胳膊半弯着伸过来）
+  tan: [-12, 6, 0.84, -1, 0, 0, -6],       // 摊手：我小臂靠手腕那截托在他手腕底下，把他的手托高、往外
+  bong: [-14, 9, 0.86, -1, 0, 2, -10],     // 膀手：我小臂斜着（肘比手腕高）垫在他手腕底下，他的手顺着往上、往外滑开
+  fook: [-8, 18, 0.6, 1, 1, 4, 4],         // 伏手：我手腕、掌根压在他小臂靠肘那截上面，他的手被压低
+  pat: [-22, 16, 0.5, 1, 1, 6, 10],        // 拍手（刚接住）：他的拳被拍得往下、往里偏（拳过了我的胸口），我掌根拍在他小臂中段上面
+  ptan: [-24, -2, 0.78, -1, 0, 0, -8],     // 摊手接（刚接住）：他的拳被托过我肩膀上面
+  pbong: [-20, 4, 0.76, -1, 0, 2, -14],    // 膀手转马接（刚接住）：他的拳顺着膀手往上、往外滑开
+};
+// 用掌压上去的那几手，掌怎么摆（手指朝哪 fpa、掌心朝里多少 fpr、手指张开 fs）：拍手掌根往下拍、手指顺着他小臂往前；伏手手腕折着、手指往前下搭在他小臂上
+const WC_BIND_PALM = { pat: [8, 0.35, 0.3], fook: [36, 0.55, 0.15] };
+const WC_BIND_OK = 2;
+const BIND_K = ['fh', 'bh', 'ff', 'bf'];
+function bindLerp(a, b, u) { return a.map((v, i) => v + (b[i] - v) * u); }
+// 这一步谁别着谁、用什么手法（null = 没别着）
+function bindOf(L, F) {
+  const m = L.move;
+  if (!F.J || !L.J || L.state !== 'attack' || !m) return null;
+  const lk = lim => lim === 'rear' ? 'bh' : lim === 'leg' ? 'ff' : 'fh';
+  if (m.def.tch && F.stuck && !F.carried) {
+    const fk = lk(m.limb);
+    if (fk === 'ff') return null;
+    if (m.lap || m.lapT > 0) return { mode: 'hold', fk, u: m.lapT > 0 ? 1 - m.lapT / WC_LAP : 1 };
+    const sh = s => s === '' ? WC_BIND.wen : WC_BIND[s];
+    let b = m.rollT > 0 ? bindLerp(sh(m.rollFrom), sh(m.rollTo), EASE.io(clamp(1 - m.rollT / WC_ROLL, 0, 1))) : sh(m.shape);
+    let pk = m.rollT > 0 ? (m.rollT < WC_ROLL / 2 ? m.rollTo : m.rollFrom) : m.shape;
+    if (m.catchT > 0) {
+      const c = WC_BIND[{ pat: 'pat', tan: 'ptan', bong: 'pbong' }[m.catchPose]], u = EASE.io(clamp(m.catchT / WC_CATCH_SHOW, 0, 1));
+      if (c) b = bindLerp(b, c, u);
+      if (u > 0.5) pk = m.catchPose;
+    }
+    return { mode: 'place', fk, b, palm: WC_BIND_PALM[pk] || null };
+  }
+  if (m.def.lap && F.stuck && L.lapLimb && L.lapLimb !== 'leg') return { mode: 'hold', fk: lk(L.lapLimb), u: 1, drag: m.def.lap === 'drag' };
+  return null;
+}
+// 把 X 的一只手（脚）的目标点挪到世界坐标 P：照这一步骨骼的误差反着改姿势（转身、整个人转的角度都反算回去），重算两三遍
+function bindPut(X, key, P, keep, n) {
+  const p = X.disp, f = X.facing, r = p.rot * D2R, cr = Math.cos(r), sr = Math.sin(r), sc = Math.max(0.35, Math.abs(Math.cos(p.spin * D2R)));
+  const sy = key === 'ff' || key === 'bf' ? -1 : 1;           // 脚的姿势坐标 y 是往上抬多高（手是往下）
+  for (let i = 0; i < (n || 3); i++) {
+    const cur = X.J[key], ex = (P[0] - cur[0]) * f, ey = P[1] - cur[1];
+    if (Math.abs(ex) + Math.abs(ey) < 0.3) break;
+    p[key][0] += (cr * ex + sr * ey) / sc; p[key][1] += sy * (-sr * ex + cr * ey);
+    bindRefit(X, keep);
+  }
+}
+function bindRefit(X, keep) { if (keep.ik) for (let i = 0; i < 4; i++) X.ikS[i] = keep.ik[i]; X.fk(true); }
+const BIND_N = ['tor', 'tw', 'head', 'fz', 'fpa', 'fpr', 'fs', 'fp', 'dx'];
+const bindKeep = X => { const o = { ik: X.ikS ? X.ikS.slice() : null, p: BIND_K.map(k => X.disp[k].slice()) }; for (const k of BIND_N) o[k] = X.disp[k]; return o; };
+function bindRestore(X, k) { BIND_K.forEach((key, i) => { X.disp[key][0] = k.p[i][0]; X.disp[key][1] = k.p[i][1]; }); for (const n of BIND_N) X.disp[n] = k[n]; }
+// 胳膊的肘、手（J 的世界坐标）：fh → 前手（fe、fh）
+const armOf = (J, k) => k === 'bh' ? [J.be, J.bh] : [J.fe, J.fh];
+function wcBind(L, F) {
+  const B = bindOf(L, F);
+  if (!B) return false;
+  const kL = bindKeep(L), kF = bindKeep(F), fL = L.facing;
+  // 他被别住的是前手的话，这条胳膊换到近侧（离镜头近、画在他身子前面）：不然前手在远侧，被他自己的身子、我的护手挡着，看不见两条胳膊怎么搭
+  if (B.fk === 'fh') F.disp.fz = 1;
+  // 搭手的时候两个人中心只隔 WC_TOUCH_GAP（66），身子再往前倾，两边的肩膀就挤到一起了 —— 两条胳膊没地方弯着搭在中间。
+  // 两个人身子立直一点、髋往后让一点（只是画面），肩膀隔开六十几，两条小臂正好在中间手腕搭手腕（ref/wc_dummy_combos 那样）
+  if (B.mode === 'place') { L.disp.tor = Math.min(L.disp.tor, 0); L.disp.dx -= 4; F.disp.tor = Math.min(F.disp.tor, 3); F.disp.dx -= 5; }
+  bindRefit(L, kL); bindRefit(F, kF);
+  const lh = 'fh';                                                      // 我搭着他的是前手（问手、摊、膀、伏、拍、扣手腕都是前手；后手护着 / 打人）
+  if (B.mode === 'place') {
+    const [bx, by, t, side, palm, ftor, ftw] = B.b;
+    // ① 他的手：两人肩膀中间往他那边 bx、比肩膀低 by；他上身往前栽、拧腰
+    const mx = (L.J.sh[0] + F.J.sh[0]) / 2 + fL * bx, my = (L.J.sh[1] + F.J.sh[1]) / 2 + by;
+    F.disp.tor += ftor; F.disp.tw += ftw; bindRefit(F, kF);
+    bindPut(F, B.fk, [mx, my], kF);
+    // ② 他小臂上的那一点（肘 → 手的 t 处），往上（side 1）/ 往下（-1）挪出两条胳膊的粗细
+    for (let it = 0; it < 2; it++) {
+      const [E, W] = armOf(F.J, B.fk), ux = W[0] - E[0], uy = W[1] - E[1], ul = Math.hypot(ux, uy) || 1;
+      let nx = -uy / ul, ny = ux / ul; if (ny * side > 0) { nx = -nx; ny = -ny; }       // 法线朝上（side 1）/ 朝下（-1）
+      const C = [E[0] + ux * t, E[1] + uy * t], gap = palm ? 4.6 : 7.2;
+      const P = [C[0] + nx * gap, C[1] + ny * gap];
+      if (palm) {
+        if (B.palm && it === 0) { L.disp.fp = 1; L.disp.fpa = B.palm[0]; L.disp.fpr = B.palm[1]; L.disp.fs = B.palm[2]; bindRefit(L, kL); }
+        // 掌（掌根到掌心）压在那一点：手的目标点是掌根，掌心在顺着手指往前 5 的地方
+        const d = L.J.fpm >= 0.5 && L.J.fpd ? L.J.fpd : { 0: fL, 1: 0 };
+        bindPut(L, lh, [P[0] - d[0] * 5, P[1] - d[1] * 5], kL, 3);
+      } else {
+        // 小臂靠手腕那一截（肘 → 手 0.8 处）贴在那一点
+        for (let j = 0; j < 3; j++) {
+          const [e, w] = armOf(L.J, lh), q = [e[0] + (w[0] - e[0]) * 0.8, e[1] + (w[1] - e[1]) * 0.8];
+          const dx = P[0] - q[0], dy = P[1] - q[1];
+          if (Math.abs(dx) + Math.abs(dy) < 0.4) break;
+          bindPut(L, lh, [w[0] + dx * 1.25, w[1] + dy * 1.25], kL, 1);
+        }
+      }
+    }
+    // 护手（后手）跟着前手：竖掌护在胸口前、中线上，在前手的手腕后面（ref/wc_moves_12 第 2 格），不跑到前手前面去挡住搭着的那两只手
+    if (!(L.move.def.limb === 'bh' && !L.move.def.tch)) {
+      const w = L.J[lh], gx = L.J.sh[0] + fL * Math.min(20, Math.max(8, (w[0] - L.J.sh[0]) * fL - 10));
+      bindPut(L, 'bh', [gx, L.J.sh[1] + 9], kL, 2);
+    }
+  } else {
+    // 扣手腕、拉打、拉手跪马：我的手攥着不动，他的手腕被拽到我手里（手腕在我拳心往外一点），身子跟着往前栽
+    const u = clamp(B.u, 0, 1), H = L.J[lh];
+    // 他被拽着：身子别往前扑（扑过来肩膀就到我手边了，胳膊没法被拽直）—— 上身微微往前、肩膀被带出来（拧腰），头往前探
+    if (!B.drag) { F.disp.tor = Math.min(F.disp.tor, 4) + 4 * u; F.disp.head += 6 * u; F.disp.tw += 14 * u; bindRefit(F, kF); }
+    const [E0, W0] = armOf(F.J, B.fk), ax = W0[0] - E0[0], ay = W0[1] - E0[1], al = Math.hypot(ax, ay) || 1;
+    const P = [H[0] + (W0[0] - H[0]) * (1 - u) + ax / al * 2.5 * u, H[1] + (W0[1] - H[1]) * (1 - u) + ay / al * 2.5 * u];
+    bindPut(F, B.fk, P, kF);
+  }
+  bindRestore(L, kL); bindRestore(F, kF);
+  return true;
+}
+// 3.1 截住腿（按手、耕手）以后：他踢过来的那条腿被截在我肚子前面（按手：掌心按在他小腿上面往下压；耕手：小臂贴着他小腿往外、往下扫），
+// 头两成半还搭着，后面三成半他慢慢把腿收回去（他往后仰着失衡 —— POSE.reel）。他是哪条腿踢的已经不记了：画前腿（离我近的那条）
+// [碰在他小腿的哪（膝 0 → 脚踝 1）, 隔多远（我在上面）, 用掌 1 / 小臂 0, 他的脚在我髋前面多远, 比我的髋低多少（耕手：离地多高 —— 扫过来的腿贴着地被耕开）]
+const LEG_BIND = { gum: [0.7, 5, 1, 16, -4, 0], gaun: [0.6, 6, 0, 34, 7, 1] };
+function wcLegBind(L, F) {
+  const lb = F.state === 'hit' && F.reel && F.reelBy === L.idx && L.state === 'parry' ? LEG_BIND[F.reelKind] : null;
+  if (!lb || !F.J || !L.J || F.airborne) return false;
+  const u0 = clamp(1 - F.stunT / WC_CATCH_REEL, 0, 1), u = u0 < 0.25 ? 1 : 1 - EASE.io(clamp((u0 - 0.25) / 0.35, 0, 1));
+  if (u <= 0.01) return false;
+  const kF = bindKeep(F), kL = bindKeep(L), fL = L.facing, [t, gap, palm, ax, ay, low] = lb;
+  const mix = (a, b) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], fkh = F.disp.fkh;
+  // ① 他的脚：截在我髋前面；他的髋被这一截顶回去（踢出去冲过来的那一下没了），腿差不多伸直（不折成提膝）
+  F.disp.fkh = [0.25, 1];
+  if (F.disp.dx > -4) { F.disp.dx -= (F.disp.dx + 4) * u; bindRefit(F, kF); }
+  bindPut(F, 'ff', mix(F.J.ff, [L.J.hip[0] + fL * ax, low ? FLOOR - BODY.bone.ankle - ay : L.J.hip[1] + ay]), kF, 3);
+  // ② 我的手贴在他小腿上（膝 → 脚踝 t 处）的上面
+  for (let it = 0; it < 2; it++) {
+    const K = F.J.fk, A = F.J.ff, q = [K[0] + (A[0] - K[0]) * t, K[1] + (A[1] - K[1]) * t], P = [q[0], q[1] - gap];
+    if (palm) {
+      const d = L.J.fpm >= 0.5 && L.J.fpd ? L.J.fpd : { 0: fL, 1: 0 };
+      bindPut(L, 'fh', mix(L.J.fh, [P[0] - d[0] * 5, P[1] - d[1] * 5]), kL, 3);
+    } else for (let j = 0; j < 3; j++) {
+      const E = L.J.fe, W = L.J.fh, c = [E[0] + (W[0] - E[0]) * 0.8, E[1] + (W[1] - E[1]) * 0.8], dx = (P[0] - c[0]) * u, dy = (P[1] - c[1]) * u;
+      if (Math.abs(dx) + Math.abs(dy) < 0.4) break;
+      bindPut(L, 'fh', [W[0] + dx * 1.25, W[1] + dy * 1.25], kL, 1);
+    }
+  }
+  bindRestore(L, kL); bindRestore(F, kF); F.disp.fkh = fkh;
+  return true;
+}
+// 两个人都画好以后别一遍（game.js simTick 里，animate 之后）
+function wcBindAll(a, b) {
+  for (const [L, F] of [[a, b], [b, a]]) if (styleOf(L) === STYLES.wc) wcBind(L, F) || wcLegBind(L, F);
+}
 // 咏春被黏住的时候（咏春打咏春）：按着的方向就是他的手型
 const wcTouchShape = F => W_SHAPES[wcDir(F)] || '';
 
@@ -3542,7 +3893,8 @@ for (const s of W_SHAPES) {
   const sh = W_SHAPE[s];
   WTCH[s] = wmk(WJ(W_TCH_BASE, WJ(sh, { fh: [sh.fh[0] + (s === 'bong' ? 2 : 6), sh.fh[1] + 1] })));   // 搭上了：前手再往前伸一点（膀手伸直了就不是膀了）
 }
-const WTCH_LAP = wmk(WJ(W_TCH_BASE, { tor: 2, dx: -2, tw: 18, fh: [36, 6], fp: 0, fe: 1, bh: [24, 8], bpa: -50, be: 1 }));   // 扣着手腕往回带
+// 3.1 扣着手腕往回带：手往回拽到自己胸口前下（以前停在他胸口前 —— 他的胳膊只能折着），他的胳膊被拽直（别手 wcBind 把他的手腕放进这只手里）
+const WTCH_LAP = wmk(WJ(W_TCH_BASE, { tor: 0, dx: -4, tw: 22, fh: [16, 14], fp: 0, fe: 1, bh: [24, 4], bpa: -60, be: 1 }));
 // 动作台（poses.html）、教程小图也看得到这些手型：搭手 tch*、扣着手腕 tchLap
 const W_SHAPE_KEY = { '': '', tan: 'Tan', bong: 'Bong', fook: 'Fook' };
 for (const s of W_SHAPES) WPOSE['tch' + W_SHAPE_KEY[s]] = WTCH[s];
@@ -3552,7 +3904,7 @@ function wcTarget(F, t) {
   if (st === 'block') {
     // 2.11 听劲：按住挡，两只手往胸前收一点、不动（Jack：不是一直翻盘手）；按着前 / 后慢慢走
     copyPose(t, F.lowBlock ? WPOSE.cblock : WPOSE.block);
-    if (F.gwalk && !F.lowBlock) {                                               // 按着挡走：脚下小碎步（和传统格斗的边挡边走一样）
+    if (F.gwalk && !F.lowBlock) {                                               // 按着挡走：脚下小碎步（和格斗术的边挡边走一样）
       const ph = F.walkPhase * TAU, s = Math.sin(ph), c = Math.cos(ph);
       t.ff[0] += 9 * s; t.ff[1] = Math.max(0, 6 * c); t.bf[0] -= 9 * s; t.bf[1] = Math.max(0, -6 * c);
     }
@@ -3619,7 +3971,7 @@ STYLES.wc = {
   benchGroups: W_BENCH_GROUPS, benchHit: ['wJab', 'wJabR', 'wJabF', 'wPalmF', 'wPalmR', 'wCunEnd', 'wCunEndF', 'wBiu', 'wLowPalm', 'wCun', 'wPai', 'wGwai', 'wJum',
     'slipElbow', 'super', 'wKick', 'wLowKick', 'wSideKick', 'wKick2', 'wStompKnee', 'wTurnKick', 'stomp', 'airJab', 'airHeavy', 'airKick', 'dive'],
 };
-/* 跨派：传统格斗 × 咏春拳（relation(传统的招, 咏春的招)：1 传统赢 / -1 咏春赢 / ±0.5 压 / 0 平）。
+/* 跨派：格斗术 × 咏春拳（relation(格斗术的招, 咏春的招)：1 格斗术赢 / -1 咏春赢 / ±0.5 压 / 0 平）。
    两派的招按同一套系别比；多出来的是咏春的截脚截地上的腿。标指挑开、黐手黏住这些在 wcClash / wcDefend 里，不走这张表 */
 MATCHUPS['trad|wc'] = { relation(dT, dW) { return wcRules(dT, dW) || relation(dT, dW); } };
 </script>
@@ -3627,7 +3979,7 @@ MATCHUPS['trad|wc'] = { relation(dT, dW) { return wcRules(dT, dW) || relation(dT
 'use strict';
 /* ============================================================
    太极拳（3.0；设计稿 TAIJI.md）—— 第三派。Jack：太极从现实层面就是「慢而强」，游戏里操作的特点要体现出来；
-   每一派都要有自己的操作难度、自己的上限（传统格斗 = 攻击多样；咏春 = 防守反打 + 连续进攻，难、上限高）。
+   每一派都要有自己的操作难度、自己的上限（格斗术 = 攻击多样；咏春 = 防守反打 + 连续进攻，难、上限高）。
    太极的操作是「蓄 · 化 · 发」：
    · 慢：全派都是慢招（前摇 18 帧起，没有快招），按 2.12 的标尺，对面反应过来看得见、挡得住每一招 —— 太极不靠快打中人
    · 蓄：拳 / 重 / 踢按住不放，前摇走到六成停住、势接着一式一式往下走（揽雀尾 掤 → 捋 → 挤 → 按，搬拦捶 搬 → 拦 → 捶……），
@@ -3693,23 +4045,23 @@ const TJ_FLOW = {};
 const TMOVES = {
   /* ---- 拳：揽雀尾一家（掌）。tjCharge：按住蓄、前摇里有掤（化）；松开发劲 ---- */
   // 揽雀尾：前手掤出去、两掌按出去。蓄着：掤 → 捋 → 挤 → 按（收回胸前），松开两掌往前按出去
-  tjLan: TM({ kind: 'jab', slowGuard: true, label: '揽雀尾', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 12, dmg: 14, reach: 96, stun: 19, bstun: 12, kb: 5, stop: 7, shake: 4, power: .75,
+  tjLan: TM({ kind: 'jab', slowGuard: true, label: '揽雀尾', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 12, dmg: 15, reach: 96, stun: 19, bstun: 12, kb: 3.5, stop: 7, shake: 4, power: .75,
     limb: 'fh', fx: 'palm', lunge: [8.6, 12, 12],
     keys: [[0, {}], [0.3, P_BALL], [0.6, P_PENG], [1, P_AN, 'out'], [2, P_AN], [3, {}]] }),
   // 玉女穿梭（前 + 拳）：上步，一手架在头上、一手穿掌推出去 —— 射程长、往前冲一大步
-  tjChuan: TM({ kind: 'jab', slowGuard: true, label: '玉女穿梭', stamp: '玉女穿梭', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 11, reach: 100, stun: 18, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
+  tjChuan: TM({ kind: 'jab', slowGuard: true, label: '玉女穿梭', stamp: '玉女穿梭', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 12, reach: 100, stun: 18, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'palm', lunge: [8.6, 12, 26],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: 0, dx: -4, tw: 10, ...tHand('f', [20, 16], 'palm', 4, 1, 0.2), ...tHand('b', [24, -4], 'palm', 176, 1, 0.2) })],
       [1, TJ(T_BOW, { tor: 12, dx: 20, tw: 26, ...tHand('f', [54, -2], 'palm', -74, 0.6, 0.35), ...tHand('b', [16, -30], 'palm', -170, 0.9, 0.2) }), 'out'],
       [2, TJ(T_BOW, { tor: 12, dx: 20, tw: 26, ...tHand('f', [54, -2], 'palm', -74, 0.6, 0.35), ...tHand('b', [16, -30], 'palm', -170, 0.9, 0.2) })], [3, {}]] }),
   // 倒卷肱（后 + 拳）：往后退一步，后手从耳边推掌出去、前手收回腰间 —— 一边退一边打（拉开距离用）
-  tjDao: TM({ kind: 'jab', slowGuard: true, label: '倒卷肱', stamp: '倒卷肱', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 11, dmg: 9, reach: 94, stun: 17, bstun: 10, kb: 6, stop: 6, shake: 3, power: .6,
+  tjDao: TM({ kind: 'jab', slowGuard: true, label: '倒卷肱', stamp: '倒卷肱', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 11, dmg: 10, reach: 94, stun: 17, bstun: 10, kb: 6, stop: 6, shake: 3, power: .6,
     limb: 'bh', fx: 'palm', lunge: [6, 14, -26],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: -2, dx: -4, tw: 24, ...tHand('f', [34, 2], 'palm', -60, 0.8, 0.2), ...tHand('b', [-10, -10], 'palm', -60, 0.8, 0.2) })],
       [1, TJ(T_SIT, { tor: 4, dx: 0, tw: -30, ...tHand('b', [50, -2], 'palm', -76, 0.55, 0.3), ...tHand('f', [6, 22], 'palm', 4, 1, 0.2) }), 'out'],
       [2, TJ(T_SIT, { tor: 4, dx: 0, tw: -30, ...tHand('b', [50, -2], 'palm', -76, 0.55, 0.3), ...tHand('f', [6, 22], 'palm', 4, 1, 0.2) })], [3, {}]] }),
   // 下势（蹲 + 拳）：坐在后腿上压得很低，前腿伸直，前掌顺着前腿往前穿（下段）；后手勾手留在后面
-  tjXia: TM({ kind: 'jab', slowGuard: true, label: '下势', stamp: '下势', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 10, reach: 100, stun: 18, bstun: 11, kb: 4, stop: 6, shake: 3, power: .65, height: 'low',
+  tjXia: TM({ kind: 'jab', slowGuard: true, label: '下势', stamp: '下势', open: true, tjCharge: true, slow: 18, S: 12, A: 4, R: 13, dmg: 11, reach: 100, stun: 18, bstun: 11, kb: 4, stop: 6, shake: 3, power: .65, height: 'low',
     limb: 'fh', fx: 'low', lunge: [8.6, 12, 10],
     keys: [[0, {}], [0.6, { hy: 50, tor: 18, head: -4, tw: 10, ff: [40, 0], bf: [-34, 0], ...tHand('f', [22, 10], 'palm', -30, 0.8, 0.2), ...tHand('b', [-34, 0], 'hook', 96, 1) }],
       [1, { hy: 38, tor: 30, head: -8, dx: 6, tw: 20, ff: [62, 0], bf: [-26, 0], ...tHand('f', [56, 38], 'palm', 14, 0.5, 0.15), ...tHand('b', [-34, 4], 'hook', 96, 1) }, 'out'],
@@ -3717,11 +4069,11 @@ const TMOVES = {
 
   /* ---- 重：搬拦捶一家（拳） ---- */
   // 搬拦捶：前手一搬、一拦，后手竖拳从腰间冲出去。蓄着：搬 → 拦 → 往下沉（拳收在腰后），松开捶出去
-  tjBan: TM({ kind: 'heavy', label: '搬拦捶', stamp: '搬拦捶', open: true, tjCharge: true, slow: 22, S: 14, A: 4, R: 14, dmg: 18, reach: 102, stun: 21, bstun: 13, kb: 6, stop: 9, shake: 6, power: .95, heavy: true,
+  tjBan: TM({ kind: 'heavy', label: '搬拦捶', stamp: '搬拦捶', open: true, tjCharge: true, slow: 22, S: 14, A: 4, R: 14, dmg: 20, reach: 102, stun: 21, bstun: 13, kb: 4, stop: 9, shake: 6, power: .95, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [8.6, 14, 16],
     keys: [[0, {}], [0.3, P_BAN], [0.6, P_LAN], [1, P_CHUI, 'out'], [2, P_CHUI], [3, {}]] }),
   // 金鸡独立（蹲 + 重，对空）：一腿提膝、一手往上托掌 —— 打跳过来的人（太极唯一不慢的一招，对空无敌）
-  tjJinJi: TM({ kind: 'heavy', label: '金鸡独立', stamp: '金鸡独立', tier: 'aa', lead: 'heavy', open: true, S: 9, A: 5, R: 15, dmg: 13, reach: 92, stun: 16, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
+  tjJinJi: TM({ kind: 'heavy', label: '金鸡独立', stamp: '金鸡独立', tier: 'aa', lead: 'heavy', open: true, S: 9, A: 5, R: 15, dmg: 14, reach: 92, stun: 16, bstun: 10, kb: 3, stop: 8, shake: 4, power: .8,
     limb: 'fh', fx: 'palm', lunge: [2, 8, 6], launchAir: 9, antiAir: 160, airInv: [1, 12], ender: true, noCancel: true,
     keys: [[0, { hy: 52, tor: 16, head: -2, tw: 10, ff: [34, 0], bf: [-30, 0], ...tHand('f', [22, 10], 'palm', -60, 1, 0.2), ...tHand('b', [12, 14], 'palm', 0, 1, 0.2) }],
       [1, { hy: 76, tor: 2, head: -10, dx: 8, tw: 14, ff: [20, 46], bf: [-2, 0], ...tHand('f', [30, -46], 'palm', -96, 0.5, 0.3), ...tHand('b', [8, 26], 'palm', 4, 1, 0.2) }, 'out'],
@@ -3729,15 +4081,15 @@ const TMOVES = {
 
   /* ---- 踢：蹬脚一家（脚跟） ---- */
   // 蹬脚：提膝（两手十字合在胸前）→ 分手 → 脚跟往前蹬出去（中段，太极腿最长）
-  tjDeng: TM({ kind: 'kick', label: '蹬脚', open: true, tjCharge: true, noPeng: true, slow: 22, S: 15, A: 5, R: 14, dmg: 15, reach: 122, stun: 20, bstun: 12, kb: 6, stop: 8, shake: 5, power: .85,
+  tjDeng: TM({ kind: 'kick', label: '蹬脚', open: true, tjCharge: true, noPeng: true, slow: 22, S: 15, A: 5, R: 14, dmg: 17, reach: 122, stun: 20, bstun: 12, kb: 4, stop: 8, shake: 5, power: .85,
     limb: 'ff', fx: 'kick', lunge: [10.1, 16, 8],
     keys: [[0, {}], [0.6, P_TIXI], [1, P_DENG, 'out'], [2, P_DENG], [2.4, TJ(P_TIXI, { ff: [24, 34] })], [3, {}]] }),
   // 分脚（前 + 踢、拳后接踢）：脚尖往前上方一踢（比蹬脚远一点、轻一点）
-  tjFen: TM({ kind: 'kick', label: '分脚', tag: '分脚', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 5, R: 14, dmg: 12, reach: 126, stun: 19, bstun: 11, kb: 5, stop: 7, shake: 4, power: .75,
+  tjFen: TM({ kind: 'kick', label: '分脚', tag: '分脚', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 5, R: 14, dmg: 13, reach: 126, stun: 19, bstun: 11, kb: 3, stop: 7, shake: 4, power: .75,
     limb: 'ff', fx: 'whip', lunge: [9.4, 14, 10],
     keys: [[0, {}], [0.6, P_TIXI], [1, TJ(P_DENG, { ff: [96, 58], ft: -10, tor: -18 }), 'out'], [2, TJ(P_DENG, { ff: [96, 58], ft: -10, tor: -18 })], [2.4, TJ(P_TIXI, { ff: [24, 34] })], [3, {}]] }),
   // 跌岔（蹲 + 踢）：往下一坐、前腿贴地铲出去（下段，打倒）
-  tjDieCha: TM({ kind: 'kick', label: '跌岔', stamp: '跌岔', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 4, R: 18, dmg: 11, reach: 114, stun: 18, bstun: 10, kb: 4, stop: 7, shake: 5, power: .8, height: 'low',
+  tjDieCha: TM({ kind: 'kick', label: '跌岔', stamp: '跌岔', open: true, tjCharge: true, noPeng: true, slow: 20, S: 14, A: 4, R: 18, dmg: 12, reach: 114, stun: 18, bstun: 10, kb: 4, stop: 7, shake: 5, power: .8, height: 'low',
     limb: 'ff', fx: 'sweep', lunge: [9.4, 14, 10], launch: 3.5, lie: 22, ender: true,
     keys: [[0, {}], [0.6, { hy: 52, tor: 14, head: -2, tw: 10, ff: [30, 0], bf: [-30, 0], ...tHand('f', [26, 8], 'palm', -40, 0.8), ...tHand('b', [10, -14], 'palm', -100, 0.8) }],
       [1, { hy: 30, tor: 12, head: 2, dx: 8, tw: 4, ff: [74, 0], ft: 30, bf: [-30, 0], bo: 40, ...tHand('f', [44, 14], 'palm', -10, 0.6, 0.3), ...tHand('b', [-28, -18], 'palm', -120, 0.6, 0.3) }, 'out'],
@@ -3745,52 +4097,52 @@ const TMOVES = {
 
   /* ---- 势（连下去最多三下；每一下也都按得住蓄）：拳拳 高探马 → 穿掌；拳重 指裆捶；拳拳重 白鹤亮翅；重拳 顺拦肘；重重 双峰贯耳；重踢 转身摆莲；
      踢拳 上步七星；踢重 弯弓射虎；踢踢 转身蹬脚；拳踢 分脚 ---- */
-  tjGaoTan: TM({ kind: 'jab', slowGuard: true, label: '高探马', tag: '高探马', tjCharge: true, S: 11, A: 4, R: 11, dmg: 10, reach: 98, stun: 19, bstun: 11, kb: 4, stop: 6, shake: 3, power: .65,
+  tjGaoTan: TM({ kind: 'jab', slowGuard: true, label: '高探马', tag: '高探马', tjCharge: true, S: 11, A: 4, R: 11, dmg: 11, reach: 98, stun: 19, bstun: 11, kb: 2.5, stop: 6, shake: 3, power: .65,
     limb: 'bh', fx: 'jab2', lunge: [6.6, 11, 10],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tw: 22, ...tHand('b', [8, -16], 'palm', -60, 0.8), ...tHand('f', [30, 4], 'palm', -10, 1) })],
       [1, TJ(T_BOW, { tor: 10, dx: 12, tw: -30, ...tHand('b', [56, -6], 'palm', -72, 0.5, 0.3), ...tHand('f', [10, 22], 'palm', 4, 1, 0.2) }), 'out'],
       [2, TJ(T_BOW, { tor: 10, dx: 12, tw: -30, ...tHand('b', [56, -6], 'palm', -72, 0.5, 0.3), ...tHand('f', [10, 22], 'palm', 4, 1, 0.2) })], [3, {}]] }),
-  tjChuanZ: TM({ kind: 'jab', slowGuard: true, label: '穿掌', stamp: '穿掌', tjCharge: true, S: 11, A: 4, R: 14, dmg: 14, reach: 102, stun: 20, bstun: 12, kb: 9, stop: 8, shake: 5, power: .8,
+  tjChuanZ: TM({ kind: 'jab', slowGuard: true, label: '穿掌', stamp: '穿掌', tjCharge: true, S: 11, A: 4, R: 14, dmg: 15, reach: 102, stun: 20, bstun: 12, kb: 9, stop: 8, shake: 5, power: .8,
     limb: 'fh', fx: 'jab2', lunge: [6.6, 11, 14], ender: true, noCancel: true,
     keys: [[0, {}], [0.6, TJ(T_SIT, { tw: -10, ...tHand('f', [16, 12], 'palm', 10, 0.9, 0), ...tHand('b', [30, -2], 'palm', -80, 0.8, 0.1) })],
       [1, TJ(T_BOW, { tor: 12, dx: 18, tw: 40, ...tHand('f', [60, 0], 'palm', -4, 0.25, 0), ...tHand('b', [14, 14], 'palm', -60, 0.9, 0.1) }), 'out'],
       [2, TJ(T_BOW, { tor: 12, dx: 18, tw: 40, ...tHand('f', [60, 0], 'palm', -4, 0.25, 0), ...tHand('b', [14, 14], 'palm', -60, 0.9, 0.1) })], [3, {}]] }),
-  tjZhiDang: TM({ kind: 'heavy', label: '指裆捶', stamp: '指裆捶', tjCharge: true, S: 13, A: 4, R: 15, dmg: 17, reach: 98, stun: 21, bstun: 12, kb: 6, stop: 9, shake: 6, power: .95, heavy: true,
+  tjZhiDang: TM({ kind: 'heavy', label: '指裆捶', stamp: '指裆捶', tjCharge: true, S: 13, A: 4, R: 15, dmg: 19, reach: 98, stun: 21, bstun: 12, kb: 6, stop: 9, shake: 6, power: .95, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [7.8, 13, 14], launch: 4, ender: true, noCancel: true,
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: 6, hy: 60, tw: 22, ...tHand('b', [-4, 28], 'fist'), ...tHand('f', [30, 6], 'palm', -60, 0.8) })],
       [1, TJ(T_BOW, { tor: 26, dx: 16, hy: 56, head: -4, tw: -30, ...tHand('b', [52, 30], 'fist'), ...tHand('f', [22, 2], 'palm', -82, 0.8) }), 'out'],
       [2, TJ(T_BOW, { tor: 26, dx: 16, hy: 56, head: -4, tw: -30, ...tHand('b', [52, 30], 'fist'), ...tHand('f', [22, 2], 'palm', -82, 0.8) })], [3, {}]] }),
-  tjBaiHe: TM({ kind: 'heavy', label: '白鹤亮翅', stamp: '白鹤亮翅', tjCharge: true, S: 12, A: 5, R: 16, dmg: 18, reach: 96, stun: 21, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+  tjBaiHe: TM({ kind: 'heavy', label: '白鹤亮翅', stamp: '白鹤亮翅', tjCharge: true, S: 12, A: 5, R: 16, dmg: 20, reach: 96, stun: 21, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'fh', fx: 'upper', lunge: [7.2, 12, 10], launch: 5, ender: true, noCancel: true, antiAir: 100,
     keys: [[0, {}], [0.6, TJ(P_BALL, { hy: 60, tor: 4 })],
       [1, { hy: 70, tor: -2, head: -6, dx: 10, tw: 16, ff: [30, 0], bf: [-38, 0], ...tHand('f', [30, -44], 'palm', -100, 0.6, 0.35), ...tHand('b', [12, 26], 'palm', 10, 1, 0.2) }, 'out'],
       [2, { hy: 72, tor: -4, head: -8, dx: 10, tw: 16, ff: [30, 0], bf: [-38, 0], ...tHand('f', [24, -54], 'palm', -100, 0.6, 0.35), ...tHand('b', [12, 26], 'palm', 10, 1, 0.2) }], [3, {}]] }),
-  tjShunLan: TM({ kind: 'jab', slowGuard: true, label: '顺拦肘', tag: '顺拦肘', tjCharge: true, S: 10, A: 4, R: 12, dmg: 12, reach: 80, stun: 19, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
+  tjShunLan: TM({ kind: 'jab', slowGuard: true, label: '顺拦肘', tag: '顺拦肘', tjCharge: true, S: 10, A: 4, R: 12, dmg: 13, reach: 80, stun: 19, bstun: 11, kb: 2.5, stop: 7, shake: 4, power: .7,
     limb: 'fe', fx: 'elbow', lunge: [6, 10, 14],
     keys: [[0, {}], [0.6, TJ(T_SIT, { tw: -16, ...tHand('f', [8, 14], 'fist'), fe: 1, ...tHand('b', [22, 6], 'palm', -80, 0.8) })],
       [1, TJ(T_BOW, { tor: 18, dx: 22, hy: 60, tw: 56, ...tHand('f', [12, -4], 'fist'), fe: -1, ...tHand('b', [24, 4], 'palm', -86, 0.8, 0.1) }), 'out'],
       [2, TJ(T_BOW, { tor: 18, dx: 22, hy: 60, tw: 56, ...tHand('f', [12, -4], 'fist'), fe: -1, ...tHand('b', [24, 4], 'palm', -86, 0.8, 0.1) })], [3, {}]] }),
-  tjShuangFeng: TM({ kind: 'heavy', label: '双峰贯耳', stamp: '双峰贯耳', tjCharge: true, S: 13, A: 4, R: 16, dmg: 20, reach: 96, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 7, power: 1, heavy: true, height: 'high',
+  tjShuangFeng: TM({ kind: 'heavy', label: '双峰贯耳', stamp: '双峰贯耳', tjCharge: true, S: 13, A: 4, R: 16, dmg: 22, reach: 96, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 7, power: 1, heavy: true, height: 'high',
     limb: 'fh', fx: 'hook', lunge: [7.8, 13, 14], launch: 4.5, ender: true, noCancel: true,
     keys: [[0, {}], [0.6, TJ(T_SIT, { tor: 6, hy: 60, tw: 0, ...tHand('f', [20, 26], 'fist'), ...tHand('b', [16, 28], 'fist') })],
       [1, TJ(T_BOW, { tor: 14, dx: 18, tw: 6, ...tHand('f', [46, -14], 'fist'), fe: -1, ...tHand('b', [42, -12], 'fist'), be: -1 }), 'out'],
       [2, TJ(T_BOW, { tor: 14, dx: 18, tw: 6, ...tHand('f', [46, -14], 'fist'), fe: -1, ...tHand('b', [42, -12], 'fist'), be: -1 })], [3, {}]] }),
-  tjBaiLian: TM({ kind: 'kick', label: '转身摆莲', stamp: '转身摆莲', tjCharge: true, noPeng: true, S: 13, A: 6, R: 16, dmg: 19, reach: 122, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 8, power: 1, heavy: true,
+  tjBaiLian: TM({ kind: 'kick', label: '转身摆莲', stamp: '转身摆莲', tjCharge: true, noPeng: true, S: 13, A: 6, R: 16, dmg: 21, reach: 122, stun: 22, bstun: 13, kb: 7, stop: 10, shake: 8, power: 1, heavy: true,
     limb: 'ff', fx: 'whirl', ghost: true, lunge: [7.8, 13, 10], launch: 5, ender: true, noCancel: true,
     keys: [[0, {}], [0.6, { spin: 150, hy: 70, tor: 4, tw: 0, ff: [16, 20], bf: [-6, 0], ...tHand('f', [24, -10], 'palm', -90, 1), ...tHand('b', [20, -6], 'palm', -80, 1) }],
       [1, { spin: 360, hy: 76, tor: -18, head: 8, dx: 10, tw: 0, ff: [84, 72], ft: 10, bf: [-18, 0], ...tHand('f', [56, -40], 'palm', -10, 0.6, 0.4), ...tHand('b', [44, -36], 'palm', -10, 0.6, 0.4) }, 'out'],
       [2, { spin: 360, hy: 76, tor: -18, head: 8, dx: 10, tw: 0, ff: [84, 72], ft: 10, bf: [-18, 0], ...tHand('f', [56, -40], 'palm', -10, 0.6, 0.4), ...tHand('b', [44, -36], 'palm', -10, 0.6, 0.4) }], [3, { spin: 360 }]] }),
-  tjQiXing: TM({ kind: 'jab', slowGuard: true, label: '上步七星', tag: '上步七星', tjCharge: true, S: 11, A: 4, R: 12, dmg: 11, reach: 98, stun: 19, bstun: 11, kb: 5, stop: 7, shake: 4, power: .7,
+  tjQiXing: TM({ kind: 'jab', slowGuard: true, label: '上步七星', tag: '上步七星', tjCharge: true, S: 11, A: 4, R: 12, dmg: 12, reach: 98, stun: 19, bstun: 11, kb: 2.5, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'jab2', lunge: [6.6, 11, 18],
     keys: [[0, { ff: [30, 30] }], [0.6, TJ(T_SIT, { tw: 0, ...tHand('f', [16, 20], 'fist'), ...tHand('b', [12, 22], 'fist') })],
       [1, TJ(T_BOW, { tor: 10, dx: 16, tw: 4, ...tHand('f', [46, -2], 'fist'), ...tHand('b', [42, 2], 'fist'), fz: 1 }), 'out'],
       [2, TJ(T_BOW, { tor: 10, dx: 16, tw: 4, ...tHand('f', [46, -2], 'fist'), ...tHand('b', [42, 2], 'fist'), fz: 1 })], [3, {}]] }),
-  tjWanGong: TM({ kind: 'heavy', label: '弯弓射虎', stamp: '弯弓射虎', tjCharge: true, S: 13, A: 4, R: 16, dmg: 20, reach: 100, stun: 21, bstun: 12, kb: 7, stop: 9, shake: 6, power: 1, heavy: true,
+  tjWanGong: TM({ kind: 'heavy', label: '弯弓射虎', stamp: '弯弓射虎', tjCharge: true, S: 13, A: 4, R: 16, dmg: 22, reach: 100, stun: 21, bstun: 12, kb: 7, stop: 9, shake: 6, power: 1, heavy: true,
     limb: 'bh', fx: 'heavy', lunge: [7.8, 13, 14], launch: 4.5, ender: true, noCancel: true,
     keys: [[0, { ff: [30, 30] }], [0.6, TJ(T_SIT, { tw: 26, ...tHand('b', [-12, -6], 'fist'), ...tHand('f', [10, 22], 'fist') })],
       [1, TJ(T_BOW, { tor: 14, dx: 16, tw: -22, ...tHand('b', [54, -6], 'fist'), ...tHand('f', [46, 14], 'fist') }), 'out'],
       [2, TJ(T_BOW, { tor: 14, dx: 16, tw: -22, ...tHand('b', [54, -6], 'fist'), ...tHand('f', [46, 14], 'fist') })], [3, {}]] }),
-  tjZhuanDeng: TM({ kind: 'kick', label: '转身蹬脚', stamp: '转身蹬脚', tjCharge: true, noPeng: true, S: 13, A: 5, R: 16, dmg: 18, reach: 120, stun: 21, bstun: 12, kb: 8, stop: 9, shake: 6, power: .95,
+  tjZhuanDeng: TM({ kind: 'kick', label: '转身蹬脚', stamp: '转身蹬脚', tjCharge: true, noPeng: true, S: 13, A: 5, R: 16, dmg: 20, reach: 120, stun: 21, bstun: 12, kb: 8, stop: 9, shake: 6, power: .95,
     limb: 'ff', fx: 'backKick', ghost: true, lunge: [7.8, 13, 10], launch: 4.5, ender: true, noCancel: true,
     keys: [[0, { ff: [26, 30] }], [0.6, TJ(P_TIXI, { spin: 160 })], [1, TJ(P_DENG, { spin: 360 }), 'out'], [2, TJ(P_DENG, { spin: 360 })], [3, { spin: 360 }]] }),
 
@@ -3840,11 +4192,16 @@ const TMOVES = {
     keys: [[0, J_(JT, { fp: 1, bp: 1, fpa: -60, bpa: -60, fh: [26, 10], bh: [16, 14] })], [0.55, J_(JT, { rot: 2, tor: 4, fh: [22, -4], fpa: -30, bh: [20, 6], tw: 20 })],
       [1, { rot: 18, tor: 24, head: -6, dx: 6, fh: [56, 12], fp: 1, fpa: 8, fpr: 0.3, fs: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }, 'back'],
       [2, { rot: 20, tor: 26, head: -6, dx: 6, fh: [54, 15], fp: 1, fpa: 8, fpr: 0.3, fs: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }], [3, JD]] }),
-  airHeavy: TM({ kind: 'heavy', label: '进步栽捶', stamp: '进步栽捶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 12, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
-    limb: 'bh', fx: 'hammer', air: true,
-    keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.7, { rot: -6, tor: -22, head: -10, bh: [-8, -56], bp: 0, be: -1, fh: [24, -20], ff: [18, 54], bf: [2, 48], tw: -20 }],
-      [1, { rot: 24, tor: 42, head: 12, dx: 12, bh: [50, 34], bp: 0, bv: 1, fh: [30, 8], fpa: -80, ff: [22, 26], bf: [-24, 36], tw: -20 }, 'out'],
-      [2, { rot: 26, tor: 44, head: 12, dx: 12, bh: [48, 38], bp: 0, bv: 1, fh: [30, 8], fpa: -80, ff: [22, 26], bf: [-24, 36], tw: -20 }], [3, JD]] }),
+  // 3.1 转身撇身捶（Jack：三派跳起来按重长得太像）：太极不往前翻 —— 身子在空中拧过去（后背先朝他），拳从另一边的胯下面
+  // 走一个立着的大圆：往上过头顶、再转身甩下来，拳背砸在他头上（杨式转身撇身捶：两手在身前划一个立圆，拳背从上往下盖过来）；
+  // 另一只手立掌护着脸。整个人立着，腿一前一后在空中分开
+  airHeavy: TM({ kind: 'heavy', label: '转身撇身捶', stamp: '撇身捶', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 12, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+    limb: 'fh', fx: 'hammerFist', air: true,
+    keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })],
+      [0.2, { rot: -4, tor: 6, head: 4, tw: -50, fh: [-4, 30], fp: 0, fe: 1, bh: [20, -12], bp: 1, bpa: -80, bpr: 0.5, ff: [16, 52], bf: [-6, 44] }],
+      [0.52, { rot: -6, tor: -10, head: -6, tw: -10, fh: [2, -52], fp: 0, fe: -1, bh: [22, -6], bp: 1, bpa: -80, bpr: 0.5, ff: [22, 46], bf: [-14, 40] }],
+      [1, { rot: 4, tor: 20, head: 8, dx: 14, tw: 36, fh: [50, 18], fp: 0, fe: -1, bh: [16, -4], bp: 1, bpa: -80, bpr: 0.5, ff: [30, 30], bf: [-30, 34] }, 'out'],
+      [2, { rot: 6, tor: 24, head: 8, dx: 14, tw: 38, fh: [48, 22], fp: 0, fe: -1, bh: [16, -2], bp: 1, bpa: -80, bpr: 0.5, ff: [30, 28], bf: [-30, 32] }], [3, J_(JD, { fp: 1, bp: 1 })]] }),
   airKick: TM({ kind: 'kick', label: '旋风脚', stamp: '旋风脚', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 11, reach: 120, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.6, { rot: -6, spin: 180, tor: 10, head: -4, ff: [10, 60], bf: [-6, 46], fh: [34, -16], bh: [18, -6], tw: 10 }],
@@ -3862,8 +4219,8 @@ const TMOVES = {
   shove: TM({ kind: 'push', label: '挤', tier: 'push', S: 2, A: 4, R: 12, dmg: 0, reach: 108, stun: 9, bstun: 0, kb: PUSH_KB, stop: 4, power: .3, push: true,
     limb: 'fh', fx: 'jab', lunge: [0, 4, 10],
     keys: [[0, P_JI], [1, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-58, 0] }), 'back'], [2, TJ(P_JI, { tor: 10, dx: 14, fh: [40, 4], bh: [36, 6], ff: [46, 0], bf: [-58, 0] })], [3, {}]] }),
-  // 靠（挡住以后按重，花气 —— 传统格斗的截击那一下）：侧过身、肩膀往前一靠，出手前几帧打击无敌，把人靠出去
-  tjKao: TM({ kind: 'heavy', label: '靠', stamp: '靠', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 11, reach: 100, stun: 18, bstun: 10, kb: 11, stop: 9, shake: 6, power: .95, heavy: true,
+  // 靠（挡住以后按重，花气 —— 格斗术的截击那一下）：侧过身、肩膀往前一靠，出手前几帧打击无敌，把人靠出去
+  tjKao: TM({ kind: 'heavy', label: '靠', stamp: '靠', tier: 'heavy', lead: 'heavy', S: 5, A: 4, R: 16, dmg: 12, reach: 100, stun: 18, bstun: 10, kb: 11, stop: 9, shake: 6, power: .95, heavy: true,
     limb: 'sh', fx: 'shoulder', ghost: true, lunge: [0, 5, 18], sinv: [0, 6], cost: GC_COST, ender: true, noCancel: true,
     keys: [[0, TJ(T_SIT, { tor: 4, tw: -10, ...tHand('f', [20, 10], 'palm', -40, 0.9), ...tHand('b', [12, 14], 'palm', -40, 0.9) })],
       [1, TJ(T_BOW, { tor: 22, head: -6, dx: 24, hy: 60, spin: 30, tw: 60, ...tHand('f', [8, 14], 'fist'), ...tHand('b', [4, 18], 'palm', -40, 0.9) }), 'back'],
@@ -3915,7 +4272,7 @@ TJ_FLOW.tjChuan = [TJ(P_BALL, { dx: -4 }), TJ(P_BALL, { dx: -6, hy: 62, tw: 2 })
 /* 架势（fighter.js target 用；蓄势、捋、云手在 tjTarget 里现画） */
 const TPOSE = {
   stance: tmk({}),                                                                                     // 单鞭
-  // 3.0.1（Jack：后腿弯下去太多了）：蹲着的后膝以前跪到地上（离地 2）—— 髋高 40 → 46、后脚往后，后膝离地 15（和传统格斗、咏春蹲着差不多）
+  // 3.0.1（Jack：后腿弯下去太多了）：蹲着的后膝以前跪到地上（离地 2）—— 髋高 40 → 46、后脚往后，后膝离地 15（和格斗术、咏春蹲着差不多）
   crouch: tmk({ hy: 46, tor: 16, head: -2, tw: 10, ff: [40, 0], bf: [-62, 0], ...tHand('f', [30, 6], 'palm', -60, 0.8), ...tHand('b', [-30, 2], 'hook', 96, 1) }),
   // 掤（按住挡）：两手十字合在胸前、掌心朝里（十字手）；蹲着是沉屈守中（defense_seq 01）
   block: tmk({ hy: 56, tor: 2, head: 4, dx: -2, tw: 4, ff: [42, 0], bf: [-54, 0], ...tHand('f', [24, -8], 'palm', -104, 1, 0.1), ...tHand('b', [27, -4], 'palm', -70, 1, 0.1), fz: 1 }),
@@ -4303,7 +4660,7 @@ const T_BENCH_GROUPS = [
 ];
 STYLES.taiji = {
   id: 'taiji', name: '太极拳', moves: TMOVES, relation: tjRelation, cancel: TJ_CANCEL, variant: tjVariant, poses: TPOSE, base: TBASE,
-  chainMax: 3, blockHeavy: 'tjKao', parry: false,
+  chainMax: 5, blockHeavy: 'tjKao', parry: false,   // 3.1 一串最多三下 → 五下（Jack：连招可以长；太极的势一式接一式：搬拦捶 → 顺拦肘 → 分脚 → 上步七星 → 弯弓射虎）
   input: tjInput, defend: tjDefend, strike: tjStrike, grab: tjGrab, target: tjTarget, drawCue: tjDrawCue,
   benchGroups: T_BENCH_GROUPS, benchHit: ['tjLan', 'tjChuan', 'tjDao', 'tjXia', 'tjBan', 'tjJinJi', 'tjDeng', 'tjFen', 'tjDieCha', 'tjGaoTan', 'tjChuanZ', 'tjZhiDang', 'tjBaiHe',
     'tjShunLan', 'tjShuangFeng', 'tjBaiLian', 'tjQiXing', 'tjWanGong', 'tjZhuanDeng', 'tjKao', 'slipElbow', 'super', 'stomp', 'airJab', 'airHeavy', 'airKick', 'dive'],
@@ -5349,10 +5706,43 @@ function runArm(u, tor, amp) {
 const FIT_KEYS = ['hip', 'neck', 'head', 'shF', 'shB', 'fe', 'be', 'fh', 'bh', 'fk', 'bk', 'ff', 'bf'];   // fitContact 粗看一眼用的关节
 const ARM_KEEP = 0.4 * (BODY.bone.ua + BODY.bone.fa);   // 2.11 贴身出拳：拳头最多收到离肩膀这么远（顺着胳膊量，胳膊长的四成），肘在下面；再近就扎进去一点，胳膊不往回折到肩膀后面
 const FIT_CORE = new Set(['torso', 'head']), FIT_FEET = new Set(['FF', 'BF']);
+/* 3.1 脚踩实（Jack：动作还是不够专业、比较僵硬）：以前招式往前冲（lunge）、姿势里髋往前挪（dx）的时候，两只脚跟着整个人在地上平着滑 ——
+   业余动画最典型的毛病（「溜冰」）。现在踩在地上的脚钉在原地（世界坐标），姿势要它去的地方离它超过 STEP_TOL 才迈一步：
+   STEP_T 帧走过去，前脚抬起来 STEP_H[0]、后脚擦着地跟上（STEP_H[1]，蹬地跟步）；腿够不着了也迈。
+   刚落地、刚站起来、挨完打就在当时的地方踩住。只是画面（plant 在 SNAP_SKIP 里，战斗、联机都不看） */
+const STEP_TOL = 9, STEP_T = 4, STEP_H = [5, 1.6];
+/* 3.1 发力顺序（动势链；Jack：动作僵硬）：以前一个关键帧到下一个关键帧，全身每一样一起出发、一起到 —— 像木偶。真打拳是蹬地、转胯、送肩、出手一节带一节，
+   打到以后手先收回来、身子慢半拍才回来。现在身子那几样（髋、前移、前倾、拧腰、转身、头，还有不出招的那条腿）按「早 lead 帧」的姿势取，
+   手和出招的那条腿照原来的时间走：出手前身子先动、打到那一下全身对齐（判定那几帧和以前一模一样），收招时身子拖半拍。
+   lead 最多前摇的 CHAIN_LEAD（CHAIN_LEAD_MAX 帧），收招拖最多 CHAIN_LAG（CHAIN_LAG_MAX 帧），两头都是 0（不跳） */
+const CHAIN_LEAD = 0.2, CHAIN_LEAD_MAX = 3, CHAIN_LAG = 0.16, CHAIN_LAG_MAX = 2.5;
+const ARM_K = ['fe', 'be', 'fp', 'bp', 'fpa', 'bpa', 'fpr', 'bpr', 'fw', 'bw', 'fz', 'fs', 'bs', 'fhk', 'bhk', 'fv', 'bv'];
+const LEG_K = { ff: ['fn', 'ft', 'fo'], bf: ['bn', 'bt', 'bo'] };
+function chainLead(d, bt) {
+  if (d.spinny === undefined) d.spinny = !!(d.keys && d.keys.some(k => k[1] && Math.abs(k[1].spin || 0) > 30));   // 转身的招（回身肘、转身蹬……）整个人一起转，身子、手不分先后
+  if (d.script || d.limb === 'sh' || d.noChain || d.spinny) return 0;
+  const S = d.S, A = d.A, R = d.R;
+  if (bt < S) return Math.min(CHAIN_LEAD_MAX, CHAIN_LEAD * S) * Math.sin(Math.PI * clamp(bt / S, 0, 1));
+  if (bt <= S + A || !R) return 0;
+  return -Math.min(CHAIN_LAG_MAX, CHAIN_LAG * R) * Math.sin(Math.PI * clamp((bt - S - A) / R, 0, 1));
+}
+const CP_TMP = mk();
+// 关键帧按发力顺序取：身子按 bt + lead，手（和出招的那条腿）按 bt
+function evalChain(t, d, bt) {
+  const lead = chainLead(d, bt);
+  if (!lead) return copyPose(t, evalKeys(d.keys, bt));
+  copyPose(t, evalKeys(d.keys, bt + lead));
+  const a = copyPose(CP_TMP, evalKeys(d.keys, bt));
+  t.fh[0] = a.fh[0]; t.fh[1] = a.fh[1]; t.bh[0] = a.bh[0]; t.bh[1] = a.bh[1];
+  for (const k of ARM_K) t[k] = a[k];
+  const lg = d.limb === 'ff' || d.limb === 'bf' ? d.limb : null;
+  if (lg) { t[lg][0] = a[lg][0]; t[lg][1] = a[lg][1]; for (const k of LEG_K[lg]) t[k] = a[k]; }
+  return t;
+}
 class Fighter {
   constructor(idx, cfg) {
     this.idx = idx; this.setLook(cfg.look);
-    this.style = cfg.style || STYLE_DEFAULT;   // 2.7.1 拳派（现在只有「传统格斗」trad，见 moves.js 的 STYLES）：出招、取消、连招变招都查这一派的表
+    this.style = cfg.style || STYLE_DEFAULT;   // 2.7.1 拳派（现在只有「格斗术」trad，见 moves.js 的 STYLES）：出招、取消、连招变招都查这一派的表
     this.inp = new Input(); this.opp = null;
     this.disp = mk(); this.tgt = mk();
     this.maxHp = MAX_HP;
@@ -5364,7 +5754,7 @@ class Fighter {
     this.dashEnd = -999; this.info = null; this.comboDmg = 0; this.maxComboDmg = 0; this.prevCombo = null; this.freeAt = -999;
     this.chain = []; this.chainIdle = 99; this.slowJab = 0; this.airUsed = false; this.lowBlock = false;
     this.stunT = 0; this.hurtHeavy = false; this.grabbed = false; this.downPhase = null; this.lieT = LIE_GROUND; this.landT = 4; this.riseT = RISE;
-    this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.rushStamped = false;
+    this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.comboSeen = '|'; this.rushStamped = false;   // 3.1 comboSeen：这一套里挨过哪几招（同一招再用打折）
     this.clock = 0; this.serial = 0; this.walkPhase = 0; this.runT = 0; this.airT = 0; this.leapJump = false;
     this.carried = false; this.carry0 = 0; this.carryRot = 0; this.slam = false; this.qiGlow = 0; this.heat = 0; this.hitFlash = 0; this.hitShake = 0;
     this.lieKind = 0; this.gwalk = 0; this.slipGot = false;   // 2.0：躺姿（画面）、边挡边走（画面）、闪身躲过了重拳（接着回身肘）
@@ -5394,7 +5784,7 @@ class Fighter {
     this.look = p.id; this.color = p.color; this.sash = palOf(p.color).band; this.text = p.text; this.name = p.name;
   }
   get airborne() { return this.alt > 0 || this.vz > 0; }
-  get moves() { return styleOf(this).moves; }        // 2.7.1 自己这一派的招式表（传统格斗 MOVES，咏春拳 WMOVES）
+  get moves() { return styleOf(this).moves; }        // 2.7.1 自己这一派的招式表（格斗术 MOVES，咏春拳 WMOVES）
   get poses() { return styleOf(this).poses || POSE; } // 2.9 自己这一派的架势（站、蹲、挡……；咏春拳是问手 + 护手、竖掌）
   actionable() { return ACTIONABLE.has(this.state); }
   rollLen(dir) { return dir === this.facing ? ROLL_DIST : ROLL_BACK; }   // 2.7 滚身起滚多远：往前（面朝的方向）96、往后 64
@@ -5621,7 +6011,7 @@ class Fighter {
     const after = m.t + DT - 1 - m.S;
     if (after < 1 || after >= m.def.A + 13) return false;
     if (ST.chainMax) { if (this.chain.filter(c => c !== 'pc').length >= ST.chainMax) return false; }   // 一串最多几下
-    else if (kind === 'jab' && this.jabRun() >= JAB_CHAIN_MAX) return false;
+    else if ((kind === 'jab' && this.jabRun() >= JAB_CHAIN_MAX) || this.chain.length >= COMBO_MAX) return false;   // 3.1 一套最多 COMBO_MAX 下
     return (ST.cancel[m.def.kind] || []).includes(kind);
   }
   startAttack(kind, cancel) {
@@ -5826,7 +6216,7 @@ class Fighter {
         // 2.0 闪身：挡住的硬直里按着挡、朝对手双击 → 不等硬直完，直接从他身边钻过去
         if (!locked && h.block && !h.down && this.clock - this.dashT < 4 && this.dashDir === this.oppSide()) { this.dashT = -999; this.beginSlip(); break; }
         if (!locked && this.stompReady() && this.takePress(['kick'])) { this.beginMove('stomp', 'kick'); break; }        // 蹲挡住扫堂腿 → 踩腿
-        // 挡住后按重 → 截击（传统格斗，花 25 气）；拳派表里 blockHeavy 写 null 的没有这一下（2.10 咏春拳）
+        // 挡住后按重 → 截击（格斗术，花 25 气）；拳派表里 blockHeavy 写 null 的没有这一下（2.10 咏春拳）
         { const bst = styleOf(this), bh = bst.blockHeavy === undefined ? 'jieQuan' : bst.blockHeavy;
           if (bh && !locked && this.qi >= (this.moves[bh].cost || 0) && this.takePress(['heavy'])) { this.beginMove(bh, null); break; } }
         if (!locked && !styleOf(this).catchGuard && this.takePress(['jab'])) { this.beginMove('shove', null); break; }   // 2.11 咏春拳挡着按拳是接招（wcDefend 看按键），不是推挡
@@ -6148,7 +6538,7 @@ class Fighter {
         const m = this.move;
         // 连环寸拳打中以后那一串：左右手交替（一拳一个姿势，写在招式的 flurry 里），最后一记寸拳
         if (m.flurry) { const FL = m.def.flurry; return copyPose(t, m.fi >= FL.n - 1 ? FL.endPose : FL.poses[m.fi % 2]); }
-        copyPose(t, evalKeys(m.def.keys, this.baseTime()));
+        evalChain(t, m.def, this.baseTime());                   // 3.1 发力顺序：身子先动、手后到；打到那一下全身对齐
         // 1.9.4 坠山近身踩得陡（见 aimDive）：身子跟着立直一点，脚冲着底下的人，不是斜着往前伸
         if (m.def.dive && !m.bounce && m.dvx !== undefined) t.rot *= 0.3 + 0.7 * m.dvx / DIVE_VX;
         // 坠山踩中：顺着这一脚蹲着落下来；被挡：往后翻一个跟头弹开
@@ -6175,7 +6565,16 @@ class Fighter {
         if (this.clashed) return copyPose(t, POSE.recoil);
         if (this.airborne) return copyPose(t, POSE.hurtAir);
         if (this.grabbed && this.stunT > 12) return copyPose(t, POSE.pulled);
-        return copyPose(t, this.hurtHeavy ? POSE.hurtH : POSE.hurtL);
+        {
+          // 3.1 挨打的反应（见 hurtStart）：头一两成猛地到位，后面慢慢缓回到护着的架势
+          const u = clamp((this.clock - (this.hurtAt || 0)) / (this.hurtLen || 12), 0, 1), kind = this.hurtKind || (this.hurtHeavy ? 'mid' : 'high');
+          const P0 = kind === 'low' ? POSE.hurtLow : kind === 'mid' ? (this.hurtHeavy ? POSE.hurtH : POSE.hurtM) : (this.hurtHeavy ? POSE.hurtHH : POSE.hurtL);
+          const back = EASE.io(clamp((u - 0.3) / 0.7, 0, 1));
+          copyPose(t, P0);
+          if (back > 0) lerpPose(t, POSE.hurtRec, back * 0.85, t, false);
+          if (this.hurtAlt) { t.head += 4 * (1 - back); t.tw -= 8 * (1 - back); }
+          return t;
+        }
       case 'down': case 'ko': {
         const lie = this.prone ? POSE.lieProne : this.lieKind ? POSE.lieFlat : POSE.lie;   // 2.10 被拉手跪马拽倒的：脸朝下趴着
         if (this.downPhase === 'fall') return copyPose(t, this.slam ? lie : POSE.fall);   // 被摔：背着地直接砸下去
@@ -6203,9 +6602,12 @@ class Fighter {
       const k = st === 'attack' || st === 'tumble' ? 0.78 : this.carried ? 0.85 : (st === 'hit' || st === 'blockstun' || st === 'parry') ? 0.6
         : (st === 'down' || st === 'ko') ? (this.slam && this.downPhase === 'fall' ? 0.6 : 0.3) : st === 'run' ? (this.runT < 5 ? 0.5 : 0.88) : st === 'air' ? 0.32 : 0.4;
       if (!hold) lerpPose(this.disp, tg, lk(k), this.disp, true);       // 每帧往目标挪 k → 每步挪 lk(k)（2.6）
+      if (hold) this.hurtStart();                                         // 3.1 刚挨了一下：挨打的样子从这一下重新算（打哪、多重）
       const hy0 = this.hipY, ik0 = this.ikS ? this.ikS.slice() : null;
+      const pl = this.plantFeet();                                        // 3.1 脚踩实：踩在地上的脚不跟着滑，离得远了迈一步
       this.fk();
       this.fitContact(hy0, ik0);
+      if (pl) { const p = this.disp; p.ff[0] = pl[0]; p.ff[1] = pl[1]; p.bf[0] = pl[2]; p.bf[1] = pl[3]; }
       emitQi(this);
       // 拳脚轨迹 + 残影（只在出招时有；跑步不留残影）
       const m = this.move;
@@ -6226,6 +6628,43 @@ class Fighter {
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - DT);          // 挨打白闪 / 抖动（只是画面），打中停顿里也照常倒数
     if (this.hitShake > 0) this.hitShake = Math.max(0, this.hitShake - DT);
     this.updateRibbons();
+  }
+  // 3.1 脚踩实（见 STEP_TOL）：改的是这一步的 disp.ff / bf（画完这一帧还回去，下一步照旧从姿势本来的位置往目标走）。返回改之前的 [ffx, ffy, bfx, bfy]
+  plantFeet() {
+    const p = this.disp, st = this.state, m = this.move;
+    const ok = !this.airborne && !this.gwalk && !this.carried && Math.abs(wrapDeg(p.spin)) < 20 && Math.abs(wrapDeg(p.rot)) < 6 &&
+      (st === 'idle' || st === 'crouch' || st === 'block' || st === 'parry' || st === 'land' || st === 'rise' || st === 'jumpsquat' ||
+        (st === 'attack' && !!m && !m.air && !m.def.dive && !(m.def.script && m.def.lunge && m.def.lunge[2] > 40)));
+    if (!ok) { this.plant = null; return null; }
+    const f = this.facing, P = this.plant && this.plant.f === f ? this.plant : (this.plant = { f, ff: null, bf: null });
+    const keep = [p.ff[0], p.ff[1], p.bf[0], p.bf[1]];
+    const legLen = BODY.bone.th + BODY.bone.sh - 1.5, A = BODY.bone.ankle;
+    ['ff', 'bf'].forEach((k, i) => {
+      const lift = p[k][1], xd = this.x + f * (p.dx + p[k][0]);
+      if (lift > 1.5) { P[k] = null; return; }                         // 姿势自己抬着的脚（踢、提膝）：不管
+      let s = P[k];
+      if (!s) { P[k] = { x: xd, from: xd, to: xd, t: 1 }; return; }
+      const hipX = this.x + f * (p.dx + (k === 'ff' ? BODY.hipSplit : -BODY.hipSplit));
+      const far = Math.hypot(s.x - hipX, p.hy - A - lift) > legLen;
+      if (s.t >= 1 && (Math.abs(xd - s.x) > STEP_TOL || far)) { s.from = s.x; s.t = 0; }
+      let up = 0;
+      if (s.t < 1) {
+        s.to = xd; s.t = Math.min(1, s.t + DT / STEP_T);
+        s.x = s.from + (s.to - s.from) * EASE.io(s.t);
+        up = STEP_H[i] * Math.sin(Math.PI * s.t) * clamp(Math.abs(s.to - s.from) / 18, 0.35, 1);
+      }
+      p[k][0] = (s.x - this.x) * f - p.dx; p[k][1] = Math.max(lift, up);
+    });
+    return keep;
+  }
+  /* 3.1 挨打（Jack：动作僵硬）：以前挨了打就是一个姿势（轻的往后仰、重的弯腰）一直摆到硬直完。现在照打在哪、多重：
+     打头（上段、拳）—— 头往后一甩、下巴扬起来；打身子（重拳、腿、中段）—— 胸口往里一缩、弯腰；打腿（下段）—— 前腿一软往下沉。
+     头一两成的时间猛地到位，后面慢慢缓回来、手往回护（硬直快完的时候已经是半个架势）。左右两种轮着来（不每次一样）。只是画面 */
+  hurtStart() {
+    const om = this.opp && this.opp.move, d = om && om.def;
+    this.hurtAt = this.clock; this.hurtLen = Math.max(4, this.stunT || 12);
+    this.hurtKind = !d ? 'mid' : d.height === 'low' ? 'low' : (d.kind === 'kick' || d.heavy || d.tier === 'heavy') ? (d.height === 'high' ? 'high' : 'mid') : 'high';
+    this.hurtAlt = (this.hurtAlt || 0) ^ 1;
   }
   // 2.0.1 画面插值：记下上一帧画出来的样子（骨骼、发带、位置），render.js 在两帧之间按时间插着画 ——
   // 显示器比 60Hz 快（120 / 144Hz）时人跑起来不再一顿一顿、看着有重影。只是画面（vp 在 SNAP_SKIP 里）
@@ -6260,7 +6699,7 @@ class Fighter {
     const ax = Math.cos(p.spin * D2R) * Math.cos(p.rot * D2R);   // 姿势里往前（x）挪 1，画面上往前挪多少（转身、翻滚时变小、反过来）
     const keep = { dx: p.dx, fh: p.fh.slice(), bh: p.bh.slice(), ff: p.ff.slice(), bf: p.bf.slice() };
     const noArms = !o.isBlocking();                             // 挡着的：拳头停在他的胳膊上；没挡：从护着的手上面过去，停在身上
-    const oParts = bodyParts(OJ, 0).parts, tgtBody = bodyTargets(OJ, true, oParts), tgtHit = noArms ? tgtBody : bodyTargets(OJ, false, oParts);
+    const oParts = bodyParts(OJ, 0, null, true).parts, tgtBody = bodyTargets(OJ, true, oParts), tgtHit = noArms ? tgtBody : bodyTargets(OJ, false, oParts);
     const CORE = FIT_CORE, FEET = FIT_FEET;
     const refit = () => { this.hipY = hy0; if (ik0) for (let i = 0; i < 4; i++) this.ikS[i] = ik0[i]; this.fk(); };
     // 脚踝目标放到 x（姿势的坐标），腿够不着就往髋底下收到刚好够着（不然脚会被拽离地）
@@ -6365,7 +6804,8 @@ class Fighter {
      两个大腿根前后错开一点。手的目标点 fh / bh 是相对「两肩中间」sh 的；脚的目标点是脚踝（离鞋底 BODY.bone.ankle）。
      转身 spin：每个点除了前后（x）、上下（y）还有左右（z：后手肩、前腿根在近侧），绕竖轴转过去再投到画面上 ——
      转到一半时肩膀、两腿左右分开（正面看的样子），以前只是把 x 压扁 */
-  fk() {
+  // keepHip（3.1 别手 wcBind 重摆手的时候用）：髋的高低不再往目标挪一步（这一步 animate 已经挪过了），只重算骨骼
+  fk(keepHip) {
     const p = this.disp, L = BODY.bone;
     const tor = p.tor * D2R, hd = (p.tor + p.head) * D2R;
     const tx = Math.sin(tor), ty = -Math.cos(tor);            // 脊柱往上的方向
@@ -6428,7 +6868,7 @@ class Fighter {
     let hipT;
     if (this.airborne) hipT = Math.min(-(this.alt + p.hy), -maxY);
     else hipT = -maxY - p.air;
-    this.hipY = this.airborne ? hipT : this.hipY + (hipT - this.hipY) * lk(this.state === 'run' ? 0.85 : 0.55);
+    if (!keepHip || this.airborne) this.hipY = this.airborne ? hipT : this.hipY + (hipT - this.hipY) * lk(this.state === 'run' ? 0.85 : 0.55);
     if (!this.J) this.hipY = hipT;
     // 2.9 查别扭的动作时发现：从蹲着一下子站起来（托天掌、冲天炮、闪身、回身肘、过肩摔），髋跟得慢半拍，脚往地里陷 4 ~ 10 像素 —— 在地上时脚不往地里陷
     else if (!this.airborne && this.hipY > -maxY) this.hipY = -maxY;
@@ -6725,8 +7165,11 @@ function applyHit(A, B, how) {
   if (m.dmgMul) mul *= m.dmgMul;                         // 2.10 这一下另外的加成（咏春拳的寸拳蓄劲）
   if (m.dashIn) mul *= DASH_IN_MUL;
   const n = B.comboTaken;
-  mul *= Math.max(DMG_FLOOR, 1 - DMG_DECAY * n * (flowMove ? FLOW_DECAY : 1));
+  // 3.1 越连越疼（COMBO_ESC）；咏春拳按拍子连的招（flow）照它自己的「顺」涨（FLOW_DMG），不再另算。同一套里同一招再用一次 ×REPEAT_MUL
+  if (!n) B.comboSeen = '|';
+  const repeat = !flowMove && n > 0 && (B.comboSeen || '|').indexOf('|' + m.name + '|') >= 0;
   if (flowMove) mul *= 1 + FLOW_DMG * A.flow;
+  else if (d.tier !== 'super') mul *= comboEsc(n) * (repeat ? REPEAT_MUL : 1);   // 大招（泼墨、连环寸拳那一串、如封似闭）自己的数，不跟着涨
   const dmg = Math.max(1, Math.round(d.dmg * mul));
   const wrongGuard = B.isBlocking() && front;
   const backHit = B.isBlocking() && !front;
@@ -6737,7 +7180,7 @@ function applyHit(A, B, how) {
   B.hp -= dmg; m.hit = true; A.stats.hits++; B.flow = 0; B.jin = 0;   // 3.0 太极拳挨打劲就散了
   if (d.tier === 'super') A.stats.supers++;             // 泼墨打中（软件版成就用）
   bumpCombo(A, B);
-  B.comboTaken = n + 1;
+  B.comboTaken = n + 1; B.comboSeen = (n ? B.comboSeen || '|' : '|') + m.name + '|';
   A.gainQi(dmg * 0.4 * QI_PER_HP); B.gainQi(dmg * 0.9 * QI_PER_HP);
   B.reel = false; B.clashed = false; B.grabbed = false; B.stagger = false; B.stuck = false; B.shook = false;
   if (B.hp <= 0) { B.hp = 0; B.knockDown(5, dir * (d.kb * 0.6 + 2), 40, true); }
@@ -6753,7 +7196,7 @@ function applyHit(A, B, how) {
   }
   else {
     const bonusStun = punish && label === punish[0] ? PUNISH_STUN : label === '截住闪身' ? SLIP_CAUGHT_STUN : 0;
-    const stun0 = flowMove ? d.stun + FLOW_STUN * A.flow : Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n);   // 2.9 顺的招硬直不衰减、越顺越长
+    const stun0 = flowMove ? d.stun + FLOW_STUN * A.flow : Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n - (repeat ? REPEAT_STUN : 0));   // 2.9 顺的招硬直不衰减、越顺越长
     B.state = 'hit'; B.stunT = (STA.stunOf ? STA.stunOf(A, B, m, n, stun0) : stun0) + (m.air ? AIR_STUN : 0) + bonusStun;   // 2.10 拳派自己算（咏春拳的连环冲拳按拍子）
     B.hurtHeavy = !!d.heavy || d.kind === 'kick';
     B.kvx = dir * d.kb * (1 + (flowMove ? 0 : KB_GROW * n)); if (wasAir) { B.vz = Math.max(B.vz, 2.5); B.vx = 0; }
@@ -6899,7 +7342,7 @@ function flurryStep(A, m) {
   if (m.ft < F.every) return;
   m.ft -= F.every; m.fi++;
   const last = m.fi >= F.n;
-  const dmg = Math.max(1, Math.round((last ? F.last : F.dmg) * Math.max(DMG_FLOOR, 1 - DMG_DECAY * B.comboTaken * FLOW_DECAY)));
+  const dmg = Math.max(1, Math.round(last ? F.last : F.dmg));   // 3.1 连环寸拳一拳一拳不再越打越轻（越连越疼在第一拳里算过了）
   B.hp -= dmg; A.stats.hits++; B.comboTaken++;
   A.gainQi(dmg * 0.4 * QI_PER_HP); B.gainQi(dmg * 0.9 * QI_PER_HP);
   bumpCombo(A, B);
@@ -7228,26 +7671,40 @@ function separate(a, b) {
    2.10 咏春拳重做（WINGCHUN.md）：咏春拳的电脑按拍子打连环冲拳（手准不准看难度 beatSd）、挡 = 黐手（按着挡黏住进搭手）、
      刚按下挡 = 拍手 / 耕手、挨打时黐手破连（brk 试不试、brkAcc 方向对不对）、搭手里翻手型 / 从手型里打出去 / 拉手扣住手腕往下拽；
      谁被黏住都会甩手、在他翻手那一拍里反拿（搭手里看手上的感觉：feel 帧，比眼睛的 react 快 —— 黐手练的就是这个）。
-     传统格斗的电脑打咏春拳：多抓、多打下段（黐手黏不住擒拿，站着黏不住下段），连招别太长
+     格斗术的电脑打咏春拳：多抓、多打下段（黐手黏不住擒拿，站着黏不住下段），连招别太长
    AI 可以用随机数（联机不走 AI） */
 
 // 计划里 'd:xx' = 按住蹲再按 xx（地面：下盘拳 / 扫堂腿 / 托天掌；空中 d:kick = 坠山）
+/* 3.1 长连招（Jack：连招不一定只有两三下，可以到六段到八段；连招越连收益越高）：一套里第 n 下 ×(1 + 0.1n)、同一招再用打对折（config.js COMBO_ESC / REPEAT_MUL），
+   这几套是穷举量出来的真连（相距 55 ～ 80 都接得上；离得太远，短拳打到头再接就够不着了 —— pickPlan 里长的只在 82 以内用）：
+   R6 拳腿拳拳拳腿 = 短拳 鞭腿 落步冲拳 后手直拳 摆拳 转身蹬；R7 拳腿拳重拳拳重 = 短拳 鞭腿 落步冲拳 进步冲拳 顶肘 后手直拳 冲天炮；
+   R7b 拳重拳腿拳腿重 = 短拳 进步冲拳 顶肘 鞭腿 落步冲拳 鞭腿 盖步砸拳；R8 腿拳重拳腿拳拳重（腿起手）；R6h 重拳腿拳重腿（重起手）；R5 两套五下的 */
+const R6 = ['jab', 'kick', 'jab', 'jab', 'jab', 'kick'], R7 = ['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'], R7b = ['jab', 'heavy', 'jab', 'kick', 'jab', 'kick', 'heavy'];
+const R8 = ['kick', 'jab', 'heavy', 'jab', 'kick', 'jab', 'jab', 'heavy'], R6h = ['heavy', 'jab', 'kick', 'jab', 'heavy', 'kick'];
+const R5a = ['jab', 'heavy', 'jab', 'kick', 'heavy'], R5b = ['jab', 'kick', 'jab', 'heavy', 'kick'], R4u = ['jab', 'jab', 'jab', 'heavy'], RJ6 = ['jab', 'jab', 'jab', 'jab', 'jab', 'jab'];
+// 3.1 太极拳的长连招（combo_enum 量的，离得近 ≤ 82 才接得满）：搬拦捶 → 顺拦肘 → 高探马 → 白鹤亮翅 → 蹬脚 87、搬拦捶 → 转身摆莲 → 蹬脚 → 转身蹬脚 80、
+//     揽雀尾 → 分脚 → 上步七星 → 高探马 → 白鹤亮翅 78、揽雀尾 → 高探马 → 白鹤亮翅 → 蹬脚 67、搬拦捶 → 顺拦肘 → 高探马 → 白鹤亮翅 66、搬拦捶 → 转身摆莲 → 蹬脚 57（≤ 95 都接得上）
+const T5a = ['heavy', 'jab', 'jab', 'heavy', 'kick'], T5b = ['jab', 'kick', 'jab', 'jab', 'heavy'], T4a = ['heavy', 'kick', 'kick', 'kick'], T4b = ['jab', 'jab', 'heavy', 'kick'];
+const T4c = ['heavy', 'jab', 'jab', 'heavy'], T3a = ['heavy', 'kick', 'kick'], T3b = ['jab', 'kick', 'heavy'];
 const PLANS = {
   // 2.2 入门：多是一两下（单拳、两拳、拳重、单出重拳 / 腿），很少三下以上
   novice: [[['jab'], 3], [['jab', 'jab'], 3], [['jab', 'heavy'], 2], [['heavy'], 2], [['kick'], 2], [['jab', 'kick'], 1.5], [['heavy', 'kick'], 1],
     [['kick', 'kick'], 0.6], [['grab'], 1], [['d:jab'], 1], [['d:kick'], 0.4], [['jab', 'jab', 'heavy'], 1]],
-  easy: [[['jab'], 2], [['jab', 'jab'], 2], [['jab', 'heavy'], 3], [['jab', 'jab', 'heavy'], 3], [['jab', 'kick'], 2], [['jab', 'jab', 'kick'], 2],
+  easy: [[['jab'], 2], [['jab', 'jab'], 2], [['jab', 'heavy'], 3], [['jab', 'jab', 'heavy'], 3], [['jab', 'kick'], 2], [['jab', 'jab', 'kick'], 2], [R4u, 0.6],
     [['jab', 'jab', 'jab', 'jab'], 1], [['heavy', 'kick'], 2], [['heavy', 'jab'], 1], [['heavy', 'heavy'], 1], [['kick', 'jab'], 1], [['kick', 'kick'], 1],
     [['grab'], 1], [['d:jab', 'd:kick'], 0.6], [['d:kick'], 0.4], [['jab', 'd:kick'], 0.4], [['d:jab'], 1], [['d:jab', 'jab', 'heavy'], 1]],
   normal: [[['jab', 'jab'], 1], [['jab', 'heavy'], 3], [['jab', 'jab', 'heavy'], 4], [['jab', 'kick'], 3], [['jab', 'jab', 'kick'], 3],
     [['heavy', 'kick'], 3], [['heavy', 'jab', 'heavy'], 2], [['heavy', 'heavy'], 2], [['heavy', 'd:kick'], 0.6], [['kick', 'jab', 'jab'], 2],
-    [['kick', 'heavy'], 2], [['kick', 'kick'], 2], [['grab'], 2], [['d:jab', 'd:kick'], 0.6], [['jab', 'd:kick'], 0.5], [['d:jab', 'jab', 'heavy'], 2], [['d:jab', 'jab', 'kick'], 1]],
+    [['kick', 'heavy'], 2], [['kick', 'kick'], 2], [['grab'], 2], [['d:jab', 'd:kick'], 0.6], [['jab', 'd:kick'], 0.5], [['d:jab', 'jab', 'heavy'], 2], [['d:jab', 'jab', 'kick'], 1],
+    [R4u, 1], [R5a, 0.5], [R5b, 0.5], [R6, 0.25]],   // 3.1 中等偶尔接长的（2.2「五档拉得开」：乱打的要打掉中等四成以上）
   // 难（2.0.2 的地狱）：打中就接击倒的那几套（冲天炮、旋风腿、二起脚、盖步砸拳），倒了接着压起身
   hard: [[['jab', 'jab', 'heavy'], 4], [['jab', 'heavy'], 2], [['jab', 'jab', 'kick'], 2], [['heavy', 'kick'], 4], [['kick', 'kick'], 3], [['kick', 'heavy'], 2],
-    [['heavy', 'heavy'], 1], [['kick', 'jab', 'jab'], 1], [['grab'], 2], [['d:jab', 'jab', 'heavy'], 2], [['d:jab', 'd:kick'], 1], [['jab', 'jab', 'jab', 'jab'], 1]],
+    [['heavy', 'heavy'], 1], [['kick', 'jab', 'jab'], 1], [['grab'], 2], [['d:jab', 'jab', 'heavy'], 2], [['d:jab', 'd:kick'], 1], [['jab', 'jab', 'jab', 'jab'], 1],
+    [R6, 2.5], [R7, 2.5], [R5a, 2], [R5b, 1.5], [R6h, 1.5], [RJ6, 1]],
   // 极难：一样爱接击倒，短拳起手的多（快、被挡也不亏），偶尔擒拿、下段换着来
-  hell: [[['jab', 'jab', 'heavy'], 5], [['jab', 'heavy'], 2], [['jab', 'jab', 'kick'], 3], [['heavy', 'kick'], 3], [['kick', 'kick'], 2], [['kick', 'heavy'], 2],
-    [['grab'], 2], [['d:jab', 'jab', 'heavy'], 2], [['d:jab', 'd:kick'], 1], [['jab', 'jab', 'jab', 'jab'], 1]],
+  hell: [[['jab', 'jab', 'heavy'], 3], [['jab', 'heavy'], 1.5], [['jab', 'jab', 'kick'], 2], [['heavy', 'kick'], 2], [['kick', 'kick'], 1.5], [['kick', 'heavy'], 1.5],
+    [['grab'], 2], [['d:jab', 'jab', 'heavy'], 2], [['d:jab', 'd:kick'], 1], [['jab', 'jab', 'jab', 'jab'], 1],
+    [R7, 2], [R7b, 1.5], [R8, 0.8], [R6, 1.5], [R6h, 1], [R5a, 1.5], [RJ6, 1]],   // 3.1 长的少一点（2.2：乱打的要打掉终极两成以上）
 };
 // react 反应帧；block 格挡率；lowRead 高低判断对的概率；parry 卸力；push 推挡；burst 爆气；read 读招克制；
 // catch 接腿；duck 蹲躲飞踢；aa 对空；step 闪步；low 用下段；sup 放泼墨；
@@ -7262,7 +7719,7 @@ const LEVELS = {
   // 2.7（Jack：入门再简单很多，让乱打的打掉 80% 以上的血；入门、简单别搞那么多破招）：反应 13 → 22、挡 0.34 → 0.12、读招 0.16 → 0.03，
   //     卸力、推挡、接腿、对空、截击、踩腿、抄腿、闪身、挡住就罚、记习惯都只剩一点点；主动 0.7 → 0.42、常发呆（0.55）、连招短、很少罚
   novice: { react: 22, block: .12, lowRead: .4, parry: .02, push: .04, burst: .1, read: .03, catch: .06, duck: .3, aa: .1, step: .1, low: .15, sup: .35,
-    punish: .08, combo: .35, aggr: .42, jump: .45, grabBlock: .18, idle: .55, tech: .05, gc: .03, stomp: .12, scoop: .03, roll: .15,
+    punish: .08, combo: .35, long: 0, longW: 1, aggr: .42, jump: .45, grabBlock: .18, idle: .55, tech: .05, gc: .03, stomp: .12, scoop: .03, roll: .15,
     slip: .02, gwalk: .1, oki: .1, catchSlip: .06, airBlock: .35, aaPlan: .2, habit: .08, guard: .1, punishBlock: .12,
     beatSd: 2, brk: .06, brkAcc: .4, touch: .1, feel: 7, jie: .05, jieAcc: .45, jieSd: 3.5, jieFlat: .75 },
   // 简单（2.1 叫「易」）= 2.0.2 的「中」：反应 11 帧，挡一半、偶尔读招；修好了防跳、挡空中招、挡住就罚、记一点习惯
@@ -7270,14 +7727,14 @@ const LEVELS = {
   //     接腿、抄腿、截击、踩腿、闪身都少了；挡住就罚 0.55 → 0.3、罚 0.55 → 0.25；反应 11 → 14。挡、连招只降一点（0.36、0.72）、记习惯照旧 0.45
   //     —— 打法朴素一点，不是光挨打；你老出同一招它还是会慢慢防住（不破招，只是挡对）
   easy: { react: 14, block: .36, lowRead: .55, parry: .05, push: .05, burst: .25, read: .06, catch: .18, duck: .45, aa: .12, step: .18, low: .18, sup: .55,
-    punish: .25, combo: .72, aggr: .78, jump: .65, grabBlock: .32, idle: .3, tech: .12, gc: .08, stomp: .3, scoop: .1, roll: .27,
+    punish: .25, combo: .72, long: 0.05, longW: 1, aggr: .78, jump: .65, grabBlock: .32, idle: .3, tech: .12, gc: .08, stomp: .3, scoop: .1, roll: .27,
     slip: .05, gwalk: .2, oki: .3, catchSlip: .18, airBlock: .5, aaPlan: .25, habit: .45, guard: .24, punishBlock: .3,
     beatSd: 1.7, brk: .1, brkAcc: .5, touch: .25, feel: 6, jie: .12, jieAcc: .55, jieSd: 2.8, jieFlat: .7 },
   // 中等（2.1 叫「中」）= 2.0.2 的「难」
   // 2.7（Jack：中等也再简单点，让乱打的打掉 40% 以上）：反应 8 → 9、挡 0.66 → 0.58、读招 0.5 → 0.38、卸力 0.25 → 0.16、接腿 0.6 → 0.45、对空 0.7 → 0.55、
   //     罚 0.85 → 0.7、挡住就罚 0.8 → 0.65、连招接下去 0.95 → 0.85、压起身 0.75 → 0.6、发呆 0.1 → 0.15（记习惯不降：老出同一招照样防得住）
   normal: { react: 9, block: .58, lowRead: .8, parry: .16, push: .45, burst: .75, read: .38, catch: .45, duck: .8, aa: .55, step: .4, low: .25, sup: .9,
-    punish: .7, combo: .85, aggr: 1, jump: 1, grabBlock: .7, idle: .15, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
+    punish: .7, combo: .85, long: 0.3, longW: 0.6, aggr: 1, jump: 1, grabBlock: .7, idle: .15, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .6, catchSlip: .55, airBlock: .9, aaPlan: .72, habit: .65, guard: .46, punishBlock: .65,
     beatSd: 1.6, brk: .25, brkAcc: .6, touch: .45, feel: 4, jie: .4, jieAcc: .72, jieSd: 1.8, jieFlat: .6 },
   // 困难（2.1 叫「难」）= 2.0.2 的「地狱」：看穿、记习惯、预判、算准时机、主动罚。
@@ -7287,7 +7744,7 @@ const LEVELS = {
   //   木头玩家打困难掉到 25.6%，和终极（21.7%）挨到一起；9 帧量出来 29% 上下（2.6 / 2.7 是 28.5 / 26.5%）。挡 0.66 试过 0.63 / 0.6，对木头玩家的占比没影响，没动；
   //   中等、终极的反应也试过各慢一帧：对木头玩家的占比没影响，终极反倒打不过困难、坠山击挡不住了，没动
   hard: { react: 9, block: .66, lowRead: .85, parry: .25, push: .45, burst: .75, read: .5, catch: .6, duck: .8, aa: .7, step: .4, low: .25, sup: .9,
-    punish: .9, combo: .95, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
+    punish: .9, combo: .88, long: 0.3, longW: 0.8, aggr: 1, jump: 1, grabBlock: .7, idle: .06, tech: .4, gc: .35, stomp: .9, scoop: .4, roll: .55,
     slip: .2, gwalk: .45, oki: .75, catchSlip: .55, see: .45, smart: true, airBlock: .95, aaPlan: .82, habit: .8, guard: .54, punishBlock: .86,
     beatSd: 1, brk: .4, brkAcc: .7, touch: .6, feel: 3, jie: .55, jieAcc: .87, jieSd: 1.05, jieFlat: .5 },   // 2.12 jie 0.62 → 0.55：接住以后那一套疼了（反打 ×1.3、搭手 ×1.35），少接一点，木头玩家照旧打掉两成半上下
   // 2.6（连招、高级招伤害提了，电脑一套连招打得更疼）：困难的罚 0.95 → 0.9、连招接下去 1 → 0.95；终极的罚、连招 1 → 0.93 —— 难度拉回 2.5 的样子
@@ -7298,10 +7755,10 @@ const LEVELS = {
   // 2.2（Jack：全是读指令 + 破招，完全玩不了）：瞬间看穿基础 0.6 → 0.3、习惯招最多 0.88 → 0.55
   // 2.3（Jack：再降 5~10%）：瞬间看穿基础 0.3 → 0.2（你老出的招最多还是 0.55：别养习惯）、看穿 see 0.55 → 0.48、平时反应 10 → 11 帧、挡 0.8 → 0.74
   hell: { react: 11, block: .74, lowRead: .92, parry: .35, push: .5, burst: .9, read: .6, catch: .7, duck: .9, aa: .85, step: .45, low: .3, sup: 1,
-    punish: .93, combo: .93, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
+    punish: .93, combo: .93, long: 0.1, longW: 0.45, aggr: 1, jump: .7, grabBlock: .8, idle: .05, tech: .65, gc: .5, stomp: 1, scoop: .5, roll: .65,
     slip: .25, gwalk: .4, oki: .9, catchSlip: .7, see: .48, smart: true, airBlock: 1, aaPlan: .95, habit: 1, guard: .55, punishBlock: 1,
     inst: .2, instMax: .55, instReact: 1,
-    beatSd: .8, brk: .58, brkAcc: .82, touch: .7, feel: 2, jie: .6, jieAcc: .9, jieSd: .9, jieFlat: .35 },   // 2.12 接招 jie 0.7 → 0.6（试过 0.78 / 0.94 / 0.75：接住那一套疼了以后木头玩家只剩 15%，太狠；0.6 + 一串少连两拳 → 21%，和传统格斗的终极一样）
+    beatSd: .8, brk: .58, brkAcc: .82, touch: .7, feel: 2, jie: .6, jieAcc: .9, jieSd: .9, jieFlat: .35 },   // 2.12 接招 jie 0.7 → 0.6（试过 0.78 / 0.94 / 0.75：接住那一套疼了以后木头玩家只剩 15%，太狠；0.6 + 一串少连两拳 → 21%，和格斗术的终极一样）
 };
 // 2.10 咏春拳：beatSd 连环冲拳按得离拍点差多少帧（标准差；拍子前 WC_EARLY、后 WC_LATE 帧以内算在拍子上）；
 //   touch 搭手里懂不懂行（翻对手型、反拿、甩手）；feel 搭手里手上的反应（帧）：黏着的时候看他几帧以前的样子（比 react 快：手上的感觉比眼睛快）
@@ -7318,7 +7775,7 @@ const LEVEL_IDS = Object.keys(LEVELS);                         // 人机的五�
 //   观战没有真人，不用留情 —— 从 2.1 那个「完全玩不了」的极难起步（瞬间看穿 0.6 / 习惯招 0.88），反应取困难的 8 帧、不发呆、罚满、连招满、记习惯最准，
 //   咏春拳的接招、拍子、搭手也都最准。别全拉到 1：两边都百分之百看穿就谁也不敢出手、站着对峙（看 40 回合里打空、挡住、发呆的比例）
 LEVELS.max = { react: 7, block: .9, lowRead: .98, parry: .6, push: .6, burst: .95, read: .8, catch: .85, duck: .95, aa: .95, step: .5, low: .3, sup: 1,
-  punish: 1, combo: 1, aggr: 1, jump: .7, grabBlock: .9, idle: 0, tech: .85, gc: .6, stomp: 1, scoop: .65, roll: .7,
+  punish: 1, combo: 1, long: 1, longW: 1, aggr: 1, jump: .7, grabBlock: .9, idle: 0, tech: .85, gc: .6, stomp: 1, scoop: .65, roll: .7,
   slip: .3, gwalk: .35, oki: .95, catchSlip: .85, see: .7, smart: true, airBlock: 1, aaPlan: 1, habit: 1, guard: .6, punishBlock: 1,
   inst: .7, instMax: .92, instReact: 1,
   beatSd: .4, brk: .85, brkAcc: .95, touch: .95, feel: 1, jie: .92, jieAcc: .98, jieSd: .5, jieFlat: .25, id: 'max' };
@@ -7387,7 +7844,7 @@ const OPEN_OF = a => a.startsWith('d:') ? DOWN_OF[a.slice(2)] : a;      // 计�
    · 电脑自己的招都按自己这一派查（this.MV、按键 → 中立时出的那一招 mvOf）；对面的招按对面那一派查（o.moves）。
    · 每一派的打法（连招计划、反打、压起身、挡住以后罚哪一套、接腿……）写在 KITS 里；
      2.10 咏春拳：连环冲拳按拍子一串打到底、黐手黏住进搭手、拍手拍开手上的招、耕手耕开腿、拉手拉住打过来的手、搭手里翻手型打人、拉手跪马。
-   · 传统格斗的电脑打咏春拳：被他刚起手的两三下打中，一直按着挡（那一点空里挡下来）；他按着挡（黐手）就抓、打下段
+   · 格斗术的电脑打咏春拳：被他刚起手的两三下打中，一直按着挡（那一点空里挡下来）；他按着挡（黐手）就抓、打下段
    ============================================================ */
 // 按键 → 这一派中立时出的那一招（'d:jab' = 蹲着按；咏春拳的 'f:jab' 这种带方向的直接查表：算的时候方向还没按下去）
 const W_KEY = { 'f:jab': 'wBiu', 'f:heavy': 'wPai', 'b:heavy': 'wGwai', 'H:heavy': 'wCun' };
@@ -7407,13 +7864,13 @@ const AI_TUNE = {
   wcStopGrab: 0.25,         // 被挡住以后改拉手扣他的机会
   escK: 0.6, escB: 0.05,    // 打咏春拳：被连环冲拳刚起手打中，一直按着挡的机会 = 挡的本事 × escK + escB
   ctrW: [0.05, 0.4],        // 被黏住时打算反拿的分量 = a + b × 搭手的本事
-  wcLow: 0.1, wcGrabBlk: 0.2,   // 咏春拳对着站挡的人：打下段、拉手的机会（传统格斗是 0.05、0.12）
-  vsWcGrab: 0.14,           // 传统格斗对着听劲的人（咏春拳站着按住挡）：抓的机会（接不住擒拿，比抓普通挡的人多一点）
-  vsWcLow: 0.12,            // 2.11 对着听劲的人打下段的机会（站着接不住下段；传统格斗对一般挡着的人是 0.05）
+  wcLow: 0.1, wcGrabBlk: 0.2,   // 咏春拳对着站挡的人：打下段、拉手的机会（格斗术是 0.05、0.12）
+  vsWcGrab: 0.14,           // 格斗术对着听劲的人（咏春拳站着按住挡）：抓的机会（接不住擒拿，比抓普通挡的人多一点）
+  vsWcLow: 0.12,            // 2.11 对着听劲的人打下段的机会（站着接不住下段；格斗术对一般挡着的人是 0.05）
   bait: 0.06,               // 2.11 骗接：他听劲的时候在拳够不着的地方空挥一拳（看他会不会接、接了打他收手），× 读招的本事
   // 2.12（NOTES 待做里的「咏春拳的电脑再往一半靠：多听劲、少主动起手」）：越高的档越像咏春拳该有的打法 —— 贴身先按住挡听劲（他出手就接），
-  //   中立起手的一串少一点（上面的档打满级传统格斗，中立一串多半被挡住、卸力，赚的是接住以后那一套）
-  wcListen: { novice: 0, easy: 0, normal: 0.003, hard: 0.006, hell: 0.008, max: 0.022 },   // 每帧按住挡听劲的机会（听 14～30 帧）；终极留着给真人打（木头玩家还得打掉两成）
+  //   中立起手的一串少一点（上面的档打满级格斗术，中立一串多半被挡住、卸力，赚的是接住以后那一套）
+  wcListen: { novice: 0, easy: 0, normal: 0.004, hard: 0.008, hell: 0.012, max: 0.022 },   // 3.1 中间三档多听一点（中等 0.003 → 0.004、困难 0.006 → 0.008、终极 0.008 → 0.012：咏春的中间三档对格斗术只有 44～45%）   // 每帧按住挡听劲的机会（听 14～30 帧）；终极留着给真人打（木头玩家还得打掉两成）
   wcOpen: { novice: 1, easy: 1, normal: 1, hard: 0.9, hell: 0.8, max: 0.6 },              // 中立起手一串的机会打折
 };
 // 搭手、甩手直冲以后接着按拍子连几下（难度越高连得越长）
@@ -7450,29 +7907,31 @@ const TPLANS = {
     [['d:jab', 'jab'], 1], [['f:jab', 'jab'], 1], [['d:kick'], 0.5], [['jab', 'jab', 'jab'], 1]],
   normal: [[['jab', 'jab', 'jab'], 2], [['jab', 'jab', 'heavy'], 2], [['jab', 'heavy'], 1.5], [['heavy', 'heavy'], 2.5], [['heavy', 'kick'], 1.5], [['kick', 'kick'], 1.5],
     [['kick', 'heavy'], 1], [['H:jab', 'jab', 'jab'], 2], [['H:heavy', 'heavy'], 1.5], [['grab'], 1.5], [['d:jab', 'jab', 'heavy'], 1], [['f:jab', 'jab', 'jab'], 1.2],
-    [['d:kick'], 0.6], [['b:jab'], 0.5]],
-  hard: [[['jab', 'jab', 'jab'], 2], [['jab', 'jab', 'heavy'], 2.5], [['heavy', 'heavy'], 3], [['heavy', 'kick'], 1.5], [['kick', 'kick'], 1.5], [['kick', 'heavy'], 1],
+    [['d:kick'], 0.6], [['b:jab'], 0.5], [T3a, 1.5], [T3b, 1], [T4b, 0.8], [T4c, 0.6]],
+  hard: [[['jab', 'jab', 'jab'], 1.5], [['jab', 'jab', 'heavy'], 2], [['heavy', 'heavy'], 2], [['heavy', 'kick'], 1], [['kick', 'kick'], 1], [['kick', 'heavy'], 1],
     [['H:jab', 'jab', 'jab'], 2.5], [['H:heavy', 'heavy'], 2], [['H:kick', 'kick'], 0.8], [['grab'], 2], [['d:jab', 'jab', 'heavy'], 1.2], [['f:jab', 'jab', 'heavy'], 1.2],
-    [['d:kick'], 0.6], [['b:jab'], 0.5]],
-  hell: [[['jab', 'jab', 'jab'], 2], [['jab', 'jab', 'heavy'], 2.5], [['heavy', 'heavy'], 3], [['heavy', 'kick'], 1.5], [['kick', 'kick'], 1.2],
+    [['d:kick'], 0.6], [['b:jab'], 0.5], [T3a, 2], [T3b, 1.5], [T4a, 1.2], [T4b, 1.5], [T4c, 1.2], [T5a, 1], [T5b, 1]],
+  hell: [[['jab', 'jab', 'jab'], 1], [['jab', 'jab', 'heavy'], 1.5], [['heavy', 'heavy'], 1.5], [['heavy', 'kick'], 1], [['kick', 'kick'], 0.8],
     [['H:jab', 'jab', 'jab'], 3], [['H:heavy', 'heavy'], 2.5], [['H:kick', 'kick'], 0.8], [['grab'], 2.2], [['d:jab', 'jab', 'heavy'], 1.2], [['f:jab', 'jab', 'heavy'], 1.5],
-    [['d:kick'], 0.6], [['b:jab'], 0.5]],
+    [['d:kick'], 0.6], [['b:jab'], 0.5], [T3a, 2], [T4a, 1.5], [T4b, 2], [T4c, 1.5], [T5a, 2], [T5b, 2]],
 };
 TPLANS.max = TPLANS.hell;
 // 太极拳的电脑调平用的几个数（电脑对电脑量出来的；改了重新量，见 NOTES「查平衡」3.0）
 const TJ_AI = {
-  hua: 0.6,       // 来得及的话先出一招等他打进来（掤）的机会 = 读招的本事 × hua（传统格斗读招出克它的那一系是 × 1）
+  hua: 0.6,       // 来得及的话先出一招等他打进来（掤）的机会 = 读招的本事 × hua（格斗术读招出克它的那一系是 × 1）
   pre: 0.15,      // 近身想先护着的时候（他在这儿爱先出手），改成先出一招按住蓄的机会（太极拳的「先护着」；多了常被跳进来、抓、打下段罚 —— 木头玩家量过 0 / 0.15 / 0.45，0.15 最难打）
   vsRead: 0.8,    // 打太极拳：看见他出有掤的招（蓄着也是）改抓、打下段、退开的机会 = 读招的本事 × vsRead
   vsCharge: 0.12, // 他蓄着（每一帧）：够得着就抓 / 打下段、够不着就退开等他发空的机会 × 读招的本事
 };
 const KITS = {
   trad: { id: 'trad', plans: PLANS, catchKey: 'grab', runHeavy: true, dashIn: ['jab', 'heavy', 'heavy', 'kick'],
-    parry: dist => (dist <= 92 ? pick([['jab', 'jab', 'heavy'], ['jab', 'kick'], ['heavy', 'kick'], ['heavy', 'heavy']]) : ['heavy', 'kick']).slice(),
-    oki: smart => (smart ? pick([['jab', 'jab', 'heavy'], ['jab', 'jab', 'kick'], ['jab', 'heavy']]) : pick([['jab', 'jab', 'heavy'], ['jab', 'kick'], ['jab', 'jab', 'jab', 'jab']])).slice(),
-    stagger: dist => (dist <= 92 ? pick([['jab', 'jab', 'heavy'], ['jab', 'kick'], ['heavy', 'kick']]) : dist <= 116 ? ['heavy', 'kick'] : ['kick', 'kick']).slice(),
+    // 3.1 反打、罚、压起身也用长连招（R7、R6h……，见 PLANS 上面）：离得近才接得满
+    parry: dist => (dist <= 82 ? pick([R7, R7b, R5a, R6, ['jab', 'jab', 'heavy']]) : dist <= 92 ? pick([R5b, ['jab', 'kick'], ['heavy', 'kick']]) : ['heavy', 'kick']).slice(),
+    oki: smart => (smart ? pick([R7, R6, R5a, ['jab', 'jab', 'heavy']]) : pick([['jab', 'jab', 'heavy'], ['jab', 'kick'], ['jab', 'jab', 'jab', 'jab']])).slice(),
+    stagger: dist => (dist <= 82 ? pick([R7, R5b, R6, ['jab', 'jab', 'heavy']]) : dist <= 92 ? pick([['jab', 'kick'], ['heavy', 'kick']]) : dist <= 116 ? ['heavy', 'kick'] : ['kick', 'kick']).slice(),
     // 挡住以后罚：[第一下, 整套, 大概多疼]（够得着、来得及的里挑最疼的）
-    routes: [['heavy', ['heavy', 'kick'], 27], ['jab', ['jab', 'jab', 'heavy'], 26], ['kick', ['kick', 'kick'], 21], ['jab', ['jab', 'heavy'], 20], ['d:kick', ['d:kick'], 8]] },
+    routes: [['kick', R8, 128], ['jab', R7, 115], ['heavy', R6h, 110], ['jab', R5b, 85], ['heavy', ['heavy', 'kick'], 36], ['jab', ['jab', 'jab', 'heavy'], 38], ['kick', ['kick', 'kick'], 30],
+      ['jab', ['jab', 'heavy'], 26], ['d:kick', ['d:kick'], 8]] },
   wc: { id: 'wc', wc: true, plans: WPLANS, catchKey: 'd:grab', runHeavy: false, dashIn: ['jab', 'jab', 'kick'],
     // 反打（拍开、耕开以后）：连环冲拳打到底 / 冲拳接寸拳收势 / 拉手扣住手腕（进搭手，接拉手跪马）/ 连环撑
     parry: () => pick([J8, J8, ['jab', 'jab', 'jab', 'jab', 'heavy'], ['grab'], ['kick', 'kick', 'kick'], ['heavy', 'jab', 'jab', 'jab', 'jab']]).slice(),
@@ -7484,11 +7943,13 @@ const KITS = {
       ['H:heavy', ['H:heavy'], 22], ['f:heavy', ['f:heavy'], 14], ['d:kick', ['d:kick', 'jab', 'jab', 'jab'], 18]] },
   // 3.0 太极拳：捋住了（他被牵过去、背对着失衡）—— 搬拦捶接双峰贯耳、揽雀尾接高探马穿掌、蓄一段的揽雀尾（劲 2 打倒）、蹬脚接转身蹬脚
   taiji: { id: 'taiji', tj: true, plans: TPLANS, catchKey: 'grab', runHeavy: false, dashIn: ['jab', 'grab', 'heavy'],
-    parry: () => pick([['heavy', 'heavy'], ['heavy', 'heavy'], ['jab', 'jab', 'jab'], ['H:jab'], ['kick', 'kick']]).slice(),
-    oki: smart => (smart ? pick([['jab', 'jab', 'heavy'], ['heavy', 'heavy'], ['grab']]) : pick([['jab', 'jab'], ['heavy'], ['jab', 'heavy']])).slice(),
-    stagger: dist => (dist <= 100 ? pick([['heavy', 'heavy'], ['jab', 'jab', 'jab'], ['jab', 'jab', 'heavy']]) : pick([['f:jab', 'jab'], ['kick', 'kick']])).slice(),
+    // 3.1 捋住了、压起身、他踉跄：离得近就接长的（T5a、T4a……）
+    parry: dist => (dist <= 82 ? pick([T5a, T4c, T4a, T5b, ['heavy', 'heavy']]) : dist <= 95 ? pick([T3a, ['heavy', 'heavy'], ['H:jab']]) : pick([['heavy', 'heavy'], ['kick', 'kick']])).slice(),
+    oki: smart => (smart ? pick([T4b, T5b, T3b, ['jab', 'jab', 'heavy'], ['grab']]) : pick([['jab', 'jab'], ['heavy'], ['jab', 'heavy']])).slice(),
+    stagger: dist => (dist <= 82 ? pick([T5a, T4a, T4c, ['jab', 'jab', 'heavy']]) : dist <= 100 ? pick([T3a, ['heavy', 'heavy'], ['jab', 'jab', 'jab']]) : pick([['f:jab', 'jab'], ['kick', 'kick']])).slice(),
     // 挡住以后罚：太极拳的招慢，多半只来得及采（擒拿 6 帧）；他收招长才打得到搬拦捶那一套
-    routes: [['heavy', ['heavy', 'heavy'], 38], ['jab', ['jab', 'jab', 'jab'], 32], ['kick', ['kick', 'kick'], 30], ['jab', ['jab', 'heavy'], 28], ['grab', ['grab'], 12]] },
+    routes: [['heavy', T5a, 87], ['heavy', T4a, 80], ['jab', T5b, 78], ['jab', T4b, 67], ['heavy', T3a, 57], ['jab', T3b, 51],
+      ['heavy', ['heavy', 'heavy'], 38], ['jab', ['jab', 'jab', 'jab'], 32], ['kick', ['kick', 'kick'], 30], ['jab', ['jab', 'heavy'], 28], ['grab', ['grab'], 12]] },
 };
 // 咏春拳的招在「习惯」里归哪一类（拉手是新的一类：看见他老这么干，就知道该出腿、打下段）
 Object.assign(OPENER, { wJab: 'jab', wBiu: 'jab', wLowPalm: 'lowJab', wCun: 'heavy', wPai: 'heavy', wGwai: 'heavy', wJum: 'lowJab', wKick: 'kick', wLowKick: 'lowKick' });
@@ -7539,7 +8000,7 @@ class Brain {
   set plans(v) {}
   mvOf(a) { return this.MV[neutralMove(this.f, a)]; }
   eR(a) { const d = this.mvOf(a); return d ? effRD(d) : 90; }
-  // 连招按下去会出哪一招、够多远（传统格斗照旧用 reachOf 那张表；咏春拳按现在这一串算：同一个键在连招里出的招不一样）
+  // 连招按下去会出哪一招、够多远（格斗术照旧用 reachOf 那张表；咏春拳按现在这一串算：同一个键在连招里出的招不一样）
   rk(a) {
     if (!this.K.wc && !this.K.tj) return reachOf(a);
     const f = this.f, chain = f.chainIdle > CHAIN_WIN ? [] : f.chain, KM = this.K.wc ? W_KEY : TJ_KEY;
@@ -7579,7 +8040,7 @@ class Brain {
     return true;
   }
   // 看见他打过来（还没看穿的时候）：手上的招、中段上段的腿 —— 来得及就先出一招等他打进来（掤，太极拳的「读招」）。
-  // 捋和传统格斗的卸力一个本事、一样的机会：挡的时候正好快打到了才捋（tick 格挡那一段），看穿了的在 hellCounter
+  // 捋和格斗术的卸力一个本事、一样的机会：挡的时候正好快打到了才捋（tick 格挡那一段），看穿了的在 hellCounter
   tjReact(s, dist, eta, press) {
     const f = this.f, L = this.L, R = Math.random;
     if (s.kind === 'grab' || s.kind === 'push' || s.dive || s.tier === 'super' || s.air || s.height === 'low' || s.pierce || eta < 0) return false;
@@ -7740,7 +8201,7 @@ class Brain {
   touchPlan(m, o) {
     const L = this.L, R = Math.random, P = { rolls: [], end: 'jab', lap: null };
     if (m.lap) return P;
-    // 翻几下：懂行的翻得多（每翻一下顺涨一级，打得更疼、更难跑），他会反拿就少翻（传统格斗的人在你翻手那一拍里抽手反抓）
+    // 翻几下：懂行的翻得多（每翻一下顺涨一级，打得更疼、更难跑），他会反拿就少翻（格斗术的人在你翻手那一拍里抽手反抓）
     // 他会反拿就少翻（被反拿过越多越少翻；记得准不准看 habit）
     const grabby = (o.style === 'wc' ? 1 : 0.7) / (1 + 0.8 * this.memo.rev * L.habit);
     const n = weighted([[0, 1.3 - L.touch], [1, (0.4 + L.touch) * grabby], [2, L.touch * 0.8 * grabby], [3, L.touch * 0.35 * grabby]]);
@@ -7910,7 +8371,7 @@ class Brain {
         if (om && this.guardFor !== om.serial) {
           this.guardFor = om.serial;
           if (f.stompReady() && R() < L.stomp) { H.down = true; f.inp.press('kick', f.clock); H.block = true; return; }
-          // 挡住后截击（传统格斗；咏春拳没有这一下）
+          // 挡住后截击（格斗术；咏春拳没有这一下）
           if (!this.K.wc && f.qi >= GC_COST && R() < L.gc) { f.inp.press('heavy', f.clock); return; }
         }
         if (dist < 110 && R() < L.push * 0.1) f.inp.press('jab', f.clock);
@@ -7945,8 +8406,22 @@ class Brain {
       }
       if (!this.plan.length) return;
       // 咏春拳的一串：拳、踢都按拍子接（一串里随时按得下去，按不准就是抢拍、过拍；2.10.1 踢也一样）
-      if (this.K.wc && (d.beat || d.link) && (kindOf(this.plan[0]) === 'jab' || kindOf(this.plan[0]) === 'kick')) { this.beatPress(m, dist, press); return; }
+      if (this.K.wc && (d.beat || d.link) && (kindOf(this.plan[0]) === 'jab' || kindOf(this.plan[0]) === 'kick')) {
+        // 3.1 咏春拳的一串（连环冲拳八下）：打到第四下以后想一想要不要连满（L.longW；不连满就在第 4～6 下收手。满级回回连满）
+        if (L.longW < 1 && f.chain.length >= 4) {
+          const key = f.serial - f.chain.length;
+          if (this.longFor !== key) { this.longFor = key; this.longGo = R() < L.longW; this.longStop = 4 + ((R() * 3) | 0); }
+          if (!this.longGo && f.chain.length >= this.longStop) { this.plan = []; return; }
+        }
+        this.beatPress(m, dist, press); return;
+      }
       if (f.canCancel(kindOf(this.plan[0]))) {
+        // 3.1 长连招（五下以上）：这一串打到第三、四下的时候想一想要不要接满（L.long；不接满就收手 —— 人也常常这样，满级才回回接满）
+        if (!this.K.wc && f.chain.length >= 3 && f.chain.length + this.plan.length >= 5) {
+          const key = f.serial - f.chain.length;                    // 这一串第一招的编号（一串里每接一招编号 +1）
+          if (this.longFor !== key) { this.longFor = key; this.longGo = R() < L.long; this.longStop = 3 + (R() < 0.5 ? 1 : 0); }
+          if (!this.longGo && f.chain.length >= this.longStop) { this.plan = []; return; }
+        }
         // 咏春拳一串很长，每一下接下去的机会高一点
         if (R() < (this.K.wc ? 1 - (1 - L.combo) * (L.combo < 0.8 ? 0.15 : 0.3) : L.combo)) press(this.plan.shift()); else this.plan = [];
       }
@@ -8380,6 +8855,8 @@ class Brain {
       }
       // 他正走过来：腿、扫堂腿起手（前摇长）少用
       if ((this.appr || 0) > 1 && (kindOf(p[0]) === 'kick')) k *= 0.35;
+      // 3.1 长连招（五下以上）离得近才接得满：远了第一下打到头，后面够不着
+      if (p.length >= (this.K.tj ? 4 : 5) && dist > 82) k *= 0.15;
       // 3.0 太极拳：慢招老被卸力、闪身躲过 —— 多蓄（他卡不准时机）、多采，少直接出搬拦捶（最好闪）
       if (this.K.tj && this.memo.tjRead > 0.3) {
         const t = this.memo.tjRead * L.habit, k0 = kindOf(p[0]);
@@ -8607,7 +9084,7 @@ class Brain {
     else if (d.height === 'low') { opts.push([14, 'cblock']); if (s.name === 'sweep' || s.name === 'wLowKick') opts.push([8, 'd:grab']); }
     else if (d.pierce) { if (luFresh) opts.push([13, 'lu']); opts.push([8, 'block']); }
     else {
-      // 捋的分量照传统格斗看穿以后卸力的分量（拳 13、腿 16、重 22），掤照它出克制那一系的分量
+      // 捋的分量照格斗术看穿以后卸力的分量（拳 13、腿 16、重 22），掤照它出克制那一系的分量
       const kick = d.kind === 'kick', heavy = d.tier === 'heavy';
       if (luFresh) opts.push([heavy ? 22 : kick ? 16 : 13, 'lu']);
       if (eta >= TJ_PENG_FROM + 1 && dist <= this.eR('jab') + 24) opts.push([heavy ? 13 : 15, 'hua']);
@@ -8631,6 +9108,7 @@ class Brain {
     for (const [first, route, dmg] of this.K.routes) {
       const d = this.mvOf(first);
       if (!d || dist > effRD(d) - 6 || left < d.S + 1 + (first === 'H:heavy' ? WC_CHARGE + 6 : 0)) continue;   // 寸拳蓄满还要多等蓄劲那几帧
+      if (route.length >= (this.K.tj ? 4 : 5) && dist > 82) continue;                                         // 3.1 长连招离得近才接得满
       if (!best || dmg > best[1]) best = [route, dmg];
     }
     return best && best[0];
@@ -9535,7 +10013,7 @@ const Drill = {
   start(id, demo) {
     const def = this.byId(id); if (!def) return;
     if (game.mode !== 'train') startMatch('train');
-    F1.style = F2.style = 'trad';                        // 2.9 破招练习：两边都是传统格斗（练的是破传统格斗的招，破法也是传统格斗的招）
+    F1.style = F2.style = 'trad';                        // 2.9 破招练习：两边都是格斗术（练的是破格斗术的招，破法也是格斗术的招）
     resetFighters(); game.phase = 'fight'; game.paused = false;
     F2.maxHp = DUMMY_HP; F2.hp = F2.lagHp = DUMMY_HP;
     this.cur = { def, demo: !!demo, ok: 0, tries: 0, rep: null, last: null, lastT: -999, passed: false, demoReps: 0, frame: 0, ds: {}, count: null, goAt: -999, passAt: -1 };
@@ -12304,9 +12782,9 @@ function applyLooks(mode) {
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
-/* ---------- 2.9 拳派（传统格斗 / 咏春拳；2.9 咏春拳叫「迎春拳」，id 'ying'，2.10 改 'wc'）：进战斗逻辑（招式表、架势、按键语法全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
+/* ---------- 2.9 拳派（格斗术 / 咏春拳；2.9 咏春拳叫「迎春拳」，id 'ying'，2.10 改 'wc'）：进战斗逻辑（招式表、架势、按键语法全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
    solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的；watch（2.11 观战）：两个电脑的。
-   训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
+   训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是格斗术（练的就是破格斗术的招）。
    菜单背景里两个电脑互打：每次随机 */
 const STYLE_IDS = ['trad', 'wc', 'taiji'];
 const styleOk = id => STYLE_IDS.includes(id);
@@ -12451,6 +12929,7 @@ function simTick(inputs) {
   if (!game.quiet) {                 // 联机回滚重算时只算胜负，不动画面
     a.keepPrev(); b.keepPrev();      // 2.0.1 上一步的样子（画面插值用）
     a.animate(frozen); b.animate(frozen);
+    if (!frozen) wcBindAll(a, b);   // 3.1 咏春的别手：两个人的手真的搭在一起（只是画面，见 wingchun.js wcBind）
     for (const F of game.p) {
       if (F.lagHp > F.hp) F.lagHp = Math.max(F.hp, F.lagHp - (F.state === 'hit' || frozen ? 0.05 : 0.6) * F.maxHp / 100 * DT);
       else F.lagHp = F.hp;
@@ -12538,7 +13017,8 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'vp', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'qback', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose', 'lastFlowPose']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'qback', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose', 'lastFlowPose',
+  'plant', 'hurtAt', 'hurtLen', 'hurtKind', 'hurtAlt', 'lapLimb']);   // 3.1 脚踩实、挨打的反应（只是画面）
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};
@@ -13366,7 +13846,7 @@ async function unpackDesc(code) {
    2.10（Jack：以后会有更多更多的拳派进来，底下的教程得重新做，不要用括号往里塞）：按拳派分成一本一本的书 ——
    · 「通用」一本：键位、两个克制圈、规矩、身法和倒地，哪一派都一样的东西
    · 每一派一本：上手、招式、连招、攻防、查表，页数和页名每一派自己定（咏春拳是连环拳、接招 · 搭手）
-   · 先选书（通用 / 传统格斗 / 咏春拳 ……），再翻页；以后加拳派，在 GUIDE_BOOKS 里加一本就行，两种排法都从这里来
+   · 先选书（通用 / 格斗术 / 咏春拳 ……），再翻页；以后加拳派，在 GUIDE_BOOKS 里加一本就行，两种排法都从这里来
    · 文字不用括号塞补充：要补充的单独成句，或者放进表格的一格（测试会查）
    · 文字里的 [拳] [重] [踢] [拿] [挡] [蹲] [跳] [前] [后] [冲] 换成按键（按你自己设的单人键位显示）
    · 前摇、伤害、倍率都直接读招式表和 config.js 的常数：改了数值，教程跟着变；动作小图 PoseIcon 用游戏自己的姿势和画法
@@ -13387,7 +13867,7 @@ const PoseIcon = {
     copyPose(F.disp, pose); F.alt = alt || 0; F.vz = 0; F.x = 0; F.facing = 1; F.state = 'idle'; F.J = null; F.ikS = null;
     F.fk(); return cloneJ(F.J);
   },
-  // spec：{ move: 招名, ph: 阶段（默认出手那一下）, alt: 离地高 } 或 { pose: 架势名 } 或 { run: true }；style：哪一派（不写是传统格斗）
+  // spec：{ move: 招名, ph: 阶段（默认出手那一下）, alt: 离地高 } 或 { pose: 架势名 } 或 { run: true }；style：哪一派（不写是格斗术）
   build(s) {
     let pose, trail = null;
     const ST = s.style && STYLES[s.style], MV = ST ? ST.moves : MOVES, PS = ST && ST.poses || POSE;
@@ -13508,7 +13988,7 @@ const GX = {
           `<tr><td class="ck">${comboKeys(c.keys, c.times)}</td><th>${c.name}${c.ko ? '<small>击倒</small>' : ''}</th><td>${c.tag || ''}</td><td class="strip">${c.moves.map(m => ic(m, 58, 62)).join('')}</td></tr>`).join('')).join('')}</tbody></table>`;
     }
     return groups.map(G => `<section class="g-sec"><h3>${G.group}${G.note ? `<small>${G.note}</small>` : ''}</h3><div class="g-grid combos">${G.list.map(c =>
-      `<article class="g-combo${c.ko ? ' ko' : ''}"><div class="gc-strip">${c.moves.map(m => ic(m, 86, 92)).join('<i class="gc-arrow">›</i>')}</div>
+      `<article class="g-combo${c.ko ? ' ko' : ''}${c.wide ? ' wide' : ''}"><div class="gc-strip">${c.moves.map(m => ic(m, c.wide ? 70 : 86, c.wide ? 76 : 92)).join('<i class="gc-arrow">›</i>')}</div>
         <div class="gc-body"><div class="gc-keys">${comboKeys(c.keys, c.times)}</div><h4>${c.name}</h4>${c.tag ? `<p>${c.tag}</p>` : ''}</div></article>`).join('')}</div></section>`).join('');
   },
   // 技巧：[{ group, list: [{ name, how, icon, desc, more? }] }]
@@ -13587,14 +14067,14 @@ const G_FIRST = [
   '他老举着手挡，贴上去拿他，或者蹲下打下段。',
   '挡住他一下以后他还在收招，马上打回去。',
   '被打倒了，起身的时候按住方向滚开，别在原地站起来挨打。',
-  '训练场里能对着木桩随便练；破招练习一招一招教怎么破传统格斗的招。想看高手怎么打，点「观战」看两个终极电脑互打。',
+  '训练场里能对着木桩随便练；破招练习一招一招教怎么破格斗术的招。想看高手怎么打，点「观战」看两个终极电脑互打。',
 ];
 const G_RULES = [
   ['胜负', `血量 ${MAX_HP}，五局三胜。人机、联机、观战每回合 ${ROUND_FRAMES / 3600} 分钟；双人对战、训练场不限时。`],
   ['交手', '两边同时打中，先比主系：克制的一方叫「克」，单方面打中。主系一样再比起手：克制的一方叫「压」，被压的吃全额、被打退，压人的只吃三成还能接着打。都一样就是拼招，各掉五成、互相震退。'],
   ['起手和主系', '单招两者一样；连招的起手是第一下，主系是最后一下。'],
   ['高低', '中段站着、蹲着都能挡；下段要蹲着挡；上段要站着挡。每一招是哪一段，看那一派的招式页。'],
-  ['连击衰减', '同一套里每多挨一下，硬直更短、被推得更远、伤害更低，连四五下就断。咏春拳的连环冲拳衰减得慢。'],
+  ['越连越疼', `同一套里每多连一下，这一下多 ${Math.round(COMBO_ESC * 100)}%，第 8 下 ×${comboEsc(7).toFixed(2)}：连得越长越赚，一套最多 ${COMBO_MAX} 下，短拳连着最多 ${JAB_CHAIN_MAX} 下。同一套里同一招再用一次只算一半、硬直也短。挨得越多硬直越短、被推得越远，离得远了后面就接不上。咏春拳的连环冲拳按「顺」算，顺一级 +${Math.round(FLOW_DMG * 100)}%。`],
   ['势破', `被挡住的那个人，下一记短拳的前摇多 ${SLOW_JAB_ADD} 帧，头上一个「势」字。`],
   ['朝向', '按着方向不出招就是跑，马上朝那边跑，没有后退。不按左右、格挡的时候自动面向对手；出招时对手在近身范围里，一律朝他打，乱按方向也不打空。'],
   ['气', `挨打、格挡、打中都会涨，挨打涨得最多。半格 ${QI_BURST} 能爆气，满格 ${QI_MAX} 能放大招。`],
@@ -13613,10 +14093,10 @@ const G_MULS = [
   ['截住闪身', '他钻过来的时候被短拳、腿、下段、擒拿打中', '×' + SLIP_CAUGHT_MUL],
   ['格挡', '挡住了只吃', Math.round(BLOCK_KEEP * 10) + ' 成'],
 ];
-// 身法和倒地：图用传统格斗的动作（哪一派都一样的按法）
+// 身法和倒地：图用格斗术的动作（哪一派都一样的按法）
 const G_BODY = [
   { group: '身法', list: [
-    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害。每一派的挡不一样：传统格斗刚按下挡的那一下是卸力；咏春拳按住挡再按键是接招，看咏春拳那本。`,
+    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `只吃 ${Math.round(BLOCK_KEEP * 10)} 成伤害。每一派的挡不一样：格斗术刚按下挡的那一下是卸力；咏春拳按住挡再按键是接招，看咏春拳那本。`,
       more: ['下段要按住 [蹲] 挡，上段要站着挡', '背对着挡不住'] },
     { name: '冲刺', how: '双击 [前] 或 [后]', icon: { move: 'dash', ph: 0.3 }, desc: '贴地滑出一大步；前几帧谁也打不中你，能穿到对面身后。' },
     { name: '冲势', how: '冲刺里出招', icon: { move: 'dash', ph: 0.6 }, desc: `冲刺途中、刚冲完出的第一招 ×${DASH_IN_MUL}，被挡也压得住。` },
@@ -13639,7 +14119,7 @@ const G_BODY = [
 ];
 
 /* ============================================================
-   传统格斗
+   格斗术
    ============================================================ */
 const G_MOVES = [
   { id: 'jab', how: '[拳]', icon: { move: 'jab' }, desc: '最快的一下，贴身抢先手；能打断对面出腿。' },
@@ -13682,6 +14162,13 @@ const G_COMBOS = [
   ] },
   { group: '下段', list: [
     { keys: ['d:jab', 'd:kick'], name: '下盘拳接扫堂腿', moves: ['lowJab', 'sweep'], tag: '两下都是下段' },
+  ] },
+  // 3.1（Jack：连招越连收益越高，可以到六段到八段）：贴身打中以后一口气连下去，后面每一下都比前面疼
+  { group: '长连招', note: '贴身打中了才接得满，一步以内；越往后一下越疼，同一招再用只算一半', list: [
+    { keys: ['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'], name: '七连 · 冲天炮', moves: ['jab', 'whip', 'stepPunch', 'beng', 'elbow', 'jab2', 'upper'], tag: '110 上下，单出一记重拳才 16；打上天', ko: true, wide: true },
+    { keys: ['kick', 'jab', 'heavy', 'jab', 'kick', 'jab', 'jab', 'heavy'], name: '八连 · 冲天炮', moves: ['kick', 'stepPunch', 'beng', 'elbow', 'whip', 'stepPunch', 'jab2', 'upper'], tag: '125 上下：腿要先踢中；落步冲拳用了两次，第二次只算一半', ko: true, wide: true },
+    { keys: ['heavy', 'jab', 'kick', 'jab', 'heavy', 'kick'], name: '重起六连 · 旋风腿', moves: ['heavy', 'elbow', 'whip', 'stepPunch', 'beng', 'whirl'], tag: '107 上下，转身一腿扫倒', ko: true, wide: true },
+    { keys: ['jab', 'kick', 'jab', 'jab', 'jab', 'kick'], name: '拳腿六连 · 转身蹬', moves: ['jab', 'whip', 'stepPunch', 'jab2', 'jab3', 'backKick'], tag: '78 上下，把人蹬远', wide: true },
   ] },
 ];
 const G_TECH = [
@@ -13824,8 +14311,8 @@ const WG_FOLLOW = [
 ];
 const WG_LAP = { name: '拉手跪马', how: '扣住手腕以后按 [蹲]', icon: { move: 'tDrag', ph: 0.5 }, desc: '扣着他的手腕往回往下一拽，自己退一步沉身跪马：他往前扑倒，脸朝下趴在你面前，那只手还在你手里。' };
 const WG_VS = [
-  ['咏春拳打传统格斗', '他的重拳、腿慢，看得见：按住挡听劲，他出重拳按 [重]、起腿按 [拿]，接住了在手上做文章。他老举着手挡，就拉手扣他手腕，接拉手跪马。他贴身连拳，挨了第一下按住挡，下一拳打过来之前按 [拳] 接住。'],
-  ['传统格斗打咏春拳', '他按住挡的时候别老出同一招，按对键就被接住。擒拿抓得住按着挡的人，下段的拳接不住，扫堂腿他要蹲着才接得住；在他够不着的地方空挥一拳骗他接，打他收手的那一下。被他黏住了，在他翻手那一拍里按 [拿] 反拿；他连环冲拳刚起手，挨了两拳马上按住挡，第三拳就挡住了。'],
+  ['咏春拳打格斗术', '他的重拳、腿慢，看得见：按住挡听劲，他出重拳按 [重]、起腿按 [拿]，接住了在手上做文章。他老举着手挡，就拉手扣他手腕，接拉手跪马。他贴身连拳，挨了第一下按住挡，下一拳打过来之前按 [拳] 接住。'],
+  ['格斗术打咏春拳', '他按住挡的时候别老出同一招，按对键就被接住。擒拿抓得住按着挡的人，下段的拳接不住，扫堂腿他要蹲着才接得住；在他够不着的地方空挥一拳骗他接，打他收手的那一下。被他黏住了，在他翻手那一拍里按 [拿] 反拿；他连环冲拳刚起手，挨了两拳马上按住挡，第三拳就挡住了。'],
 ];
 const WG_MULS = [
   ['顺', '按在拍子上打中一下涨一级，每一级', `+${Math.round(FLOW_DMG * 100)}%`],
@@ -13879,7 +14366,7 @@ const TG_MOVES = [
   { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: '两手十字一封、往后一坐，两掌一起发出去。整个前摇都有掤，化多少下都行；打中把人发出去。' },
 ];
 const TG_COMBOS = [
-  { group: '揽雀尾起手', note: '打中了、化掉了、被挡住了马上按下一招；一串最多三下，每一下也都按得住蓄', list: [
+  { group: '揽雀尾起手', note: '打中了、化掉了、被挡住了马上按下一招；一串最多五下，每一下也都按得住蓄', list: [
     { keys: ['jab', 'jab'], name: '高探马', moves: ['tjLan', 'tjGaoTan'] },
     { keys: ['jab', 'jab', 'jab'], name: '穿掌', moves: ['tjGaoTan', 'tjChuanZ'], tag: '把人打远' },
     { keys: ['jab', 'heavy'], name: '指裆捶', moves: ['tjLan', 'tjZhiDang'], tag: '往下一捶打倒', ko: true },
@@ -13895,6 +14382,12 @@ const TG_COMBOS = [
     { keys: ['kick', 'jab'], name: '上步七星', moves: ['tjDeng', 'tjQiXing'], tag: '两拳一交往前一架' },
     { keys: ['kick', 'heavy'], name: '弯弓射虎', moves: ['tjDeng', 'tjWanGong'], tag: '打倒', ko: true },
     { keys: ['kick', 'kick'], name: '转身蹬脚', moves: ['tjDeng', 'tjZhuanDeng'], tag: '打倒', ko: true },
+  ] },
+  // 3.1 势一式接一式，最多五下：越往后越疼
+  { group: '长势', note: '贴身打中了才走得完；越往后一下越疼', list: [
+    { keys: ['heavy', 'jab', 'jab', 'heavy', 'kick'], name: '搬拦捶五式', moves: ['tjBan', 'tjShunLan', 'tjGaoTan', 'tjBaiHe', 'tjDeng'], tag: '95 上下：顺拦肘、高探马、白鹤亮翅，蹬脚收', ko: true, wide: true },
+    { keys: ['jab', 'kick', 'jab', 'jab', 'heavy'], name: '揽雀尾五式', moves: ['tjLan', 'tjFen', 'tjQiXing', 'tjGaoTan', 'tjBaiHe'], tag: '83 上下：分脚、上步七星、高探马，白鹤亮翅挑倒', ko: true, wide: true },
+    { keys: ['heavy', 'kick', 'kick', 'kick'], name: '搬拦捶四腿', moves: ['tjBan', 'tjBaiLian', 'tjDeng', 'tjZhuanDeng'], tag: '88 上下：转身摆莲、蹬脚、转身蹬脚', ko: true, wide: true },
   ] },
 ];
 const TG_TECH = [
@@ -13922,7 +14415,7 @@ const TG_MULS = [
   ['化', '掤住打过来的一下，自己只吃', '×' + TJ_HUA_KEEP],
 ];
 const TG_VS = [
-  ['太极拳打传统格斗', '他的短拳快，抢不过：别等他出手再出，站在射程边上先出一招等他。重拳、腿慢，看见了就捋。他老举着手挡，采他。'],
+  ['太极拳打格斗术', '他的短拳快，抢不过：别等他出手再出，站在射程边上先出一招等他。重拳、腿慢，看见了就捋。他老举着手挡，采他。'],
   ['太极拳打咏春拳', '连环冲拳第二拳就破掤，别往他拳里送：等他接招接空、等他收手，或者捋他第一拳。他按着挡听劲的时候，采他、打下段。'],
   ['打太极拳', '它前摇长：前一半一拳就打断，后一半打进去被化掉、白送劲。它要出手了就抓、就蹲下打下段、就跳起来打；够不着就退开，等它发空了打它收招。它蓄着的时候别往它射程里走，要走就冲刺进去抓。'],
 ];
@@ -13934,6 +14427,52 @@ const tjDmg = (k, d) => d.kind === 'grab' ? '0~13' : undefined;
    书：通用一本、每一派一本。page：{ id, name, body(mode) }；以后加拳派在这里加一本
    ============================================================ */
 const keysUse = (list, mode) => GX.p(`按键：<span class="g-keys">${list.map(c => gKbd(c)).join(' ')}</span>`, mode);
+/* 3.1 六边形（Jack：每个拳派一张，要严谨）：数在 config.js 的 HEXAGON（balance.js hexagon 量的），轴和锚在 HEX_AXES。
+   hexSVG(id, w, big)：一张 SVG —— 三圈参考线、红的是这一派的分（0～10），每个轴上一小段黑线是 95% 置信区间；big 在轴名后面写分 */
+function hexSVG(id, w, big) {
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H) return '';
+  const h = Math.round(w * (big ? 0.86 : 0.84)), cx = w / 2, cy = h / 2 + 1, r = w * (big ? 0.29 : 0.27);
+  const ang = i => -Math.PI / 2 + i * Math.PI / 3, pt = (i, v) => [cx + Math.cos(ang(i)) * r * v / 10, cy + Math.sin(ang(i)) * r * v / 10];
+  const f = n => n.toFixed(1), poly = vs => vs.map((v, i) => pt(i, v).map(f).join(',')).join(' ');
+  let g = '';
+  for (const v of [10 / 3, 20 / 3, 10]) g += `<polygon class="hx-g${v === 10 ? ' o' : ''}" points="${poly([v, v, v, v, v, v])}"/>`;
+  HEX_AXES.forEach((ax, i) => { const [x, y] = pt(i, 10); g += `<line class="hx-g" x1="${f(cx)}" y1="${f(cy)}" x2="${f(x)}" y2="${f(y)}"/>`; });
+  const sc = HEX_AXES.map(ax => H[ax.id][0]);
+  g += `<polygon class="hx-d" points="${poly(sc)}"/>`;
+  HEX_AXES.forEach((ax, i) => { const a = pt(i, H[ax.id][1]), b = pt(i, H[ax.id][2]); g += `<line class="hx-ci" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"/>`; });
+  sc.forEach((v, i) => { const [x, y] = pt(i, v); g += `<circle class="hx-p" cx="${f(x)}" cy="${f(y)}" r="${big ? 2.6 : 1.9}"/>`; });
+  HEX_AXES.forEach((ax, i) => {
+    const [x, y] = pt(i, 10 + (big ? 2.6 : 2.4)), side = i === 0 || i === 3 ? 'middle' : i < 3 ? 'start' : 'end';
+    g += `<text x="${f(x)}" y="${f(y + (i === 0 ? -2 : i === 3 ? 3 : 0))}" text-anchor="${side}" dominant-baseline="middle">${ax.name}${big ? `<tspan class="hx-n"> ${H[ax.id][0].toFixed(1)}</tspan>` : ''}</text>`;
+  });
+  const label = STYLES[id].name + '：' + HEX_AXES.map(ax => ax.name + ' ' + H[ax.id][0].toFixed(1)).join('、') + '（满分 10）；难度 ' + H.stars + ' 星';
+  return `<svg class="hex${big ? ' big' : ''}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${label}">${g}</svg>`;
+}
+// 难度：五颗星，半颗一档（画的，不靠字体里的半颗星）
+function hexStars(n, size) {
+  const s = size || 11; let g = '';
+  const star = (x, cls) => { let p = ''; for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? s * 0.21 : s * 0.5; p += (x + s / 2 + Math.cos(a) * rr).toFixed(1) + ',' + (s / 2 + 0.5 + Math.sin(a) * rr).toFixed(1) + ' '; } return `<polygon class="${cls}" points="${p.trim()}"/>`; };
+  for (let i = 0; i < 5; i++) {
+    const x = i * (s + 1);
+    g += star(x, 'st-o');
+    if (n >= i + 1) g += star(x, 'st-f');
+    else if (n > i) g += `<clipPath id="hs${i}${s}"><rect x="${x}" y="0" width="${s / 2}" height="${s + 1}"/></clipPath><g clip-path="url(#hs${i}${s})">${star(x, 'st-f')}</g>`;
+  }
+  return `<svg class="hstars" viewBox="0 0 ${5 * (s + 1)} ${s + 1}" width="${5 * (s + 1)}" height="${s + 1}" aria-label="难度 ${n} 星（满 5 星）">${g}</svg>`;
+}
+// 教程「上手」页里那一块：大六边形 + 每一轴量出来的原数（95% 置信区间）+ 怎么量的
+function hexBlock(id, mode) {
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H) return '';
+  const pct = (a, k) => k === 'def' || k === 'ctl' || k === 'top';
+  const val = (ax) => { const a = H[ax.id], u = ax.unit; return `${a[3]}${u}<small>${a[4]}～${a[5]}${u}</small>`; };
+  const anchor = ax => { const p = pct(null, ax.id), u = ax.unit; const v = x => p ? +(x * 100).toFixed(0) : x; return `${v(ax.lo)}${u} → 0 分、${v(ax.hi)}${u} → 10 分`; };
+  const rows = HEX_AXES.map(ax => [ax.name, ax.what, val(ax), H[ax.id][0].toFixed(1) + `<small>${H[ax.id][1].toFixed(1)}～${H[ax.id][2].toFixed(1)}</small>`, anchor(ax)]);
+  const how = `怎么量的：满级电脑对满级电脑，这一派对三派各打一局、连自己这一派也打，左右轮着站，${HEX_N.seeds} 个种子、每局 ${HEX_N.rounds} 回合，一个种子算一个样本；上限、难度用满级和木头两档对另两派打，木头就是乱按。小字是 95% 置信区间，重抽 2000 次。三派用同一把尺：每一轴先定好多少算 0 分、多少算 10 分，不是拿三派里的最大最小拉满。`;
+  const stars = `难度 ${H.stars} 星，区间 ${H.starsCI[0]}～${H.starsCI[1]} 星：满级比木头多打掉 ${H.gap[0]} 个点，区间 ${H.gap[1]}～${H.gap[2]} —— 多得越多越吃操作；−10 个点 1 星、0 个点 3 星、+10 个点 5 星`;
+  if (mode === 'man') return `<div class="mn-hex">${hexSVG(id, 260, true)}<div><p>${hexStars(H.stars, 14)} ${stars}</p><table class="mn-t"><thead><tr><th>轴</th><th>量的是什么</th><th>量出来</th><th>分</th><th>尺</th></tr></thead><tbody>${rows.map(r => `<tr><th>${r[0]}</th><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td class="mn-dim">${r[4]}</td></tr>`).join('')}</tbody></table>${GX.note(how, mode)}</div></div>`;
+  return `<div class="g-hex">${hexSVG(id, 280, true)}<div class="gh-body"><p class="gh-stars">${hexStars(H.stars, 16)}<span>${stars}</span></p><table class="g-mul hex-t"><thead><tr><th>轴</th><th>量的是什么</th><th>量出来</th><th>分</th></tr></thead><tbody>${rows.map(r => `<tr><th>${r[0]}</th><td>${r[1]}<small>${r[4]}</small></td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table><p class="g-note">${how}</p></div></div>`;
+}
+
 const GUIDE_BOOKS = [
   { id: 'all', name: '通用', pages: [
     { id: 'start', name: '上手', body(mode) {
@@ -13974,9 +14513,10 @@ const GUIDE_BOOKS = [
     } },
     { id: 'body', name: '身法', body(mode) { return GX.tech(G_BODY, 'trad', mode); } },
   ] },
-  { id: 'trad', name: '传统格斗', style: 'trad', pages: [
+  { id: 'trad', name: '格斗术', style: 'trad', pages: [
     { id: 'start', name: '上手', body(mode) {
-      return GX.p('传统格斗：拳、重、腿三系的招式多、连招多，大开大合，重拳霸体、腿长、摔投，靠读招和破招。', mode) +
+      return GX.p('格斗术：拳、重、腿三系的招式多、连招多，大开大合，重拳霸体、腿长、摔投，靠读招和破招。', mode) +
+        GX.sec('六边形', hexBlock('trad', mode), mode, '量出来的') +
         GX.sec('怎么打', GX.steps(G_TRAD_TIPS, mode), mode) +
         GX.sec('自己的加成', GX.muls(G_TRAD_MULS, mode), mode);
     } },
@@ -13985,7 +14525,7 @@ const GUIDE_BOOKS = [
     } },
     { id: 'combos', name: '连招', body(mode) {
       return GX.p(`打中或者被挡住以后马上按下一招就接上了；没打中的话，0.4 秒内接着出也算。连招的<b>起手</b>是第一下、<b>主系</b>是最后一下，交手时按这两个比克制。<span class="g-keys">${['拳', '重', '踢', '蹲'].map(c => gKbd(c)).join(' ')}</span>`, mode) +
-        GX.combos(G_COMBOS, 'trad', mode) + GX.note('连击衰减：同一套里挨得越多，硬直越短、推得越远，一套最多五下左右。', mode);
+        GX.combos(G_COMBOS, 'trad', mode) + GX.note(`越连越疼：每多连一下 +${Math.round(COMBO_ESC * 100)}%，同一招在一套里再用一次只算一半；一套最多 ${COMBO_MAX} 下。长连招要离得近，一步以内才接得满，远了推开就断。`, mode);
     } },
     { id: 'tech', name: '攻防', body(mode) { return GX.tech(G_TECH, 'trad', mode); } },
     { id: 'charts', name: '查表', body(mode) {
@@ -13999,6 +14539,7 @@ const GUIDE_BOOKS = [
     { id: 'start', name: '上手', body(mode) {
       const lap = GX.tech([{ group: '咏春拳的摔', list: [WG_LAP] }], 'wc', mode);
       return GX.p('咏春拳：手短、快、贴身。连环冲拳按拍子打，不看打没打中；手一搭上就在手上做文章。', mode) +
+        GX.sec('六边形', hexBlock('wc', mode), mode, '量出来的') +
         GX.tech([{ group: '五个键和搭手', list: WG_KEYS }], 'wc', mode) +
         GX.sec('怎么打', GX.steps(WG_TIPS, mode), mode) + lap;
     } },
@@ -14023,6 +14564,7 @@ const GUIDE_BOOKS = [
   { id: 'taiji', name: '太极拳', style: 'taiji', pages: [
     { id: 'start', name: '上手', body(mode) {
       return GX.p('太极拳：慢而强。招都慢，不跟人抢快 —— 先出一招等他，他打进来被化掉，你按住蓄、松开发；他打过来按住挡、按后是捋。上手容易，难在什么时候松开、什么时候捋。', mode) +
+        GX.sec('六边形', hexBlock('taiji', mode), mode, '量出来的') +
         GX.tech([{ group: '蓄 · 发 · 化 · 捋 · 采', list: TG_KEYS }], 'taiji', mode) +
         GX.sec('怎么打', GX.steps(TG_TIPS, mode), mode);
     } },
@@ -14787,7 +15329,9 @@ function renderPrep() {
   const side = i => {
     const st = prep.styles[i], lk = prep.looks[i], dummy = P.dummy && i === 1;
     const name = lk === 'random' || dummy ? (dummy ? '' : '随机') : lookOf(lk).name, stName = styleOk(st) ? STYLES[st].name : '随机拳派';
-    return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div></div>` +
+    // 3.1 选的这一派的六边形（量出来的，见教程那一派「上手」页）
+    const hex = styleOk(st) && typeof HEXAGON !== 'undefined' && HEXAGON[st] ? `<div class="ps-hex" title="${STYLES[st].name}的六边形：量出来的，教程里有怎么量的">${hexSVG(st, 112)}${hexStars(HEXAGON[st].stars, 10)}<small>难度</small></div>` : '';
+    return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div>${hex}</div>` +
       `<p class="step">${dummy ? '木桩的拳派' : '拳派'}</p><div class="styles sm" data-ps="${i}"></div>` +
       (dummy ? '<p class="hint">木桩站着、蹲着、挡着，进去以后下面的工具条上换。</p>' : `<p class="step">颜色</p><div class="swatches sm" data-pl="${i}">${prepLooks(i)}</div>`) +
       (P.diff && i === 1 ? `<p class="step">难度</p><div class="lvl sm" role="group" aria-label="电脑难度">${LEVEL_IDS.map(id => `<button type="button" data-pd="${id}" aria-pressed="${id === prep.diff}">${LEVEL_NAME[id]}</button>`).join('')}</div>` : '') +

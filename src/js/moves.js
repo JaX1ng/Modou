@@ -115,7 +115,7 @@ const MOVES = {
     limb: 'bh', fx: 'rush', ghost: true, lunge: [1, 3, 13], rush: true,
     keys: [[0, { tor: 14 }], [1, J_(P_CROSS, { tor: 22, dx: 12 }), 'back'], [2, J_(P_CROSS, { tor: 22, dx: 12 })], [3, { tor: 14 }]] }),
   // 2.9（Jack：「寸功」改成「寸劲」）：一直叫寸劲，只是以前是飘的小字（18 号毛笔字里「劲」看着像「功」）—— 改成盖印章，大字看得清
-  rushEnd: M({ kind: 'jab', label: '寸劲', stamp: '寸劲', S: 5, A: 3, R: 12, dmg: 10, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
+  rushEnd: M({ kind: 'jab', label: '寸劲', stamp: '寸劲', S: 5, A: 3, R: 12, dmg: 14, reach: 96, stun: 16, bstun: 10, kb: 9, stop: 7, shake: 4, power: .7,
     limb: 'fh', fx: 'rushEnd', ghost: true, lunge: [1, 5, 8], ender: true, noCancel: true,
     keys: [[0, { tor: 6, dx: -6, fh: [10, -4], tw: 0 }], [1, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }, 'back'],
       [2, { tor: 30, dx: 24, hy: 64, head: -4, tw: 50, fh: [62, 0], bh: [-4, 4], ff: [48, 0], bf: [-36, 0] }], [3, {}]] }),
@@ -125,12 +125,12 @@ const MOVES = {
       [2, J_(P_LOW, { tor: 36, dx: 10, hy: 44, tw: 40, fh: [52, 30], bh: [7, -5] })], [3, J_(P_LOW, { fh: [24, -6] })]] }),
   // 重→拳：贴身顶肘
   elbow: M({ kind: 'jab', label: '顶肘', tag: '顶肘', lead: 'heavy', S: 4, A: 3, R: 9, dmg: 9, reach: 84, stun: 14, bstun: 8, kb: 4, stop: 5, shake: 2, power: .5,
-    limb: 'fe', fx: 'elbow', lunge: [1, 4, 10],
+    limb: 'fe', fx: 'elbow', lunge: [1, 4, 16],
     keys: [[0, { tor: 14 }], [0.5, { tor: 2, dx: -4, tw: -10, fh: [8, -12] }],
       [1, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }, 'back'],
       [2, { tor: 26, dx: 24, hy: 64, head: -6, tw: 60, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0] }], [3, {}]] }),
   // 腿→拳：踢完落步往前冲拳
-  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 8, reach: 100, stun: 14, bstun: 8, kb: 3.5, stop: 5, power: .5,
+  stepPunch: M({ kind: 'jab', label: '落步冲拳', tag: '落步冲拳', lead: 'kick', S: 5, A: 3, R: 9, dmg: 8, reach: 100, stun: 14, bstun: 8, kb: 2.5, stop: 5, power: .5,
     limb: 'bh', fx: 'jab2', lunge: [1, 5, 24],
     keys: [[0, { tor: -4, ff: [32, 30] }], [1, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }, 'back'],
       [2, { tor: 22, dx: 26, hy: 64, head: -4, tw: -46, bh: [64, -2], fh: [8, -7], ff: [52, 0], bf: [-38, 0] }], [3, {}]] }),
@@ -143,7 +143,7 @@ const MOVES = {
       [0.9, { tor: -6, dx: -10, hy: 67, head: 6, tw: 48, fh: [36, -6], bh: [-12, -10], ff: [30, 0], bf: [-40, 0] }],
       [1, P_HEAVY, 'back'], [2, P_HEAVY], [2.5, J_(P_HEAVY, { tor: 16, dx: 14, tw: -30, bh: [44, -2] })], [3, {}]] }),
   // 拳→重
-  beng: M({ kind: 'heavy', label: '进步冲拳', stamp: '进步冲拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 19, reach: 112, stun: 19, bstun: 12, kb: 7, stop: 10, shake: 7, power: 1, heavy: true,
+  beng: M({ kind: 'heavy', label: '进步冲拳', stamp: '进步冲拳', lead: 'light', S: 9, A: 4, R: 13, dmg: 19, reach: 112, stun: 19, bstun: 12, kb: 3.5, stop: 10, shake: 7, power: 1, heavy: true,
     limb: 'fh', fx: 'beng', ghost: true, lunge: [4, 9, 18],
     keys: [[0, {}], [0.5, { fh: [2, 4], tor: 2, hy: 64, dx: -6, tw: -10, bh: [6, -6] }],
       [1, { fh: [64, 4], tor: 24, dx: 30, hy: 62, tw: 50, ff: [50, 0], bf: [-14, 0], head: -2, bh: [-2, 8] }, 'back'],
@@ -163,7 +163,7 @@ const MOVES = {
       [2, { spin: 10, tor: 48, dx: 26, hy: 56, head: 4, tw: -36, bh: [50, 36], fh: [-6, -4], ff: [50, 0], bf: [-32, 0] }], [3, { spin: 0 }]] }),
   // 拳拳重：冲天炮（对空，击倒）
   upper: M({ kind: 'heavy', label: '冲天炮', stamp: '冲天炮', tier: 'aa', lead: 'light', S: 8, A: 4, R: 16, dmg: 22, reach: 98, stun: 19, bstun: 12, kb: 3, stop: 10, shake: 7, power: 1, heavy: true,
-    limb: 'bh', fx: 'upper', ghost: true, lunge: [4, 8, 9], launch: 9, noCancel: true, ender: true, antiAir: 120,
+    limb: 'bh', fx: 'upper', ghost: true, lunge: [4, 8, 15], launch: 9, noCancel: true, ender: true, antiAir: 120,
     keys: [[0, {}], [0.5, { bh: [14, 30], hy: 50, tor: 26, fh: [16, -10], dx: 4, tw: 34 }],
       [1, { bh: [60, -30], hy: 78, tor: 6, dx: 29, bf: [-20, 10], head: -10, fh: [10, -8], air: 6, tw: -44, ff: [42, 0] }, 'out'],
       [2, { bh: [30, -62], hy: 82, tor: -10, dx: 22, bf: [-14, 14], head: -18, fh: [8, -8], air: 8, tw: -40, ff: [38, 0] }], [3, {}]] }),
@@ -200,7 +200,7 @@ const MOVES = {
     keys: [[0, {}], [0.55, { ff: [30, 62], tor: -8, bf: [-27, 0], fh: [22, -12], bh: [6, -7], head: 3, hy: 74, dx: 3, tw: 10 }],
       [1, P_KICK, 'back'], [2, P_KICK], [2.4, { ff: [36, 44], tor: -14, dx: 13, hy: 74, bf: [-27, 0] }], [3, {}]] }),
   // 拳→踢
-  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 15, reach: 122, stun: 17, bstun: 10, kb: 6.5, stop: 8, shake: 5, power: .85,
+  whip: M({ kind: 'kick', label: '鞭腿', stamp: '鞭腿', lead: 'light', S: 10, A: 5, R: 14, dmg: 15, reach: 122, stun: 17, bstun: 10, kb: 3.5, stop: 8, shake: 5, power: .85,
     limb: 'bf', fx: 'whip', lunge: [5, 10, 10],
     keys: [[0, {}], [0.5, { bf: [10, 56], tor: -10, ff: [22, 0], fh: [20, -14], bh: [6, -6], spin: 20, hy: 74, tw: 0 }],
       [1, { bf: [94, 96], tor: -40, dx: 22, ff: [8, 0], fh: [-4, -22], bh: [2, -10], head: 16, spin: 30, hy: 76, tw: -10 }, 'back'],
@@ -384,8 +384,8 @@ const MOVES = {
     stop: 8, shake: 4, power: .8, limb: 'fe', fx: 'slipElbow', ghost: true, lunge: [0, 5, 18], stagger: true, ender: true, noCancel: true,
     keys: [[0, { spin: 165, tor: 24, hy: 58, head: 2, fh: [14, -18], bh: [16, -12], fe: -1, ff: [30, 0], bf: [-32, 0], tw: 0 }],
       [0.55, { spin: 95, tor: 6, hy: 66, head: -4, dx: -4, fh: [-8, -8], bh: [8, -10], ff: [24, 0], bf: [-36, 0], tw: -20 }],
-      [1, { spin: 8, tor: 26, dx: 24, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }, 'back'],
-      [2, { spin: 4, tor: 26, dx: 24, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }], [3, {}]] }),
+      [1, { spin: 8, tor: 26, dx: 27, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }, 'back'],   // 3.1 dx 24 → 27：他重拳收招时身子晚半拍才收（随动），肘再往前送一点贴到背上
+      [2, { spin: 4, tor: 26, dx: 27, hy: 64, head: -6, fh: [14, -5], bh: [6, -6], ff: [46, 0], bf: [-32, 0], tw: 60 }], [3, {}]] }),
   // 爆气：挨打时按「重+踢」，花 50 气从身上炸开 —— 2.1（Jack）：把对方炸倒、打掉 18（以前只是震开）
   burst: M({ kind: 'script', label: '爆气', S: 0, A: 0, R: 22, script: true, inv: [0, 18], evWave: 3,
     keys: [[0, { tor: 28, hy: 54, head: 10, fh: [8, 12], bh: [4, 14], tw: 0 }],
@@ -506,7 +506,7 @@ function pickVariant(kind, chain, air, mod) {
 const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, 'd:kick': 120, 'd:heavy': 100, 'd:grab': 96 })[k] || 90;
 
 /* ============================================================
-   拳派（2.7.1 铺垫；Jack：以后还会做更多和这个一样完整的拳派，现在这一套只是「传统格斗」，
+   拳派（2.7.1 铺垫；Jack：以后还会做更多和这个一样完整的拳派，现在这一套只是「格斗术」，
    到时候各种克制关系、发生的反应都要重新算）
    一个拳派 = 一整套：招式表 moves（上面的 MOVES）、交手关系 relation（主系克制 TIER_WIN + 起手压）、
    取消规则 cancel（CANCEL）、连招变招 variant（pickVariant）。
@@ -515,12 +515,12 @@ const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, '
    · 两个人同一派：交手照这一派自己的 relation（clashRelation，combat.js 交手时调）。
    · 两个人不同派：不套用任何一派的表 —— 在 MATCHUPS['甲|乙'] 里专门写这一对谁克谁（relation(dA, dB)：1 甲赢 / -1 乙赢 / 0 平，
      ±0.5 压），没写就报错（tests.js 查），不会悄悄用某一派自己的规矩。
-   · 现在只有 trad 一派，电脑 AI、破招练习、教程、平衡报告都直接读 MOVES（都是传统格斗专用的）；各种「反应」
+   · 现在只有 trad 一派，电脑 AI、破招练习、教程、平衡报告都直接读 MOVES（都是格斗术专用的）；各种「反应」
      （接腿、卸力、翻滚回去、倒栽葱、踩蹲、拳迎坠山、闪身躲重拳……）写在 combat.js，按招名、系别认 ——
      加新派的时候这些都要按新的一派重新算，清单见 NOTES「拳派」
    ============================================================ */
 const STYLES = {
-  trad: { id: 'trad', name: '传统格斗', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant },
+  trad: { id: 'trad', name: '格斗术', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant },
 };
 const STYLE_DEFAULT = 'trad';
 const MATCHUPS = {};                     // 跨派的规矩（以后加）：'trad|taiji': { relation(dA, dB) { … } }

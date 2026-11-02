@@ -13,7 +13,7 @@ const $b = id => document.getElementById(id);
 const PB = {
   tab: 'moves', sel: null, kind: 'move', frames: [], idx: 0, playing: false, acc: 0, raw: {}, rawPose: {},
   def: 'stand', dist: null, col: 'ink', bones: false, reach: true, sil: false, report: null,
-  style: 'trad',            // 2.9 看哪一派的招（传统格斗 / 咏春拳）
+  style: 'trad',            // 2.9 看哪一派的招（格斗术 / 咏春拳）
 };
 // 2.9 这一派的招式表、出招底子（关键帧只写和它不一样的字段）、分组、要量碰没碰到的招、基础姿势
 const PBST = () => STYLES[PB.style], PBMV = () => PBST().moves, PBBASE = () => PBST().base || BASE;
@@ -266,7 +266,7 @@ $b('bReset').addEventListener('click', () => {
   else if (PB.kind === 'pose') copyPose((PBST().poses && PBST().poses[PB.sel]) || POSE[PB.sel], PB.rawPose[PB.style][PB.sel]);
   open(PB.kind, PB.sel);
 });
-// 2.9 换拳派：列表换成这一派的招，打开这一派的第一招（别的拳派打传统格斗的人）
+// 2.9 换拳派：列表换成这一派的招，打开这一派的第一招（别的拳派打格斗术的人）
 $b('style').innerHTML = Object.keys(STYLES).map(id => `<option value="${id}">${STYLES[id].name}</option>`).join('');
 $b('style').addEventListener('change', e => {
   PB.style = e.target.value; PB.dist = null; renderList();

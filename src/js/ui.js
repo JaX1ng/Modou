@@ -608,7 +608,9 @@ function renderPrep() {
   const side = i => {
     const st = prep.styles[i], lk = prep.looks[i], dummy = P.dummy && i === 1;
     const name = lk === 'random' || dummy ? (dummy ? '' : '随机') : lookOf(lk).name, stName = styleOk(st) ? STYLES[st].name : '随机拳派';
-    return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div></div>` +
+    // 3.1 选的这一派的六边形（量出来的，见教程那一派「上手」页）
+    const hex = styleOk(st) && typeof HEXAGON !== 'undefined' && HEXAGON[st] ? `<div class="ps-hex" title="${STYLES[st].name}的六边形：量出来的，教程里有怎么量的">${hexSVG(st, 112)}${hexStars(HEXAGON[st].stars, 10)}<small>难度</small></div>` : '';
+    return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div>${hex}</div>` +
       `<p class="step">${dummy ? '木桩的拳派' : '拳派'}</p><div class="styles sm" data-ps="${i}"></div>` +
       (dummy ? '<p class="hint">木桩站着、蹲着、挡着，进去以后下面的工具条上换。</p>' : `<p class="step">颜色</p><div class="swatches sm" data-pl="${i}">${prepLooks(i)}</div>`) +
       (P.diff && i === 1 ? `<p class="step">难度</p><div class="lvl sm" role="group" aria-label="电脑难度">${LEVEL_IDS.map(id => `<button type="button" data-pd="${id}" aria-pressed="${id === prep.diff}">${LEVEL_NAME[id]}</button>`).join('')}</div>` : '') +

@@ -30,7 +30,7 @@ const BASE = { rot: 0, spin: 0, tor: 6, head: 3, hy: 71, dx: 0, air: 0, fe: 1, b
 const NUMK = ['rot', 'spin', 'tor', 'head', 'hy', 'dx', 'air', 'fe', 'be', 'tw', 'fn', 'bn', 'ft', 'bt', 'fo', 'bo', 'fp', 'bp', 'fpa', 'bpa', 'fpr', 'bpr', 'fw', 'bw', 'fz',
   'fs', 'bs', 'fhk', 'bhk', 'fv', 'bv'];
 const ARRK = ['fh', 'bh', 'ff', 'bf'];
-// base：这一招的底子（不写 = 传统格斗的 BASE；别的拳派的招用自己的底子，比如咏春拳的 WBASE，见 wingchun.js）
+// base：这一招的底子（不写 = 格斗术的 BASE；别的拳派的招用自己的底子，比如咏春拳的 WBASE，见 wingchun.js）
 function mk(o, base) {
   const p = Object.assign({}, base || BASE, o || {});
   for (const k of ARRK) p[k] = p[k].slice();
@@ -105,6 +105,13 @@ const POSE = {
   // 挨打：轻的 —— 头往后一甩、上身往后仰、手松开；重的 —— 弯腰缩成一团
   hurtL: mk({ tor: -20, head: -24, dx: -10, hy: 72, tw: -10, fh: [12, -6], bh: [-4, -2], ff: [30, 0], bf: [-32, 0] }),
   hurtH: mk({ tor: 36, head: 28, dx: -14, hy: 62, tw: 0, fh: [22, 22], bh: [10, 26], ff: [22, 0], bf: [-38, 0] }),
+  /* 3.1 挨打分打在哪（fighter.js hurtStart）：重的打在头上 —— 头往后猛甩、下巴扬起、两手往外甩开、前脚跟着离地一点；
+     轻的打在身子上 —— 胸口往里一缩、半弯腰、两手往下护肚子；打在腿上 —— 前腿一软、整个人往下一沉；
+     缓回来：两手往回护、身子还往后靠着（硬直快完时已经是半个架势） */
+  hurtHH: mk({ tor: -28, head: -34, dx: -16, hy: 70, tw: -18, fh: [4, -22], fe: -1, bh: [-16, -12], ff: [34, 5], bf: [-36, 0] }),
+  hurtM: mk({ tor: 22, head: 14, dx: -10, hy: 66, tw: 8, fh: [22, 10], bh: [12, 14], ff: [26, 0], bf: [-36, 0] }),
+  hurtLow: mk({ tor: 16, head: 4, dx: -4, hy: 61, tw: 12, fh: [26, 4], bh: [8, 0], ff: [22, 0], bf: [-34, 0] }),
+  hurtRec: mk({ tor: -2, head: 6, dx: -6, hy: 69, tw: 12, fh: [18, -14], bh: [12, -12], ff: [26, 0], bf: [-34, 0] }),
   hurtAir: mk({ rot: -30, tor: -14, head: -26, tw: 0, fh: [-10, -30], bh: [-24, -16], ff: [32, 28], bf: [2, 14] }),
   pulled: mk({ tor: 30, head: 18, dx: 8, hy: 64, tw: 0, fh: [20, 16], bh: [8, 20], ff: [36, 0], bf: [-14, 0] }),
   reel: mk({ tor: -32, head: -30, dx: -14, hy: 74, tw: -16, fh: [-16, -32], bh: [-30, -20], ff: [38, 4], bf: [-26, 0] }),   // 失衡：被卸力/推开
@@ -115,8 +122,8 @@ const POSE = {
      整个人转 -90°（rot）就是仰面平躺：身体坐标里「往下」= 地上往脚那边，「往前」= 往上，「往后」= 往地里。
      2.4 人变厚了：后背比腿厚，腿的中线要比脊柱低一点（脚往「后」放一点）才贴得着地；头往后仰一点（head -20），后脑勺垫在地上。
      2.5.1 腿长了一点（小腿 37 → 39、大腿 39 → 38）：髋到脚 82 → 83.5、稍弯的那只脚 [-6, 4] → [-7, 3]，膝盖还稍微拱着，大腿贴着地 */
-  lie: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-7, 3], bf: [-7, -2], fh: [-6, 46], bh: [-5, 45.5], fe: 1, be: 1 }),
-  lieFlat: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-6, -2], bf: [-7, -1], fh: [-6, 46], bh: [-5, 45.5], fe: 1, be: 1 }),
+  lie: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-7, 3], bf: [-7, -2], fh: [-6, 46], bh: [-6, 45.5], fe: 1, be: 1 }),   // 3.1 手是一节一节的手指了，后手往地上再贴 1
+  lieFlat: mk({ rot: -90, tor: 4, head: -20, hy: 83.5, air: 0, tw: 0, ff: [-6, -2], bf: [-7, -1], fh: [-6, 46], bh: [-6, 45.5], fe: 1, be: 1 }),
   // 起身硬直（2.0）：从蹲着站起来、两手还垂在下面没护住 —— 一看就知道「现在打得着他」
   rise: mk({ hy: 56, tor: 18, head: -2, dx: -2, tw: 0, ff: [26, 0], bf: [-28, 0], fh: [22, 14], bh: [10, 20] }),
   win: mk({ tor: -2, head: -14, hy: 74, tw: 10, fh: [6, -54], bh: [10, -4], ff: [22, 0], bf: [-26, 0] }),

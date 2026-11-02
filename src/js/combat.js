@@ -241,8 +241,11 @@ function applyHit(A, B, how) {
   if (m.dmgMul) mul *= m.dmgMul;                         // 2.10 这一下另外的加成（咏春拳的寸拳蓄劲）
   if (m.dashIn) mul *= DASH_IN_MUL;
   const n = B.comboTaken;
-  mul *= Math.max(DMG_FLOOR, 1 - DMG_DECAY * n * (flowMove ? FLOW_DECAY : 1));
+  // 3.1 越连越疼（COMBO_ESC）；咏春拳按拍子连的招（flow）照它自己的「顺」涨（FLOW_DMG），不再另算。同一套里同一招再用一次 ×REPEAT_MUL
+  if (!n) B.comboSeen = '|';
+  const repeat = !flowMove && n > 0 && (B.comboSeen || '|').indexOf('|' + m.name + '|') >= 0;
   if (flowMove) mul *= 1 + FLOW_DMG * A.flow;
+  else if (d.tier !== 'super') mul *= comboEsc(n) * (repeat ? REPEAT_MUL : 1);   // 大招（泼墨、连环寸拳那一串、如封似闭）自己的数，不跟着涨
   const dmg = Math.max(1, Math.round(d.dmg * mul));
   const wrongGuard = B.isBlocking() && front;
   const backHit = B.isBlocking() && !front;
@@ -253,7 +256,7 @@ function applyHit(A, B, how) {
   B.hp -= dmg; m.hit = true; A.stats.hits++; B.flow = 0; B.jin = 0;   // 3.0 太极拳挨打劲就散了
   if (d.tier === 'super') A.stats.supers++;             // 泼墨打中（软件版成就用）
   bumpCombo(A, B);
-  B.comboTaken = n + 1;
+  B.comboTaken = n + 1; B.comboSeen = (n ? B.comboSeen || '|' : '|') + m.name + '|';
   A.gainQi(dmg * 0.4 * QI_PER_HP); B.gainQi(dmg * 0.9 * QI_PER_HP);
   B.reel = false; B.clashed = false; B.grabbed = false; B.stagger = false; B.stuck = false; B.shook = false;
   if (B.hp <= 0) { B.hp = 0; B.knockDown(5, dir * (d.kb * 0.6 + 2), 40, true); }
@@ -269,7 +272,7 @@ function applyHit(A, B, how) {
   }
   else {
     const bonusStun = punish && label === punish[0] ? PUNISH_STUN : label === '截住闪身' ? SLIP_CAUGHT_STUN : 0;
-    const stun0 = flowMove ? d.stun + FLOW_STUN * A.flow : Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n);   // 2.9 顺的招硬直不衰减、越顺越长
+    const stun0 = flowMove ? d.stun + FLOW_STUN * A.flow : Math.max(STUN_FLOOR, d.stun - STUN_DECAY * n - (repeat ? REPEAT_STUN : 0));   // 2.9 顺的招硬直不衰减、越顺越长
     B.state = 'hit'; B.stunT = (STA.stunOf ? STA.stunOf(A, B, m, n, stun0) : stun0) + (m.air ? AIR_STUN : 0) + bonusStun;   // 2.10 拳派自己算（咏春拳的连环冲拳按拍子）
     B.hurtHeavy = !!d.heavy || d.kind === 'kick';
     B.kvx = dir * d.kb * (1 + (flowMove ? 0 : KB_GROW * n)); if (wasAir) { B.vz = Math.max(B.vz, 2.5); B.vx = 0; }
@@ -415,7 +418,7 @@ function flurryStep(A, m) {
   if (m.ft < F.every) return;
   m.ft -= F.every; m.fi++;
   const last = m.fi >= F.n;
-  const dmg = Math.max(1, Math.round((last ? F.last : F.dmg) * Math.max(DMG_FLOOR, 1 - DMG_DECAY * B.comboTaken * FLOW_DECAY)));
+  const dmg = Math.max(1, Math.round(last ? F.last : F.dmg));   // 3.1 连环寸拳一拳一拳不再越打越轻（越连越疼在第一拳里算过了）
   B.hp -= dmg; A.stats.hits++; B.comboTaken++;
   A.gainQi(dmg * 0.4 * QI_PER_HP); B.gainQi(dmg * 0.9 * QI_PER_HP);
   bumpCombo(A, B);

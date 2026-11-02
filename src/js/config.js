@@ -8,7 +8,7 @@
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
 // 3.0.0（2026-11-01）：第三派太极拳（加一派照规矩是大版本；Godot 版不做了，网页版接着用 3.x 的号）
 // 3.0.1：手大 5%、勾手重画、太极拳的后腿不往下塌（Jack 打了 3.0.0 提的；只是画面）
-const VERSION = '3.0.1';
+const VERSION = '3.1.0';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -174,11 +174,19 @@ const COUNTER_MUL = 1.2;   // 破招：打在对方前摇里；迎击：打在�
 const BEAT_MUL = 1.3;      // 克：主系克制，克制方单方面打中
 const ARMOR_KEEP = 0.5;    // 霸体硬吃短拳时吃的伤害比例
 
-// 连击衰减（防止一套连到死）：同一套连击里每多挨一下
-const STUN_DECAY = TA(3), STUN_FLOOR = TA(3);    // 硬直少 3 帧，最少 3 帧（2.6 ×ATK_TEMPO：3.25）
+// 连击（3.1 重做，Jack：注重普通攻击和连招的收益差距，连招越连收益越高；连招不一定只有两三下，可以到六段到八段）：
+//   以前同一套里每多挨一下伤害 -8%（最低五成）、硬直 -3.25 帧 —— 越连越不值、四五下就断，普通攻击和连招差不多一个价。
+//   现在倒过来：同一套里第 n 下（从 0 数）伤害 ×(1 + COMBO_ESC × n)，最多算到第 COMBO_ESC_CAP 下（第 8 下 ×1.7）—— 连得越长每一下越疼；
+//   硬直只少一点点（STUN_DECAY，最少 STUN_FLOOR），够长的套路接得下去，乱接的照样会断；一套最多 COMBO_MAX 下（再长就是无限连）。
+//   击退照旧越连越远（KB_GROW 小了）：后半套要用前冲够得着的招（进步冲拳、落步冲拳、鞭腿）把距离追回来 —— 长连招要会走路线
+const STUN_DECAY = TA(0.5), STUN_FLOOR = TA(3);    // 硬直每多挨一下少一点、最少 3 帧（3.0：每下少 3.25）
 const AIR_STUN = TA(4);                  // 跳起来打中多几帧硬直（2.6 以前写在 combat.js 里：4）
-const KB_GROW = 0.3;                     // 击退 +30%，连着打会把人越推越远
-const DMG_DECAY = 0.08, DMG_FLOOR = 0.5; // 伤害 -8%，最低五成
+const KB_GROW = 0.12;                    // 击退每多挨一下 +12%（3.0：+30%）
+const COMBO_ESC = 0.08, COMBO_ESC_CAP = 7, COMBO_MAX = 8;
+//   同一套里同一招再用一次（REPEAT）：这一下伤害 ×REPEAT_MUL、硬直少 REPEAT_STUN —— 进步冲拳、顶肘来回绕的「循环」不值钱，长连招要换着招走
+//   （格斗术就是攻击的多样性；咏春拳按拍子连的冲拳本来就是一拳一拳轮着打，不算）
+const REPEAT_MUL = 0.5, REPEAT_STUN = TA(3);
+const comboEsc = n => 1 + COMBO_ESC * Math.min(n, COMBO_ESC_CAP);
 const JAB_CHAIN_MAX = 6;                 // 一串最多 6 拳，第 6 拳是收势「寸劲」
 
 // 防守反击
@@ -232,7 +240,7 @@ const BURST_BLOCK_KB = 6, BURST_BLOCK_STUN = 6;             // 对方面朝着�
    · 接招按错、时机不对：这一下 ×WC_WRONG_MUL
    · 2.10.1 一串里拳、踢都按拍子（link 的踢和 beat 的拳一样走抢拍 / 过拍）；收益按一串从哪来：中立起手 ×WC_NEUTRAL_MUL、接招 / 截腿以后 ×WC_COUNTER_MUL、搭手里 ×WC_TOUCH_MUL */
 // 2.12 顺一级伤害 +6% → +8%（Jack：咏春上限高、下限略高 —— 顺是按拍子、接住、翻手才涨的，吃操作的那一头）
-const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.08, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
+const FLOW_MAX = 8, FLOW_COUNTER = 3, FLOW_S = 0.25, FLOW_S_MIN = 2.25, FLOW_DMG = 0.1, FLOW_STUN = 1.25, FLOW_DECAY = 0.5, FLOW_IDLE = 6;
 const WC_BEAT = 8, WC_BEAT_STEP = 0.25, WC_BEAT_MIN = 6.5, WC_EARLY = 3, WC_LATE = 2, WC_EARLY_LAG = 3, WC_GAP = 2, WC_MARGIN = 1.5;
 const WC_PAT_STUN = TFH(19), WC_GAUN_STUN = TFH(21), WC_TRAP_EARLY = TF(4), WC_TRAP_DMG = 3, WC_REEL_HIT = TFH(14);
 const WC_WALK = 1.2 / TEMPO;               // 按着挡 + 前 / 后：听劲慢慢往前压、往后退
@@ -245,7 +253,7 @@ const WC_WRONG_MUL = 1.3;
 //   量出来的分层、跨派均衡在 NOTES「查平衡」2.12；真人打着再调：太强先降 WC_TOUCH_MUL，太弱先升 WC_COUNTER_MUL
 // 3.0（Jack：最强人机咏春的优势不明显 —— 上限要高，赢的概率要大，但不能每次都是咏春赢；加强咏春本身，不动电脑）：反打 ×1.3 → ×1.43、搭手 ×1.35 → ×1.47。
 //   满级对满级（两边电脑一样聪明）各 40 场：咏春赢 63% → 87.5% 场（回合 65% → 71.5%，伤害占比 53.2% → 54.8%；量的时候两个都是 1.45）；试过 1.5 / 1.55 + 顺 0.09：95% 场，几乎场场赢，太多
-const WC_NEUTRAL_MUL = 0.8, WC_COUNTER_MUL = 1.43, WC_TOUCH_MUL = 1.47;   // 两个平均 ×1.45；搭手还是比反打高一点（收益分层 起手 < 1 < 反打 < 搭手）
+const WC_NEUTRAL_MUL = 0.85, WC_COUNTER_MUL = 1.43, WC_TOUCH_MUL = 1.47;   // 两个平均 ×1.45；搭手还是比反打高一点（收益分层 起手 < 1 < 反打 < 搭手）
 
 /* 3.0 太极拳（taiji.js，设计稿 TAIJI.md）—— 规则里用到的数：
    · 蓄势：拳 / 重 / 踢按住不放，前摇走到 TJ_HOLD_AT 那么多停住，势接着往下走（最多 TJ_CHARGE 帧，走到头自己发）；每蓄满 TJ_SEG 帧劲 +1
@@ -257,7 +265,7 @@ const WC_NEUTRAL_MUL = 0.8, WC_COUNTER_MUL = 1.43, WC_TOUCH_MUL = 1.47;   // 两
      两次按后隔不到 TJ_LU_LOCK 帧没有捋（和卸力一样防乱按） */
 const TJ_HOLD_AT = 0.6, TJ_SEG = 12, TJ_CHARGE = 36, TJ_JIN_MAX = 3, TJ_JIN_DMG = 0.2, TJ_JIN_KEEP = 150;
 const TJ_HUA_KEEP = 0.25, TJ_HUA_MAX = 2, TJ_JIELI_MUL = 1.25, TJ_PENG_FROM = 6;   // TJ_PENG_FROM：出招第几帧起身上才有掤（前摇的前一半掤劲还没撑起来，一拳打得断；看见他出手才出招化不了，要先出）
-const TJ_LU_WIN = 6, TJ_LU_LOCK = 24, TJ_LU_STUN = TFH(25), TJ_LU_PULL = 8, TJ_LU_GAP = 44, TJ_LU_MUL = 1.15;   // TJ_LU_MUL：捋了以后打中他（引进落空）的倍数 —— 比卸力反击（PARRY_MUL）低，捋本身还给一级劲   // 失衡比卸力（PARRY_STUN）长三帧：太极拳最慢的搬拦捶打得上；牵过去那几帧另算   // TJ_LU_GAP：他被牵过去落在你身后多远
+const TJ_LU_WIN = 6, TJ_LU_LOCK = 24, TJ_LU_STUN = TFH(25), TJ_LU_PULL = 8, TJ_LU_GAP = 44, TJ_LU_MUL = 1.3;   // TJ_LU_MUL：捋了以后打中他（引进落空）的倍数 —— 比卸力反击（PARRY_MUL）低，捋本身还给一级劲   // 失衡比卸力（PARRY_STUN）长三帧：太极拳最慢的搬拦捶打得上；牵过去那几帧另算   // TJ_LU_GAP：他被牵过去落在你身后多远
 const TJ_FA_KV = [0, 0, 14, 30];          // 发劲把人打出去多快（劲 2 / 3；击退每帧剩八成二，一共滑出去差不多 5.5 倍：77 / 165 像素）
 
 // 联机（P2P）
@@ -313,3 +321,26 @@ const rnd = (a, b) => a + vrnd() * (b - a);
 const vpick = arr => arr[(vrnd() * arr.length) | 0];
 const pick = arr => arr[(Math.random() * arr.length) | 0];
 const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* 3.1 六边形（Jack：每个拳派一张，要严谨，用最严谨的统计和测试方案做）—— 教程每一派「上手」页一张大的、准备页拳派旁边一张小的。
+   六个轴都是量出来的数，三派共用一把绝对的尺（lo → 0 分、hi → 10 分，不拿三派里的最大最小拉满）：
+   量法（balance.js hexagon / 工具 hex.cjs）：满级对满级，这一派对三派（连自己）各打一局，左右轮着站，HEX_N.seeds 个种子、每局 HEX_N.rounds 回合，一个种子一个样本；
+   上限、难度用分层 tierShare 的满级 / 木头两档对另两派打。每个数 = 均值 + 95% bootstrap 置信区间（2000 次重抽、定种子）。改了数值重新量、抄回来 */
+const HEX_AXES = [
+  { id: 'atk', name: '攻', lo: 0, hi: 50, unit: '血', what: '打开一次平均打掉多少血：打中第一下起，连带后面接上的' },
+  { id: 'def', name: '守', lo: 0, hi: 0.75, unit: '%', what: '对面打过来，被挡住、卸开、接住、捋、化掉、闪开的占几成；一串只算第一下' },
+  { id: 'spd', name: '速', lo: 22, hi: 4, unit: '帧', what: '出的招平均前摇几帧，按实际出招的次数加权' },
+  { id: 'cmb', name: '连', lo: 1, hi: 4, unit: '下', what: '打开一次平均连几下' },
+  { id: 'ctl', name: '控', lo: 0, hi: 0.5, unit: '%', what: '对面被你打得、挡得、摔得动不了的时间占几成' },
+  { id: 'top', name: '上限', lo: 0.4, hi: 0.6, unit: '%', what: '满级对满级，打另两派打掉的血平均占几成' },
+];
+const HEX_N = { seeds: 20, rounds: 4 };
+// 每一轴：[分, 分的下限, 分的上限, 量出来的数, 下限, 上限]（百分数的轴写的是 %）；stars 难度（星）、gap 满级比木头多几个点
+const HEXAGON = {
+  trad: { stars: 2.5, starsCI: [2, 3], gap: [-2.4, -4.6, -0.2],
+    atk: [9.2, 8.9, 9.5, 45.8, 44.3, 47.4], def: [5.2, 5, 5.5, 39.2, 37.3, 40.9], spd: [7.2, 7.2, 7.3, 9, 8.9, 9.1], cmb: [6.3, 6, 6.7, 2.9, 2.8, 3], ctl: [7, 6.8, 7.2, 35, 34.1, 35.8], top: [4.6, 3.4, 5.7, 49.2, 46.8, 51.4] },
+  wc: { stars: 4.5, starsCI: [3.5, 5], gap: [6.7, 3.7, 9.4],
+    atk: [4.7, 4.5, 4.9, 23.5, 22.4, 24.7], def: [6, 5.9, 6.2, 45.2, 43.9, 46.5], spd: [9.9, 9.8, 9.9, 4.2, 4.2, 4.3], cmb: [3.6, 3.4, 3.9, 2.1, 2, 2.2], ctl: [7.2, 7, 7.3, 35.9, 35.2, 36.7], top: [6.1, 5, 7.3, 52.3, 50, 54.7] },
+  taiji: { stars: 1.5, starsCI: [1, 2], gap: [-6.5, -9, -3.8],
+    atk: [9.3, 9.1, 9.5, 46.4, 45.3, 47.5], def: [5.2, 4.9, 5.4, 38.9, 37.1, 40.7], spd: [3.3, 3.3, 3.4, 16, 15.9, 16.1], cmb: [3.7, 3.5, 3.9, 2.1, 2.1, 2.2], ctl: [6.8, 6.6, 7.1, 34.2, 33, 35.4], top: [3.3, 2.4, 4.3, 46.7, 44.7, 48.5] },
+};

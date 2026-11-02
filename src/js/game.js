@@ -34,9 +34,9 @@ function applyLooks(mode) {
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
-/* ---------- 2.9 拳派（传统格斗 / 咏春拳；2.9 咏春拳叫「迎春拳」，id 'ying'，2.10 改 'wc'）：进战斗逻辑（招式表、架势、按键语法全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
+/* ---------- 2.9 拳派（格斗术 / 咏春拳；2.9 咏春拳叫「迎春拳」，id 'ying'，2.10 改 'wc'）：进战斗逻辑（招式表、架势、按键语法全按拳派走），开打前定好。存在 localStorage「modou.styles」 ----------
    solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的；watch（2.11 观战）：两个电脑的。
-   训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是传统格斗（练的就是破传统格斗的招）。
+   训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是格斗术（练的就是破格斗术的招）。
    菜单背景里两个电脑互打：每次随机 */
 const STYLE_IDS = ['trad', 'wc', 'taiji'];
 const styleOk = id => STYLE_IDS.includes(id);
@@ -181,6 +181,7 @@ function simTick(inputs) {
   if (!game.quiet) {                 // 联机回滚重算时只算胜负，不动画面
     a.keepPrev(); b.keepPrev();      // 2.0.1 上一步的样子（画面插值用）
     a.animate(frozen); b.animate(frozen);
+    if (!frozen) wcBindAll(a, b);   // 3.1 咏春的别手：两个人的手真的搭在一起（只是画面，见 wingchun.js wcBind）
     for (const F of game.p) {
       if (F.lagHp > F.hp) F.lagHp = Math.max(F.hp, F.lagHp - (F.state === 'hit' || frozen ? 0.05 : 0.6) * F.maxHp / 100 * DT);
       else F.lagHp = F.hp;
@@ -268,7 +269,8 @@ function roundName() {
    只存影响胜负的：两个角色身上的逻辑字段（新加的字段自动跟着存）+ 回合流程。
    画面上的东西（骨骼 J、姿势、发带、残影、特效、气、挨打白闪、血条缓降）、AI 的记录不存 —— 读档后下一帧画面自己会跟上 */
 const SNAP_SKIP = new Set(['opp', 'inp', 'disp', 'tgt', 'J', 'vp', 'ribbons', 'trail', 'ghosts', 'history', 'info', 'prevCombo', 'qiGlow', 'heat',
-  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'qback', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose', 'lastFlowPose']);
+  'hitFlash', 'hitShake', 'hipY', 'lastStep', 'walkPhase', 'carryRot', 'lagHp', 'lieKind', 'gwalk', 'qx', 'qlean', 'qback', 'ikS', 'holdPose', 'fkL', 'shook', 'prone', 'carryPose', 'lastFlowPose',
+  'plant', 'hurtAt', 'hurtLen', 'hurtKind', 'hurtAlt', 'lapLimb']);   // 3.1 脚踩实、挨打的反应（只是画面）
 const copyVal = v => Array.isArray(v) ? v.slice() : v && typeof v === 'object' ? Object.assign({}, v) : v;
 function saveFighter(F) {
   const o = {};

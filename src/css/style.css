@@ -533,3 +533,30 @@ kbd.lt{background:rgba(255,255,255,.65);color:var(--ink);border-color:rgba(23,24
 html.desktop,html.desktop body{overflow:hidden;height:100%}
 html.desktop .wrap{padding:0;max-width:none}
 html.desktop .guide{display:none}
+
+/* 3.1 六边形（教程每一派「上手」页、准备页拳派旁边）：三圈参考线、红的是分、黑的一小段是 95% 置信区间；难度五颗星 */
+.hex{display:block;overflow:visible;flex:none}
+.hex .hx-g{fill:none;stroke:var(--ink);stroke-opacity:.13;stroke-width:1}
+.hex .hx-g.o{stroke-opacity:.32}
+.hex .hx-d{fill:var(--cinnabar);fill-opacity:.2;stroke:var(--cinnabar);stroke-width:1.6;stroke-linejoin:round}
+.hex .hx-ci{stroke:var(--ink);stroke-width:1.7;stroke-linecap:round}
+.hex .hx-p{fill:var(--cinnabar)}
+.hex text{font:500 11px/1 var(--ui);fill:var(--ink-soft)}
+.hex.big text{font-size:13.5px;fill:var(--ink)}
+.hex .hx-n{font-weight:700;fill:var(--cinnabar)}
+.hstars{display:block;flex:none}
+.hstars .st-o{fill:none;stroke:var(--ink-soft);stroke-opacity:.7;stroke-width:1}
+.hstars .st-f{fill:var(--gamboge)}
+.ps-hex{display:flex;flex-direction:column;align-items:center;gap:1px;margin-left:4px}
+.ps-hex small{font:500 11px/1 var(--ui);color:var(--ink-soft)}
+.g-hex{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.g-hex .gh-body{flex:1;min-width:300px}
+.gh-stars{display:flex;align-items:center;gap:12px;margin:2px 0 10px;font-size:14px;color:#33342f}
+.hex-t td small{display:block;color:var(--ink-soft);font-size:12px;margin-top:2px}
+.hex-t td:nth-child(3),.hex-t td:nth-child(4){white-space:nowrap;font-variant-numeric:tabular-nums}
+.mn-hex{display:flex;gap:22px;align-items:flex-start}
+.mn-hex>div{flex:1}
+.mn-hex td small{display:block;color:var(--ink-soft);font-size:12px}
+.g-combo.wide{grid-column:1/-1}
+.g-combo.wide .gc-strip{flex-wrap:wrap}
+@media (max-width:720px){.ps-hex{display:none}}

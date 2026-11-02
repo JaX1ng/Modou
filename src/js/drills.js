@@ -710,7 +710,7 @@ const Drill = {
   start(id, demo) {
     const def = this.byId(id); if (!def) return;
     if (game.mode !== 'train') startMatch('train');
-    F1.style = F2.style = 'trad';                        // 2.9 破招练习：两边都是传统格斗（练的是破传统格斗的招，破法也是传统格斗的招）
+    F1.style = F2.style = 'trad';                        // 2.9 破招练习：两边都是格斗术（练的是破格斗术的招，破法也是格斗术的招）
     resetFighters(); game.phase = 'fight'; game.paused = false;
     F2.maxHp = DUMMY_HP; F2.hp = F2.lagHp = DUMMY_HP;
     this.cur = { def, demo: !!demo, ok: 0, tries: 0, rep: null, last: null, lastT: -999, passed: false, demoReps: 0, frame: 0, ds: {}, count: null, goAt: -999, passAt: -1 };

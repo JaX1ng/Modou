@@ -388,7 +388,7 @@ window.aiStats = aiStats;
 
 /* ============================================================
    2.12（Jack：优化到最高级别的平衡检测 —— 同派招的数值、跨派的强度、拉得开、咏春上限高下限略高）
-   四、咏春拳的中立选项（WC_OPTIONS）：咏春打咏春、传统格斗打咏春的收益矩阵也求均衡（行列不一样长也能解）
+   四、咏春拳的中立选项（WC_OPTIONS）：咏春打咏春、格斗术打咏春的收益矩阵也求均衡（行列不一样长也能解）
    五、分层：木头（乱按）/ 中等 / 困难 / 终极 / 满级 两派对打，咏春拳打掉的血占几成 —— 下限看木头、上限看满级
    七、一招一张表：伤害、前摇、打空 / 被挡被罚的空当、打中以后的帧差；标出「收益差不多、风险也差不多」的那几对
    ============================================================ */
@@ -540,7 +540,7 @@ function tierShare(level, styles, rounds, seed, focus) {
     return { rounds: r, share: dealt[k] / Math.max(1, dealt[0] + dealt[1]) };
   } finally { Math.random = mr; }
 }
-// 两边换着站：咏春在左、在右各打一半（3.0 focus / other：哪一派打哪一派，不写是咏春拳打传统格斗）
+// 两边换着站：咏春在左、在右各打一半（3.0 focus / other：哪一派打哪一派，不写是咏春拳打格斗术）
 function tierTable(rounds, focus, other) {
   const out = [], A = focus || 'wc', B = other || 'trad';
   for (const lv of ['mash', 'normal', 'hard', 'hell', 'max']) {
@@ -550,6 +550,109 @@ function tierTable(rounds, focus, other) {
   return out;
 }
 window.tierTable = tierTable; window.tierShare = tierShare;
+
+/* 六、3.1 六边形（每一派一张；Jack：要严谨，用最严谨的统计和测试方案做）
+   六个轴都是量出来的数，三派共用一把绝对的尺（每轴先定好 0 分、10 分的锚，不是拿三派里的最大最小拉满）：
+     攻：一次打开（打中第一下起，连带后面接上的）平均打掉多少血                       0 分 0、10 分 50
+     守：对面打过来的（一串只算第一下），被挡住 / 卸开 / 接住 / 捋 / 化掉 / 闪开的占几成（连着挡的一串算一次）    0 分 0%、10 分 75%
+     速：出的招平均前摇几帧（按电脑实际出招的次数加权）                                 10 分 4 帧、0 分 22 帧
+     连：一次打开平均连几下                                                             0 分 1 下、10 分 4 下
+     控：对面被我弄得不能动（挨打 / 挡住的硬直、倒地、被抓、被黏住）的时间占几成            0 分 0%、10 分 50%
+     上限：满级对满级，这一派对另两派打掉的血平均占几成                                   0 分 40%、10 分 60%
+     难度（星）：满级比木头多占几个点（对另两派平均）：−10 → 1 星、0 → 3 星、+10 → 5 星，半颗一档
+   量法：攻守速连控 = 满级对满级（这一派打得最好的时候是什么样子），这一派对三派（含自己）各打，左右轮着站，N 个种子、每个种子每局 R 回合，每个种子一个样本；
+   上限、难度 = 分层（tierShare）满级、木头两档，同样左右各 N 个种子。每个数：均值 + 95% bootstrap 置信区间（2000 次重抽、定种子）。
+   跑：浏览器控制台 hexagon(12, 4)（几分钟），量出来的数抄进 config.js 的 HEXAGON */
+// 六个轴、每轴的锚（HEX_AXES）和量好的数（HEXAGON）在 config.js：游戏里画图用
+const DEF_EV = { guard: 1, parry: 1, handParry: 1, absorb: 1, hua: 1, lu: 1, evade: 1, dodge: 1, slip: 1, catch: 1 };
+// 一局（styles 左右两派，k = 量哪一边）：level 对 level 打 rounds 回合，量这一边的攻守速连控
+function hexRun(level, styles, rounds, seed, k) {
+  let s0 = seed >>> 0; const rng = () => (s0 = (Math.imul(s0, 1103515245) + 12345) >>> 0) / 4294967296;
+  const keep = Styles.pvp; Styles.pvp = styles;
+  try { startMatch('pvp'); } finally { Styles.pvp = keep; }
+  game.endless = true;
+  const mr = Math.random; Math.random = rng;
+  const st = { dmg: 0, open: 0, hits: 0, def: 0, took: 0, sumS: 0, nS: 0, ctl: 0, frames: 0 };
+  try {
+    game.brains = [new Brain(F1, level), new Brain(F2, level)];
+    const me = k ? F2 : F1, op = k ? F1 : F2;
+    let lastDef = -999, lastSerial = -1;
+    CEV.on = (t, A, B, x) => {
+      if (t === 'hit' || t === 'grabHit') {
+        const fresh = (B.comboTaken || 0) <= 1;
+        if (A === me) { st.hits++; if (fresh) st.open++; }
+        else if (A === op && fresh) st.took++;
+      }
+      // 守住了一次：B 是守的人（接招 catch 是倒过来记的：cev('catch', 守的人, 打的人)）；挡住一串只算一次（隔 30 帧以上才算新的一次）
+      if (DEF_EV[t]) { const D = t === 'catch' ? A : B; if (D === me && game.frame - lastDef > 30 * SUB) { st.def++; lastDef = game.frame; } else if (D === me) lastDef = game.frame; }
+    };
+    let r = 0, frames = 0, prev = game.phase, hp = op.hp;
+    while (r < rounds && frames < 400000) {
+      step([0, 0]); frames++;
+      st.dmg += Math.max(0, hp - op.hp); hp = op.hp;
+      if (game.phase === 'fight') {
+        st.frames++;
+        if (op.state === 'hit' || op.state === 'blockstun' || op.state === 'down' || op.grabbed || op.stuck || op.carried) st.ctl++;
+        const m = me.move;
+        if (me.state === 'attack' && m && m.serial !== lastSerial) { lastSerial = m.serial; if (!m.def.script && m.def.dmg > 0 && m.S > 0) { st.sumS += m.S; st.nS++; } }
+      }
+      if (game.phase === 'roundEnd' && prev !== 'roundEnd') r++;
+      prev = game.phase;
+      if (game.phase === 'over') { game.wins = [0, 0]; startRound(); hp = op.hp; }
+    }
+  } finally { CEV.on = null; game.brains = [null, null]; Math.random = mr; }
+  return st;
+}
+// 一个种子的样本 → 五个轴的数
+const hexSample = st => ({ atk: st.dmg / Math.max(1, st.open), def: st.def / Math.max(1, st.def + st.took), spd: st.sumS / Math.max(1, st.nS), cmb: st.hits / Math.max(1, st.open), ctl: st.ctl / Math.max(1, st.frames) });
+// 均值 + 95% bootstrap 置信区间（定种子，重抽 2000 次）
+function bootCI(xs, B) {
+  let s = 20261102; const rnd = () => (s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 4294967296;
+  const n = xs.length, m = xs.reduce((a, b) => a + b, 0) / Math.max(1, n), bs = [];
+  for (let b = 0; b < (B || 2000); b++) { let t = 0; for (let i = 0; i < n; i++) t += xs[(rnd() * n) | 0]; bs.push(t / n); }
+  bs.sort((a, b) => a - b);
+  return { m, lo: bs[Math.floor(bs.length * 0.025)], hi: bs[Math.ceil(bs.length * 0.975) - 1], n };
+}
+const hexScore = (ax, v) => clamp((v - ax.lo) / (ax.hi - ax.lo) * 10, 0, 10);
+// 量好的样本 → 一派一张：{ axes: { atk: { m, lo, hi, n, score, scoreLo, scoreHi } ... }, stars, gap }
+// samples：{ [style]: [hexSample...] }；tiers：{ [style]: { max: [占比...], mash: [占比...] } }（对另两派的，每个种子一个）
+function hexagonFrom(samples, tiers) {
+  const out = {};
+  for (const id of Object.keys(samples)) {
+    const axes = {};
+    for (const ax of HEX_AXES) {
+      const xs = ax.id === 'top' ? tiers[id].max : samples[id].map(q => q[ax.id]), c = bootCI(xs);
+      const a = hexScore(ax, c.lo), b = hexScore(ax, c.hi);
+      axes[ax.id] = { m: c.m, lo: c.lo, hi: c.hi, n: c.n, score: hexScore(ax, c.m), scoreLo: Math.min(a, b), scoreHi: Math.max(a, b) };
+    }
+    const gapC = bootCI(tiers[id].max.map((v, i) => (v - tiers[id].mash[i]) * 100));
+    const star = g => clamp(Math.round((3 + g / 5) * 2) / 2, 1, 5);
+    out[id] = { axes, gap: gapC, stars: star(gapC.m), starsLo: star(gapC.lo), starsHi: star(gapC.hi) };
+  }
+  return out;
+}
+// 控制台里一口气量完（单线程，几分钟；工具脚本把同样的 hexRun / tierShare 分到两个页面里并行跑）
+function hexagon(N, R) {
+  N = N || 12; R = R || 4;
+  const ids = STYLE_IDS, samples = {}, tiers = {};
+  for (const id of ids) {
+    samples[id] = []; tiers[id] = { max: [], mash: [] };
+    for (let s = 0; s < N; s++) {
+      // 攻守速连控：这一个种子里对三派各打一局（左右轮着站），合起来算一个样本
+      const acc = { dmg: 0, open: 0, hits: 0, def: 0, took: 0, sumS: 0, nS: 0, ctl: 0, frames: 0 };
+      ids.forEach((o, j) => { const k = (s + j) % 2, st = hexRun('max', k ? [o, id] : [id, o], R, 7001 + s * 977 + j * 131, k); for (const q in acc) acc[q] += st[q]; });
+      samples[id].push(hexSample(acc));
+      // 上限、难度：满级、木头对另两派各一局（左右轮着站），两派平均算一个样本
+      for (const lv of ['max', 'mash']) {
+        let t = 0; const others = ids.filter(o => o !== id);
+        others.forEach((o, j) => { const k = (s + j) % 2; t += tierShare(lv, k ? [o, id] : [id, o], R, 9001 + s * 613 + j * 71, id).share; });
+        tiers[id][lv].push(t / others.length);
+      }
+    }
+  }
+  return hexagonFrom(samples, tiers);
+}
+window.hexRun = hexRun; window.hexSample = hexSample; window.hexagonFrom = hexagonFrom; window.hexagon = hexagon; window.HEX_AXES = HEX_AXES;
 
 // 七、一招一张表：伤害、前摇、打空的空当（S+A+R：打空了对面能动多久）、被挡的空当（R + 多出来的收招 − 对面挡住的硬直）、打中以后的帧差（硬直 − 后摇）
 function moveTable(style) {
@@ -593,7 +696,7 @@ if (document.getElementById('out') && location.hash !== '#norun') {
       say(`\n二、电脑（困难）对打 ${a.rounds} 回合（${Math.round(a.frames / 60)} 秒）`);
       say('  用得最多：' + a.use); say('  击倒来自：' + a.kd); say('  加成出现次数：' + a.bonus);
       setTimeout(() => {
-        // 2.12 四、咏春拳：咏春打咏春、传统格斗打咏春
+        // 2.12 四、咏春拳：咏春打咏春、格斗术打咏春
         const w = runBalance({ qi: 30, styles: ['wc', 'wc'] });
         say('\n四、咏春打咏春的中立均衡（2.12）');
         for (const row of w.rows) say(`  相距 ${row.d}：${zh(row.mix, 'wc').join(' · ')}\n      对随便出的对手最赚：${zh(row.naive, 'wc').join(' · ')}`);
@@ -602,12 +705,12 @@ if (document.getElementById('out') && location.hash !== '#norun') {
         say('  拉得开：最好的比随便挑的多赚 ' + w.spread.spread.toFixed(1) + '、最好最差差 ' + w.spread.range.toFixed(1) + '、离散度 ' + w.spread.sd.toFixed(1));
         for (const row of w.rows) if (row.spread.close.length) say(`    相距 ${row.d} 挤在一起的：` + row.spread.close.map(([a, b]) => nameOf(a, 'wc') + ' ≈ ' + nameOf(b, 'wc')).join(' · '));
         const x = runBalance({ qi: 30, styles: ['trad', 'wc'] });
-        say('\n  传统格斗打咏春拳（行 = 传统格斗的选项，列 = 咏春拳的；收益按传统格斗算，均衡值 > 0 = 传统格斗占便宜）');
-        for (const row of x.rows) say(`  相距 ${row.d}：均衡值 ${row.val.toFixed(1)}；传统格斗用 ${zh(row.mix).join(' · ')}；咏春拳用 ${zh(row.cmix, 'wc').join(' · ')}\n      传统格斗对随便出的咏春最赚：${zh(row.naive).join(' · ')}\n      咏春对随便出的传统格斗最赚：${zh(row.cnaive, 'wc').join(' · ')}`);
-        say('  传统格斗各距离平均占比：' + zh(x.avg.slice(0, 10)).join(' · '));
+        say('\n  格斗术打咏春拳（行 = 格斗术的选项，列 = 咏春拳的；收益按格斗术算，均衡值 > 0 = 格斗术占便宜）');
+        for (const row of x.rows) say(`  相距 ${row.d}：均衡值 ${row.val.toFixed(1)}；格斗术用 ${zh(row.mix).join(' · ')}；咏春拳用 ${zh(row.cmix, 'wc').join(' · ')}\n      格斗术对随便出的咏春最赚：${zh(row.naive).join(' · ')}\n      咏春对随便出的格斗术最赚：${zh(row.cnaive, 'wc').join(' · ')}`);
+        say('  格斗术各距离平均占比：' + zh(x.avg.slice(0, 10)).join(' · '));
         say('  咏春拳各距离平均占比：' + zh(x.cavg.slice(0, 10), 'wc').join(' · '));
-        say('  咏春对随便出的传统格斗平均赚：' + zh(x.cnavg.slice(0, 8), 'wc').join(' · ') + '；传统格斗对随便出的咏春平均赚：' + zh(x.navg.slice(0, 8)).join(' · '));
-        say('  均衡值各距离平均：' + (x.rows.reduce((a, r2) => a + r2.val, 0) / x.rows.length).toFixed(1) + '（0 上下 = 两派扯平；正 = 传统格斗赚）');
+        say('  咏春对随便出的格斗术平均赚：' + zh(x.cnavg.slice(0, 8), 'wc').join(' · ') + '；格斗术对随便出的咏春平均赚：' + zh(x.navg.slice(0, 8)).join(' · '));
+        say('  均衡值各距离平均：' + (x.rows.reduce((a, r2) => a + r2.val, 0) / x.rows.length).toFixed(1) + '（0 上下 = 两派扯平；正 = 格斗术赚）');
         // 五、分层
         say('\n五、分层：两派对打，咏春拳打掉的血占几成（两边换着站；木头 = 乱按，不罚不看招；别的档是电脑）');
         const tiers = tierTable(8), TN = { mash: '木头', normal: '中等', hard: '困难', hell: '终极', max: '满级' };
@@ -620,7 +723,7 @@ if (document.getElementById('out') && location.hash !== '#norun') {
         // 七、一招一张表
         for (const st of ['trad', 'wc']) {
           const mt = moveTable(st);
-          say(`\n七、一招一张表（${st === 'wc' ? '咏春拳' : '传统格斗'}）：伤害 · 前摇 · 打空的空当（整招多长） · 被挡的空当（挡的人早几帧能动） · 打中的帧差 · 射程`);
+          say(`\n七、一招一张表（${st === 'wc' ? '咏春拳' : '格斗术'}）：伤害 · 前摇 · 打空的空当（整招多长） · 被挡的空当（挡的人早几帧能动） · 打中的帧差 · 射程`);
           for (const q of mt.rows.filter((q2, i, arr) => arr.findIndex(z => z.label === q2.label) === i)) say(`  ${q.label}${q.open ? '（起手）' : ''}${q.kd ? '〔倒〕' : ''}：${q.dmg} · ${q.S} · ${q.whiff} · ${q.onBlock} · ${q.onHit >= 0 ? '+' : ''}${q.onHit} · ${q.reach}`);
           say('  收益差不多、风险也差不多的：' + (mt.alike.length ? mt.alike.join(' · ') : '没有'));
         }
