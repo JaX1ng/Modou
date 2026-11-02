@@ -562,6 +562,7 @@ html.desktop .guide{display:none}
 .hex text{font:500 11px/1 var(--ui);fill:var(--ink-soft)}
 .hex.big text{font-size:13.5px;fill:var(--ink)}
 .hex .hx-n{font-weight:700;fill:var(--cinnabar)}
+.hex .hx-q{font:600 20px/1 var(--ui);fill:var(--ink-soft);fill-opacity:.6}   /* 3.1.2 随机拳派：空的六边形中间一个问号 */
 .hstars{display:block;flex:none}
 .hstars .st-o{fill:none;stroke:var(--ink-soft);stroke-opacity:.7;stroke-width:1}
 .hstars .st-f{fill:var(--gamboge)}
@@ -882,7 +883,8 @@ html.desktop .guide{display:none}
 // 联机照旧要两边版本号完全一样（小版本也可能改到模拟，比如修了战斗里的 bug）
 // 3.0.0（2026-11-01）：第三派太极拳（加一派照规矩是大版本；Godot 版不做了，网页版接着用 3.x 的号）
 // 3.0.1：手大 5%、勾手重画、太极拳的后腿不往下塌（Jack 打了 3.0.0 提的；只是画面）
-const VERSION = '3.1.1';
+// 3.1.2：太极拳的待机换成 Jack 的图、菜单背景的人纯随机不刷新、六边形换派时平滑地变过去（只是画面、界面）
+const VERSION = '3.1.2';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -942,6 +944,9 @@ const ZOOM = 2.0;                        // 人机 / 联机 / 打桩的镜头放
 const TRAIN_LIFT = 12;
 const ZOOM_PVP_MIN = 1.24, CAM_MARGIN = 80;   // 双人对战最远时拉到多远；人离画面边至少留多少（场地坐标）
 const MAXD_PVP = Math.round(W / ZOOM_PVP_MIN - 2 * CAM_MARGIN);   // 双人对战两人最远距离（保证都在画面里）。画面宽窄怎么变它都不变（是规则）
+// 3.1.2 菜单背景（大厅）里两个电脑离得近时镜头推到多大（Jack：大厅里人物的比例大一点）。以前和双人拉得最远一样是 1.24（怕挡菜单按钮）；
+// 离得远了照旧拉远到 ZOOM_PVP_MIN，两个人都在画面里
+const ATTRACT_ZOOM = 1.6;
 const MAX_HP = 400;                      // 血量（1.2.0 是 100；1.3.0 起 600；1.8.0 改成 500；2.3 Jack：全部改成 400）
 const DUMMY_HP = 3000, DUMMY_REFILL = 0.3;   // 打桩：木桩血量；掉到三成以下、一套打完就自动回满
 
@@ -4018,12 +4023,15 @@ MATCHUPS['trad|wc'] = { relation(dT, dW) { return wcRules(dT, dW) || relation(dT
    挨打（defend：化、捋）、打中（strike：发劲）、抓到人（grab：搂膝拗步）、画架势（target）、画劲（drawCue）
    ============================================================ */
 
-/* ---------- 底子：单鞭（照 ref/tj_stance_single_whip.png）——
-   前手立掌往前伸、手指朝上（掌心斜着朝前，看得见手指），后手勾手往身后伸、五个指尖捏在一起朝下；大开的马步，两膝都弯；身子正、头正。
-   3.0.1（Jack：后腿弯下去太多了，稍微上来点）：后脚往后 6、髋高 2 —— 后腿差不多伸直（只微微弯），后膝离地 15 → 21；前腿照旧弓着 ---------- */
-const TBASE = { rot: 0, spin: 0, tor: 0, head: 0, hy: 52, dx: 0, air: 0, fe: 1, be: 1, tw: -10, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 1, bp: 1, fpa: -88, bpa: 96, fpr: 0.45, bpr: 1, fw: 0, bw: 0, fz: 0, fs: 0.4, bs: 0, fhk: 0, bhk: 1, fv: 0, bv: 1,
-  fh: [46, -4], bh: [-44, -18], ff: [50, 0], bf: [-60, 0] };
+/* ---------- 底子 = 待机（3.1.2 照 Jack 的图 ref/tj_stance_idle.png）——
+   前手立掌往前推：胳膊差不多伸直、和肩一样高，手指朝上微微往前倒（掌心朝前，侧面看得见手指和大拇指）；
+   后手横掌护着肚子：肘往后下方沉、贴在后背外面，小臂横在肚子前、腰带上面，手指朝前微微往上；
+   弓步：前腿弓（小腿竖着、大腿往前下方斜）、后腿蹬直；身子正、头正，拧一点腰把前肩送出去。
+   3.0 ～ 3.1.1 是单鞭（ref/tj_stance_single_whip.png）：前手立掌、后手勾手往身后伸，大马步（髋 52、前脚 50、后脚 -60）。
+   这是所有招的底子：关键帧没写的部分（[0, {}]、[3, {}] 起手、收招那一下）都从这里来 ---------- */
+const TBASE = { rot: 0, spin: 0, tor: 0, head: 0, hy: 58, dx: 0, air: 0, fe: 1, be: 1, tw: 26, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
+  fp: 1, bp: 1, fpa: -72, bpa: -22, fpr: 0.7, bpr: 0.8, fw: 0, bw: 0, fz: 0, fs: 0.3, bs: 0.2, fhk: 0, bhk: 0, fv: 0, bv: 1,
+  fh: [50, 2], bh: [5, 29], ff: [37, 0], bf: [-58, 0] };   // 前脚 37：前小腿竖着；后脚写 -58，tjReach 收到后腿刚好蹬直（-55.6）
 // 3.0.1 后脚往后挪了以后，站高的那几式（髋高 56 ～ 62：拦、捶、靠……）后腿够不着地、脚飘起来 —— 后脚踩在地上的姿势，脚踝伸不到就往回收
 // （收到后腿差一点点伸直），不用一式一式地改
 const T_LEG = (BODY.bone.th + BODY.bone.sh) * 0.985;
@@ -4294,9 +4302,10 @@ TJ_FLOW.tjChuan = [TJ(P_BALL, { dx: -4 }), TJ(P_BALL, { dx: -6, hy: 62, tw: 2 })
 
 /* 架势（fighter.js target 用；蓄势、捋、云手在 tjTarget 里现画） */
 const TPOSE = {
-  stance: tmk({}),                                                                                     // 单鞭
+  stance: tmk({}),                                                                                     // 待机（3.1.2 Jack 的图；以前是单鞭）
   // 3.0.1（Jack：后腿弯下去太多了）：蹲着的后膝以前跪到地上（离地 2）—— 髋高 40 → 46、后脚往后，后膝离地 15（和格斗术、咏春蹲着差不多）
-  crouch: tmk({ hy: 46, tor: 16, head: -2, tw: 10, ff: [40, 0], bf: [-62, 0], ...tHand('f', [30, 6], 'palm', -60, 0.8), ...tHand('b', [-30, 2], 'hook', 96, 1) }),
+  // 3.1.2 待机换了以后，蹲下去手型跟着待机走：前手立掌、后手横在肚子前（以前是单鞭的勾手往身后伸，一蹲手就换个样子）
+  crouch: tmk({ hy: 46, tor: 12, head: -2, tw: 22, ff: [40, 0], bf: [-62, 0], ...tHand('f', [44, 4], 'palm', -66, 0.7, 0.3), ...tHand('b', [6, 26], 'palm', -22, 0.8, 0.2) }),
   // 掤（按住挡）：两手十字合在胸前、掌心朝里（十字手）；蹲着是沉屈守中（defense_seq 01）
   block: tmk({ hy: 56, tor: 2, head: 4, dx: -2, tw: 4, ff: [42, 0], bf: [-54, 0], ...tHand('f', [24, -8], 'palm', -104, 1, 0.1), ...tHand('b', [27, -4], 'palm', -70, 1, 0.1), fz: 1 }),
   cblock: tmk({ hy: 46, tor: 14, head: 4, tw: 6, ff: [40, 0], bf: [-62, 0], ...tHand('f', [28, 0], 'palm', -84, 0.8, 0.15), ...tHand('b', [22, 6], 'palm', -60, 0.9, 0.1) }),
@@ -4631,6 +4640,16 @@ function tjTarget(F, t) {
       return lerpPose(m.relPose, TJ_SP, EASE.in(u), t, false);
     }
     return null;
+  }
+  if (st === 'idle') {
+    // 3.1.2 待机（Jack 的图）的呼吸：太极慢，两秒一口气（别的派 1.3 秒，fighter.js）—— 呼气身子往下沉一点、前掌往前送、指尖往前倒一点，
+    // 吸气反过来；后手跟着慢半拍。腿不动（髋只动半个像素，和别的派一样）
+    copyPose(t, TPOSE.stance);
+    const ph = F.clock * TAU / 120, c = Math.cos(ph);
+    t.hy -= 0.5 * c; t.tor += 0.8 * c; t.head -= Math.cos(ph - 0.5);
+    t.fh[0] += 1.5 * c; t.fh[1] += 1.8 * Math.cos(ph - 0.6); t.fpa += 3 * Math.cos(ph - 0.6);
+    t.bh[0] += c; t.bh[1] += 1.4 * Math.cos(ph - 0.9);
+    return t;
   }
   if (st === 'block') {
     copyPose(t, F.lowBlock ? TPOSE.cblock : TPOSE.block);
@@ -11147,7 +11166,7 @@ const localIdx = () => game.mode === 'online' && typeof Net !== 'undefined' && N
 function camGoal(mode, a, b, local) {
   const zTop = ZOOM * zoomBoost();
   if (mode === 'pvp' || mode === 'attract' || mode === 'watch') {      // 2.11 观战：和双人一样，两个人都在画面里
-    const top = mode === 'attract' ? ZOOM_PVP_MIN * zoomBoost() : zTop;       // 菜单背景不放大（不挡菜单按钮）
+    const top = mode === 'attract' ? ATTRACT_ZOOM * zoomBoost() : zTop;       // 菜单背景（3.1.2 放大一点：1.24 → ATTRACT_ZOOM）
     const zoom = clamp(VW / (Math.abs(a.x - b.x) + 2 * CAM_MARGIN), ZOOM_PVP_MIN, top), half = VW / (2 * zoom);
     return { x: clamp((a.x + b.x) / 2, half, STAGE_W - half), zoom };
   }
@@ -13006,6 +13025,10 @@ function applyLooks(mode) {
   if (mode === 'pvp') { F1.setLook(Looks.pvp[0]); F2.setLook(Looks.pvp[1]); }
   else if (mode === 'watch') { F1.setLook(Looks.watch[0]); F2.setLook(Looks.watch[1]); }
   else if (mode === 'online') { F1.setLook(Net.looks.h); F2.setLook(Net.looks.g); }
+  else if (mode === 'attract') {        // 3.1.2 菜单背景（大厅）：纯随机，不看存的颜色（Jack：别跟着我选的、电脑选的走）；两边不一样
+    const a = PALETTE[(Math.random() * PALETTE.length) | 0].id, rest = PALETTE.filter(p => p.id !== a);
+    F1.setLook(a); F2.setLook(rest[(Math.random() * rest.length) | 0].id);
+  }
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
@@ -13090,12 +13113,17 @@ function resetFighters() {
   if (game.quiet) return;                      // 联机回滚重算时不动画面（特效、镜头）
   FX.length = 0; QI.length = 0; splats = [];
   game.shake = 0; game.flash = 0;
-  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = ZOOM; camLift = game.mode === 'train' ? TRAIN_LIFT : 0; }
+  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = game.mode === 'attract' ? ATTRACT_ZOOM * zoomBoost() : ZOOM; camLift = game.mode === 'train' ? TRAIN_LIFT : 0; }   // 3.1.2 菜单背景重新站好不再从 2.0 往回拉
+}
+// 3.1.2 菜单背景（大厅）里那两个电脑（Jack：要纯随机；我每次选颜色、拳派，后面都会刷新，我不要刷新）：
+// 颜色（两边不一样）、拳派都随机 —— 回到菜单的时候、打完一回合重新站好的时候各换一对；准备页里怎么选都不碰它们（ui.js previewPrep 只换背景）
+function attractRoll() {
+  applyLooks('attract'); applyStyles('attract');
+  game.brains = [new Brain(F1, 'normal'), new Brain(F2, 'normal')];   // 新的一对，记的习惯也从头来
 }
 function startAttract() {
   game.mode = 'attract'; game.phase = 'attract'; game.phaseT = 0; game.paused = false; game.endless = false;
-  game.brains = [new Brain(F1, 'normal'), new Brain(F2, 'normal')];
-  F1.label = ''; F2.label = ''; F2.maxHp = MAX_HP; applyLooks('attract'); applyStyles('attract');
+  F1.label = ''; F2.label = ''; F2.maxHp = MAX_HP; attractRoll();
   resetFighters();
 }
 function startMatch(mode) {
@@ -13167,7 +13195,7 @@ function simTick(inputs) {
 
   switch (game.phase) {
     case 'attract':
-      if (a.hp <= 0 || b.hp <= 0) { if ((game.phaseT += DT) >= 131) { resetFighters(); game.phaseT = 0; } }
+      if (a.hp <= 0 || b.hp <= 0) { if ((game.phaseT += DT) >= 131) { attractRoll(); resetFighters(); game.phaseT = 0; } }   // 3.1.2 换一对随机的
       break;
     case 'intro':
       // 2.3 开场字幕配锣鼓；2.4（Jack：锣鼓太诡异）换成战鼓 + 镲 + 古筝：回合名随着「锵」砸下来；战鼓越敲越密；「战」的时候「锵」+ 古筝和弦（fx.js INTRO_BEATS）
@@ -14655,25 +14683,53 @@ const tjDmg = (k, d) => d.kind === 'grab' ? '0~13' : undefined;
    ============================================================ */
 const keysUse = (list, mode) => GX.p(`按键：<span class="g-keys">${list.map(c => gKbd(c)).join(' ')}</span>`, mode);
 /* 3.1 六边形（Jack：每个拳派一张，要严谨）：数在 config.js 的 HEXAGON（balance.js hexagon 量的），轴和锚在 HEX_AXES。
-   hexSVG(id, w, big)：一张 SVG —— 三圈参考线、红的是这一派的分（0～10），每个轴上一小段黑线是 95% 置信区间；big 在轴名后面写分 */
+   hexSVG(id, w, big)：一张 SVG —— 三圈参考线、红的是这一派的分（0～10），每个轴上一小段黑线是 95% 置信区间；big 在轴名后面写分。
+   3.1.2（Jack：换人物的时候六边形要平滑自然地变过去，不要一下子变成那个六边形）：准备页换拳派时图不重画，按一串数一帧一帧挪过去（ui.js HexMorph）——
+   几何 hexGeo、一派的数排成一串 hexVals、照一串数把已经画好的图挪到位 hexPaint 都在这里；id = null 画一张空的（随机拳派：只有格子、中间一个问号） */
+function hexGeo(w, big) {
+  const h = Math.round(w * (big ? 0.86 : 0.84)), cx = w / 2, cy = h / 2 + 1, r = w * (big ? 0.29 : 0.27), ang = i => -Math.PI / 2 + i * Math.PI / 3;
+  return { h, cx, cy, r, pt: (i, v) => [cx + Math.cos(ang(i)) * r * v / 10, cy + Math.sin(ang(i)) * r * v / 10] };
+}
+// 一串数：六个轴各 [分, 下限, 上限]，最后一个是「数」那一层的浓淡（量过的派 1；没有 —— 随机 —— 全是 0，缩到中间、淡掉）
+const HEX_VN = HEX_AXES.length * 3 + 1;
+function hexVals(id) {
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id], v = new Array(HEX_VN).fill(0);
+  if (H) { HEX_AXES.forEach((ax, i) => { v[i * 3] = H[ax.id][0]; v[i * 3 + 1] = H[ax.id][1]; v[i * 3 + 2] = H[ax.id][2]; }); v[HEX_VN - 1] = 1; }
+  return v;
+}
 function hexSVG(id, w, big) {
-  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H) return '';
-  const h = Math.round(w * (big ? 0.86 : 0.84)), cx = w / 2, cy = h / 2 + 1, r = w * (big ? 0.29 : 0.27);
-  const ang = i => -Math.PI / 2 + i * Math.PI / 3, pt = (i, v) => [cx + Math.cos(ang(i)) * r * v / 10, cy + Math.sin(ang(i)) * r * v / 10];
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H && id !== null) return '';
+  const G = hexGeo(w, big), pt = G.pt, x = hexVals(id);
   const f = n => n.toFixed(1), poly = vs => vs.map((v, i) => pt(i, v).map(f).join(',')).join(' ');
-  let g = '';
+  let g = '', d = '';
   for (const v of [10 / 3, 20 / 3, 10]) g += `<polygon class="hx-g${v === 10 ? ' o' : ''}" points="${poly([v, v, v, v, v, v])}"/>`;
-  HEX_AXES.forEach((ax, i) => { const [x, y] = pt(i, 10); g += `<line class="hx-g" x1="${f(cx)}" y1="${f(cy)}" x2="${f(x)}" y2="${f(y)}"/>`; });
-  const sc = HEX_AXES.map(ax => H[ax.id][0]);
-  g += `<polygon class="hx-d" points="${poly(sc)}"/>`;
-  HEX_AXES.forEach((ax, i) => { const a = pt(i, H[ax.id][1]), b = pt(i, H[ax.id][2]); g += `<line class="hx-ci" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"/>`; });
-  sc.forEach((v, i) => { const [x, y] = pt(i, v); g += `<circle class="hx-p" cx="${f(x)}" cy="${f(y)}" r="${big ? 2.6 : 1.9}"/>`; });
+  HEX_AXES.forEach((ax, i) => { const [px, py] = pt(i, 10); g += `<line class="hx-g" x1="${f(G.cx)}" y1="${f(G.cy)}" x2="${f(px)}" y2="${f(py)}"/>`; });
+  d += `<polygon class="hx-d" points="${poly(HEX_AXES.map((ax, i) => x[i * 3]))}"/>`;
+  HEX_AXES.forEach((ax, i) => { const a = pt(i, x[i * 3 + 1]), b = pt(i, x[i * 3 + 2]); d += `<line class="hx-ci" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"/>`; });
+  HEX_AXES.forEach((ax, i) => { const [px, py] = pt(i, x[i * 3]); d += `<circle class="hx-p" cx="${f(px)}" cy="${f(py)}" r="${big ? 2.6 : 1.9}"/>`; });
+  g += `<g class="hx-dg"${H ? '' : ' style="opacity:0"'}>${d}</g>`;                                    // 数的那一层（随机的时候整层淡掉）
+  if (!big) g += `<text class="hx-q" x="${f(G.cx)}" y="${f(G.cy + 1)}" text-anchor="middle" dominant-baseline="central"${H ? ' style="opacity:0"' : ''}>?</text>`;
   HEX_AXES.forEach((ax, i) => {
-    const [x, y] = pt(i, 10 + (big ? 2.6 : 2.4)), side = i === 0 || i === 3 ? 'middle' : i < 3 ? 'start' : 'end';
-    g += `<text x="${f(x)}" y="${f(y + (i === 0 ? -2 : i === 3 ? 3 : 0))}" text-anchor="${side}" dominant-baseline="middle">${ax.name}${big ? `<tspan class="hx-n"> ${H[ax.id][0].toFixed(1)}</tspan>` : ''}</text>`;
+    const [px, py] = pt(i, 10 + (big ? 2.6 : 2.4)), side = i === 0 || i === 3 ? 'middle' : i < 3 ? 'start' : 'end';
+    g += `<text x="${f(px)}" y="${f(py + (i === 0 ? -2 : i === 3 ? 3 : 0))}" text-anchor="${side}" dominant-baseline="middle">${ax.name}${big && H ? `<tspan class="hx-n"> ${H[ax.id][0].toFixed(1)}</tspan>` : ''}</text>`;
   });
-  const label = STYLES[id].name + '：' + HEX_AXES.map(ax => ax.name + ' ' + H[ax.id][0].toFixed(1)).join('、') + '（满分 10）；难度 ' + H.stars + ' 星';
-  return `<svg class="hex${big ? ' big' : ''}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${label}">${g}</svg>`;
+  const label = H ? STYLES[id].name + '：' + HEX_AXES.map(ax => ax.name + ' ' + H[ax.id][0].toFixed(1)).join('、') + '（满分 10）；难度 ' + H.stars + ' 星' : '随机拳派：开打才知道是哪一派';
+  return `<svg class="hex${big ? ' big' : ''}" data-w="${w}" data-big="${big ? 1 : 0}" viewBox="0 0 ${w} ${G.h}" width="${w}" height="${G.h}" role="img" aria-label="${label}">${g}</svg>`;
+}
+// 照一串数（hexVals 的排法，可以是两派中间的样子）把画好的图挪到位：红的那一片、六个点、六段置信区间、那一层的浓淡、问号
+function hexPaint(svg, x) {
+  const poly = svg && svg.querySelector('.hx-d'); if (!poly) return;
+  const G = hexGeo(+svg.dataset.w, svg.dataset.big === '1'), f = n => n.toFixed(2), n = HEX_AXES.length;
+  const ci = svg.querySelectorAll('.hx-ci'), dot = svg.querySelectorAll('.hx-p'), pts = [];
+  for (let i = 0; i < n; i++) {
+    const c = G.pt(i, x[i * 3]), a = G.pt(i, x[i * 3 + 1]), b = G.pt(i, x[i * 3 + 2]); pts.push(f(c[0]) + ',' + f(c[1]));
+    if (ci[i]) { ci[i].setAttribute('x1', f(a[0])); ci[i].setAttribute('y1', f(a[1])); ci[i].setAttribute('x2', f(b[0])); ci[i].setAttribute('y2', f(b[1])); }
+    if (dot[i]) { dot[i].setAttribute('cx', f(c[0])); dot[i].setAttribute('cy', f(c[1])); }
+  }
+  poly.setAttribute('points', pts.join(' '));
+  const op = clamp(x[n * 3], 0, 1), dg = svg.querySelector('.hx-dg'), q = svg.querySelector('.hx-q');
+  if (dg) dg.style.opacity = op.toFixed(3);
+  if (q) q.style.opacity = (1 - op).toFixed(3);
 }
 // 难度：五颗星，半颗一档（画的，不靠字体里的半颗星）
 function hexStars(n, size) {
@@ -15527,7 +15583,7 @@ $('netStages').addEventListener('click', e => { const b = e.target.closest('.stg
 /* ---------- 2.11 准备页（Jack：主菜单只留模式，颜色 / 拳派 / 场景都进了模式再选）----------
    人机、双人、观战、训练场共用一张：上面一排场景（训练场固定练武场，不用选），下面两边各一块 —— 小人（这一派的架势、选的颜色）、拳派卡、颜色格；
    人机的电脑那一块多一排难度（颜色、拳派都能选「随机」）；训练场右边是木桩（只选拳派）。
-   选的先记在草稿里，菜单后面的两个人、背景跟着换（预览）；点「开始」才存（localStorage 照旧 modou.stage / modou.styles / modou.looks / modou.diff），下次进来默认就是上次的。
+   选的先记在草稿里，菜单后面的背景跟着换成选的场景（预览；3.1.2 起后面那两个人不跟着换，见 previewPrep）；点「开始」才存（localStorage 照旧 modou.stage / modou.styles / modou.looks / modou.diff），下次进来默认就是上次的。
    键盘：左边 A / D 换颜色、W / S 换拳派，右边 ← / → 换颜色、↑ / ↓ 换拳派；Enter 开始，Esc 返回 */
 const PREP = {
   pve: { title: '人机对战', who: ['你', '电脑'], rand: true, diff: true },
@@ -15536,7 +15592,41 @@ const PREP = {
   train: { title: '训练场', who: ['你', '木桩'], dummy: true },
 };
 let prep = null;              // 草稿：{ mode, stage, looks: [左, 右], styles: [左, 右], diff }
-function openPrep(mode) { prep = picksFor(mode); renderPrep(); showOverlay(prepEl); previewPrep(true); }   // 默认是上次选的（game.js picksFor）
+function openPrep(mode) { prep = picksFor(mode); HexMorph.reset(); renderPrep(); showOverlay(prepEl); previewPrep(); }   // 默认是上次选的（game.js picksFor）
+/* 3.1.2 六边形换派时平滑地变过去（Jack：人物在改的时候，六边形图要平滑、自然地变过去，不要直接变成那个六边形）：
+   每一边记着图现在画到哪（一串数，排法见 guide.js hexVals：六个轴的分、置信区间两头，加那一层的浓淡）。准备页每次重画，新的图先照「现在画到哪」摆好，
+   再照临界阻尼的跟随（W = 14，约半秒停稳，不冲过头）一帧一帧追到新这一派的数 —— 连着按 W / S 换好几派，也是从正在变的样子接着变、速度不断；
+   换成随机：缩到中间、淡掉，中间浮出一个问号。刚打开准备页不变（直接是这一派）；系统设置了「减少动态效果」就直接到位 */
+const HexMorph = {
+  s: [null, null], raf: 0, last: 0, W: 14,
+  reset() { this.s = [null, null]; },
+  attach(i, svg, st) {
+    if (!svg) { this.s[i] = null; return; }
+    const to = hexVals(styleOk(st) ? st : null), old = this.s[i];
+    const x = old ? old.x : to.slice(), v = old ? old.v : to.map(() => 0);
+    if (reduceMotion) { for (let j = 0; j < to.length; j++) { x[j] = to[j]; v[j] = 0; } }
+    this.s[i] = { el: svg, x, v, to };
+    hexPaint(svg, x);
+    if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(t => this.tick(t)); }
+  },
+  tick(now) {
+    this.raf = 0;
+    const dt = clamp((now - this.last) / 1000, 0, 0.05), W = this.W, n = 4, h = dt / n; this.last = now;
+    let busy = false;
+    for (const S of this.s) {
+      if (!S || !S.el.isConnected) continue;
+      let moving = false;
+      for (let j = 0; j < S.x.length; j++) {
+        for (let k = 0; k < n; k++) { S.v[j] += (-W * W * (S.x[j] - S.to[j]) - 2 * W * S.v[j]) * h; S.x[j] += S.v[j] * h; }   // 临界阻尼的跟随，分四小步算稳
+        if (Math.abs(S.x[j] - S.to[j]) > 0.004 || Math.abs(S.v[j]) > 0.02) moving = true;
+      }
+      if (!moving) for (let j = 0; j < S.x.length; j++) { S.x[j] = S.to[j]; S.v[j] = 0; }   // 停稳了：贴到位
+      hexPaint(S.el, S.x);
+      busy = busy || moving;
+    }
+    if (busy) this.raf = requestAnimationFrame(t => this.tick(t));
+  },
+};
 // 颜色格：两边不能一样（人机的电脑可以「随机」，随机不会和你撞色）
 function prepLooks(i) {
   const P = PREP[prep.mode], my = prep.looks[i], th = prep.looks[1 - i];
@@ -15557,7 +15647,10 @@ function renderPrep() {
     const st = prep.styles[i], lk = prep.looks[i], dummy = P.dummy && i === 1;
     const name = lk === 'random' || dummy ? (dummy ? '' : '随机') : lookOf(lk).name, stName = styleOk(st) ? STYLES[st].name : '随机拳派';
     // 3.1 选的这一派的六边形（量出来的，见教程那一派「上手」页）
-    const hex = styleOk(st) && typeof HEXAGON !== 'undefined' && HEXAGON[st] ? `<div class="ps-hex" title="${STYLES[st].name}的六边形：量出来的，教程里有怎么量的">${hexSVG(st, 112)}${hexStars(HEXAGON[st].stars, 10)}<small>难度</small></div>` : '';
+    // 3.1.2 随机拳派也留着这一块（空的六边形 + 问号，星星藏起来）：换派的时候六边形从这一派平滑地变到那一派（HexMorph），版面也不跳
+    const hx = styleOk(st) && typeof HEXAGON !== 'undefined' && HEXAGON[st], hide = hx ? '' : ' style="visibility:hidden"';
+    const hex = `<div class="ps-hex" data-hex="${i}" title="${hx ? STYLES[st].name + '的六边形：量出来的，教程里有怎么量的' : '随机拳派：开打才知道是哪一派'}">${hexSVG(hx ? st : null, 112)}` +
+      `${hexStars(hx ? HEXAGON[st].stars : 0, 10).replace('<svg ', '<svg' + hide + ' ')}<small${hide}>难度</small></div>`;
     return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div>${hex}</div>` +
       `<p class="step">${dummy ? '木桩的拳派' : '拳派'}</p><div class="styles sm" data-ps="${i}"></div>` +
       (dummy ? '<p class="hint">木桩站着、蹲着、挡着，进去以后下面的工具条上换。</p>' : `<p class="step">颜色</p><div class="swatches sm" data-pl="${i}">${prepLooks(i)}</div>`) +
@@ -15565,6 +15658,7 @@ function renderPrep() {
       '</section>';
   };
   $('prepSides').innerHTML = side(0) + side(1) + (P.note ? `<p class="hint prep-note">${P.note}</p>` : '');
+  for (const i of [0, 1]) HexMorph.attach(i, $('prepSides').querySelector(`[data-hex="${i}"] svg.hex`), prep.styles[i]);   // 3.1.2 六边形接着上一张画到的样子往新的派挪
   for (const i of [0, 1]) {
     const el = $('prepSides').querySelector(`[data-ps="${i}"]`);
     el.innerHTML = (P.rand && i === 1 ? styleCard('random', { on: prep.styles[i] === 'random', sm: true }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === prep.styles[i], sm: true })).join('');
@@ -15574,17 +15668,13 @@ function renderPrep() {
   $('prepKeys').innerHTML = P.dummy ? '<kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换你的颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换你的拳派，<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换木桩的拳派，也可以直接点；Enter 开始'
     : `${P.who[0]}按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换拳派，${P.who[1]}按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd>，也可以直接点；Enter 开始`;
 }
-// 菜单后面的两个人就是预览：选的颜色、拳派（随机的那边随便一个），背景是选的场景（训练场是练武场）
-function previewPrep(first) {
+// 背景是选的场景（训练场是练武场）。3.1.2（Jack：大厅里的人要纯随机，选颜色、拳派的时候后面别刷新）：
+// 菜单后面那两个人不再跟着选的颜色、拳派换（以前每选一下就换颜色、拳派变了还整个重新站好、镜头拉近）—— 它们自己随机打（game.js attractRoll）
+function previewPrep() {
   if (game.mode !== 'attract' || !prep) return;
-  const m = prep.mode, [a, b] = prep.looks;
-  Stage.peek = m === 'train' ? 'yard' : prep.stage;
-  F1.setLook(a === 'random' ? cpuLook() : a);
-  F2.setLook(m === 'train' ? cpuLook() : b === 'random' ? (F2.look !== a ? F2.look : PALETTE.find(p => p.id !== a).id) : b);
-  const s0 = prep.styles[0], s1 = styleOk(prep.styles[1]) ? prep.styles[1] : F2.style;
-  if (first || F1.style !== s0 || F2.style !== s1) { F1.style = s0; F2.style = s1; resetFighters(); }
+  Stage.peek = prep.mode === 'train' ? 'yard' : prep.stage;
 }
-function closePrep() { prep = null; Stage.peek = null; showOverlay(menu); applyLooks('attract'); }
+function closePrep() { prep = null; Stage.peek = null; showOverlay(menu); }
 function prepPick(i, kind, id) {
   if (!prep) return;
   if (kind === 'look') {

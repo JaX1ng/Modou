@@ -746,7 +746,7 @@ const localIdx = () => game.mode === 'online' && typeof Net !== 'undefined' && N
 function camGoal(mode, a, b, local) {
   const zTop = ZOOM * zoomBoost();
   if (mode === 'pvp' || mode === 'attract' || mode === 'watch') {      // 2.11 观战：和双人一样，两个人都在画面里
-    const top = mode === 'attract' ? ZOOM_PVP_MIN * zoomBoost() : zTop;       // 菜单背景不放大（不挡菜单按钮）
+    const top = mode === 'attract' ? ATTRACT_ZOOM * zoomBoost() : zTop;       // 菜单背景（3.1.2 放大一点：1.24 → ATTRACT_ZOOM）
     const zoom = clamp(VW / (Math.abs(a.x - b.x) + 2 * CAM_MARGIN), ZOOM_PVP_MIN, top), half = VW / (2 * zoom);
     return { x: clamp((a.x + b.x) / 2, half, STAGE_W - half), zoom };
   }

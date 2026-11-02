@@ -586,25 +586,53 @@ const tjDmg = (k, d) => d.kind === 'grab' ? '0~13' : undefined;
    ============================================================ */
 const keysUse = (list, mode) => GX.p(`按键：<span class="g-keys">${list.map(c => gKbd(c)).join(' ')}</span>`, mode);
 /* 3.1 六边形（Jack：每个拳派一张，要严谨）：数在 config.js 的 HEXAGON（balance.js hexagon 量的），轴和锚在 HEX_AXES。
-   hexSVG(id, w, big)：一张 SVG —— 三圈参考线、红的是这一派的分（0～10），每个轴上一小段黑线是 95% 置信区间；big 在轴名后面写分 */
+   hexSVG(id, w, big)：一张 SVG —— 三圈参考线、红的是这一派的分（0～10），每个轴上一小段黑线是 95% 置信区间；big 在轴名后面写分。
+   3.1.2（Jack：换人物的时候六边形要平滑自然地变过去，不要一下子变成那个六边形）：准备页换拳派时图不重画，按一串数一帧一帧挪过去（ui.js HexMorph）——
+   几何 hexGeo、一派的数排成一串 hexVals、照一串数把已经画好的图挪到位 hexPaint 都在这里；id = null 画一张空的（随机拳派：只有格子、中间一个问号） */
+function hexGeo(w, big) {
+  const h = Math.round(w * (big ? 0.86 : 0.84)), cx = w / 2, cy = h / 2 + 1, r = w * (big ? 0.29 : 0.27), ang = i => -Math.PI / 2 + i * Math.PI / 3;
+  return { h, cx, cy, r, pt: (i, v) => [cx + Math.cos(ang(i)) * r * v / 10, cy + Math.sin(ang(i)) * r * v / 10] };
+}
+// 一串数：六个轴各 [分, 下限, 上限]，最后一个是「数」那一层的浓淡（量过的派 1；没有 —— 随机 —— 全是 0，缩到中间、淡掉）
+const HEX_VN = HEX_AXES.length * 3 + 1;
+function hexVals(id) {
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id], v = new Array(HEX_VN).fill(0);
+  if (H) { HEX_AXES.forEach((ax, i) => { v[i * 3] = H[ax.id][0]; v[i * 3 + 1] = H[ax.id][1]; v[i * 3 + 2] = H[ax.id][2]; }); v[HEX_VN - 1] = 1; }
+  return v;
+}
 function hexSVG(id, w, big) {
-  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H) return '';
-  const h = Math.round(w * (big ? 0.86 : 0.84)), cx = w / 2, cy = h / 2 + 1, r = w * (big ? 0.29 : 0.27);
-  const ang = i => -Math.PI / 2 + i * Math.PI / 3, pt = (i, v) => [cx + Math.cos(ang(i)) * r * v / 10, cy + Math.sin(ang(i)) * r * v / 10];
+  const H = typeof HEXAGON !== 'undefined' && HEXAGON[id]; if (!H && id !== null) return '';
+  const G = hexGeo(w, big), pt = G.pt, x = hexVals(id);
   const f = n => n.toFixed(1), poly = vs => vs.map((v, i) => pt(i, v).map(f).join(',')).join(' ');
-  let g = '';
+  let g = '', d = '';
   for (const v of [10 / 3, 20 / 3, 10]) g += `<polygon class="hx-g${v === 10 ? ' o' : ''}" points="${poly([v, v, v, v, v, v])}"/>`;
-  HEX_AXES.forEach((ax, i) => { const [x, y] = pt(i, 10); g += `<line class="hx-g" x1="${f(cx)}" y1="${f(cy)}" x2="${f(x)}" y2="${f(y)}"/>`; });
-  const sc = HEX_AXES.map(ax => H[ax.id][0]);
-  g += `<polygon class="hx-d" points="${poly(sc)}"/>`;
-  HEX_AXES.forEach((ax, i) => { const a = pt(i, H[ax.id][1]), b = pt(i, H[ax.id][2]); g += `<line class="hx-ci" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"/>`; });
-  sc.forEach((v, i) => { const [x, y] = pt(i, v); g += `<circle class="hx-p" cx="${f(x)}" cy="${f(y)}" r="${big ? 2.6 : 1.9}"/>`; });
+  HEX_AXES.forEach((ax, i) => { const [px, py] = pt(i, 10); g += `<line class="hx-g" x1="${f(G.cx)}" y1="${f(G.cy)}" x2="${f(px)}" y2="${f(py)}"/>`; });
+  d += `<polygon class="hx-d" points="${poly(HEX_AXES.map((ax, i) => x[i * 3]))}"/>`;
+  HEX_AXES.forEach((ax, i) => { const a = pt(i, x[i * 3 + 1]), b = pt(i, x[i * 3 + 2]); d += `<line class="hx-ci" x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}"/>`; });
+  HEX_AXES.forEach((ax, i) => { const [px, py] = pt(i, x[i * 3]); d += `<circle class="hx-p" cx="${f(px)}" cy="${f(py)}" r="${big ? 2.6 : 1.9}"/>`; });
+  g += `<g class="hx-dg"${H ? '' : ' style="opacity:0"'}>${d}</g>`;                                    // 数的那一层（随机的时候整层淡掉）
+  if (!big) g += `<text class="hx-q" x="${f(G.cx)}" y="${f(G.cy + 1)}" text-anchor="middle" dominant-baseline="central"${H ? ' style="opacity:0"' : ''}>?</text>`;
   HEX_AXES.forEach((ax, i) => {
-    const [x, y] = pt(i, 10 + (big ? 2.6 : 2.4)), side = i === 0 || i === 3 ? 'middle' : i < 3 ? 'start' : 'end';
-    g += `<text x="${f(x)}" y="${f(y + (i === 0 ? -2 : i === 3 ? 3 : 0))}" text-anchor="${side}" dominant-baseline="middle">${ax.name}${big ? `<tspan class="hx-n"> ${H[ax.id][0].toFixed(1)}</tspan>` : ''}</text>`;
+    const [px, py] = pt(i, 10 + (big ? 2.6 : 2.4)), side = i === 0 || i === 3 ? 'middle' : i < 3 ? 'start' : 'end';
+    g += `<text x="${f(px)}" y="${f(py + (i === 0 ? -2 : i === 3 ? 3 : 0))}" text-anchor="${side}" dominant-baseline="middle">${ax.name}${big && H ? `<tspan class="hx-n"> ${H[ax.id][0].toFixed(1)}</tspan>` : ''}</text>`;
   });
-  const label = STYLES[id].name + '：' + HEX_AXES.map(ax => ax.name + ' ' + H[ax.id][0].toFixed(1)).join('、') + '（满分 10）；难度 ' + H.stars + ' 星';
-  return `<svg class="hex${big ? ' big' : ''}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img" aria-label="${label}">${g}</svg>`;
+  const label = H ? STYLES[id].name + '：' + HEX_AXES.map(ax => ax.name + ' ' + H[ax.id][0].toFixed(1)).join('、') + '（满分 10）；难度 ' + H.stars + ' 星' : '随机拳派：开打才知道是哪一派';
+  return `<svg class="hex${big ? ' big' : ''}" data-w="${w}" data-big="${big ? 1 : 0}" viewBox="0 0 ${w} ${G.h}" width="${w}" height="${G.h}" role="img" aria-label="${label}">${g}</svg>`;
+}
+// 照一串数（hexVals 的排法，可以是两派中间的样子）把画好的图挪到位：红的那一片、六个点、六段置信区间、那一层的浓淡、问号
+function hexPaint(svg, x) {
+  const poly = svg && svg.querySelector('.hx-d'); if (!poly) return;
+  const G = hexGeo(+svg.dataset.w, svg.dataset.big === '1'), f = n => n.toFixed(2), n = HEX_AXES.length;
+  const ci = svg.querySelectorAll('.hx-ci'), dot = svg.querySelectorAll('.hx-p'), pts = [];
+  for (let i = 0; i < n; i++) {
+    const c = G.pt(i, x[i * 3]), a = G.pt(i, x[i * 3 + 1]), b = G.pt(i, x[i * 3 + 2]); pts.push(f(c[0]) + ',' + f(c[1]));
+    if (ci[i]) { ci[i].setAttribute('x1', f(a[0])); ci[i].setAttribute('y1', f(a[1])); ci[i].setAttribute('x2', f(b[0])); ci[i].setAttribute('y2', f(b[1])); }
+    if (dot[i]) { dot[i].setAttribute('cx', f(c[0])); dot[i].setAttribute('cy', f(c[1])); }
+  }
+  poly.setAttribute('points', pts.join(' '));
+  const op = clamp(x[n * 3], 0, 1), dg = svg.querySelector('.hx-dg'), q = svg.querySelector('.hx-q');
+  if (dg) dg.style.opacity = op.toFixed(3);
+  if (q) q.style.opacity = (1 - op).toFixed(3);
 }
 // 难度：五颗星，半颗一档（画的，不靠字体里的半颗星）
 function hexStars(n, size) {

@@ -31,6 +31,10 @@ function applyLooks(mode) {
   if (mode === 'pvp') { F1.setLook(Looks.pvp[0]); F2.setLook(Looks.pvp[1]); }
   else if (mode === 'watch') { F1.setLook(Looks.watch[0]); F2.setLook(Looks.watch[1]); }
   else if (mode === 'online') { F1.setLook(Net.looks.h); F2.setLook(Net.looks.g); }
+  else if (mode === 'attract') {        // 3.1.2 菜单背景（大厅）：纯随机，不看存的颜色（Jack：别跟着我选的、电脑选的走）；两边不一样
+    const a = PALETTE[(Math.random() * PALETTE.length) | 0].id, rest = PALETTE.filter(p => p.id !== a);
+    F1.setLook(a); F2.setLook(rest[(Math.random() * rest.length) | 0].id);
+  }
   else { F1.setLook(Looks.solo.me); F2.setLook(cpuLook()); }
   if (mode === 'train') F2.name = '桩';
 }
@@ -115,12 +119,17 @@ function resetFighters() {
   if (game.quiet) return;                      // 联机回滚重算时不动画面（特效、镜头）
   FX.length = 0; QI.length = 0; splats = [];
   game.shake = 0; game.flash = 0;
-  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = ZOOM; camLift = game.mode === 'train' ? TRAIN_LIFT : 0; }
+  if (typeof camX !== 'undefined') { camX = STAGE_W / 2; camZ = game.mode === 'attract' ? ATTRACT_ZOOM * zoomBoost() : ZOOM; camLift = game.mode === 'train' ? TRAIN_LIFT : 0; }   // 3.1.2 菜单背景重新站好不再从 2.0 往回拉
+}
+// 3.1.2 菜单背景（大厅）里那两个电脑（Jack：要纯随机；我每次选颜色、拳派，后面都会刷新，我不要刷新）：
+// 颜色（两边不一样）、拳派都随机 —— 回到菜单的时候、打完一回合重新站好的时候各换一对；准备页里怎么选都不碰它们（ui.js previewPrep 只换背景）
+function attractRoll() {
+  applyLooks('attract'); applyStyles('attract');
+  game.brains = [new Brain(F1, 'normal'), new Brain(F2, 'normal')];   // 新的一对，记的习惯也从头来
 }
 function startAttract() {
   game.mode = 'attract'; game.phase = 'attract'; game.phaseT = 0; game.paused = false; game.endless = false;
-  game.brains = [new Brain(F1, 'normal'), new Brain(F2, 'normal')];
-  F1.label = ''; F2.label = ''; F2.maxHp = MAX_HP; applyLooks('attract'); applyStyles('attract');
+  F1.label = ''; F2.label = ''; F2.maxHp = MAX_HP; attractRoll();
   resetFighters();
 }
 function startMatch(mode) {
@@ -192,7 +201,7 @@ function simTick(inputs) {
 
   switch (game.phase) {
     case 'attract':
-      if (a.hp <= 0 || b.hp <= 0) { if ((game.phaseT += DT) >= 131) { resetFighters(); game.phaseT = 0; } }
+      if (a.hp <= 0 || b.hp <= 0) { if ((game.phaseT += DT) >= 131) { attractRoll(); resetFighters(); game.phaseT = 0; } }   // 3.1.2 换一对随机的
       break;
     case 'intro':
       // 2.3 开场字幕配锣鼓；2.4（Jack：锣鼓太诡异）换成战鼓 + 镲 + 古筝：回合名随着「锵」砸下来；战鼓越敲越密；「战」的时候「锵」+ 古筝和弦（fx.js INTRO_BEATS）

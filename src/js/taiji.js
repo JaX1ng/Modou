@@ -17,12 +17,15 @@
    挨打（defend：化、捋）、打中（strike：发劲）、抓到人（grab：搂膝拗步）、画架势（target）、画劲（drawCue）
    ============================================================ */
 
-/* ---------- 底子：单鞭（照 ref/tj_stance_single_whip.png）——
-   前手立掌往前伸、手指朝上（掌心斜着朝前，看得见手指），后手勾手往身后伸、五个指尖捏在一起朝下；大开的马步，两膝都弯；身子正、头正。
-   3.0.1（Jack：后腿弯下去太多了，稍微上来点）：后脚往后 6、髋高 2 —— 后腿差不多伸直（只微微弯），后膝离地 15 → 21；前腿照旧弓着 ---------- */
-const TBASE = { rot: 0, spin: 0, tor: 0, head: 0, hy: 52, dx: 0, air: 0, fe: 1, be: 1, tw: -10, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
-  fp: 1, bp: 1, fpa: -88, bpa: 96, fpr: 0.45, bpr: 1, fw: 0, bw: 0, fz: 0, fs: 0.4, bs: 0, fhk: 0, bhk: 1, fv: 0, bv: 1,
-  fh: [46, -4], bh: [-44, -18], ff: [50, 0], bf: [-60, 0] };
+/* ---------- 底子 = 待机（3.1.2 照 Jack 的图 ref/tj_stance_idle.png）——
+   前手立掌往前推：胳膊差不多伸直、和肩一样高，手指朝上微微往前倒（掌心朝前，侧面看得见手指和大拇指）；
+   后手横掌护着肚子：肘往后下方沉、贴在后背外面，小臂横在肚子前、腰带上面，手指朝前微微往上；
+   弓步：前腿弓（小腿竖着、大腿往前下方斜）、后腿蹬直；身子正、头正，拧一点腰把前肩送出去。
+   3.0 ～ 3.1.1 是单鞭（ref/tj_stance_single_whip.png）：前手立掌、后手勾手往身后伸，大马步（髋 52、前脚 50、后脚 -60）。
+   这是所有招的底子：关键帧没写的部分（[0, {}]、[3, {}] 起手、收招那一下）都从这里来 ---------- */
+const TBASE = { rot: 0, spin: 0, tor: 0, head: 0, hy: 58, dx: 0, air: 0, fe: 1, be: 1, tw: 26, fn: 1, bn: 1, ft: 0, bt: 0, fo: 0, bo: 0,
+  fp: 1, bp: 1, fpa: -72, bpa: -22, fpr: 0.7, bpr: 0.8, fw: 0, bw: 0, fz: 0, fs: 0.3, bs: 0.2, fhk: 0, bhk: 0, fv: 0, bv: 1,
+  fh: [50, 2], bh: [5, 29], ff: [37, 0], bf: [-58, 0] };   // 前脚 37：前小腿竖着；后脚写 -58，tjReach 收到后腿刚好蹬直（-55.6）
 // 3.0.1 后脚往后挪了以后，站高的那几式（髋高 56 ～ 62：拦、捶、靠……）后腿够不着地、脚飘起来 —— 后脚踩在地上的姿势，脚踝伸不到就往回收
 // （收到后腿差一点点伸直），不用一式一式地改
 const T_LEG = (BODY.bone.th + BODY.bone.sh) * 0.985;
@@ -293,9 +296,10 @@ TJ_FLOW.tjChuan = [TJ(P_BALL, { dx: -4 }), TJ(P_BALL, { dx: -6, hy: 62, tw: 2 })
 
 /* 架势（fighter.js target 用；蓄势、捋、云手在 tjTarget 里现画） */
 const TPOSE = {
-  stance: tmk({}),                                                                                     // 单鞭
+  stance: tmk({}),                                                                                     // 待机（3.1.2 Jack 的图；以前是单鞭）
   // 3.0.1（Jack：后腿弯下去太多了）：蹲着的后膝以前跪到地上（离地 2）—— 髋高 40 → 46、后脚往后，后膝离地 15（和格斗术、咏春蹲着差不多）
-  crouch: tmk({ hy: 46, tor: 16, head: -2, tw: 10, ff: [40, 0], bf: [-62, 0], ...tHand('f', [30, 6], 'palm', -60, 0.8), ...tHand('b', [-30, 2], 'hook', 96, 1) }),
+  // 3.1.2 待机换了以后，蹲下去手型跟着待机走：前手立掌、后手横在肚子前（以前是单鞭的勾手往身后伸，一蹲手就换个样子）
+  crouch: tmk({ hy: 46, tor: 12, head: -2, tw: 22, ff: [40, 0], bf: [-62, 0], ...tHand('f', [44, 4], 'palm', -66, 0.7, 0.3), ...tHand('b', [6, 26], 'palm', -22, 0.8, 0.2) }),
   // 掤（按住挡）：两手十字合在胸前、掌心朝里（十字手）；蹲着是沉屈守中（defense_seq 01）
   block: tmk({ hy: 56, tor: 2, head: 4, dx: -2, tw: 4, ff: [42, 0], bf: [-54, 0], ...tHand('f', [24, -8], 'palm', -104, 1, 0.1), ...tHand('b', [27, -4], 'palm', -70, 1, 0.1), fz: 1 }),
   cblock: tmk({ hy: 46, tor: 14, head: 4, tw: 6, ff: [40, 0], bf: [-62, 0], ...tHand('f', [28, 0], 'palm', -84, 0.8, 0.15), ...tHand('b', [22, 6], 'palm', -60, 0.9, 0.1) }),
@@ -630,6 +634,16 @@ function tjTarget(F, t) {
       return lerpPose(m.relPose, TJ_SP, EASE.in(u), t, false);
     }
     return null;
+  }
+  if (st === 'idle') {
+    // 3.1.2 待机（Jack 的图）的呼吸：太极慢，两秒一口气（别的派 1.3 秒，fighter.js）—— 呼气身子往下沉一点、前掌往前送、指尖往前倒一点，
+    // 吸气反过来；后手跟着慢半拍。腿不动（髋只动半个像素，和别的派一样）
+    copyPose(t, TPOSE.stance);
+    const ph = F.clock * TAU / 120, c = Math.cos(ph);
+    t.hy -= 0.5 * c; t.tor += 0.8 * c; t.head -= Math.cos(ph - 0.5);
+    t.fh[0] += 1.5 * c; t.fh[1] += 1.8 * Math.cos(ph - 0.6); t.fpa += 3 * Math.cos(ph - 0.6);
+    t.bh[0] += c; t.bh[1] += 1.4 * Math.cos(ph - 0.9);
+    return t;
   }
   if (st === 'block') {
     copyPose(t, F.lowBlock ? TPOSE.cblock : TPOSE.block);

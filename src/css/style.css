@@ -544,6 +544,7 @@ html.desktop .guide{display:none}
 .hex text{font:500 11px/1 var(--ui);fill:var(--ink-soft)}
 .hex.big text{font-size:13.5px;fill:var(--ink)}
 .hex .hx-n{font-weight:700;fill:var(--cinnabar)}
+.hex .hx-q{font:600 20px/1 var(--ui);fill:var(--ink-soft);fill-opacity:.6}   /* 3.1.2 随机拳派：空的六边形中间一个问号 */
 .hstars{display:block;flex:none}
 .hstars .st-o{fill:none;stroke:var(--ink-soft);stroke-opacity:.7;stroke-width:1}
 .hstars .st-f{fill:var(--gamboge)}

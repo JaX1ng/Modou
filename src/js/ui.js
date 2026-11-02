@@ -579,7 +579,7 @@ $('netStages').addEventListener('click', e => { const b = e.target.closest('.stg
 /* ---------- 2.11 准备页（Jack：主菜单只留模式，颜色 / 拳派 / 场景都进了模式再选）----------
    人机、双人、观战、训练场共用一张：上面一排场景（训练场固定练武场，不用选），下面两边各一块 —— 小人（这一派的架势、选的颜色）、拳派卡、颜色格；
    人机的电脑那一块多一排难度（颜色、拳派都能选「随机」）；训练场右边是木桩（只选拳派）。
-   选的先记在草稿里，菜单后面的两个人、背景跟着换（预览）；点「开始」才存（localStorage 照旧 modou.stage / modou.styles / modou.looks / modou.diff），下次进来默认就是上次的。
+   选的先记在草稿里，菜单后面的背景跟着换成选的场景（预览；3.1.2 起后面那两个人不跟着换，见 previewPrep）；点「开始」才存（localStorage 照旧 modou.stage / modou.styles / modou.looks / modou.diff），下次进来默认就是上次的。
    键盘：左边 A / D 换颜色、W / S 换拳派，右边 ← / → 换颜色、↑ / ↓ 换拳派；Enter 开始，Esc 返回 */
 const PREP = {
   pve: { title: '人机对战', who: ['你', '电脑'], rand: true, diff: true },
@@ -588,7 +588,41 @@ const PREP = {
   train: { title: '训练场', who: ['你', '木桩'], dummy: true },
 };
 let prep = null;              // 草稿：{ mode, stage, looks: [左, 右], styles: [左, 右], diff }
-function openPrep(mode) { prep = picksFor(mode); renderPrep(); showOverlay(prepEl); previewPrep(true); }   // 默认是上次选的（game.js picksFor）
+function openPrep(mode) { prep = picksFor(mode); HexMorph.reset(); renderPrep(); showOverlay(prepEl); previewPrep(); }   // 默认是上次选的（game.js picksFor）
+/* 3.1.2 六边形换派时平滑地变过去（Jack：人物在改的时候，六边形图要平滑、自然地变过去，不要直接变成那个六边形）：
+   每一边记着图现在画到哪（一串数，排法见 guide.js hexVals：六个轴的分、置信区间两头，加那一层的浓淡）。准备页每次重画，新的图先照「现在画到哪」摆好，
+   再照临界阻尼的跟随（W = 14，约半秒停稳，不冲过头）一帧一帧追到新这一派的数 —— 连着按 W / S 换好几派，也是从正在变的样子接着变、速度不断；
+   换成随机：缩到中间、淡掉，中间浮出一个问号。刚打开准备页不变（直接是这一派）；系统设置了「减少动态效果」就直接到位 */
+const HexMorph = {
+  s: [null, null], raf: 0, last: 0, W: 14,
+  reset() { this.s = [null, null]; },
+  attach(i, svg, st) {
+    if (!svg) { this.s[i] = null; return; }
+    const to = hexVals(styleOk(st) ? st : null), old = this.s[i];
+    const x = old ? old.x : to.slice(), v = old ? old.v : to.map(() => 0);
+    if (reduceMotion) { for (let j = 0; j < to.length; j++) { x[j] = to[j]; v[j] = 0; } }
+    this.s[i] = { el: svg, x, v, to };
+    hexPaint(svg, x);
+    if (!this.raf) { this.last = performance.now(); this.raf = requestAnimationFrame(t => this.tick(t)); }
+  },
+  tick(now) {
+    this.raf = 0;
+    const dt = clamp((now - this.last) / 1000, 0, 0.05), W = this.W, n = 4, h = dt / n; this.last = now;
+    let busy = false;
+    for (const S of this.s) {
+      if (!S || !S.el.isConnected) continue;
+      let moving = false;
+      for (let j = 0; j < S.x.length; j++) {
+        for (let k = 0; k < n; k++) { S.v[j] += (-W * W * (S.x[j] - S.to[j]) - 2 * W * S.v[j]) * h; S.x[j] += S.v[j] * h; }   // 临界阻尼的跟随，分四小步算稳
+        if (Math.abs(S.x[j] - S.to[j]) > 0.004 || Math.abs(S.v[j]) > 0.02) moving = true;
+      }
+      if (!moving) for (let j = 0; j < S.x.length; j++) { S.x[j] = S.to[j]; S.v[j] = 0; }   // 停稳了：贴到位
+      hexPaint(S.el, S.x);
+      busy = busy || moving;
+    }
+    if (busy) this.raf = requestAnimationFrame(t => this.tick(t));
+  },
+};
 // 颜色格：两边不能一样（人机的电脑可以「随机」，随机不会和你撞色）
 function prepLooks(i) {
   const P = PREP[prep.mode], my = prep.looks[i], th = prep.looks[1 - i];
@@ -609,7 +643,10 @@ function renderPrep() {
     const st = prep.styles[i], lk = prep.looks[i], dummy = P.dummy && i === 1;
     const name = lk === 'random' || dummy ? (dummy ? '' : '随机') : lookOf(lk).name, stName = styleOk(st) ? STYLES[st].name : '随机拳派';
     // 3.1 选的这一派的六边形（量出来的，见教程那一派「上手」页）
-    const hex = styleOk(st) && typeof HEXAGON !== 'undefined' && HEXAGON[st] ? `<div class="ps-hex" title="${STYLES[st].name}的六边形：量出来的，教程里有怎么量的">${hexSVG(st, 112)}${hexStars(HEXAGON[st].stars, 10)}<small>难度</small></div>` : '';
+    // 3.1.2 随机拳派也留着这一块（空的六边形 + 问号，星星藏起来）：换派的时候六边形从这一派平滑地变到那一派（HexMorph），版面也不跳
+    const hx = styleOk(st) && typeof HEXAGON !== 'undefined' && HEXAGON[st], hide = hx ? '' : ' style="visibility:hidden"';
+    const hex = `<div class="ps-hex" data-hex="${i}" title="${hx ? STYLES[st].name + '的六边形：量出来的，教程里有怎么量的' : '随机拳派：开打才知道是哪一派'}">${hexSVG(hx ? st : null, 112)}` +
+      `${hexStars(hx ? HEXAGON[st].stars : 0, 10).replace('<svg ', '<svg' + hide + ' ')}<small${hide}>难度</small></div>`;
     return `<section class="prep-side" data-side="${i}"><div class="ps-head">${prepFace(i)}<div><b>${P.who[i]}${name ? ' · ' + name : ''}</b><small>${stName}${m === 'watch' ? ' · 终极' : ''}</small></div>${hex}</div>` +
       `<p class="step">${dummy ? '木桩的拳派' : '拳派'}</p><div class="styles sm" data-ps="${i}"></div>` +
       (dummy ? '<p class="hint">木桩站着、蹲着、挡着，进去以后下面的工具条上换。</p>' : `<p class="step">颜色</p><div class="swatches sm" data-pl="${i}">${prepLooks(i)}</div>`) +
@@ -617,6 +654,7 @@ function renderPrep() {
       '</section>';
   };
   $('prepSides').innerHTML = side(0) + side(1) + (P.note ? `<p class="hint prep-note">${P.note}</p>` : '');
+  for (const i of [0, 1]) HexMorph.attach(i, $('prepSides').querySelector(`[data-hex="${i}"] svg.hex`), prep.styles[i]);   // 3.1.2 六边形接着上一张画到的样子往新的派挪
   for (const i of [0, 1]) {
     const el = $('prepSides').querySelector(`[data-ps="${i}"]`);
     el.innerHTML = (P.rand && i === 1 ? styleCard('random', { on: prep.styles[i] === 'random', sm: true }) : '') + STYLE_IDS.map(id => styleCard(id, { on: id === prep.styles[i], sm: true })).join('');
@@ -626,17 +664,13 @@ function renderPrep() {
   $('prepKeys').innerHTML = P.dummy ? '<kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换你的颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换你的拳派，<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd> 换木桩的拳派，也可以直接点；Enter 开始'
     : `${P.who[0]}按 <kbd class="lt">A</kbd> <kbd class="lt">D</kbd> 换颜色、<kbd class="lt">W</kbd> <kbd class="lt">S</kbd> 换拳派，${P.who[1]}按 <kbd class="lt">←</kbd> <kbd class="lt">→</kbd>、<kbd class="lt">↑</kbd> <kbd class="lt">↓</kbd>，也可以直接点；Enter 开始`;
 }
-// 菜单后面的两个人就是预览：选的颜色、拳派（随机的那边随便一个），背景是选的场景（训练场是练武场）
-function previewPrep(first) {
+// 背景是选的场景（训练场是练武场）。3.1.2（Jack：大厅里的人要纯随机，选颜色、拳派的时候后面别刷新）：
+// 菜单后面那两个人不再跟着选的颜色、拳派换（以前每选一下就换颜色、拳派变了还整个重新站好、镜头拉近）—— 它们自己随机打（game.js attractRoll）
+function previewPrep() {
   if (game.mode !== 'attract' || !prep) return;
-  const m = prep.mode, [a, b] = prep.looks;
-  Stage.peek = m === 'train' ? 'yard' : prep.stage;
-  F1.setLook(a === 'random' ? cpuLook() : a);
-  F2.setLook(m === 'train' ? cpuLook() : b === 'random' ? (F2.look !== a ? F2.look : PALETTE.find(p => p.id !== a).id) : b);
-  const s0 = prep.styles[0], s1 = styleOk(prep.styles[1]) ? prep.styles[1] : F2.style;
-  if (first || F1.style !== s0 || F2.style !== s1) { F1.style = s0; F2.style = s1; resetFighters(); }
+  Stage.peek = prep.mode === 'train' ? 'yard' : prep.stage;
 }
-function closePrep() { prep = null; Stage.peek = null; showOverlay(menu); applyLooks('attract'); }
+function closePrep() { prep = null; Stage.peek = null; showOverlay(menu); }
 function prepPick(i, kind, id) {
   if (!prep) return;
   if (kind === 'look') {

@@ -4134,12 +4134,21 @@ T('3.0 太极拳的回放：蓄、化、捋、采存档读档以后一模一样�
   const mid = saveState(); const again = runFrom(mid, 700, 1500);
   eq(again === full, true, '读档接着走和一口气走完一样');
 });
-T('3.0 单鞭：太极拳的架子 —— 前手立掌往前伸（手指朝上），后手勾手往身后伸（五指捏在一起朝下），步子大、架子低', () => {
+T('3.1.2 太极拳的待机（Jack 的图，以前是单鞭）：前手立掌往前推（胳膊差不多伸直、和肩一样高、手指朝上），后手横掌护着肚子（肘在后面、手在腰带上面），弓步（前腿弓、小腿竖着，后腿蹬直）', () => {
   const P = TPOSE.stance;
-  ok(P.fp === 1 && P.fhk === 0 && P.fpa < -70, '前手立掌、手指朝上');
-  ok(P.bhk === 1 && P.bh[0] < -30 && P.bh[1] < 0, '后手勾手、在身后、比肩高');
-  ok(P.ff[0] - P.bf[0] >= 100 && P.hy <= 55, '步子大、架子低');
-  const { J } = PoseIcon.build({ style: 'taiji', pose: 'stance' }); ok(J.fh[0] > J.sh[0] + 30 && J.bh[0] < J.sh[0] - 25, '两只手一前一后伸开');
+  ok(P.fp === 1 && P.fhk === 0 && P.fpa < -60 && P.fpa > -90, '前手立掌、手指朝上微微往前倒');
+  ok(P.bp === 1 && P.bhk === 0 && P.bpa > -45 && P.bpa < 0, '后手是掌（不是勾手）、手指朝前微微往上');
+  const { J } = PoseIcon.build({ style: 'taiji', pose: 'stance' }), L = BODY.bone;
+  const reach = Math.hypot(J.fh[0] - J.shF[0], J.fh[1] - J.shF[1]);
+  ok(reach > (L.ua + L.fa) * 0.9, `前手差不多伸直：肩到手 ${reach.toFixed(1)}（胳膊 ${L.ua + L.fa}）`);
+  ok(Math.abs(J.fh[1] - J.shF[1]) < 6, `前手和肩一样高（差 ${(J.fh[1] - J.shF[1]).toFixed(1)}）`);
+  ok(J.bh[1] > J.sh[1] + 20 && J.bh[1] < J.belt[1] && Math.abs(J.bh[0] - J.hip[0]) < 14, '后手在肚子前、腰带上面');
+  ok(J.be[0] < J.bh[0] - 10 && J.be[0] < J.hip[0] - 6, '后手的肘往后沉（在后背外面）');
+  const bend = (hip, knee, ank) => { const ax = ank[0] - hip[0], ay = ank[1] - hip[1]; return Math.abs(ax * (knee[1] - hip[1]) - ay * (knee[0] - hip[0])) / (Math.hypot(ax, ay) || 1); };
+  ok(Math.abs(J.ff[0] - J.fk[0]) < 6, `前腿小腿竖着（膝盖比脚踝往前 ${(J.fk[0] - J.ff[0]).toFixed(1)}）`);
+  const bb = bend(J.hipB, J.bk, J.bf), bf = bend(J.hipF, J.fk, J.ff);
+  ok(bb <= 7.5 && bf > bb + 10, `弓步：前腿弓（膝盖弯出去 ${bf.toFixed(1)}）、后腿蹬直（${bb.toFixed(1)}；tjReach 收到 98.5% 腿长，6.7 就是蹬直了）`);
+  ok(TPOSE.crouch.bhk === 0 && TPOSE.crouch.bp === 1, '蹲下去手型跟着待机：后手还是掌');
 });
 T('3.0.1 太极拳的后腿不往下塌（Jack：后腿弯下去太多了，稍微上来点）：单鞭、挡、捋、抱球、三种步子后腿差不多伸直，后膝离地 19 以上（3.0 的单鞭 15）；弓步后腿比前腿直；站着出的招后脚都踩在地上（不飘）', () => {
   const leg = (J, hip, knee, ank) => {
@@ -4170,7 +4179,9 @@ T('3.0.1 手（Jack：所有角色的手再大 5% 左右；后面的勾手太小
   for (const q of parts.filter(p => p.k === 'aFH')) for (const [x, y] of q.pts) palmLen = Math.max(palmLen, (x - E[0]) * d[0] + (y - E[1]) * d[1]);
   ok(palmLen > 15.6 * 1.03 && palmLen < 15.6 * 1.1, `掌长 ${palmLen.toFixed(1)}（3.0 是 15.6）`);
   // 3.1 勾手也是一节一节的手指（掌、四根手指、大拇指各几块胶囊）：量所有的块合起来
-  const hooks = parts.filter(p => p.hook), hook = { pts: hooks.flatMap(p => p.pts), detail: hooks.flatMap(p => p.detail || []) }, W = J.bh; let far = W, len = 0;
+  // 3.1.2 待机不再是单鞭（后手是掌了），勾手量下势（蹲 + 拳：后手勾手留在后面）那一下
+  const JX = PoseIcon.build({ style: 'taiji', move: 'tjXia', ph: 1.5 }).J;
+  const hooks = bodyParts(JX, 0).parts.filter(p => p.hook), hook = { pts: hooks.flatMap(p => p.pts), detail: hooks.flatMap(p => p.detail || []) }, W = JX.bh; let far = W, len = 0;
   for (const [x, y] of hook.pts) { const l = Math.hypot(x - W[0], y - W[1]); if (l > len) { len = l; far = [x, y]; } }
   const ux = (far[0] - W[0]) / len, uy = (far[1] - W[1]) / len; let lo = 1e9, hi = -1e9;
   for (const [x, y] of hook.pts) { const s = -(x - W[0]) * uy + (y - W[1]) * ux; lo = Math.min(lo, s); hi = Math.max(hi, s); }
@@ -4258,7 +4269,7 @@ T('3.1 拳头是手指握起来的（Jack：不是在拳头上画几条线）：
   const parts = bodyParts(F1.J, 0).parts, fist = parts.filter(p => p.k === 'aBH');
   ok(fist.length >= 6, '拳头一共 ' + fist.length + ' 块（掌、四根手指、大拇指）');
   ok(!fist.some(p => p.detail && p.detail.length), '拳头上不画线');
-  const { J } = PoseIcon.build({ style: 'taiji', pose: 'stance' }), hook = bodyParts(J, 0).parts.filter(p => p.hook);
+  const { J } = PoseIcon.build({ style: 'taiji', move: 'tjXia', ph: 1.5 }), hook = bodyParts(J, 0).parts.filter(p => p.hook);   // 3.1.2 勾手在下势里（待机换了）
   ok(hook.length >= 6, '勾手也是一节一节的手指：' + hook.length);
 });
 T('3.1 六边形（Jack：每个拳派一张，要严谨）：三派都量了、六个轴都有分（0～10）、置信区间包住均值；咏春速最快、守最好、上限最高、难度最高；格斗术、太极拳攻得重', () => {
@@ -4392,6 +4403,64 @@ T('3.1.1 他起跳那几帧电脑还看不见（反应 react 帧）：地上的�
   }));
   ok(tries >= 40, '试的次数太少：' + tries);
   ok(blind <= tries * 0.05, `跳起来以后电脑还看不见的那几帧，它出了地上的招 ${blind} 次（${tries} 次里）`);
+});
+
+/* ---------- 3.1.2：太极拳的待机（Jack 的图）、大厅里的人纯随机不刷新、六边形平滑过渡 ---------- */
+T('3.1.2 大厅（菜单背景）里的两个人纯随机（Jack：别跟着我选的、电脑选的走）：颜色两边不一样、八种颜色三派都出得来，不看存的颜色；打完一回合重新站好时换一对', () => {
+  const keepL = JSON.parse(JSON.stringify(Looks.solo)), keepS = JSON.parse(JSON.stringify(Styles.solo));
+  try {
+    Looks.solo = { me: 'pine', cpu: 'teal' }; Styles.solo = { me: 'wc', cpu: 'wc' };
+    const cols = new Set(), sts = new Set(); let same = 0, mine = 0;
+    seededRandom(9, () => { for (let i = 0; i < 300; i++) {
+      startAttract(); cols.add(F1.look); cols.add(F2.look); sts.add(F1.style); sts.add(F2.style);
+      if (F1.look === F2.look) same++;
+      if (F1.look === 'pine' && F2.look === 'teal' && F1.style === 'wc' && F2.style === 'wc') mine++;
+    } });
+    eq(same, 0, '两边撞色');
+    eq(cols.size, PALETTE.length, '八种颜色都出得来'); eq(sts.size, STYLE_IDS.length, '三派都出得来');
+    ok(mine <= 3, `和存的（你 · 松 · 咏春、电脑 · 黛 · 咏春）一模一样 ${mine} 次 / 300（纯随机大约 0.6 次）`);
+    // 一回合打完（有人倒了）过一会儿重新站好：换一对（电脑也换新的）
+    let changed = 0;
+    seededRandom(4, () => { for (let k = 0; k < 20; k++) {
+      startAttract(); const before = [F1.look, F2.look, F1.style, F2.style].join(), B0 = game.brains[0];
+      F2.hp = 0; game.phaseT = 120;                                       // 倒了快 120 帧（直接从快重新站好那儿开始，不等他被打着玩）
+      for (let i = 0; i < 600 && F2.hp <= 0; i++) step([0, 0]);
+      ok(game.brains[0] !== B0 && F2.hp === F2.maxHp, `重新站好、电脑换新的（hp ${F2.hp} / ${F2.maxHp}、电脑${game.brains[0] !== B0 ? '换了' : '没换'}、${game.mode} ${game.phase} ${game.phaseT}）`);
+      if ([F1.look, F2.look, F1.style, F2.style].join() !== before) changed++;
+    } });
+    ok(changed >= 17, `重新站好换了一对：${changed} / 20`);
+  } finally { Looks.solo = keepL; Styles.solo = keepS; startAttract(); }
+});
+T('3.1.2 准备页里选颜色、拳派、难度，菜单后面的两个人不跟着换、不重新站好（Jack：我每次选，大厅后面都会刷新，我不要刷新）；背景还是预览选的场景；镜头比以前推近（1.24 → ATTRACT_ZOOM）', () => {
+  const x = new XMLHttpRequest(); x.open('GET', 'js/ui.js', false); x.send();
+  const src = x.responseText, fn = (name) => { const i = src.indexOf('function ' + name + '('); ok(i >= 0, '没找到 ' + name); return src.slice(i, src.indexOf('\n}', i)); };
+  const pv = fn('previewPrep'), cp = fn('closePrep');
+  ok(!/setLook|resetFighters|\.style\s*=|applyLooks|applyStyles/.test(pv), 'previewPrep 不碰后面的人：' + pv);
+  ok(/Stage\.peek/.test(pv), 'previewPrep 还管背景预览');
+  ok(!/applyLooks|setLook|resetFighters/.test(cp), '关掉准备页不重新随机（不刷新）');
+  ok(ATTRACT_ZOOM >= 1.5 && ATTRACT_ZOOM < ZOOM, '大厅镜头 ' + ATTRACT_ZOOM);
+  startAttract(); const a = { x: STAGE_W / 2 - 60 }, b = { x: STAGE_W / 2 + 60 };
+  ok(Math.abs(camGoal('attract', a, b, 0).zoom - ATTRACT_ZOOM * zoomBoost()) < 1e-9, '离得近：推到 ATTRACT_ZOOM');
+  ok(Math.abs(camZ - ATTRACT_ZOOM * zoomBoost()) < 1e-9, '重新站好的时候镜头就在这儿（不从 2.0 往回拉）');
+  ok(camGoal('attract', { x: 200 }, { x: 200 + MAXD_PVP }, 0).zoom >= ZOOM_PVP_MIN - 1e-9, '离得远照旧拉远（两个人都在画面里）');
+});
+T('3.1.2 六边形平滑过渡（Jack：换人物的时候六边形要平滑自然地过去）：按一串数挪图（hexPaint）和直接画（hexSVG）是同一个样子；两派中间的数画出来在两派之间；随机是空的格子 + 问号', () => {
+  const box = document.createElement('div'); document.body.appendChild(box);
+  try {
+    const pts = svg => svg.querySelector('.hx-d').getAttribute('points').split(' ').map(p => p.split(',').map(Number));
+    box.innerHTML = hexSVG('taiji', 112); const tj = pts(box.firstChild);
+    box.innerHTML = hexSVG('trad', 112); const svg = box.firstChild, tr = pts(svg);
+    hexPaint(svg, hexVals('taiji'));
+    pts(svg).forEach((p, i) => ok(Math.hypot(p[0] - tj[i][0], p[1] - tj[i][1]) < 0.1, `挪到太极拳 = 直接画太极拳（第 ${i} 个角）`));
+    const a = hexVals('trad'), b = hexVals('taiji'), mid = a.map((v, j) => (v + b[j]) / 2);
+    hexPaint(svg, mid);
+    pts(svg).forEach((p, i) => ok(Math.hypot(p[0] - (tr[i][0] + tj[i][0]) / 2, p[1] - (tr[i][1] + tj[i][1]) / 2) < 0.1, `走到一半在两派正中间（第 ${i} 个角）`));
+    box.innerHTML = hexSVG(null, 112); const r = box.firstChild;
+    ok(r && r.querySelector('.hx-q') && parseFloat(r.querySelector('.hx-dg').style.opacity) === 0, '随机：空的、有问号');
+    hexPaint(r, hexVals('wc')); ok(parseFloat(r.querySelector('.hx-dg').style.opacity) === 1 && parseFloat(r.querySelector('.hx-q').style.opacity) === 0, '随机换成咏春：那一层显出来、问号没了');
+    eq(hexSVG('nope', 112), '', '没量过的派不画');
+    for (const id of STYLE_IDS) eq(hexVals(id).length, HEX_AXES.length * 3 + 1);
+  } finally { box.remove(); }
 });
 
 (async function runAll() {
