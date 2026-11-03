@@ -324,12 +324,18 @@ function applyHit(A, B, how) {
   else if (d.tag) tag(A.J.head[0] - dir * 10, A.J.head[1] - 38, d.tag, A, 18);
   Sound.hit(d.power || 0.4);
 }
+// 3.2 挡住了掉多少血：轻拳一系、推挡不掉（BLOCK_KEEP_LIGHT 0）；重系、腿系、空中、对空、大招、太极的慢拳（slowGuard）吃 BLOCK_KEEP（最少 1）
+function chipOf(d, m) {
+  const light = !m.air && ((d.tier === 'light' && !d.slowGuard) || d.kind === 'push');
+  const keep = light ? BLOCK_KEEP_LIGHT : BLOCK_KEEP;
+  return keep <= 0 ? 0 : Math.max(1, Math.round(d.dmg * (m.air ? AIR_BONUS : 1) * keep));
+}
 function guard(A, B, c) {
   const m = A.move, d = m.def, dir = A.facing;
-  const chip = Math.max(1, Math.round(d.dmg * (m.air ? AIR_BONUS : 1) * BLOCK_KEEP));
-  B.hp = Math.max(1, B.hp - chip);
   // 1.8.0：击倒招被挡住，两人几乎不被弹开 —— 留在原地吃反击（挡后反击）
   const kd = !!d.launch, light = (d.tier === 'light' && !d.slowGuard) || d.kind === 'push';   // 3.0 slowGuard：太极拳的慢拳（揽雀尾一家）被挡住照重招算 —— 慢招被挡住就该罚得出来
+  const chip = chipOf(d, m);
+  B.hp = Math.max(1, B.hp - chip);
   // 2.1 重系、腿系被挡住推得没那么远、收招更长（BLOCK_PEN）：挡住以后上前一步就打得到它收招（挡后反击）；拳还是推得开、不加收招
   B.state = 'blockstun'; B.stunT = d.bstun + (m.dashIn ? DASH_IN_BSTUN : 0); B.kvx = dir * d.kb * (kd ? 0.5 : light ? 0.9 : 0.6);
   A.kvx = -dir * d.kb * (atWall(B) ? 0.8 : (m.dashIn ? 0.2 : kd ? 0.15 : light ? 0.4 : 0.3));      // 被挡住，攻击方也被弹回一点（冲势冲得进去）
@@ -358,7 +364,7 @@ function guard(A, B, c) {
   const sx = B.x + B.facing * 20, base = B.facing > 0 ? 0 : Math.PI;
   swipe(sx, c.y, 32, base, 2.4, 6, pal(B).qi, 14);                   // 挡：一道护住身前的弧 + 火花往回崩（挡的人的颜色）
   sparks(sx + B.facing * 6, c.y, B.facing, 7, 6, pal(B).fx, 0.9, 0.4, 12);
-  tag(B.x, B.J.head[1] - 22, [['挡 ', B], ['-' + chip, A]], B, 17);     // 「挡」是挡的人的颜色，掉的血是打的人的颜色
+  tag(B.x, B.J.head[1] - 22, chip > 0 ? [['挡 ', B], ['-' + chip, A]] : [['挡', B]], B, 17);     // 「挡」是挡的人的颜色，掉的血是打的人的颜色（3.2 轻拳挡住不掉血，只写「挡」）
   Sound.block();
 }
 // 卸力：刚按下格挡就被打中。不掉血，对方失衡，自己马上能出招

@@ -333,12 +333,22 @@ T('势破：下一记短拳前摇 +' + SLOW_JAB_ADD + ' 帧', () => {
   tick(TAP('jab'), 0);
   eq(F1.move.S, MOVES[F1.move.name].S + SLOW_JAB_ADD);
 });
-T('格挡对短拳、腿踢也减伤', () => {
-  for (const [a, d] of [['jab', 80], ['kick', 120]]) {
+T('格挡减伤：3.2 轻拳一系（短拳、连珠快拳、寸劲、推挡）挡住不掉血，重拳、腿踢、空中招照旧削三成（Jack：一直按拳能赢；挡着的电脑掉的血三到六成是挡住的轻拳削的）', () => {
+  for (const [a, d, chip] of [['jab', 80, 0], ['kick', 120, 1], ['heavy', 90, 1]]) {
     arena(d); tick(0, BLOCK, 3); const hp = F2.hp;
     combo([a], BLOCK); tick(0, BLOCK, 10);
-    eq(hp - F2.hp, Math.max(1, Math.round(MOVES[a].dmg * BLOCK_KEEP)), a);
+    eq(hp - F2.hp, chip ? Math.max(1, Math.round(MOVES[a].dmg * BLOCK_KEEP)) : 0, a);
+    eq(F2.stats.blocks, 1, a + ' 挡住了');
   }
+  eq(BLOCK_KEEP_LIGHT, 0, '轻拳挡住不掉血');
+  // 连珠快拳一串（短拳一直按）全挡住：一滴血不掉（以前削 2+2+2+2+2+4）
+  arena(80); tick(0, BLOCK, 3); const hp = F2.hp;
+  combo(['jab', 'jab', 'jab', 'jab', 'jab', 'jab'], BLOCK); tick(0, BLOCK, 30);
+  eq(hp - F2.hp, 0, '连珠快拳全挡住'); ok(F2.stats.blocks >= 5, '挡住了 ' + F2.stats.blocks + ' 下');
+  // 跳起来打的照旧削（×AIR_BONUS）；太极拳的慢拳（slowGuard）照重招算
+  const keep = Styles.pvp; Styles.pvp = ['taiji', 'trad'];
+  try { startMatch('pvp'); game.phase = 'fight'; game.paused = true; F1.x = 520; F2.x = 600; tick(0, BLOCK, 3); const h = F2.hp; combo(['jab'], BLOCK); tick(0, BLOCK, 20); eq(h - F2.hp, Math.max(1, Math.round(TMOVES.tjLan.dmg * BLOCK_KEEP)), '揽雀尾被挡住削三成'); }
+  finally { Styles.pvp = keep; }
 });
 T('下段：站着挡不住扫堂腿，蹲着挡得住', () => {
   arena(110); tick(0, BLOCK, 10); tick(DOWN | TAP('kick'), BLOCK); tick(0, BLOCK, 30); eq(F2.state, 'down', '站挡');
@@ -1304,8 +1314,11 @@ T('2.0.1 颜色归属：打中 —— 火花、冲击星、伤害数字、印章
     run(40, i => [i === 0 ? TAP('kick') : 0, 0]);
     const sealed = seen.filter(o => o.type === 'stamp');
     ok(sealed.length && sealed.every(o => o.col === F1.color), '印章底板不是出招人的颜色：' + sealed.map(o => o.text + o.col));
-    // 被挡：「挡」= 挡的人，「-n」= 打的人
+    // 被挡：「挡」= 挡的人，「-n」= 打的人（3.2 轻拳挡住不掉血：短拳只写「挡」一个颜色；重拳才有「-n」）
     arena(80); seen.length = 0; run(50, i => [i === 20 ? TAP('jab') : 0, BLOCK]);
+    const bt0 = seen.find(o => o.type === 'tag' && /^挡/.test(o.text));
+    ok(bt0 && bt0.parts[0][1] === F2.color && bt0.parts.length === 1, '短拳挡住只写「挡」、挡的人的颜色：' + JSON.stringify(bt0 && bt0.parts));
+    arena(90); seen.length = 0; run(60, i => [i === 20 ? TAP('heavy') : 0, BLOCK]);
     const bt = seen.find(o => o.type === 'tag' && /^挡/.test(o.text));
     ok(bt && bt.parts[0][1] === F2.color && bt.parts[1][1] === F1.color, '挡住的字颜色不对：' + JSON.stringify(bt && bt.parts));
     // 拼招：「拼」两个颜色（左边的人在左半边），两边火花一样多
@@ -3216,11 +3229,11 @@ T('2.10 标指插在他出手的胳膊上 = 把手挑开，进搭手；他已经
   wArena(96); const ev = wWatch(() => run(30, i => [i === 0 ? RIGHT | TAP('jab') : 0, 0]));
   ok(ev.some(e => e.type === 'hit' && e.a === 0 && e.name === 'wBiu') && !ev.some(e => e.type === 'touch'), '他没出手：标指照常打中');
 });
-T('2.11 听劲（按住挡，Jack：手臂不动，只是往后收一点 —— 不再一直翻盘手）：光举着不按键 = 普通挡，只吃三成，不进搭手、没有别的收益；按着前后照样慢慢走', () => {
+T('2.11 听劲（按住挡，Jack：手臂不动，只是往后收一点 —— 不再一直翻盘手）：光举着不按键 = 普通挡（3.2 轻拳挡住不掉血），不进搭手、没有别的收益；按着前后照样慢慢走', () => {
   wArena(86); let ev = wWatch(() => run(40, i => [BLOCK, i === 10 ? TAP('jab') : 0]));
   ok(ev.some(e => e.type === 'guard' && e.a === 1), '挡住了');
   ok(!ev.some(e => e.type === 'touch' || e.type === 'catch' || e.type === 'handParry'), '光按住挡：不进搭手、不拍开');
-  eq(lost(F1), Math.max(1, Math.round(MOVES.jab.dmg * BLOCK_KEEP)), '只吃三成');
+  eq(lost(F1), 0, '普通挡住短拳：3.2 轻拳挡住不掉血（以前只吃三成）');
   const S = WPOSE.stance, B = WPOSE.block;
   ok(B.fh[0] < S.fh[0] && B.fh[0] > S.fh[0] - 14 && B.bh[0] <= S.bh[0] + 2, `两只手往胸前收一点：前手 ${S.fh[0]} → ${B.fh[0]}、后手 ${S.bh[0]} → ${B.bh[0]}`);
   ok(B.fp === 1 && B.bp === 1 && B.fpr > 0 && B.bpr > 0, '还是问手、护手两只掌（掌心朝里）');
@@ -3911,7 +3924,7 @@ T('2.12 咏春拳接招一错一平一对（WINGCHUN.md 十六，Jack：三个�
   const check = (name, o, dmg) => {
     ok(o.hit.ev.some(e => e.type === 'catch'), name + '：按对 = 接住');
     ok(o.flat.ev.some(e => e.type === 'catchFlat') && !o.flat.ev.some(e => e.type === 'catch' || e.type === 'catchMiss'), name + '：按平 = 当普通挡住，不接住也不罚');
-    ok(o.flat.blocks === 1 && o.flat.lost <= Math.ceil(dmg * BLOCK_KEEP) + 0.01 && o.flat.lost > 0, `${name}：按平只吃三成（掉了 ${o.flat.lost}）`);
+    ok(o.flat.blocks === 1 && o.flat.lost <= Math.ceil(dmg * BLOCK_KEEP) + 0.01, `${name}：按平当普通挡住（掉了 ${o.flat.lost}；3.2 轻拳挡住不掉血、重的腿的削三成）`);
     ok(o.flat.state === 'blockstun', name + '：按平以后在挡住的硬直里（不进搭手）');
     ok(o.miss.ev.some(e => e.type === 'catchMiss') && o.miss.lost >= Math.round(dmg * WC_WRONG_MUL) - 1, `${name}：按错 ×${WC_WRONG_MUL}（掉了 ${o.miss.lost}）`);   // 拳的窗口比重、拿短一帧，同一帧按拳可能已经在收手（time），一样是错
     ok(o.hit.lost === 0, name + '：接住一点血不掉');
@@ -4099,6 +4112,41 @@ T('3.0 捋（引进落空）：按住挡，他打到之前 TJ_LU_WIN 帧里按�
   ok(!lu(3, 'heavy', { pre: true }), '两次按后隔得太近没有捋（防乱按）');
   ok(!lu(3, 'grab'), '擒拿捋不了');
 });
+T('3.2 捋在挡住的硬直里也记、也成立（Jack：一直按轻拳就能赢太极）：连珠快拳打过来按住挡，挡住第一拳的硬直快完那两帧点一下后 —— 第二拳（挡住硬直完 3 帧就到）被捋住，\
+以前硬直里点的不算、只有挡着的那 3 帧里按得到；两次隔不够 TJ_LU_LOCK 照旧没有；挨打的硬直里按住挡 + 后，硬直完那一步才记，连环冲拳第三拳的缝里就捋住', () => {
+  // F1 太极按住挡，F2 格斗术每帧按拳（短拳 → 后手直拳 …）。挡住第一拳那一帧起，硬直剩 lo ～ hi 帧的时候按后
+  const go = (lo, hi, opt) => {
+    opt = opt || {};
+    tArena(84, 'taiji', 'trad'); F2.noParry = true; tick(BLOCK, 0, 10);
+    let guardAt = -1, luAt = -1, tapped = 0;
+    for (let k = 0; k < 50; k++) {
+      const blocks = F1.stats.blocks;
+      const back = guardAt >= 0 && F1.state === 'blockstun' && F1.stunT > lo && F1.stunT <= hi;
+      if (back) tapped++;
+      tick(BLOCK | (back ? LEFT : 0) | (opt.pre && k < 3 ? LEFT : 0), TAP('jab'));
+      if (guardAt < 0 && F1.stats.blocks > blocks) guardAt = k;
+      if (F1.state === 'parry' && F1.parryKind === 'lu') { luAt = k; break; }
+    }
+    return { guardAt, luAt, tapped, lost: MAX_HP - F1.hp };
+  };
+  let r = go(0, 2.5);                                 // 硬直最后两帧里点后（点完还在硬直里）
+  ok(r.tapped >= 1 && r.tapped <= 3 && r.guardAt >= 0 && r.luAt > r.guardAt, `硬直里点后：第二拳捋住（挡住 ${r.guardAt}，点了 ${r.tapped} 帧，捋 ${r.luAt}）`);
+  eq(r.lost, 0, '一滴血不掉（轻拳挡住不掉血、捋住不掉血）');
+  r = go(6, 9);                                       // 硬直刚开始就点：点完过了 TJ_LU_WIN 帧第二拳才到，没有
+  ok(r.tapped >= 1 && r.luAt < 0, `硬直一开始点、点完 ${TJ_LU_WIN} 帧内没来拳：没有捋（点了 ${r.tapped} 帧）`);
+  r = go(0, 2.5, { pre: true });
+  ok(r.luAt < 0, '两次按后隔不够 ' + TJ_LU_LOCK + ' 帧：没有捋');
+  // 挨打的硬直里按住挡 + 后：硬直完那一步才记（按早了不白按）。咏春连环冲拳：第一拳打中、第二拳连上、第三拳前有两帧缝 —— 第三拳被捋住
+  tArena(78, 'taiji', 'wc'); F2.noParry = true; tick(0, 0, 3);
+  let hitAt = -1, lu2 = -1, hits = 0;
+  for (let k = 0; k < 80 && lu2 < 0; k++) {
+    const v2 = k % 8 === 0 ? TAP('jab') : 0, h = F1.hp;
+    tick(hitAt >= 0 && k - hitAt >= 2 ? BLOCK | LEFT : 0, v2);
+    if (F1.hp < h) { hits++; if (hitAt < 0) hitAt = k; }
+    if (F1.state === 'parry' && F1.parryKind === 'lu') lu2 = k;
+  }
+  ok(hitAt >= 0 && lu2 > hitAt && hits <= 3, `挨了第一拳、硬直里按住挡 + 后：后面的拳捋住（挨 ${hitAt}，挨了 ${hits} 下，捋 ${lu2}）`);
+});
 T('3.0 采：抓住以后 拳 挒（两下、你先动）/ 重 野马分鬃（掀出去，不换边）/ 踢 采住蹬脚（打倒）/ 不按 按；他出腿的时候采 = 接住腿，搂膝拗步', () => {
   const seq = f => {
     tArena(70); F2.noParry = true; tick(TAP('grab'));
@@ -4200,6 +4248,55 @@ T('3.0 太极拳的电脑也一档比一档难：乱换招的木头玩家（格�
   for (let i = 1; i < LEVEL_IDS.length; i++) ok(sh[LEVEL_IDS[i - 1]] > sh[LEVEL_IDS[i]], '有两档反过来了：' + txt);
   ok(sh.novice >= 0.75 && sh.easy >= 0.6 && sh.normal >= 0.36 && sh.hell >= 0.18, txt);
   console.log('太极拳五档：' + txt);
+});
+
+/* ---------- 3.2：一直按拳的木头玩家（Jack：一直按轻拳就能赢所有难度的太极；量出来格斗术的电脑连终极都被格斗术一直按拳打成 12:0）---------- */
+// 最笨的打法：走到拳够得着就按拳（every 帧一下），不挡；对面倒地走到跟前压起身。fwd：按着朝他的方向一直按（咏春 = 标指起手接冲拳）
+function mashBotT(side, o) {
+  o = Object.assign({ every: 1, fwd: false, near: 6 }, o);
+  let n = 0;
+  return () => {
+    const me = side ? F2 : F1, op = me.opp, d = Math.abs(op.x - me.x), fwd = HOLD(op.x >= me.x ? 'right' : 'left');
+    n++;
+    if (o.fwd) { if (op.state === 'down' || op.state === 'ko') return d > 76 ? fwd : 0; return fwd | ((n % o.every === 0 && d <= 110) ? TAP('jab') : 0); }
+    const reach = me.moves[me.style === 'wc' ? 'wJab' : me.style === 'taiji' ? 'tjLan' : 'jab'].reach - o.near;
+    if (op.state === 'down' || op.state === 'ko') { if (d > 76) return fwd; if (d < 60 && me.actionable()) return HOLD(op.x >= me.x ? 'left' : 'right'); return 0; }
+    if (d > reach) return (me.actionable() || me.state === 'run') ? fwd : 0;
+    return n % o.every === 0 ? TAP('jab') : 0;
+  };
+}
+// 木头（P1，mStyle）打电脑（P2，cpuStyle，level）rounds 回合（有时限、五局三胜照人机的流程）：木头打掉的血占几成
+function mashShareT(mStyle, cpuStyle, level, bot, rounds, seed) {
+  return seededRandom(seed, () => quietly(() => {
+    const keep = Styles.pvp; Styles.pvp = [mStyle, cpuStyle];
+    try { startMatch('pvp'); } finally { Styles.pvp = keep; }
+    game.endless = false; game.brains = [null, makeBrain(F2, level)];
+    const b = bot(0);
+    let r = 0, frames = 0, prev = game.phase, dealt = 0, taken = 0, hp = [F1.hp, F2.hp];
+    while (r < rounds && frames < 400000) {
+      step([b(), 0]); frames++;
+      dealt += Math.max(0, hp[1] - F2.hp); taken += Math.max(0, hp[0] - F1.hp); hp = [F1.hp, F2.hp];
+      if (game.phase === 'roundEnd' && prev !== 'roundEnd') r++;
+      prev = game.phase;
+      if (game.phase === 'over') { game.wins = [0, 0]; startRound(); hp = [F1.hp, F2.hp]; }
+    }
+    game.brains = [null, null];
+    return dealt / Math.max(1, dealt + taken);
+  }));
+}
+T('3.2 一直按拳的木头玩家（格斗术每帧按拳；咏春按着前每 8 帧一拳）打三派的六档：入门 ≥ 75%、简单 ≥ 55%、中等 30 ～ 65%、困难 15 ～ 50%、终极 8 ～ 35%、满级 ≤ 25%，入门 > 简单 > 中等 > 困难（两种木头的平均；每格 2 个种子 × 4 回合，细的看 NOTES「3.2」）', () => {
+  const seeds = [11, 12], lvs = [...LEVEL_IDS, 'max'], bad = [], txt = [];
+  const bots = [['trad', s => mashBotT(s, { every: 1 })], ['wc', s => mashBotT(s, { every: 8, fwd: true })]];
+  for (const cpu of STYLE_IDS) {
+    const sh = {};
+    for (const lv of lvs) { let t = 0; for (const [ms, mk] of bots) for (const sd of seeds) t += mashShareT(ms, cpu, lv, mk, 4, sd) / (bots.length * seeds.length); sh[lv] = t; }
+    txt.push(`${STYLES[cpu].name} ` + lvs.map(l => `${LEVEL_NAME[l]} ${(sh[l] * 100).toFixed(0)}%`).join(' · '));
+    const lim = { novice: [0.75, 1], easy: [0.55, 1], normal: [0.3, 0.65], hard: [0.15, 0.5], hell: [0.08, 0.35], max: [0, 0.25] };
+    for (const lv of lvs) if (sh[lv] < lim[lv][0] || sh[lv] > lim[lv][1]) bad.push(`${STYLES[cpu].name}${LEVEL_NAME[lv]} ${(sh[lv] * 100).toFixed(0)}%（要 ${lim[lv][0] * 100} ～ ${lim[lv][1] * 100}）`);
+    for (const [a, b] of [['novice', 'easy'], ['easy', 'normal'], ['normal', 'hard']]) if (sh[a] <= sh[b]) bad.push(`${STYLES[cpu].name}：${LEVEL_NAME[a]} ${(sh[a] * 100).toFixed(0)} 没比 ${LEVEL_NAME[b]} ${(sh[b] * 100).toFixed(0)} 高`);
+  }
+  console.log('一直按拳：' + txt.join('；'));
+  ok(!bad.length, bad.join('；'));
 });
 
 /* ---------- 3.1：连招越连越疼、长连招、三派跳起来按重分开、别手、拳头用手指握、六边形、三派强度 ---------- */

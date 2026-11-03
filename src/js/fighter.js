@@ -593,6 +593,7 @@ class Fighter {
       case 'blockstun':
         this.lowBlock = !!h.down;
         this.autoFace();                 // 挡住的硬直里对手绕到身后：跟着转过去接着挡（1.9.0）
+        { const bst0 = styleOf(this); if (bst0.input) bst0.input(this, 'blockstun', locked); }   // 3.2 太极拳：挡住的硬直里按后也记（捋）
         // 2.0 闪身：挡住的硬直里按着挡、朝对手双击 → 不等硬直完，直接从他身边钻过去
         if (!locked && h.block && !h.down && this.clock - this.dashT < 4 && this.dashDir === this.oppSide()) { this.dashT = -999; this.beginSlip(); break; }
         if (!locked && this.stompReady() && this.takePress(['kick'])) { this.beginMove('stomp', 'kick'); break; }        // 蹲挡住扫堂腿 → 踩腿

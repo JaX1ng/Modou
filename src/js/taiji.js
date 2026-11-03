@@ -451,16 +451,23 @@ function tjGrabFx(F, o, big) {
 /* ============================================================
    按键语法（引擎先问这里）
    ============================================================ */
+// 捋的按后：按着挡的时候刚按下「后」（离开对手的方向）记下来（两次按隔得太近没有捋，防乱按）。
+// 3.2 挡住的硬直（blockstun）里按也记（fighter.js 的 blockstun 每一步问 'blockstun'）：以前只在「挡着」里记，连环冲拳一拍 8 帧、挡住硬直 7.5 帧，
+//   两拳之间「挡着」只剩半帧，按早了、按短了都白按；现在挡住的硬直里点一下后，TJ_LU_WIN 帧内打过来的下一下就捋住（还在硬直里也捋得住，见 tjDefend）。
+//   挨打的硬直里不记（硬直完了那一步才记：按早了也不白按，当缓冲）
+function tjLuEdge(F) {
+  const h = F.inp.held, back = !!(h.block && !h.down && h[F.opp.x >= F.x ? 'left' : 'right']);
+  if (back && !F.luPrev) { F.luOK = F.clock - F.luPress >= TJ_LU_LOCK; F.luPress = F.clock; }
+  F.luPrev = back;
+}
 function tjInput(F, where, locked) {
   if (where === 'neutral') {
     // 劲放久了掉一级（不让一直攒着）
     if (F.jin > 0 && F.clock - F.jinAt >= TJ_JIN_KEEP) { F.jin--; F.jinAt = F.clock; }
-    // 捋：按着挡的时候刚按下「后」（离开对手的方向）记下来（两次按隔得太近没有捋，防乱按）
-    const h = F.inp.held, back = !!(h.block && !h.down && h[F.opp.x >= F.x ? 'left' : 'right']);
-    if (back && !F.luPrev) { F.luOK = F.clock - F.luPress >= TJ_LU_LOCK; F.luPress = F.clock; }
-    F.luPrev = back;
+    tjLuEdge(F);
     return false;
   }
+  if (where === 'blockstun') { if (!locked) tjLuEdge(F); return false; }
   if (where === 'parry') return tjAfterLu(F, locked);
   if (where !== 'attack') return false;
   const m = F.move, d = m.def, k = m.t + DT - 1;
@@ -513,8 +520,8 @@ function tjAfterLu(F, locked) {
 function tjDefend(A, B, c, I) {
   const m = I.m, d = I.d;
   if (!I.front || !tjSoft(A, m, d)) return false;
-  // 捋：按住挡、刚按下后（TJ_LU_WIN 帧以内）
-  if (B.state === 'block' && !B.noParry && B.luOK && B.clock - B.luPress < TJ_LU_WIN + 1) { tjLu(A, B, c); return true; }   // noParry：电脑没想捋（和卸力一样，见 fighter.js parryReady）
+  // 捋：按住挡、刚按下后（TJ_LU_WIN 帧以内）。3.2 挡住的硬直里也捋得住（和格斗术在挡住硬直里松开再按挡能卸力一样）
+  if ((B.state === 'block' || B.state === 'blockstun') && !B.noParry && B.luOK && B.clock - B.luPress < TJ_LU_WIN + 1) { tjLu(A, B, c); return true; }   // noParry：电脑没想捋（和卸力一样，见 fighter.js parryReady）
   // 化：出招的前摇里（蓄着的时候也是）身上有掤
   const bm = B.state === 'attack' ? B.move : null;
   if (bm && tjPeng(bm)) { tjHua(A, B, c, bm); return true; }
