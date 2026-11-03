@@ -218,7 +218,7 @@ function applyHit(A, B, how) {
   let punish = null;
   if (inRecovery && A.guardOn === bm.serial) punish = ['挡后反击', bm.def.launch ? PUNISH_KD_MUL : PUNISH_MUL];
   else if (inRecovery && bm.def.launch && !bm.hit) punish = ['破绽', WHIFF_KD_MUL];
-  else if (B.state === 'hit' && B.reel && B.reelBy === A.idx && B.reelKind !== 'knee') punish = [REEL_LABEL[B.reelKind] || '卸力反击', B.reelKind === 'lu' ? TJ_LU_MUL : B.reelKind === 'hook' ? MT_HOOK_MUL : B.reelKD ? PUNISH_KD_MUL : PARRY_MUL];   // 3.0 捋（引进落空）另算；3.3 螳螂拳勾住以后的勾打
+  else if (B.state === 'hit' && B.reel && B.reelBy === A.idx && B.reelKind !== 'knee') punish = [REEL_LABEL[B.reelKind] || '卸力反击', B.reelKind === 'lu' ? TJ_LU_MUL : B.reelKind === 'hook' ? MT_HOOK_MUL : B.reelKind === 'diao' ? MT_DIAO_MUL : B.reelKD ? PUNISH_KD_MUL : PARRY_MUL];   // 3.0 捋（引进落空）另算；3.3 螳螂拳勾住以后的勾打
   // 「顺」（咏春拳）：这一招是连得上的招（flow）—— 接着连就接着顺；反打（拍开、耕开、卸开、踉跄、起身硬直里的人）第一下就顺 FLOW_COUNTER 级。
   // 连断了（打空、被挡、过拍、挨打、停手 FLOW_IDLE 帧）顺就清零（fighter.js / wingchun.js）
   const flowMove = !!d.flow;
@@ -392,7 +392,7 @@ function parry(A, B, c) {
    拍手（站着、手往前拍）：拍得开手上的招（拳、掌、肘、肩，地上的、跳起来的都行）和跳起来的腿（不算落膝、坠山这种往下砸的）；拍不开地上的腿、下段。
    耕手（蹲着、手往下耕）：耕得开地上的腿（扫堂腿这种下段的也行）、下段的拳；耕不开中段、上段的拳掌（站着打过来的拳照样打中）。
    都防不了擒拿、推挡 */
-const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击', lu: '引进落空', hook: '勾打' };   // 2.11 接招的五个桩法；3.3 螳螂拳勾住以后
+const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击', lu: '引进落空', hook: '勾打', diao: '刁打' };   // 2.11 接招的五个桩法；3.3 螳螂拳勾住以后
 function handCovers(g, d, m) {
   const hand = /^(fh|bh|fe|be|sh)$/.test(d.limb), leg = d.limb === 'ff' || d.limb === 'bf';
   if (g === 'pat') return d.height !== 'low' && (hand || (m.air && leg && !d.dive));

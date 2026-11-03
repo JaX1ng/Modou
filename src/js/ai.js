@@ -38,10 +38,11 @@
 const R6 = ['jab', 'kick', 'jab', 'jab', 'jab', 'kick'], R7 = ['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'], R7b = ['jab', 'heavy', 'jab', 'kick', 'jab', 'kick', 'heavy'];
 const R8 = ['kick', 'jab', 'heavy', 'jab', 'kick', 'jab', 'jab', 'heavy'], R6h = ['heavy', 'jab', 'kick', 'jab', 'heavy', 'kick'];
 const R5a = ['jab', 'heavy', 'jab', 'kick', 'heavy'], R5b = ['jab', 'kick', 'jab', 'heavy', 'kick'], R4u = ['jab', 'jab', 'jab', 'heavy'], RJ6 = ['jab', 'jab', 'jab', 'jab', 'jab', 'jab'];
-// 3.1 太极拳的长连招（combo_enum 量的，离得近 ≤ 82 才接得满）：搬拦捶 → 顺拦肘 → 高探马 → 白鹤亮翅 → 蹬脚 87、搬拦捶 → 转身摆莲 → 蹬脚 → 转身蹬脚 80、
-//     揽雀尾 → 分脚 → 上步七星 → 高探马 → 白鹤亮翅 78、揽雀尾 → 高探马 → 白鹤亮翅 → 蹬脚 67、搬拦捶 → 顺拦肘 → 高探马 → 白鹤亮翅 66、搬拦捶 → 转身摆莲 → 蹬脚 57（≤ 95 都接得上）
-const T5a = ['heavy', 'jab', 'jab', 'heavy', 'kick'], T5b = ['jab', 'kick', 'jab', 'jab', 'heavy'], T4a = ['heavy', 'kick', 'kick', 'kick'], T4b = ['jab', 'jab', 'heavy', 'kick'];
-const T4c = ['heavy', 'jab', 'jab', 'heavy'], T3a = ['heavy', 'kick', 'kick'], T3b = ['jab', 'kick', 'heavy'];
+// 3.1 太极拳的长连招（离得近 ≤ 82 才接得满）。3.4 改过（Jack：有的连招打一半人就倒了，后面那几下打不出来）：打倒的势（白鹤亮翅、转身摆莲、弯弓射虎……）只放在最后一下 ——
+//     搬拦捶 → 顺拦肘 → 高探马 → 分脚 → 弯弓射虎、揽雀尾 → 分脚 → 上步七星 → 高探马 → 白鹤亮翅、搬拦捶 → 顺拦肘 → 分脚 → 弯弓射虎、揽雀尾 → 高探马 → 分脚 → 弯弓射虎、
+//     搬拦捶 → 顺拦肘 → 高探马 → 白鹤亮翅、搬拦捶 → 顺拦肘 → 指裆捶、揽雀尾 → 分脚 → 弯弓射虎（tests.js「连招中途不倒」一条一条打木桩查）
+const T5a = ['heavy', 'jab', 'jab', 'kick', 'heavy'], T5b = ['jab', 'kick', 'jab', 'jab', 'heavy'], T4a = ['heavy', 'jab', 'kick', 'heavy'], T4b = ['jab', 'jab', 'kick', 'heavy'];
+const T4c = ['heavy', 'jab', 'jab', 'heavy'], T3a = ['heavy', 'jab', 'heavy'], T3b = ['jab', 'kick', 'heavy'];
 const PLANS = {
   // 2.2 入门：多是一两下（单拳、两拳、拳重、单出重拳 / 腿），很少三下以上
   novice: [[['jab'], 3], [['jab', 'jab'], 3], [['jab', 'heavy'], 2], [['heavy'], 2], [['kick'], 2], [['jab', 'kick'], 1.5], [['heavy', 'kick'], 1],
@@ -199,8 +200,8 @@ const VS = {
   'w:heavy': { jab: 1, lowJab: 1, heavy: 0, kick: -1, sweep: -1, grab: -1, lowGrab: -1, palm: 0, trap: -1, tpeng: 1, tkick: -1, tlow: 0, mfast: 0, mkick: -1, mhook: -1 },
   'w:trap': { jab: 1, lowJab: -1, heavy: 1, kick: -1, sweep: -1, grab: 0, lowGrab: 0, palm: 1, trap: 0, tpeng: 1, tkick: -1, tlow: -1, mfast: 1, mkick: -1, mhook: 0 },
   'w:lowGrab': { jab: -1, lowJab: -1, heavy: 0, kick: 1, sweep: 1, grab: 0, lowGrab: 0, palm: 0, trap: -1, tpeng: -1, tkick: -1, tlow: 1, mfast: -1, mkick: 1, mhook: 0 },
-  // 3.3 螳螂拳起手：快手（崩捶、劈掌、圈捶、砸捶：前摇 4 ～ 9，没有霸体、没有掤 —— 快招抢先手，怕更快的拳、怕勾 / 拉手，打进掤里被化）；
-  //   腿（勾踢、蹬扑：前摇 8，比别派的腿快一倍）；勾（勾搂：勾得住手上的招的前摇，抓得住挡着的 —— 怕更快的拳、怕蹲着的、怕腿先到）
+  // 3.3 螳螂拳起手：快手（崩捶、探手、劈掌、挂打：前摇 4 ～ 9，没有霸体、没有掤 —— 快招抢先手，怕更快的拳、怕勾 / 拉手，打进掤里被化）；
+  //   腿（提膝：前摇 7，比别派的腿快一倍；3.4 勾踢是下段，归扫堂腿那一行）；勾（勾搂：勾得住手上的招的前摇，抓得住挡着的 —— 怕更快的拳、怕蹲着的、怕腿先到）
   'm:jab':   { jab: 0, lowJab: 0, heavy: 1, kick: 1, sweep: 1, grab: 1, lowGrab: 1, palm: 1, trap: -1, tpeng: -1, tkick: 1, tlow: -1, mfast: 0, mkick: 1, mhook: 1 },
   'm:heavy': { jab: -1, lowJab: -1, heavy: 1, kick: 1, sweep: 0, grab: -1, lowGrab: -1, palm: 0, trap: -1, tpeng: -1, tkick: 1, tlow: -1, mfast: -1, mkick: 0, mhook: -1 },
   'm:kick':  { jab: -1, lowJab: -1, heavy: 1, kick: 1, sweep: 0, grab: -1, lowGrab: -1, palm: 1, trap: 1, tpeng: -1, tkick: 1, tlow: -1, mfast: -1, mkick: 0, mhook: -1 },
@@ -211,10 +212,10 @@ const TJ_OPEN = { jab: 't:peng', 'H:jab': 't:peng', heavy: 't:peng', 'H:heavy': 
   kick: 't:kick', 'H:kick': 't:kick', 'f:kick': 't:kick', 'd:jab': 't:low', 'd:kick': 't:sweep', 'd:heavy': 'palm', grab: 'grab', 'd:grab': 'lowGrab' };
 const W_OPEN = { jab: 'w:jab', 'f:jab': 'w:biu', 'd:jab': 'w:lowJab', kick: 'w:kick', 'd:kick': 'w:lowKick', heavy: 'w:heavy', 'H:heavy': 'w:heavy',
   'f:heavy': 'w:heavy', 'b:heavy': 'w:heavy', 'd:heavy': 'w:heavy', grab: 'w:trap', 'd:grab': 'w:lowGrab' };
-// 3.3 螳螂拳：带方向的起手（前 + 拳 圈捶、后 + 拳 撤步崩、前 + 重 砸捶、前 + 踢 蹬扑）；起手在 VS 表里归哪一行
-const M_KEY = { 'f:jab': 'mtQuan', 'b:jab': 'mtChe', 'f:heavy': 'mtZa', 'f:kick': 'mtDengPu' };
+// 3.3 螳螂拳：带方向的起手（3.4：前 + 拳 探手、后 + 拳 撤步崩、前 + 重 挂打、前 + 踢 提膝）；起手在 VS 表里归哪一行（勾踢是下段的腿：算扫堂腿那一行）
+const M_KEY = { 'f:jab': 'mtTan', 'b:jab': 'mtChe', 'f:heavy': 'mtGuaDa', 'f:kick': 'mtXi' };
 const M_OPEN = { jab: 'm:jab', 'f:jab': 'm:jab', 'b:jab': 'm:jab', 'd:jab': 'lowJab', heavy: 'm:heavy', 'f:heavy': 'm:heavy', 'd:heavy': 'palm',
-  kick: 'm:kick', 'f:kick': 'm:kick', 'd:kick': 'sweep', grab: 'm:hook', 'd:grab': 'lowGrab' };
+  kick: 'sweep', 'f:kick': 'm:kick', 'd:kick': 'sweep', grab: 'm:hook', 'd:grab': 'lowGrab' };
 const HAND_LIMB = /^(fh|bh|fe|be|sh)$/;
 const OPEN_OF = a => a.startsWith('d:') ? DOWN_OF[a.slice(2)] : a;      // 计划里的第一下是哪一招
 
@@ -308,19 +309,23 @@ const TJ_AI = {
    3.3 螳螂拳的电脑（MANTIS.md）：快打快走 —— 起手快（崩捶 4、劈掌 8），一串随便接、越连越快；看见他出手上的招、来得及就伸手去勾（勾住他失衡、勾打）；
    他站着挡就采手开路；一串被挡住、连到后半段被挡住就蹦出去（气短：停手就喘）；薄挡 —— 重拳、腿来了不硬挡，能勾就勾、不能勾就退
    ============================================================ */
-const MC5 = ['jab', 'heavy', 'jab', 'heavy', 'kick'], MC6 = ['jab', 'jab', 'jab', 'heavy', 'jab', 'heavy'], MC6b = ['kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'];
-const MC7 = ['jab', 'heavy', 'jab', 'jab', 'jab', 'heavy', 'kick'], MC4 = ['jab', 'jab', 'jab', 'heavy'], MC4b = ['jab', 'heavy', 'jab', 'heavy'], MC3 = ['heavy', 'jab', 'heavy'];
+// 3.4 勾打连环（MANTIS.md 〇节）：一串里连着打不过两下 —— 两下以后按拿（刁手）续上、或者收势（前 + 重 双封手、蹲 + 踢 勾挂腿），打倒的只在最后一下。
+//   MC*：从站着起手；MH*：勾住 / 采住以后（一串从「拿」开始：拳 寸打、重 穿心掌、踢 提膝）。伤害是打木桩量的（tests.js「连招中途不倒」查每一下都打中）
+const MC3 = ['jab', 'jab', 'f:heavy'], MC3b = ['jab', 'heavy', 'f:heavy'], MC3c = ['jab', 'jab', 'd:kick'], MC4 = ['jab', 'jab', 'grab', 'heavy'];
+const MC5 = ['jab', 'heavy', 'grab', 'jab', 'f:heavy'], MC5b = ['kick', 'jab', 'grab', 'heavy', 'd:kick'], MC6 = ['jab', 'jab', 'grab', 'jab', 'heavy', 'f:heavy'];
+const MC6b = ['heavy', 'jab', 'grab', 'jab', 'heavy', 'f:heavy'], MC8 = ['jab', 'jab', 'grab', 'jab', 'heavy', 'grab', 'heavy', 'f:heavy'], MC8b = ['jab', 'kick', 'grab', 'kick', 'jab', 'grab', 'heavy', 'f:heavy'];
+const MH3 = ['heavy', 'jab', 'f:heavy'], MH4 = ['jab', 'heavy', 'grab', 'f:heavy'], MH6 = ['heavy', 'jab', 'grab', 'jab', 'heavy', 'f:heavy'], MH7 = ['jab', 'heavy', 'grab', 'heavy', 'jab', 'grab', 'f:heavy'];
 const MPLANS = {
-  novice: [[['jab'], 3], [['jab', 'jab'], 3], [['heavy'], 2], [['kick'], 2], [['jab', 'heavy'], 2], [['jab', 'kick'], 1.5], [['grab'], 1], [['d:jab'], 1], [['f:jab'], 0.8], [['jab', 'jab', 'heavy'], 1], [['d:kick'], 0.4]],
-  easy: [[['jab', 'jab'], 2], [['jab', 'heavy'], 3], [['jab', 'jab', 'heavy'], 3], [['heavy', 'jab'], 2], [['jab', 'kick'], 2], [['kick', 'kick'], 1.5], [MC4, 1], [MC3, 1],
-    [['grab'], 1.2], [['d:jab', 'jab', 'heavy'], 1], [['f:jab', 'jab'], 1], [['f:heavy'], 0.6], [['d:kick'], 0.5], [['heavy', 'heavy'], 1]],
-  normal: [[['jab', 'jab', 'heavy'], 3], [['jab', 'heavy'], 2], [MC4, 2.5], [MC4b, 2], [MC3, 2], [['heavy', 'heavy'], 1.5], [['kick', 'kick'], 1.5], [['jab', 'kick', 'kick'], 1.5],
-    [['grab'], 1.5], [['d:jab', 'jab', 'heavy'], 1.2], [['f:jab', 'jab', 'heavy'], 1.2], [['f:heavy', 'jab', 'heavy'], 0.8], [['d:kick'], 0.5], [['b:jab'], 0.4], [MC5, 0.6], [MC6, 0.4]],
-  // 困难、终极、满级：起手多是崩捶（最快、被挡也不亏），重放在连招里（满级对满级量过：劈掌起手 15 次挨了 800 血 —— 被闪身、卸力、腿克；低勾踢被踩腿）
-  hard: [[MC4, 3], [MC4b, 3], [MC3, 0.6], [['jab', 'jab', 'heavy'], 2], [['jab', 'kick', 'kick'], 1.2], [['heavy', 'heavy'], 0.3], [['kick', 'kick'], 0.5],
-    [['grab'], 1.2], [['d:jab', 'jab', 'heavy'], 1.5], [['f:jab', 'jab', 'jab', 'heavy'], 1.5], [['f:heavy', 'jab', 'heavy'], 0.4], [['d:kick'], 0.2], [['b:jab'], 0.4], [MC5, 1.5], [MC6, 1.2], [MC6b, 0.3], [MC7, 0.8]],
-  hell: [[MC4, 3], [MC4b, 3], [MC3, 0.5], [['jab', 'jab', 'heavy'], 1.5], [['jab', 'kick', 'kick'], 1], [['heavy', 'heavy'], 0.25], [['kick', 'kick'], 0.4],
-    [['grab'], 1.2], [['d:jab', 'jab', 'heavy'], 1.5], [['f:jab', 'jab', 'jab', 'heavy'], 1.5], [['f:heavy', 'jab', 'heavy'], 0.4], [['d:kick'], 0.15], [['b:jab'], 0.4], [MC5, 2], [MC6, 1.5], [MC6b, 0.3], [MC7, 1]],
+  novice: [[['jab'], 3], [['jab', 'jab'], 3], [['heavy'], 2], [['kick'], 2], [['jab', 'heavy'], 2], [['f:kick'], 1.5], [['grab'], 1], [['d:jab'], 1], [['f:jab'], 0.8], [MC3, 1], [['d:kick'], 0.4]],
+  easy: [[['jab', 'jab'], 2], [['jab', 'heavy'], 3], [MC3, 3], [['heavy', 'jab'], 2], [['kick', 'jab'], 2], [['f:kick', 'jab'], 1.5], [MC4, 1], [MC3b, 1],
+    [['grab'], 1.2], [['d:jab', 'jab', 'f:heavy'], 1], [['f:jab', 'jab'], 1], [['f:heavy'], 0.6], [['d:kick'], 0.5], [['heavy', 'f:heavy'], 1]],
+  normal: [[MC3, 3], [['jab', 'heavy'], 2], [MC4, 2.5], [MC3b, 2], [MC5, 1.5], [['heavy', 'jab', 'f:heavy'], 1.5], [['kick', 'jab'], 1.5], [MC3c, 1],
+    [['grab'], 1.5], [['d:jab', 'jab', 'f:heavy'], 1.2], [['f:jab', 'jab', 'f:heavy'], 1.2], [['f:heavy', 'jab', 'f:heavy'], 0.8], [['d:kick'], 0.5], [['b:jab'], 0.4], [MC6, 0.6], [MC8, 0.3]],
+  // 困难、终极、满级：起手多是崩捶（最快、被挡也不亏），重放在连招里（3.3 满级对满级量过：劈掌起手常被闪身、卸力、腿克）
+  hard: [[MC3, 2], [MC3b, 2], [MC4, 1.5], [MC5, 3], [MC5b, 0.8], [MC6, 2], [MC6b, 0.3], [MC8, 1], [MC8b, 0.5], [['heavy', 'jab', 'f:heavy'], 0.3],
+    [['grab'], 1.2], [['d:jab', 'jab', 'grab', 'heavy', 'f:heavy'], 1.2], [['f:jab', 'jab', 'grab', 'jab', 'f:heavy'], 1.5], [['f:heavy', 'jab', 'f:heavy'], 0.4], [['d:kick'], 0.2], [['b:jab'], 0.4]],
+  hell: [[MC3, 1.5], [MC3b, 1.5], [MC4, 1], [MC5, 3], [MC5b, 0.6], [MC6, 2.5], [MC6b, 0.3], [MC8, 1.5], [MC8b, 0.8], [['heavy', 'jab', 'f:heavy'], 0.25],
+    [['grab'], 1.2], [['d:jab', 'jab', 'grab', 'heavy', 'f:heavy'], 1.2], [['f:jab', 'jab', 'grab', 'jab', 'f:heavy'], 1.5], [['f:heavy', 'jab', 'f:heavy'], 0.4], [['d:kick'], 0.15], [['b:jab'], 0.4]],
 };
 MPLANS.max = MPLANS.hell;
 // 螳螂拳的电脑调平用的几个数（电脑对电脑量出来的；改了重新量，见 NOTES「查平衡」3.3）
@@ -361,22 +366,24 @@ const KITS = {
     oki: smart => (smart ? pick([T4b, T5b, T3b, ['jab', 'jab', 'heavy'], ['grab']]) : pick([['jab', 'jab'], ['heavy'], ['jab', 'heavy']])).slice(),
     stagger: dist => (dist <= 82 ? pick([T5a, T4a, T4c, ['jab', 'jab', 'heavy']]) : dist <= 100 ? pick([T3a, ['heavy', 'heavy'], ['jab', 'jab', 'jab']]) : pick([['f:jab', 'jab'], ['kick', 'kick']])).slice(),
     // 挡住以后罚：太极拳的招慢，多半只来得及采（擒拿 6 帧）；他收招长才打得到搬拦捶那一套
-    routes: [['heavy', T5a, 87], ['heavy', T4a, 80], ['jab', T5b, 78], ['jab', T4b, 67], ['heavy', T3a, 57], ['jab', T3b, 51],
-      ['heavy', ['heavy', 'heavy'], 38], ['jab', ['jab', 'jab', 'jab'], 32], ['kick', ['kick', 'kick'], 30], ['jab', ['jab', 'heavy'], 28], ['grab', ['grab'], 12]] },
-  // 3.3 螳螂拳：勾住了（他失衡在面前）、压起身、他踉跄 —— 快的一串接到底；罚收招也是一串（崩捶最快、四下接双封手打倒）
+    routes: [['heavy', T5a, 84], ['jab', T5b, 83], ['heavy', T4a, 71], ['jab', T4b, 64], ['heavy', T3a, 56], ['jab', T3b, 55],
+      ['heavy', ['heavy', 'heavy'], 44], ['jab', ['jab', 'jab', 'jab'], 44], ['kick', ['kick', 'kick'], 39], ['jab', ['jab', 'heavy'], 36], ['grab', ['grab'], 12]] },
+  // 3.3 螳螂拳：缝里一拳打中（poke 从这里挑，第一下是崩捶）、压起身、他踉跄 —— 打打 · 刁 · 打打 · 收；勾住 / 采住以后另挑（hooked：一串从「拿」开始）
   mantis: { id: 'mantis', mt: true, plans: MPLANS, catchKey: 'grab', runHeavy: false, dashIn: ['jab', 'jab', 'heavy', 'grab'],
-    parry: dist => (dist <= 82 ? pick([MC6, MC4b, MC4, MC5, ['jab', 'jab', 'heavy']]) : dist <= 95 ? pick([MC3, ['jab', 'kick', 'kick'], MC4]) : pick([['kick', 'kick'], ['f:heavy', 'jab', 'heavy']])).slice(),
-    oki: smart => (smart ? pick([MC4, MC4b, MC6, ['d:jab', 'jab', 'heavy'], ['grab']]) : pick([['jab', 'jab'], ['jab', 'heavy'], ['kick', 'kick']])).slice(),
-    stagger: dist => (dist <= 82 ? pick([MC6, MC4b, MC4, ['jab', 'jab', 'heavy']]) : dist <= 100 ? pick([MC3, ['jab', 'kick', 'kick']]) : pick([['kick', 'kick'], ['f:jab', 'jab', 'heavy']])).slice(),
-    routes: [['jab', MC7, 72], ['jab', MC6, 64], ['kick', MC6b, 62], ['jab', MC5, 56], ['jab', MC4b, 46], ['jab', MC4, 44], ['heavy', MC3, 34], ['jab', ['jab', 'jab', 'heavy'], 30],
-      ['kick', ['kick', 'kick'], 22], ['jab', ['jab', 'heavy'], 20], ['grab', ['grab'], 6], ['d:kick', ['d:kick'], 8]] },
+    parry: dist => (dist <= 82 ? pick([MC6, MC5, MC8, MC3b, MC3]) : dist <= 95 ? pick([MC3, MC3b, MC4]) : pick([['jab', 'jab'], MC3c])).slice(),
+    hooked: (dist, cai) => (cai ? pick([['jab', 'jab', 'f:heavy'], ['jab', 'heavy', 'grab', 'heavy', 'f:heavy'], ['jab', 'jab', 'grab', 'jab', 'heavy', 'f:heavy']])
+      : dist <= 90 ? pick([MH6, MH7, MH4, MH3]) : pick([MH3, MH4])).slice(),
+    oki: smart => (smart ? pick([MC5, MC6, MC3b, ['d:jab', 'jab', 'f:heavy'], ['grab']]) : pick([['jab', 'jab'], ['jab', 'heavy'], ['kick', 'jab']])).slice(),
+    stagger: dist => (dist <= 82 ? pick([MC6, MC5, MC8, MC3]) : dist <= 100 ? pick([MC3b, ['f:kick', 'jab', 'f:heavy']]) : pick([['f:jab', 'jab', 'f:heavy'], ['kick', 'jab']])).slice(),
+    routes: [['jab', MC8, 75], ['jab', MC6, 52], ['heavy', MC6b, 57], ['jab', MC5, 44], ['kick', MC5b, 41], ['jab', MC3b, 31], ['jab', MC4, 29], ['jab', MC3, 26],
+      ['jab', MC3c, 20], ['jab', ['jab', 'jab'], 11], ['grab', ['grab'], 6], ['d:kick', ['d:kick'], 8]] },
 };
 // 咏春拳的招在「习惯」里归哪一类（拉手是新的一类：看见他老这么干，就知道该出腿、打下段）
 Object.assign(OPENER, { wJab: 'jab', wBiu: 'jab', wLowPalm: 'lowJab', wCun: 'heavy', wPai: 'heavy', wGwai: 'heavy', wJum: 'lowJab', wKick: 'kick', wLowKick: 'lowKick' });
 // 3.0 太极拳的招：有掤的慢招（tpeng）、腿（tkick，慢、没有掤）、下势（tlow，低、有掤）、跌岔算扫堂腿、金鸡独立算对空
 Object.assign(OPENER, { tjLan: 'tpeng', tjChuan: 'tpeng', tjDao: 'tpeng', tjBan: 'tpeng', tjXia: 'tlow', tjJinJi: 'palm', tjDeng: 'tkick', tjFen: 'tkick', tjDieCha: 'sweep' });
-// 3.3 螳螂拳的招：快手（mfast：崩捶、圈捶、撤步崩、劈掌、砸捶）、腿（mkick：勾踢、蹬扑）、撩掌算下盘拳、低勾踢算扫堂腿、挑掌算对空；「拿」是勾（mhook）
-Object.assign(OPENER, { mtBeng: 'mfast', mtQuan: 'mfast', mtChe: 'mfast', mtPi: 'mfast', mtZa: 'mfast', mtLiao: 'lowJab', mtTiao: 'palm', mtGou: 'mkick', mtDengPu: 'mkick', mtSao: 'sweep' });
+// 3.3 螳螂拳的招：快手（mfast：崩捶、探手、撤步崩、劈掌、挂打）、腿（mkick：提膝）、撩掌算下盘拳、勾踢（下段）和勾挂腿算扫堂腿、挑掌算对空；「拿」是勾（mhook）
+Object.assign(OPENER, { mtBeng: 'mfast', mtTan: 'mfast', mtChe: 'mfast', mtPi: 'mfast', mtGuaDa: 'mfast', mtLiao: 'lowJab', mtTiao: 'palm', mtGou: 'sweep', mtXi: 'mkick', mtSao: 'sweep' });
 const openerOf = (F, name) => F.style === 'wc' && name === 'grab' ? 'trap' : F.style === 'mantis' && name === 'grab' ? 'mhook' : OPENER[name];   // 咏春拳的「拿」是拉手；螳螂拳的是勾
 class Brain {
   constructor(f, level) {
@@ -985,7 +992,7 @@ class Brain {
         return;
       }
       // 3.3 螳螂拳：勾住了 / 采住了（他失衡在面前）—— 想好收手以后接哪一套（收完手马上出：他还在硬直里）
-      if (this.K.mt && (m.name === 'mtGouZhu' || m.name === 'mtCai') && this.hookFor !== m.serial) { this.hookFor = m.serial; this.plan = m.name === 'mtCai' ? pick([['jab', 'jab', 'heavy'], MC4, ['jab', 'heavy', 'jab', 'heavy']]).slice() : this.K.parry(dist); return; }
+      if (this.K.mt && (m.name === 'mtGouZhu' || m.name === 'mtCai') && this.hookFor !== m.serial) { this.hookFor = m.serial; this.plan = this.K.hooked(dist, m.name === 'mtCai'); return; }
       // 3.3 螳螂拳：这一下被挡住了 —— 不打算接了、或者一串已经连到后半段（停手就喘，被挡住的最后一下是大破绽）就蹦出去（按一下后 = 蹦步退）
       if (this.K.mt) {
         if (this.hopHold > 0) { this.hopHold--; go(-1); return; }
@@ -993,7 +1000,7 @@ class Brain {
           // 接得下去（计划里还有、这一招能取消、够得着）就接；接不下去就想要不要蹦：被挡住 / 一串打完了 / 收势（挂捶、双封手……）—— 站在他面前等他硬直完就是等着挨打
           const canGo = this.plan.length > 0 && !d.noCancel && !d.ender && f.canCancel(kindOf(this.plan[0])) && dist <= this.rk(this.plan[0]) + 10;
           const n = f.chain.length;
-          if (!canGo || n >= 4) {
+          if (!canGo || (m.blocked && n >= 2)) {
             this.hopFor = m.serial;
             if (d.noCancel || d.ender) this.plan = [];
             const p = (m.blocked ? (M_AI.hop[L.id] || 0) : (M_AI.hopHit[L.id] || 0)) * (d.ender || d.noCancel ? 1.4 : 1);
@@ -1018,7 +1025,11 @@ class Brain {
         if (!this.K.wc && f.chain.length >= 3 && f.chain.length + this.plan.length >= 5) {
           const key = f.serial - f.chain.length;                    // 这一串第一招的编号（一串里每接一招编号 +1）
           if (this.longFor !== key) { this.longFor = key; this.longGo = R() < L.long; this.longStop = 3 + (R() < 0.5 ? 1 : 0); }
-          if (!this.longGo && f.chain.length >= this.longStop) { this.plan = []; return; }
+          if (!this.longGo && f.chain.length >= this.longStop) {
+            const fin = this.plan[this.plan.length - 1];
+            if (this.K.mt && this.plan.length > 1 && (fin === 'f:heavy' || fin === 'd:kick')) this.plan = [fin];   // 3.4 螳螂拳不接满就直接收势（双封手、勾挂腿什么时候都接得上）
+            else { this.plan = []; return; }
+          }
         }
         // 咏春拳一串很长，每一下接下去的机会高一点
         if (R() < (this.K.wc ? 1 - (1 - L.combo) * (L.combo < 0.8 ? 0.15 : 0.3) : L.combo)) press(this.plan.shift()); else this.plan = [];
@@ -1074,7 +1085,7 @@ class Brain {
       // 3.3 螳螂拳抢先手：挡住了他一下、我能动了、他还有一两帧才收完（罚不到，但我先动）—— 崩捶马上出去：他接着出手就打在他前摇里（破招），他挡住也只是轻拳（不掉血、亏不了几帧）
       //   只在他接不了下一招的时候（收势、不能取消的招，或者已经过了能接的那几帧）：他还能接的话一拳打进他下一招的判定里
       else if (this.K.mt && left >= -1 && o.state === 'attack' && om && om.serial === ser && (om.def.ender || om.def.noCancel || om.t >= om.S + om.def.A + 13) && dist <= this.eR('jab') - 4 && R() < L.punishBlock) {
-        this.blockT = 0; this.aa = null; this.plan = pick([MC4, MC4b, ['jab', 'jab', 'heavy']]).slice(); press(this.plan.shift()); return;
+        this.blockT = 0; this.aa = null; this.plan = pick([MC5, MC3, MC3b]).slice(); press(this.plan.shift()); return;
       }
     }
     // 3.2 被压完了（他停手了）：看见他还在收招就罚 —— 挨了打以后他的收招也罚（以前只罚挡住的、打空的）

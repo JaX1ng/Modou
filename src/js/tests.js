@@ -4601,68 +4601,141 @@ T('3.3 螳螂拳挂上了：第四派、和另三派的跨派规矩都写了；�
   ok(F1.moves === MMOVES && F1.poses === MPOSE, '螳螂拳的人用螳螂拳的招和架势');
   ok(F1.runSpeed() > F2.runSpeed(), '跑得比格斗术快');
 });
-T('3.3 螳螂拳的招名（螳螂拳的叫法）：崩捶、圈捶、撤步崩、撩掌、劈掌、砸捶、挑掌、勾踢、蹬扑、低勾踢；连环里 翻车、补捶、双封手、偷手、劈砸、落步崩、落步劈、鸳鸯腿；拿 勾搂 → 勾住 / 采手 / 搂腿，挂手；蹦步进 / 蹦步退；大招 螳螂扑蝉', () => {
+// 3.4 按一串键打木桩（带方向的键：'f:heavy' 朝他按着前、'd:kick' 蹲着、'b:jab' 背着他）：每一下打出来是哪一招、打中没有、接上没有、他倒了没有。
+//   setup 'hook' = 先等他出重拳、按拿勾住；'cai' = 他挡着、按拿采手（这一下不算在 keys 里）
+const keyIn = (k, toward) => { const [p, a] = k.includes(':') ? k.split(':') : ['', k]; let v = TAP(a); if (p === 'd') v |= DOWN; if (p === 'f') v |= HOLD(toward); if (p === 'b') v |= HOLD(toward === 'right' ? 'left' : 'right'); return v; };
+function comboRun(style, keys, dist, setup, keep) {
+  wArena(dist || 70, style, 'trad'); F2.noParry = true; game.paused = false;
+  if (setup === 'hook') { let n = 0; tick(0, TAP('heavy')); while (n++ < 40 && !(F2.move && F2.move.name === 'heavy' && F2.move.t >= 4)) tick(0); tick(TAP('grab')); n = 0; while (n++ < 30 && !(F1.move && F1.move.name === 'mtGouZhu')) tick(0); if (!(F1.move && F1.move.name === 'mtGouZhu')) return { fail: '没勾住' }; }
+  if (setup === 'cai') { tick(0, BLOCK, 3); tick(TAP('grab'), BLOCK); let n = 0; while (n++ < 30 && !(F1.move && F1.move.name === 'mtCai')) tick(0, BLOCK); if (!(F1.move && F1.move.name === 'mtCai')) return { fail: '没采住' }; }
+  const steps = []; let downAt = -1; const hp00 = F2.hp;
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i], kind = k.includes(':') ? k.split(':')[1] : k;
+    let n = 0;
+    while (n++ < 140 && !(F1.actionable() || (F1.state === 'attack' && F1.canCancel(kind)))) tick(0);
+    const down = F2.state === 'down' || F2.state === 'ko' || F2.state === 'rise';
+    if (down && downAt < 0) downAt = i;
+    const toward = F2.x >= F1.x ? 'right' : 'left', before = F1.serial, hp0 = F2.hp, chain0 = F1.chain.length, wasAtk = F1.state === 'attack' && !!F1.move && !F1.move.def.script;
+    const hold = k.includes(':') ? keyIn(k, toward) & ~TAP(kind) : 0;
+    tick(keyIn(k, toward)); n = 0; while (n++ < 12 && F1.serial === before) tick(hold);
+    const name = F1.move ? F1.move.name : F1.state, s = F1.serial;
+    n = 0; while (n++ < 80 && F1.move && F1.move.serial === s && !(F1.move.hit || F1.move.blocked) && F1.move.t <= F1.move.S + F1.move.def.A + 1) tick(hold);
+    steps.push({ name, hit: F2.hp < hp0 || !!(F1.move && F1.move.hit), dmg: hp0 - F2.hp, chained: i === 0 || wasAtk || F1.chain.length > chain0, down, how: F1.info && F1.info.how });
+  }
+  if (!keep) for (let n = 0; n < 90; n++) tick(0);                    // keep：打完最后一下就停（看这一招的收招）
+  return { steps, downAt, total: hp00 - F2.hp, names: steps.map(x => x.name) };
+}
+const comboBad = r => !!r.fail || r.downAt >= 0 || r.steps.some(x => !x.hit || !x.chained);
+const comboFmt = r => r.fail || r.steps.map(x => (x.down ? '倒' : '') + x.name + (x.hit ? '' : '✗') + (x.chained ? '' : '(断)') + ':' + x.dmg).join(' > ');
+T('3.4 螳螂拳的招名（螳螂拳的叫法，Jack：别和格斗术一样）：崩捶、探手、撤步崩、撩掌、劈掌、挂打、挑掌、勾踢、提膝、勾挂腿；一串里 撕手、翻腕砍、提膝、刁手，刁以后 寸打、穿心掌，收势 双封手；拿 勾搂 → 勾住 / 采手 / 搂腿，挂手；蹦步进 / 蹦步退；大招 螳螂扑蝉', () => {
   const L = n => MMOVES[n].label;
-  eq([L('mtBeng'), L('mtQuan'), L('mtChe'), L('mtLiao'), L('mtPi'), L('mtZa'), L('mtTiao'), L('mtGou'), L('mtDengPu'), L('mtSao')], ['崩捶', '圈捶', '撤步崩', '撩掌', '劈掌', '砸捶', '挑掌', '勾踢', '蹬扑', '低勾踢']);
-  eq([L('mtFanChe'), L('mtBu'), L('mtShuangFeng'), L('mtTou'), L('mtPiZa'), L('mtLuoBeng'), L('mtLuoPi'), L('mtYuanYang')], ['翻车', '补捶', '双封手', '偷手', '劈砸', '落步崩', '落步劈', '鸳鸯腿']);
+  eq([L('mtBeng'), L('mtTan'), L('mtChe'), L('mtLiao'), L('mtPi'), L('mtGuaDa'), L('mtTiao'), L('mtGou'), L('mtXi'), L('mtSao')], ['崩捶', '探手', '撤步崩', '撩掌', '劈掌', '挂打', '挑掌', '勾踢', '提膝', '勾挂腿']);
+  eq([L('mtSiF'), L('mtSiB'), L('mtKanF'), L('mtKanB'), L('mtXiC'), L('mtDiao'), L('mtCun'), L('mtChuan'), L('mtShuangFeng')], ['撕手', '撕手', '翻腕砍', '翻腕砍', '提膝', '刁手', '寸打', '穿心掌', '双封手']);
   eq([L('grab'), L('mtGouZhu'), L('mtCai'), L('mtLouTui'), L('mtGuaShou'), L('mtGua'), L('shove'), L('dash'), L('mtHop'), L('super')], ['勾搂', '勾住', '采手', '搂腿', '挂手', '挂捶', '封手', '蹦步进', '蹦步退', '螳螂扑蝉']);
-  mArena(80); F2.noParry = true;
-  eq(combo(['jab', 'jab', 'jab', 'heavy']), ['mtBeng', 'mtFanChe', 'mtQuanC', 'mtShuangFeng'], '拳拳拳重：崩捶、翻车、圈捶、双封手');
-  mArena(80); F2.noParry = true;
-  eq(combo(['heavy', 'jab']), ['mtPi', 'mtTou'], '重拳：劈掌、偷手');
-  mArena(80); F2.noParry = true;
-  eq(combo(['kick', 'kick']), ['mtGou', 'mtYuanYang'], '踢踢：勾踢、鸳鸯腿');
+  for (const [keys, want] of [[['jab'], ['mtBeng']], [['f:jab'], ['mtTan']], [['b:jab'], ['mtChe']], [['d:jab'], ['mtLiao']], [['heavy'], ['mtPi']], [['f:heavy'], ['mtGuaDa']], [['kick'], ['mtGou']], [['f:kick'], ['mtXi']], [['d:kick'], ['mtSao']],
+    [['jab', 'jab', 'f:heavy'], ['mtBeng', 'mtSiF', 'mtShuangFeng']], [['jab', 'heavy'], ['mtBeng', 'mtKanF']], [['kick', 'jab'], ['mtGou', 'mtSiB']], [['jab', 'jab', 'd:kick'], ['mtBeng', 'mtSiF', 'mtSao']],
+    [['jab', 'jab', 'grab', 'jab'], ['mtBeng', 'mtSiF', 'mtDiao', 'mtCun']], [['jab', 'jab', 'grab', 'heavy'], ['mtBeng', 'mtSiF', 'mtDiao', 'mtChuan']], [['jab', 'jab', 'grab', 'kick'], ['mtBeng', 'mtSiF', 'mtDiao', 'mtXiC']]])
+    eq(comboRun('mantis', keys, 80).names, want, keys.join(' '));
+  // 和格斗术不是一个样子：螳螂的一串里没有一招和格斗术的招同名
+  const tradNames = new Set(Object.values(MOVES).map(d => d.label));
+  for (const k of ['mtBeng', 'mtTan', 'mtChe', 'mtLiao', 'mtPi', 'mtGuaDa', 'mtGou', 'mtXi', 'mtSao', 'mtSiF', 'mtKanF', 'mtXiC', 'mtDiao', 'mtCun', 'mtChuan', 'mtShuangFeng']) ok(!tradNames.has(L(k)), L(k) + ' 和格斗术的招同名');
 });
 T('3.3 快：全派没有慢招 —— 站着的拳 / 重 / 踢起手都在 12 帧以内（格斗术的重拳、腿踢 18 帧起）；代价是一下轻（崩捶比格斗术的短拳不疼，劈掌比重拳轻一半）', () => {
-  for (const k of ['mtBeng', 'mtQuan', 'mtChe', 'mtLiao', 'mtPi', 'mtZa', 'mtTiao', 'mtGou', 'mtDengPu', 'mtSao']) ok(MMOVES[k].S <= 12, `${MMOVES[k].label} 前摇 ${MMOVES[k].S}`);
+  for (const k of ['mtBeng', 'mtTan', 'mtChe', 'mtLiao', 'mtPi', 'mtGuaDa', 'mtTiao', 'mtGou', 'mtXi', 'mtSao']) ok(MMOVES[k].S <= 12, `${MMOVES[k].label} 前摇 ${MMOVES[k].S}`);
   ok(MMOVES.mtBeng.S <= MOVES.jab.S && MMOVES.mtPi.S < MOVES.heavy.S * 0.7 && MMOVES.mtGou.S < MOVES.kick.S * 0.7, '崩捶不比短拳慢，劈掌、勾踢比格斗术的重拳、腿踢快得多');
   ok(MMOVES.mtBeng.dmg <= MOVES.jab.dmg && MMOVES.mtPi.dmg <= MOVES.heavy.dmg * 0.75 && MMOVES.mtGou.dmg <= MOVES.kick.dmg * 0.75, '一下轻');
+  ok(MMOVES.mtGou.height === 'low' && MMOVES.mtLiao.height === 'low' && MMOVES.mtSao.height === 'low' && MMOVES.mtPi.height === 'high', '勾踢、撩掌、勾挂腿下段，劈掌上段：上下换着打');
 });
-T('3.3 越连越快、气短：一串里每多连一下前摇 −' + MT_ACC + '（最快 ' + MT_S_MIN + '）；连到第三下以后停手，收招每多一下慢 ' + MT_WIND + ' 帧；拳重踢拿都接得上', () => {
+T('3.4 勾打连环（MANTIS.md 〇节）：一串里连着打不过 ' + MT_RUN_MAX + ' 下 —— 两下以后拳接不上，按拿是刁手、前 + 重 双封手、蹲 + 踢 勾挂腿收势；按别的这一串就断了（收完招另起一串）；刁手打中他接着挨打、下一下 ×' + MT_DIAO_MUL + '（刁打）；站着按拿还是勾搂', () => {
   mArena(80); F2.noParry = true;
   tick(TAP('jab')); let n = 0; while (n++ < 40 && !(F1.move && F1.move.hit)) tick();
-  tick(TAP('jab')); n = 0; while (n++ < 10 && F1.move.name === 'mtBeng') tick();
-  eq(F1.move.name, 'mtFanChe'); ok(F1.move.S <= MMOVES.mtFanChe.S - MT_ACC + 0.01 && F1.move.S >= MT_S_MIN, `第二下前摇 ${F1.move.S}（本来 ${MMOVES.mtFanChe.S}）`);
-  mArena(80); F2.noParry = true;
-  combo(['jab', 'jab', 'jab', 'jab']);
-  n = 0; while (n++ < 40 && F1.move && !F1.move.mtWinded) tick();
-  ok(F1.move && (F1.move.pen || 0) >= grid(MT_WIND * 2) - 0.01, `四连停手：收招多 ${F1.move && F1.move.pen}（要 ${grid(MT_WIND * 2)}）`);
-  mArena(80); F2.noParry = true;
-  tick(TAP('jab')); n = 0; while (n++ < 40 && !(F1.move && F1.move.hit)) tick();
   n = 0; while (n++ < 6 && !F1.canCancel('jab')) tick();
-  ok(F1.canCancel('jab') && F1.canCancel('heavy') && F1.canCancel('kick') && F1.canCancel('grab'), '打中了拳重踢拿都接得上');
+  ok(F1.canCancel('jab') && F1.canCancel('heavy') && F1.canCancel('kick') && F1.canCancel('grab'), '打中一下：拳重踢拿都接得上');
+  tick(TAP('jab')); n = 0; while (n++ < 10 && F1.move.name === 'mtBeng') tick();
+  eq(F1.move.name, 'mtSiF'); ok(F1.move.S <= MMOVES.mtSiF.S - MT_ACC + 0.01 && F1.move.S >= MT_S_MIN, `越连越快：第二下前摇 ${F1.move.S}（本来 ${MMOVES.mtSiF.S}）`);
+  n = 0; while (n++ < 40 && !(F1.move && F1.move.hit)) tick();
+  n = 0; while (n++ < 6 && !F1.canCancel('grab')) tick();
+  ok(!F1.canCancel('jab') && F1.canCancel('grab') && F1.canCancel('heavy'), '连着打了两下：拳接不上，拿（刁手）、收势接得上');
+  eq(mtVariant('heavy', F1.chain, false, '', F1), null, '两下以后按重（不按前）：出不来');
+  tick(TAP('heavy')); n = 0; while (n++ < 4) tick();
+  ok(F1.move && F1.move.name === 'mtSiF', '两下以后按重：接不上（这一下还在收）');
+  const r = comboRun('mantis', ['jab', 'jab', 'heavy'], 80);
+  ok(!/^mtKan/.test(r.steps[2].name) && !r.steps[2].hit, '第三下重拳接不上：' + comboFmt(r));
+  // 刁手：打中 → 他接着挨打、被拉回来；下一下 ×刁打
+  const r2 = comboRun('mantis', ['jab', 'jab', 'grab', 'heavy'], 80);
+  eq(r2.names, ['mtBeng', 'mtSiF', 'mtDiao', 'mtChuan']); ok(!comboBad(r2), comboFmt(r2));
+  eq(r2.steps[2].dmg, MT_DIAO_DMG, '刁手掉 ' + MT_DIAO_DMG);
+  eq(r2.steps[3].how, '刁打', '刁完接的那一下是刁打');
+  ok(r2.steps[3].dmg >= Math.round(MMOVES.mtChuan.dmg * MT_DIAO_MUL), `穿心掌 ${r2.steps[3].dmg}（本来 ${MMOVES.mtChuan.dmg}）`);
+  // 刁完不能接着刁；收势以后不能再接
+  comboRun('mantis', ['jab', 'jab', 'grab'], 80, null, true);
+  n = 0; while (n++ < 12 && F2.reelKind !== 'diao') tick();
+  ok(F1.move && F1.move.name === 'mtDiao' && F2.state === 'hit' && F2.reelKind === 'diao', '刁住了（他失衡：' + F2.reelKind + '）');
+  n = 0; while (n++ < 6 && !F1.canCancel('jab')) tick();
+  ok(F1.canCancel('jab') && !F1.canCancel('grab'), '刁完：能接拳，不能接着刁');
+  ok(Math.abs(F2.x - F1.x) <= 74, `刁住往回一带（${Math.abs(F2.x - F1.x).toFixed(0)}）`);
+  ok(MMOVES.mtShuangFeng.ender && MMOVES.mtSao.ender && MMOVES.mtShuangFeng.launch > 0 && MMOVES.mtSao.launch > 0, '双封手、勾挂腿是收势：打倒，后面接不了');
+  // 站着按拿（刚打完一下、还在一串的时间里）：是勾搂，不是刁手
+  mArena(80); F2.noParry = true;
+  tick(TAP('jab')); n = 0; while (n++ < 60 && !F1.actionable()) tick();
+  tick(TAP('grab')); n = 0; while (n++ < 6 && !(F1.move && F1.move.name !== 'mtBeng')) tick();
+  ok(F1.move && F1.move.name === 'grab', '站着按拿是勾搂（' + (F1.move ? F1.move.name : F1.state) + '）');
+  // 一手刁一手打：撕手、翻腕砍两只手轮着出
+  eq([MMOVES.mtBeng.limb, MMOVES.mtSiF.limb, MMOVES.mtSiB.limb, MMOVES.mtKanF.limb, MMOVES.mtKanB.limb], ['bh', 'fh', 'bh', 'fh', 'bh']);
 });
-T('3.3 勾住：他出手上的招（重拳）的时候按拿 = 勾住 —— 他那一招没了、失衡 ' + MT_HOOK_STUN + ' 帧被拉到面前，你 ' + MT_GOU_R + ' 帧收手先动，接着打中 ×' + MT_HOOK_MUL + '（勾打）', () => {
+T('3.3 越连越快、气短：一串里每多连一下前摇 −' + MT_ACC + '（最快 ' + MT_S_MIN + '）；连到第三下以后停手，收招每多一下慢 ' + MT_WIND + ' 帧；收势打完不喘', () => {
+  const r = comboRun('mantis', ['jab', 'jab', 'grab', 'jab'], 80, null, true);
+  ok(!comboBad(r), comboFmt(r));
+  let n = 0; while (n++ < 40 && F1.move && !F1.move.mtWinded) tick();
+  ok(F1.move && F1.move.name === 'mtCun' && (F1.move.pen || 0) >= grid(MT_WIND * 2) - 0.01, `四下停手（刁也算一下）：收招多 ${F1.move && F1.move.pen}（要 ${grid(MT_WIND * 2)}）`);
+  const r2 = comboRun('mantis', ['jab', 'jab', 'grab', 'jab', 'f:heavy'], 80, null, true);
+  ok(!comboBad(r2) && F1.move && F1.move.name === 'mtShuangFeng', '收势：双封手（' + comboFmt(r2) + '）');
+  n = 0; while (n++ < 40 && F1.move && !F1.move.mtWinded && F1.move.name === 'mtShuangFeng') tick();
+  ok(!(F1.move && F1.move.pen), '收势打完不喘');
+});
+T('3.3 勾住：他出手上的招（重拳）的时候按拿 = 勾住 —— 他那一招没了、失衡 ' + MT_HOOK_STUN + ' 帧被拉到面前，你 ' + MT_GOU_R + ' 帧收手先动，接着打中 ×' + MT_HOOK_MUL + '（勾打；3.4 接的是穿心掌那几下）', () => {
   mArena(86); F2.noParry = true;
   tick(0, TAP('heavy')); let n = 0; while (n++ < 30 && !(F2.move && F2.move.t >= 4)) tick();
   tick(TAP('grab')); n = 0; while (n++ < 30 && !(F1.move && F1.move.name === 'mtGouZhu')) tick();
   ok(F1.move && F1.move.name === 'mtGouZhu', '勾住了（' + (F1.move ? F1.move.name : F1.state) + '）');
   ok(F2.state === 'hit' && F2.reelKind === 'hook' && F2.mtHeld && F2.hp === MAX_HP - MT_HOOK_DMG, `他失衡（${F2.state} ${F2.reelKind}）、掉 ${MAX_HP - F2.hp}`);
   n = 0; while (n++ < 30 && !F1.actionable()) tick();
-  ok(F2.state === 'hit' && F2.stunT > MMOVES.mtPi.S, `你先动的时候他还硬直 ${F2.stunT}（够一记劈掌 ${MMOVES.mtPi.S}）`);
+  ok(F2.state === 'hit' && F2.stunT > MMOVES.mtChuan.S, `你先动的时候他还硬直 ${F2.stunT}（够一记穿心掌 ${MMOVES.mtChuan.S}）`);
+  const n0 = F2.comboTaken;
   tick(TAP('heavy')); n = 0; while (n++ < 40 && F2.hp === MAX_HP - MT_HOOK_DMG) tick();
-  eq(MAX_HP - F2.hp, MT_HOOK_DMG + Math.round(MMOVES.mtPi.dmg * MT_HOOK_MUL), '勾打：劈掌 ×' + MT_HOOK_MUL);
+  eq(F1.move && F1.move.name, 'mtChuan', '勾住以后按重是穿心掌（像刁完了一样）');
+  eq(MAX_HP - F2.hp, MT_HOOK_DMG + Math.round(MMOVES.mtChuan.dmg * MT_HOOK_MUL * comboEsc(n0)), '勾打：穿心掌 ×' + MT_HOOK_MUL);
   eq(F1.info.how, '勾打');
   mArena(86); F2.noParry = true;                                     // 勾不住下段的招
   tick(0, TAP('d:jab')); n = 0; while (n++ < 30 && !(F2.move && F2.move.t >= 3)) tick();
   tick(TAP('grab')); n = 0; while (n++ < 30 && F1.move && F1.move.name === 'grab' && !F1.move.done) tick();
   ok(!(F1.move && F1.move.name === 'mtGouZhu'), '下盘拳勾不住');
 });
-T('3.3 采手 / 采空：他站着挡的时候按拿 = 采手（短硬直 ' + MT_CAI_STUN + '、掉 ' + MT_CAI_DMG + '，拉到面前够接一记崩捶）；他挡住的硬直里采不住 = 采空（不然崩捶 → 采手 → 崩捶是躲不开的循环）', () => {
+T('3.3 采手 / 采空：他站着挡的时候按拿 = 采手（短硬直 ' + MT_CAI_STUN + '、掉 ' + MT_CAI_DMG + '，拉到面前够接一记寸打）；他挡住的硬直里采不住 = 采空（不然崩捶 → 采手 → 崩捶是躲不开的循环）', () => {
   mArena(70);
   tick(TAP('grab'), BLOCK); let n = 0; while (n++ < 30 && !(F1.move && F1.move.name === 'mtCai')) tick(0, BLOCK);
   ok(F1.move && F1.move.name === 'mtCai' && F2.state === 'hit' && F2.hp === MAX_HP - MT_CAI_DMG, `采手：${F1.move && F1.move.name} 他 ${F2.state} 掉 ${MAX_HP - F2.hp}`);
   n = 0; while (n++ < 30 && !F1.actionable()) tick(0, BLOCK);
-  ok(F2.state === 'hit' && F2.stunT > MMOVES.mtBeng.S, `你先动的时候他还硬直 ${F2.stunT}`);
+  ok(F2.state === 'hit' && F2.stunT > MMOVES.mtCun.S, `你先动的时候他还硬直 ${F2.stunT}`);
   ok(Math.abs(F2.x - F1.x) <= MT_PULL_GAP + 4, `被拉到面前（${Math.abs(F2.x - F1.x).toFixed(0)}）`);
+  const n0 = F2.comboTaken;
   tick(TAP('jab'), BLOCK); n = 0; while (n++ < 20 && F2.hp === MAX_HP - MT_CAI_DMG) tick(0, BLOCK);
-  eq(MAX_HP - F2.hp, MT_CAI_DMG + MMOVES.mtBeng.dmg, '接的崩捶打中（他举着挡也挡不住）');
-  // 采空：崩捶被挡住，硬直里采
-  mArena(80);
-  tick(TAP('jab'), BLOCK); n = 0; while (n++ < 30 && !(F1.move && F1.move.blocked)) tick(0, BLOCK);
+  eq(F1.move && F1.move.name, 'mtCun', '采住以后按拳是寸打');
+  eq(MAX_HP - F2.hp, MT_CAI_DMG + Math.round(MMOVES.mtCun.dmg * comboEsc(n0)), '接的寸打打中（他举着挡也挡不住）');
+  // 采空：他挡住的硬直里采（3.4 一串里被挡住以后接着按拿是刁手：他照旧挡着、被拉回来 —— 不是采手）
+  mArena(70); tick(0, BLOCK, 3);
+  F2.state = 'blockstun'; F2.stunT = 24;
   tick(TAP('grab'), BLOCK); n = 0; while (n++ < 30 && !(F1.move && (F1.move.name === 'mtCai' || (F1.move.name === 'grab' && (F1.move.done || F1.move.missTag))))) tick(0, BLOCK);
   ok(F1.move && F1.move.name === 'grab' && F1.move.missTag && F1.info.how === '采空', `采空（${F1.move && F1.move.name} ${F1.info && F1.info.how}）`);
   ok(F2.state === 'blockstun' || F2.state === 'block', '他还挡着');
+  mArena(90);
+  tick(TAP('jab'), BLOCK); n = 0; while (n++ < 30 && !(F1.move && F1.move.blocked)) tick(0, BLOCK);
+  const gap0 = Math.abs(F2.x - F1.x);
+  n = 0; while (n++ < 8 && !F1.canCancel('grab')) tick(0, BLOCK);
+  tick(TAP('grab'), BLOCK); n = 0; while (n++ < 20 && !(F1.move && F1.move.name === 'mtDiao' && (F1.move.blocked || F1.move.hit))) tick(0, BLOCK);
+  ok(F1.move && F1.move.name === 'mtDiao' && F1.move.blocked && F2.state === 'blockstun', `一串里被挡住接拿：刁手被挡住（${F1.move && F1.move.name} 他 ${F2.state}）`);
+  n = 0; while (n++ < 6) tick(0, BLOCK);
+  ok(Math.abs(F2.x - F1.x) < gap0, `被挡住也往回一带（${gap0.toFixed(0)} → ${Math.abs(F2.x - F1.x).toFixed(0)}）`);
 });
 T('3.3 搂腿、低搂：他出腿按拿 = 搂腿摔倒（接腿那一类）；蹲 + 拿 搂得住扫堂腿、采得住蹲着挡的人', () => {
   mArena(112); F2.noParry = true;
@@ -4768,6 +4841,38 @@ T('3.3 螳螂拳的书：教程有螳螂拳一本（上手 / 招式 / 连环 / �
   for (const grp of MG_COMBOS) for (const c of grp.list) for (const m of c.moves) ok(!!MMOVES[m], '连环页里的 ' + m);
   for (const f of MG_FRAMES) ok(!!MMOVES[f], '帧数表里的 ' + f);
   if (typeof STYLE_LINE !== 'undefined') ok(/快/.test(STYLE_LINE.mantis) && /勾/.test(STYLE_LINE.mantis), '准备页那一句话：快、勾');   // ui.js 只有 index.html 载
+});
+
+T('3.4 螳螂拳的待机照图（ref/mt_stance.png；3.3.0 前后手做反了）：前手勾手高高探在前面、和眼睛差不多高，后手勾手横在胸前，大弓步', () => {
+  mArena(200); tick(0, 0, 40);
+  const J = F1.J, f = F1.facing, fwd = p => (p[0] - F1.x) * f;
+  ok(J.fh[1] < J.sh[1] - 6 && J.fh[1] > J.head[1] - 14, `前手高：手 ${J.fh[1].toFixed(0)}、肩 ${J.sh[1].toFixed(0)}、头 ${J.head[1].toFixed(0)}`);
+  ok(fwd(J.fh) > fwd(J.head) + 16 && fwd(J.fe) > fwd(J.sh), `前手探在前面（手 ${fwd(J.fh).toFixed(0)}、头 ${fwd(J.head).toFixed(0)}）、肘也在前`);
+  ok(J.fe[1] > J.fh[1] + 6, '前手肘沉着、小臂往上竖');
+  ok(J.bh[1] > J.sh[1] + 8 && J.bh[1] < F1.J.sh[1] + 30 && Math.abs(fwd(J.bh) - fwd(J.sh)) < 16, `后手横在胸前（手 ${J.bh[1].toFixed(0)}、肩 ${J.sh[1].toFixed(0)}）`);
+  ok(fwd(J.ff) - fwd(J.bf) > 90, `大弓步（两脚 ${(fwd(J.ff) - fwd(J.bf)).toFixed(0)}）`);
+  ok(MPOSE.stance.fhk === 1 && MPOSE.stance.bhk === 1, '两只都是勾手');
+});
+T('3.4 连招中途不倒（Jack：有些连招打一半人就倒了，后面那几下打不出来）：四派教程里的每一套、电脑每一档的连招表、罚的路线、反打 / 压起身 / 踉跄那几套、螳螂勾住 / 采住以后那几套，对着木桩打：每一下都打中、都接上，打倒的只有最后一下；教程的小图就是打出来的那几招', () => {
+  const bad = [];
+  const books = { trad: G_COMBOS, wc: WG_COMBOS, taiji: TG_COMBOS, mantis: MG_COMBOS };
+  for (const [st, groups] of Object.entries(books)) for (const g of groups) for (const c of g.list) {
+    const setup = c.setup || null, r = comboRun(st, setup ? c.keys.slice(1) : c.keys, setup === 'hook' ? 86 : 70, setup);
+    if (comboBad(r)) { bad.push(`教程 ${st} ${c.name}：${comboFmt(r)}`); continue; }
+    if (c.times) continue;
+    const done = (setup ? ['grab'] : []).concat(r.names), tail = done.slice(done.length - c.moves.length);
+    if (tail.join() !== c.moves.join()) bad.push(`教程 ${st} ${c.name} 的小图：写的 ${c.moves.join(' ')}，打出来 ${done.join(' ')}`);
+  }
+  for (const st of STYLE_IDS) {
+    const K = KITS[st], seen = new Set(), list = [], add = p => { const k = p.join('-'); if (p.length > 1 && !seen.has(k)) { seen.add(k); list.push(p); } };
+    for (const lv of Object.keys(K.plans)) for (const [p] of K.plans[lv]) add(p);
+    for (const [, p] of K.routes) add(p);
+    for (let i = 0; i < 40; i++) for (const d of [70, 88, 100, 120]) { add(K.parry(d)); add(K.stagger(d)); add(K.oki(true)); add(K.oki(false)); }
+    for (const p of list) { const r = comboRun(st, p, 70); if (comboBad(r)) bad.push(`电脑 ${st} ${p.join(' ')}：${comboFmt(r)}`); }
+  }
+  { const seen = new Set(); for (let i = 0; i < 60; i++) for (const cai of [false, true]) for (const d of [80, 100]) { const p = KITS.mantis.hooked(d, cai), k = cai + p.join('-'); if (seen.has(k)) continue; seen.add(k);
+    const r = comboRun('mantis', p, cai ? 70 : 86, cai ? 'cai' : 'hook'); if (comboBad(r)) bad.push(`电脑 螳螂${cai ? '采住' : '勾住'}以后 ${p.join(' ')}：${comboFmt(r)}`); } }
+  ok(!bad.length, bad.slice(0, 6).join('\n'));
 });
 
 (async function runAll() {
