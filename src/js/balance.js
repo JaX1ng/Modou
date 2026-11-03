@@ -558,9 +558,9 @@ window.tierTable = tierTable; window.tierShare = tierShare;
      速：出的招平均前摇几帧（按电脑实际出招的次数加权）                                 10 分 4 帧、0 分 22 帧
      连：一次打开平均连几下                                                             0 分 1 下、10 分 4 下
      控：对面被我弄得不能动（挨打 / 挡住的硬直、倒地、被抓、被黏住）的时间占几成            0 分 0%、10 分 50%
-     上限：满级对满级，这一派对另两派打掉的血平均占几成                                   0 分 40%、10 分 60%
-     难度（星）：满级比木头多占几个点（对另两派平均）：−10 → 1 星、0 → 3 星、+10 → 5 星，半颗一档
-   量法：攻守速连控 = 满级对满级（这一派打得最好的时候是什么样子），这一派对三派（含自己）各打，左右轮着站，N 个种子、每个种子每局 R 回合，每个种子一个样本；
+     上限：满级对满级，这一派对别的派打掉的血平均占几成                                   0 分 40%、10 分 60%
+     难度（星）：满级比木头多占几个点（对别的派平均）：−10 → 1 星、0 → 3 星、+10 → 5 星，半颗一档
+   量法：攻守速连控 = 满级对满级（这一派打得最好的时候是什么样子），这一派对每一派（含自己）各打，左右轮着站，N 个种子、每个种子每局 R 回合，每个种子一个样本；
    上限、难度 = 分层（tierShare）满级、木头两档，同样左右各 N 个种子。每个数：均值 + 95% bootstrap 置信区间（2000 次重抽、定种子）。
    跑：浏览器控制台 hexagon(12, 4)（几分钟），量出来的数抄进 config.js 的 HEXAGON */
 // 六个轴、每轴的锚（HEX_AXES）和量好的数（HEXAGON）在 config.js：游戏里画图用
@@ -615,7 +615,7 @@ function bootCI(xs, B) {
 }
 const hexScore = (ax, v) => clamp((v - ax.lo) / (ax.hi - ax.lo) * 10, 0, 10);
 // 量好的样本 → 一派一张：{ axes: { atk: { m, lo, hi, n, score, scoreLo, scoreHi } ... }, stars, gap }
-// samples：{ [style]: [hexSample...] }；tiers：{ [style]: { max: [占比...], mash: [占比...] } }（对另两派的，每个种子一个）
+// samples：{ [style]: [hexSample...] }；tiers：{ [style]: { max: [占比...], mash: [占比...] } }（对别的派的，每个种子一个）
 function hexagonFrom(samples, tiers) {
   const out = {};
   for (const id of Object.keys(samples)) {
@@ -638,11 +638,11 @@ function hexagon(N, R) {
   for (const id of ids) {
     samples[id] = []; tiers[id] = { max: [], mash: [] };
     for (let s = 0; s < N; s++) {
-      // 攻守速连控：这一个种子里对三派各打一局（左右轮着站），合起来算一个样本
+      // 攻守速连控：这一个种子里对每一派各打一局（左右轮着站），合起来算一个样本
       const acc = { dmg: 0, open: 0, hits: 0, def: 0, took: 0, sumS: 0, nS: 0, ctl: 0, frames: 0 };
       ids.forEach((o, j) => { const k = (s + j) % 2, st = hexRun('max', k ? [o, id] : [id, o], R, 7001 + s * 977 + j * 131, k); for (const q in acc) acc[q] += st[q]; });
       samples[id].push(hexSample(acc));
-      // 上限、难度：满级、木头对另两派各一局（左右轮着站），两派平均算一个样本
+      // 上限、难度：满级、木头对别的派各一局（左右轮着站），两派平均算一个样本
       for (const lv of ['max', 'mash']) {
         let t = 0; const others = ids.filter(o => o !== id);
         others.forEach((o, j) => { const k = (s + j) % 2; t += tierShare(lv, k ? [o, id] : [id, o], R, 9001 + s * 613 + j * 71, id).share; });
@@ -719,6 +719,11 @@ if (document.getElementById('out') && location.hash !== '#norun') {
         for (const other of ['trad', 'wc']) {
           const tt = tierTable(8, 'taiji', other);
           say(`  太极拳打${STYLES[other].name}：` + tt.map(t => `${TN[t.level]} ${(t.share * 100).toFixed(1)}%（${t.rounds} 回合）`).join(' · '));
+        }
+        // 3.3 螳螂拳打另三派：螳螂拳打掉的血占几成
+        for (const other of ['trad', 'wc', 'taiji']) {
+          const tt = tierTable(8, 'mantis', other);
+          say(`  螳螂拳打${STYLES[other].name}：` + tt.map(t => `${TN[t.level]} ${(t.share * 100).toFixed(1)}%（${t.rounds} 回合）`).join(' · '));
         }
         // 七、一招一张表
         for (const st of ['trad', 'wc']) {

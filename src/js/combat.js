@@ -61,10 +61,12 @@ function grabIntent(A, B) {
   const bm = B.state === 'attack' ? B.move : null;
   const kicking = !!bm && bm.def.kind === 'kick' && !bm.def.dive && bm.t >= 3 && bm.t < bm.S + bm.def.A + 1 && B.facingTo(A);
   // 咏春拳的拉手（trap）：正好在对方出拳、出掌（地上的、手上的招，前摇或判定里）的时候抓 = 把他的手拉过来；接不住腿（出腿的时候伸手 = 挨踢）
-  if (m.def.trap) {
-    if (bm && !bm.air && !bm.def.script && (bm.def.kind === 'jab' || bm.def.kind === 'heavy') && /^(fh|bh|fe|be)$/.test(bm.def.limb) && bm.def.height !== 'low'
-      && bm.t >= Math.max(1.5, bm.S - WC_TRAP_EARLY) && bm.t < bm.S + bm.def.A + 1 && B.facingTo(A) && B.alt <= 24 && dist >= -6 && dist <= Math.max(m.def.reach, bm.def.reach) + 6) return 'trap';
-    if (kicking) return null;
+  // 3.3 螳螂拳的勾搂（hook）也是：抓得多早看招上的 hookEarly；拉手接不住腿，勾手接得住（往下走通用的接腿）
+  if (m.def.trap || m.def.hook) {
+    const early = m.def.hook ? (m.def.hookEarly || WC_TRAP_EARLY) : WC_TRAP_EARLY;
+    if (bm && !bm.air && !bm.def.script && !bm.hit && !bm.blocked && (bm.def.kind === 'jab' || bm.def.kind === 'heavy') && /^(fh|bh|fe|be)$/.test(bm.def.limb) && bm.def.height !== 'low'
+      && bm.t >= (early >= 99 ? 0 : Math.max(1.5, bm.S - early)) && bm.t < bm.S + bm.def.A + 1 && B.facingTo(A) && B.alt <= 24 && dist >= -6 && dist <= Math.max(m.def.reach, bm.def.reach) + 6) return 'trap';   // 3.3 挂手（hookEarly 99）：他刚起手也挂得住
+    if (kicking && !m.def.hook) return null;
   }
   if (m.def.low) {
     // 抄腿：接住地上的出腿（扫堂腿也接得住；跳起来的腿抄不到）；抓蹲着的；站着的抓不到
@@ -216,7 +218,7 @@ function applyHit(A, B, how) {
   let punish = null;
   if (inRecovery && A.guardOn === bm.serial) punish = ['挡后反击', bm.def.launch ? PUNISH_KD_MUL : PUNISH_MUL];
   else if (inRecovery && bm.def.launch && !bm.hit) punish = ['破绽', WHIFF_KD_MUL];
-  else if (B.state === 'hit' && B.reel && B.reelBy === A.idx && B.reelKind !== 'knee') punish = [REEL_LABEL[B.reelKind] || '卸力反击', B.reelKind === 'lu' ? TJ_LU_MUL : B.reelKD ? PUNISH_KD_MUL : PARRY_MUL];   // 3.0 捋（引进落空）另算
+  else if (B.state === 'hit' && B.reel && B.reelBy === A.idx && B.reelKind !== 'knee') punish = [REEL_LABEL[B.reelKind] || '卸力反击', B.reelKind === 'lu' ? TJ_LU_MUL : B.reelKind === 'hook' ? MT_HOOK_MUL : B.reelKD ? PUNISH_KD_MUL : PARRY_MUL];   // 3.0 捋（引进落空）另算；3.3 螳螂拳勾住以后的勾打
   // 「顺」（咏春拳）：这一招是连得上的招（flow）—— 接着连就接着顺；反打（拍开、耕开、卸开、踉跄、起身硬直里的人）第一下就顺 FLOW_COUNTER 级。
   // 连断了（打空、被挡、过拍、挨打、停手 FLOW_IDLE 帧）顺就清零（fighter.js / wingchun.js）
   const flowMove = !!d.flow;
@@ -390,7 +392,7 @@ function parry(A, B, c) {
    拍手（站着、手往前拍）：拍得开手上的招（拳、掌、肘、肩，地上的、跳起来的都行）和跳起来的腿（不算落膝、坠山这种往下砸的）；拍不开地上的腿、下段。
    耕手（蹲着、手往下耕）：耕得开地上的腿（扫堂腿这种下段的也行）、下段的拳；耕不开中段、上段的拳掌（站着打过来的拳照样打中）。
    都防不了擒拿、推挡 */
-const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击', lu: '引进落空' };   // 2.11 接招的五个桩法
+const REEL_LABEL = { pat: '拍手反击', tan: '摊手反击', bong: '膀手反击', gum: '按手反击', gaun: '耕手反击', trap: '拉手反击', lu: '引进落空', hook: '勾打' };   // 2.11 接招的五个桩法；3.3 螳螂拳勾住以后
 function handCovers(g, d, m) {
   const hand = /^(fh|bh|fe|be|sh)$/.test(d.limb), leg = d.limb === 'ff' || d.limb === 'bf';
   if (g === 'pat') return d.height !== 'low' && (hand || (m.air && leg && !d.dive));

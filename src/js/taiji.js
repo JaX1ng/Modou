@@ -527,6 +527,19 @@ function tjDefend(A, B, c, I) {
   if (bm && tjPeng(bm)) { tjHua(A, B, c, bm); return true; }
   return false;
 }
+// 3.3 掤也开得了勾手（螳螂的勾搂 / 挂手）：太极拳出招（蓄着）的时候身上有掤，伸过来勾他胳膊的手被掤开 —— 他那一招照打，劲 +1；勾的人勾空（收手 20 帧，多半挨上他这一下）。
+//   普通的擒拿照旧化不了（擒拿克掤）：勾是「趁他出手抓他的手」，掤正是撑着那条胳膊的劲。不然满级螳螂打满级太极六成四（量过：太极的招全是慢招，一抬手就被勾）
+function tjHookResist(B, A) {
+  const bm = B.state === 'attack' ? B.move : null;
+  if (!bm || bm.charging || !tjPeng(bm)) return false;                 // 蓄着站在那儿的勾得住（擒拿克蓄照旧）：开得了勾手的是正打出去的那一下
+  bm.hua = (bm.hua || 0) + 1; B.huaAt = B.clock;
+  tjJin(B, 1, '掤');
+  B.info = { label: '掤', dmg: 0, how: '掤开', why: '出招的时候身上有掤：伸过来勾手的被掤开，劲 +1', adv: null, t: B.clock };
+  B.stats.parries++; B.gainQi(2);
+  cev('hua', A, B, { name: A.move.name, by: bm.name, hook: true });
+  if (!game.quiet) { const P = pal(B), base = B.facing > 0 ? 0 : Math.PI; swipe(B.x + B.facing * 18, B.J.sh[1], 30, base + B.facing * 0.5, 2.6, 6, P.qi, 16); tag(B.x, B.J.head[1] - 36, '掤', B, 22); }
+  return true;
+}
 function tjHua(A, B, c, bm) {
   const m = A.move, d = m.def, dir = A.facing;
   m.done = true; m.absorbed = true;                                    // 他这一下被化掉了（照样接得上下一下：连打破掤）
@@ -705,7 +718,7 @@ const T_BENCH_GROUPS = [
 STYLES.taiji = {
   id: 'taiji', name: '太极拳', moves: TMOVES, relation: tjRelation, cancel: TJ_CANCEL, variant: tjVariant, poses: TPOSE, base: TBASE,
   chainMax: 5, blockHeavy: 'tjKao', parry: false,   // 3.1 一串最多三下 → 五下（Jack：连招可以长；太极的势一式接一式：搬拦捶 → 顺拦肘 → 分脚 → 上步七星 → 弯弓射虎）
-  input: tjInput, defend: tjDefend, strike: tjStrike, grab: tjGrab, target: tjTarget, drawCue: tjDrawCue,
+  input: tjInput, defend: tjDefend, strike: tjStrike, grab: tjGrab, target: tjTarget, drawCue: tjDrawCue, hookResist: tjHookResist,   // 3.3 掤开勾手
   benchGroups: T_BENCH_GROUPS, benchHit: ['tjLan', 'tjChuan', 'tjDao', 'tjXia', 'tjBan', 'tjJinJi', 'tjDeng', 'tjFen', 'tjDieCha', 'tjGaoTan', 'tjChuanZ', 'tjZhiDang', 'tjBaiHe',
     'tjShunLan', 'tjShuangFeng', 'tjBaiLian', 'tjQiXing', 'tjWanGong', 'tjZhuanDeng', 'tjKao', 'slipElbow', 'super', 'stomp', 'airJab', 'airHeavy', 'airKick', 'dive'],
 };

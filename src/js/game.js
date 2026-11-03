@@ -42,7 +42,7 @@ function applyLooks(mode) {
    solo：人机 / 训练场 / 联机时自己的拳派、电脑的拳派（'random' = 每局随机）；pvp：双人对战两边上次选的；watch（2.11 观战）：两个电脑的。
    训练场的木桩：dummy（2.11 训练场准备页里选；以前跟着电脑的拳派走）；破招练习两边都是格斗术（练的就是破格斗术的招）。
    菜单背景里两个电脑互打：每次随机 */
-const STYLE_IDS = ['trad', 'wc', 'taiji'];
+const STYLE_IDS = ['trad', 'wc', 'taiji', 'mantis'];   // 3.3 第四派螳螂拳
 const styleOk = id => STYLE_IDS.includes(id);
 const Styles = {
   solo: { me: 'trad', cpu: 'random' }, pvp: ['trad', 'trad'], watch: ['trad', 'wc'], dummy: 'trad',

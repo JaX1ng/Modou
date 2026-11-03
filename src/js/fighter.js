@@ -143,6 +143,7 @@ class Fighter {
     this.stagger = false;                                     // 2.0.2 被回身肘打中、背对着踉跄（在 hit 状态里）
     this.jin = 0; this.jinAt = 0; this.luPress = -999; this.luOK = false; this.luPrev = false; this.luPull = false;   // 3.0 太极拳：劲几级（0 ~ TJ_JIN_MAX）、上一次劲变是什么时候、捋（按着挡按后）
     this.qi = 0; this.reel = false; this.clashed = false; this.noParry = false;
+    this.mtHopAt = -999; this.mtHeld = false; this.mtBsSer = -1; this.mtBsBack0 = false; this.mtBackPrev = false; this.mtHookLimb = null;   // 3.3 螳螂拳：上一次蹦步退是什么时候（钟每回合归零，不清就蹦不了）、被勾住 / 采住、挡住硬直里记的按后
     this.guardOn = -1; this.stompFor = -1; this.reelBy = -1; this.reelKD = false; this.rollDir = 0; this.heldAt = -999;
     this.prevBlock = false; this.blockPress = -999; this.parryOK = false;
     this.prevL = false; this.prevR = false; this.tapL = -999; this.tapR = -999; this.dashT = -999; this.dashDir = facing; this.dashFace = facing;
@@ -189,7 +190,7 @@ class Fighter {
   blockHeightOK(h) { return h === 'low' ? this.lowBlock : h === 'high' ? !this.lowBlock : true; }
   parryReady() { return !this.noParry && this.parryOK && this.clock - this.blockPress < PARRY_WIN + 1; }
   gainQi(n) { this.qi = clamp(Math.round((this.qi + n) * 10) / 10, 0, QI_MAX); }   // 保留一位小数，联机两边算出来一样
-  runSpeed() { return Math.min(RUN_MAX, RUN_START + this.runT * RUN_ACC); }
+  runSpeed() { const k = styleOf(this).runMul || 1; return Math.min(RUN_MAX * k, (RUN_START + this.runT * RUN_ACC) * k); }   // 3.3 拳派表里的 runMul：螳螂拳跑得快一成
   // 贴得很近时朝向对方
   snapFace() {
     const dx = this.opp.x - this.x;
@@ -586,14 +587,14 @@ class Fighter {
         if (!locked && this.tryBurst()) break;
         if ((this.stunT -= DT) <= 0) {
           this.freeAt = this.clock;      // 这一步刚恢复，还来不及挡：这一步打中仍算连上
-          this.grabbed = false; this.reel = false; this.clashed = false; this.carried = false; this.stagger = false; this.stuck = false; this.shook = false; this.luPull = false;   // 踉跄完了：又会自动面向对手
+          this.grabbed = false; this.reel = false; this.clashed = false; this.carried = false; this.stagger = false; this.stuck = false; this.shook = false; this.luPull = false; this.mtHeld = false;   // 踉跄完了：又会自动面向对手
           if (this.airborne) { this.state = 'air'; this.airUsed = true; this.vx = 0; } else this.state = 'idle';
         }
         break;
       case 'blockstun':
         this.lowBlock = !!h.down;
         this.autoFace();                 // 挡住的硬直里对手绕到身后：跟着转过去接着挡（1.9.0）
-        { const bst0 = styleOf(this); if (bst0.input) bst0.input(this, 'blockstun', locked); }   // 3.2 太极拳：挡住的硬直里按后也记（捋）
+        { const bst0 = styleOf(this); if (bst0.input && bst0.input(this, 'blockstun', locked)) break; }   // 3.2 太极拳：挡住的硬直里按后也记（捋）；3.3 螳螂拳：挡住的硬直里按后蹦出去（true = 这一派接手了）
         // 2.0 闪身：挡住的硬直里按着挡、朝对手双击 → 不等硬直完，直接从他身边钻过去
         if (!locked && h.block && !h.down && this.clock - this.dashT < 4 && this.dashDir === this.oppSide()) { this.dashT = -999; this.beginSlip(); break; }
         if (!locked && this.stompReady() && this.takePress(['kick'])) { this.beginMove('stomp', 'kick'); break; }        // 蹲挡住扫堂腿 → 踩腿
@@ -820,7 +821,7 @@ class Fighter {
   knockDown(vz, kvx, lie, ko) {
     this.state = ko ? 'ko' : 'down'; this.downPhase = 'fall'; this.t = 0;
     this.vz = vz; if (this.alt <= 0) this.alt = 0.01; this.kvx = kvx; this.vx = 0;
-    this.lieT = lie; this.move = null; this.chain = []; this.chainIdle = 99; this.grabbed = false; this.carried = false; this.luPull = false; this.slam = false; this.stuck = false; this.shook = false; this.prone = false;
+    this.lieT = lie; this.move = null; this.chain = []; this.chainIdle = 99; this.grabbed = false; this.carried = false; this.luPull = false; this.mtHeld = false; this.slam = false; this.stuck = false; this.shook = false; this.prone = false;
     this.rollDir = 0; this.stompFor = -1; this.gwalk = 0;
     this.lieKind = this.lieKind ? 0 : 1;                  // 躺姿换着来：一条腿稍弯 / 两腿伸直（只是画面）
     this.reel = false; this.clashed = false; this.stagger = false; this.runT = 0;
@@ -849,6 +850,7 @@ class Fighter {
       held: this.grabbed, low: lowProfile(this), lowBlock: this.lowBlock,
       catching: !!(d && d.catchKey),                                // 2.11 咏春拳在接招（按住挡再按键的那个架势；rLeft 是还剩几帧收完手）
       tjc: !!(m && m.charging), tjp: !!(m && !d.noPeng && (d.tjHua || (d.tjCharge && (m.hua || 0) < TJ_HUA_MAX)) && m.t < m.S + 1), jin: this.jin || 0,   // 3.0 太极拳：在蓄势、身上有掤、攒了几级劲
+      hop: !!(m && m.name === 'mtHop'), hook: !!(m && d.hook && m.t <= m.S + d.A), mtWind: !!(m && m.mtWinded && (m.pen || 0) > 0),   // 3.3 螳螂拳：在蹦步退、在勾（伸着手）、停手喘着
     };
     this.history.push(s); if (this.history.length > 40) this.history.shift();
   }
