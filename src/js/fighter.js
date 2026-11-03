@@ -1026,7 +1026,11 @@ class Fighter {
       let s = P[k];
       if (!s) { P[k] = { x: xd, from: xd, to: xd, t: 1 }; return; }
       const hipX = this.x + f * (p.dx + (k === 'ff' ? BODY.hipSplit : -BODY.hipSplit));
-      const far = Math.hypot(s.x - hipX, p.hy - A - lift) > legLen;
+      // 3.1.3（Jack：太极拳刚进去的时候后腿在抖）：姿势自己就把腿蹬直的（太极拳的弓步、3.1.2 的待机：后腿伸到腿长的 98.5%，tjReach），
+      // 脚就在姿势要的地方也比 legLen 远 —— 以前每走完一步（STEP_T 帧）又算「够不着」再迈一步，后脚一直原地抬起放下、膝盖跟着一跳一跳。
+      // 「够不着」改成比姿势自己要的还远才算
+      const reach = x => Math.hypot(x - hipX, p.hy - A - lift);
+      const far = reach(s.x) > Math.max(legLen, reach(xd) + 0.5);
       if (s.t >= 1 && (Math.abs(xd - s.x) > STEP_TOL || far)) { s.from = s.x; s.t = 0; }
       let up = 0;
       if (s.t < 1) {

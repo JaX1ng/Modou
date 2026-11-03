@@ -4444,6 +4444,28 @@ T('3.1.2 准备页里选颜色、拳派、难度，菜单后面的两个人不�
   ok(Math.abs(camZ - ATTRACT_ZOOM * zoomBoost()) < 1e-9, '重新站好的时候镜头就在这儿（不从 2.0 往回拉）');
   ok(camGoal('attract', { x: 200 }, { x: 200 + MAXD_PVP }, 0).zoom >= ZOOM_PVP_MIN - 1e-9, '离得远照旧拉远（两个人都在画面里）');
 });
+T('3.1.3 待机后腿不抖（Jack：太极拳刚进去的时候后腿在抖）：后腿蹬直的姿势（太极拳的待机、弓步）脚就在姿势要的地方，不再每几帧「够不着」原地再迈一步；三派站着、蹲着、挡着都不迈步，膝盖一帧挪不到 0.1', () => {
+  const keep = [Styles.solo.me, Styles.dummy];
+  try {
+    for (const st of STYLE_IDS) {
+      Styles.solo.me = st; Styles.dummy = st;
+      for (const [nm, inp] of [['站着', 0], ['蹲着', HOLD('down')], ['挡着', HOLD('block')]]) {
+        startMatch('train'); game.paused = false; F2.x = F1.x + 400;
+        let steps = 0, jump = 0, pk = null; const prevT = { ff: 1, bf: 1 };
+        for (let i = 0; i < 360; i++) {
+          step([inp, 0]);
+          for (const k of ['ff', 'bf']) { const P = F1.plant && F1.plant[k]; if (i > 20 && P && P.t < prevT[k] && P.t < 1) steps++; prevT[k] = P ? P.t : 1; }
+          const kk = F1.J.bk; if (pk && i > 40) jump = Math.max(jump, Math.hypot(kk[0] - pk[0], kk[1] - pk[1])); pk = kk.slice();
+        }
+        ok(steps === 0, `${STYLES[st].name}${nm}：脚原地迈了 ${steps} 步（3.1.2 太极拳待机是一直迈：4 帧一步）`);
+        ok(jump < 0.1, `${STYLES[st].name}${nm}：后膝一帧挪 ${jump.toFixed(2)}`);
+      }
+    }
+    // 太极拳的待机后腿伸到腿长的 98% 上下（比脚踩实的 legLen 还长），脚踩实照样不迈
+    const J = PoseIcon.build({ style: 'taiji', pose: 'stance' }).J, L = BODY.bone;
+    ok(Math.hypot(J.bf[0] - J.hipB[0], J.bf[1] - J.hipB[1]) > L.th + L.sh - 1.5, '这条测的就是后腿伸得比 legLen 还长的情况');
+  } finally { Styles.solo.me = keep[0]; Styles.dummy = keep[1]; }
+});
 T('3.1.2 六边形平滑过渡（Jack：换人物的时候六边形要平滑自然地过去）：按一串数挪图（hexPaint）和直接画（hexSVG）是同一个样子；两派中间的数画出来在两派之间；随机是空的格子 + 问号', () => {
   const box = document.createElement('div'); document.body.appendChild(box);
   try {

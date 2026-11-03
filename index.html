@@ -884,7 +884,8 @@ html.desktop .guide{display:none}
 // 3.0.0（2026-11-01）：第三派太极拳（加一派照规矩是大版本；Godot 版不做了，网页版接着用 3.x 的号）
 // 3.0.1：手大 5%、勾手重画、太极拳的后腿不往下塌（Jack 打了 3.0.0 提的；只是画面）
 // 3.1.2：太极拳的待机换成 Jack 的图、菜单背景的人纯随机不刷新、六边形换派时平滑地变过去（只是画面、界面）
-const VERSION = '3.1.2';
+// 3.1.3：太极拳待机后腿抖（脚踩实以为够不着、原地一直迈步）修好（只是画面）
+const VERSION = '3.1.3';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -4643,10 +4644,11 @@ function tjTarget(F, t) {
   }
   if (st === 'idle') {
     // 3.1.2 待机（Jack 的图）的呼吸：太极慢，两秒一口气（别的派 1.3 秒，fighter.js）—— 呼气身子往下沉一点、前掌往前送、指尖往前倒一点，
-    // 吸气反过来；后手跟着慢半拍。腿不动（髋只动半个像素，和别的派一样）
+    // 吸气反过来；后手跟着慢半拍。腿不动：3.1.3（Jack：后腿在抖）后腿蹬直的时候髋一上一下、膝盖就跟着前后晃（腿快伸直时一点就动），
+    // 髋只动 0.25（以前 0.5；别的派 0.4），起伏放在上身和手上
     copyPose(t, TPOSE.stance);
     const ph = F.clock * TAU / 120, c = Math.cos(ph);
-    t.hy -= 0.5 * c; t.tor += 0.8 * c; t.head -= Math.cos(ph - 0.5);
+    t.hy -= 0.25 * c; t.tor += 0.8 * c; t.head -= Math.cos(ph - 0.5);
     t.fh[0] += 1.5 * c; t.fh[1] += 1.8 * Math.cos(ph - 0.6); t.fpa += 3 * Math.cos(ph - 0.6);
     t.bh[0] += c; t.bh[1] += 1.4 * Math.cos(ph - 0.9);
     return t;
@@ -6688,7 +6690,11 @@ class Fighter {
       let s = P[k];
       if (!s) { P[k] = { x: xd, from: xd, to: xd, t: 1 }; return; }
       const hipX = this.x + f * (p.dx + (k === 'ff' ? BODY.hipSplit : -BODY.hipSplit));
-      const far = Math.hypot(s.x - hipX, p.hy - A - lift) > legLen;
+      // 3.1.3（Jack：太极拳刚进去的时候后腿在抖）：姿势自己就把腿蹬直的（太极拳的弓步、3.1.2 的待机：后腿伸到腿长的 98.5%，tjReach），
+      // 脚就在姿势要的地方也比 legLen 远 —— 以前每走完一步（STEP_T 帧）又算「够不着」再迈一步，后脚一直原地抬起放下、膝盖跟着一跳一跳。
+      // 「够不着」改成比姿势自己要的还远才算
+      const reach = x => Math.hypot(x - hipX, p.hy - A - lift);
+      const far = reach(s.x) > Math.max(legLen, reach(xd) + 0.5);
       if (s.t >= 1 && (Math.abs(xd - s.x) > STEP_TOL || far)) { s.from = s.x; s.t = 0; }
       let up = 0;
       if (s.t < 1) {

@@ -637,10 +637,11 @@ function tjTarget(F, t) {
   }
   if (st === 'idle') {
     // 3.1.2 待机（Jack 的图）的呼吸：太极慢，两秒一口气（别的派 1.3 秒，fighter.js）—— 呼气身子往下沉一点、前掌往前送、指尖往前倒一点，
-    // 吸气反过来；后手跟着慢半拍。腿不动（髋只动半个像素，和别的派一样）
+    // 吸气反过来；后手跟着慢半拍。腿不动：3.1.3（Jack：后腿在抖）后腿蹬直的时候髋一上一下、膝盖就跟着前后晃（腿快伸直时一点就动），
+    // 髋只动 0.25（以前 0.5；别的派 0.4），起伏放在上身和手上
     copyPose(t, TPOSE.stance);
     const ph = F.clock * TAU / 120, c = Math.cos(ph);
-    t.hy -= 0.5 * c; t.tor += 0.8 * c; t.head -= Math.cos(ph - 0.5);
+    t.hy -= 0.25 * c; t.tor += 0.8 * c; t.head -= Math.cos(ph - 0.5);
     t.fh[0] += 1.5 * c; t.fh[1] += 1.8 * Math.cos(ph - 0.6); t.fpa += 3 * Math.cos(ph - 0.6);
     t.bh[0] += c; t.bh[1] += 1.4 * Math.cos(ph - 0.9);
     return t;
