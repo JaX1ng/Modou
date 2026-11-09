@@ -55,6 +55,7 @@
   - `src/` = 全部源码（就是这份 NOTES 所在的目录：index.html、js/、css/、tests、balance、build.py、desktop/）。
   - `.github/workflows/desktop.yml` = 软件版自动打包。
 - **claude.ai「格斗游戏」Project**：`modou/` 下面是源码的文本文件（= 仓库的 `src/`，图标这类二进制文件只在仓库里），`.github/workflows/desktop.yml` 也存一份。两边要一样。
+  - **3.5.0 起传不上大文件**：Claude Code 里往 Project 写文件要先把整个文件一次读完（Read 一次最多两万多 token），读不完的传不上去 —— `js/fx.js`、`render.js`、`drills.js`、`ui.js`、`wingchun.js`、`guide.js`、`tests.js`、`lang_en.js`（Project 里还没有）和这份 `NOTES.md` 在 Project 里停在 3.4.0。**以 GitHub 仓库为准**；要 Project 也一样，就在 claude.ai 的 Project 里手动上传仓库 `src/` 里的这几个文件。小文件照旧同步（先 project_read 一遍 Project 里那份，再整个读一遍本地文件、用 local_path 写）。
 - **每次更新**：改源码 → tests.html 全过 → 改 `VERSION`、写改动记录 → `python build.py` → 把 `dist/index.html` 复制成仓库根目录 `index.html`（2.3 以前是 `dist/modou.html`）、把源码放进 `src/`（连同 `src/fonts/`） → 提交推送（网页版就更新了）→ 推一个和版本号一样的 tag（`git tag v2.1.0 && git push origin v2.1.0`）→ GitHub Actions 打出 Windows 包（还顺手打 Linux、macOS），自动建 Release → 上 Steam 时把 Release 里的 `Modou-版本-win-x64.zip` 用 SteamPipe 传上去（步骤见 `desktop/STEAM.md`）。
 - tag 必须等于 `v` + `VERSION`，不一样 CI 直接报错。
 
