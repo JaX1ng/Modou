@@ -1017,10 +1017,44 @@ for (const btn of touchEl.querySelectorAll('.tc')) {
 /* 帧数表、克制总表、破解表：2.2 起在 guide.js（教程「查表」那一页 / 软件版教程）里，直接读 MOVES */
 
 /* ---------- 主循环 ---------- */
+/* 3.5.1（Jack：网页版越来越卡）没人看的帧不画：
+   · 游戏画面整个滚出了窗口（往下看教程的时候）：逻辑照走，画面不画；滚回来（差 160 像素进窗口就算）接着画；
+   · 暂停着（暂停、破招练习的选课 / 说明 / 过关……）：画面是定住的，每一帧画出来都一样 —— 刚暂停、每次按键点鼠标、窗口变了以后照画一秒
+     （镜头停稳、面板上的字换了都画得上），之后不画，等不暂停了接着画。
+   只是不画看不见的、一模一样的帧，画出来的东西不变；不画的这段时间自动画质不计（不会以为很顺去升分辨率） */
+const Show = {
+  vis: true, until: 0, wasPaused: false, drawn: true, gen: -1,
+  wake(ms) { this.until = Math.max(this.until, performance.now() + (ms || 1000)); },
+  want(now) {
+    if (game.paused !== this.wasPaused) { this.wasPaused = game.paused; this.wake(); }
+    if (cvGen !== this.gen) { this.gen = cvGen; this.wake(); }     // 画布重设过（窗口变了、全屏、自动画质）：画布被清空了，得重画
+    return this.vis && (!game.paused || game.mode === 'online' || now < this.until);
+  },
+};
+if (window.IntersectionObserver) {
+  new IntersectionObserver(es => { const v = es[es.length - 1].isIntersecting; if (v && !Show.vis) Show.wake(); Show.vis = v; }, { rootMargin: '160px' }).observe(cv);
+}
+for (const ev of ['keydown', 'keyup', 'pointerdown', 'pointerup']) window.addEventListener(ev, () => Show.wake(), { capture: true, passive: true });   // 滚轮不算（滚选课的列表画面不变）
+window.addEventListener('resize', () => Show.wake());
+document.addEventListener('visibilitychange', () => Show.wake());
+// 网址加 ?fps：左上角一行小字 —— 一秒画几帧、屏幕多少 Hz、每几次刷新画一帧、画布多大、自动画质的倍数、一帧 JS 多少毫秒（调性能用，平时没有）
+const FpsHud = /[?&]fps\b/.test(location.search) ? (() => {
+  const el = document.createElement('div');
+  el.setAttribute('translate', 'no');
+  el.style.cssText = 'position:fixed;left:6px;top:6px;z-index:99999;font:12px/1.4 ui-monospace,Consolas,monospace;background:rgba(23,24,26,.72);color:#ebeae2;padding:2px 7px;border-radius:4px;pointer-events:none;white-space:pre';
+  document.body.appendChild(el);
+  return { el, n: 0, js: 0, t0: performance.now() };
+})() : null;
 let last = performance.now(), acc = 0, rafAvg = FRAME_MS, aligned = true;
 function loop(now) {
-  AutoRes.watch(now - last);                       // 3.1.1 自动降分辨率（render.js）：一直掉帧就降一点分辨率
-  let dt = Math.min(100, now - last); last = now;
+  const t0 = FpsHud ? performance.now() : 0;
+  const show = Show.want(now), raw = now - last;
+  if (show && !Show.drawn) { lastRT = 0; Stage.liveLast = 0; Pace.reset(); }   // 停画以后重新画的第一帧：镜头、动的背景从这一帧接着走（不一下补上停的那段）
+  Pace.tick(raw);
+  const draw = show && Pace.due(now);
+  // 3.1.1 自动降分辨率（render.js）：一直掉帧就降一点分辨率。量的是画出来的帧和帧之间隔多久；不画的那段时间（滚出去、暂停）传 0 = 不计
+  if (draw) AutoRes.watch(Pace.lastDraw ? now - Pace.lastDraw : 0); else if (!show) AutoRes.watch(0);
+  let dt = Math.min(100, raw); last = now;
   // 2.0.1 / 2.6 帧率：逻辑一秒 SIM_HZ（240）步，和屏幕刷新率无关。rafAvg = 屏幕大概多久刷新一次：
   // 刚好是整数步（60Hz = 4 步、120Hz = 2 步、240Hz = 1 步）就把这一下对齐成正好那么多步，画面不插值（不多一点延迟；
   // 60Hz 屏幕间隔在 16.7ms 上下抖，不对齐的话偶尔一下走 3 步、下一下走 5 步，画面一顿）；
@@ -1037,8 +1071,17 @@ function loop(now) {
     if (n >= 5 * SUB) acc = 0;
     RA = !aligned || game.timeScale < 1 ? clamp(acc / STEP_MS, 0, 1) : 1;        // KO 慢镜头时也插（不然几帧才动一下）
   }
-  render();
+  if (draw) { render(); Pace.drew(now); }
+  Show.drawn = show;
   Ach.watch();
+  if (FpsHud) {
+    const H = FpsHud; H.js += performance.now() - t0; if (draw) H.n++;
+    if (now - H.t0 >= 500) {
+      const s = (now - H.t0) / 1000;
+      H.el.textContent = `${Math.round(H.n / s)} fps | ${Pace.V ? Math.round(1000 / Pace.V) : '?'} Hz | 1/${Pace.d} | ${cv.width}x${cv.height} | res ${AutoRes.res.toFixed(2)} | JS ${(H.js / Math.max(1, H.n)).toFixed(1)} ms`;
+      H.n = 0; H.js = 0; H.t0 = now;
+    }
+  }
   requestAnimationFrame(loop);
 }
 // 联机时页面切到后台（换标签页、最小化、去回微信），浏览器会暂停画面刷新，游戏就不往前走，

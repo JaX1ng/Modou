@@ -14,6 +14,7 @@ function withCtx(c2d, fn) { const keep = ctx; ctx = c2d; try { return fn(); } fi
    （devicePixelRatio：高分屏、Windows 缩放 125%/150%、浏览器缩放都算进去；画布太大时封顶，保证帧率）。
    W / H 还是 1200 / 600：规则里用到的（双人对战两人最远距离）不跟着屏幕变。背景、地面在 stage.js */
 let scale = 1, pxr = 1, VW = W, VH = H, FY = FLOOR;
+let cvGen = 0;                                      // 3.5.1 画布被重设过几次（重设 = 清空；暂停时不画的那段也得马上重画，见 ui.js Show）
 const viewFor = (cw, ch) => {                         // CSS 宽高 → 逻辑画面（测试也用）
   const asp = cw / Math.max(1, ch);
   const vw = asp >= W / H ? H * asp : W, vh = asp >= W / H ? H : W / asp;
@@ -32,7 +33,7 @@ function resize() {
   const v = viewFor(cw, ch);
   VW = v.vw; VH = v.vh; FY = v.fy;
   cv.width = Math.round(cw * k); cv.height = Math.round(ch * k);
-  scale = cw / VW; pxr = k;
+  scale = cw / VW; pxr = k; cvGen++;
 }
 /* 3.1.1（Jack：网页版还是有点卡）自动降分辨率：一直掉帧 —— 最近一秒半里四分之一以上的帧比 25 毫秒还慢（不到 40 帧/秒）—— 画布的分辨率降一档（×0.85，慢得多就 ×0.72），
    最低到每个 CSS 像素 AUTORES_MIN 个像素（高分屏先从 2 倍、3 倍往下降，普通屏最多糊一点点）。降了一档却没快起来（慢的不是画的像素多）就退回去、不再往下降；
@@ -67,6 +68,46 @@ const AutoRes = {
     if (this.probeT > 0) this.probeT -= 500;
     this.good = slow === 0 ? this.good + 500 : 0;
     if (this.good >= 15000 && this.res < this.cap - 1e-3) { this.good = 0; this.probeT = 10000; this.set(Math.min(this.cap, this.res / 0.85)); }
+  },
+};
+/* 3.5.1 高刷屏（Jack 的笔记本是 300Hz）：以前屏幕刷新一次就画一帧 —— 300Hz 的屏幕一秒要画 300 帧，一帧只有 3.3 毫秒，
+   画不完就掉帧，而且掉得不均匀（这一下隔 3.3、下一下隔 6.7、再下一下又 3.3），看着一顿一顿的；每加一点东西就更卡一点。
+   现在量着：一直跟不上（最近一秒半里四分之一以上的帧比该到的晚一拍以上）就改成每 2 次刷新画一帧，还跟不上每 3 次……最少一秒 60 帧
+   （60Hz 的屏幕本来就一次一帧，什么都不变；跟得上的电脑也什么都不变）。帧和帧之间一样长，比忽快忽慢的掉帧顺得多。
+   逻辑照样一秒 240 步、照样每次刷新都走（按键照样马上算，不会晚），只是少画几帧，画的时候照旧在两步之间插值。
+   稳了 15 秒再试着多画一点，试了又跟不上就退回来，下次等更久（最多两分钟） */
+const Pace = {
+  V: 0, d: 1, iv: [], ivN: 0,                  // V：屏幕多久刷新一次（最近的帧间隔里短的那一头）；d：每几次刷新画一帧
+  lastDraw: 0, win: [], winT: 0, next: 0, good: 0, probe: 0, wait: 15000,
+  dMax() { return this.V > 0 ? Math.max(1, Math.floor(17.5 / this.V)) : 1; },     // 最少一秒 60 帧上下
+  reset() { this.lastDraw = 0; this.win.length = 0; this.winT = 0; this.next = 0; this.good = 0; },
+  tick(raw) {                                   // 每次刷新：记帧间隔，估屏幕刷新率（每 30 帧用最近 90 帧里第一成短的那个）
+    if (!(raw > 0) || raw > 100) return;
+    this.iv[this.ivN++ % 90] = raw;
+    if (this.ivN % 30 === 0 && this.iv.length >= 60) {
+      const s = this.iv.slice().sort((a, b) => a - b);
+      this.V = s[Math.floor(s.length * 0.1)];
+      if (this.d > this.dMax()) this.d = this.dMax();
+    }
+  },
+  due(now) { return this.d <= 1 || !this.lastDraw || now - this.lastDraw >= (this.d - 0.5) * this.V; },
+  drew(now) {                                    // 画了一帧：这一帧比该到的晚没晚（晚了一拍以上），半秒看一次要不要改 d
+    const I = this.lastDraw ? now - this.lastDraw : 0;
+    this.lastDraw = now;
+    if (!(I > 0) || I > 250 || !this.V) return;
+    const W = this.win; W.push(I > (this.d + 0.25) * this.V ? I : -I); this.winT += I;   // 比计划的晚了大半拍以上算晚（屏幕间隔要是估成了两拍，晚一拍也看得出来）
+    while (this.winT - Math.abs(W[0]) >= 1500) this.winT -= Math.abs(W.shift());
+    if (this.winT < 1400 || (this.next -= I) > 0) return;
+    this.next = 500;
+    let late = 0; for (const x of W) if (x > 0) late++;
+    const frac = late / W.length, dm = this.dMax();
+    if (this.probe > 0) {                        // 刚试着多画：又跟不上就退回来，下次等更久
+      this.probe -= 500;
+      if (frac > 0.1) { this.d++; this.probe = 0; this.wait = Math.min(120000, this.wait * 2); this.good = 0; W.length = 0; this.winT = 0; return; }
+    }
+    if (frac > 0.25 && this.d < dm) { this.d++; this.good = 0; this.probe = 0; W.length = 0; this.winT = 0; return; }
+    this.good = frac < 0.03 ? this.good + 500 : 0;
+    if (this.good >= this.wait && this.d > 1) { this.d--; this.good = 0; this.probe = 3000; W.length = 0; this.winT = 0; }
   },
 };
 // 给场景用：这一帧画面多大、地线在哪、最大放大倍数（地面层按这个分辨率画）

@@ -4955,6 +4955,50 @@ T('3.5 英文：对照表本身 —— 每一条英文里的 {0} 和 [拳] 这�
   for (const s of ['短拳', '墨 胜', '第三回合', '气满 · 可泼墨']) eq(TR(s), s, '中文时照原样');
   eq(gText('按 [拳]').includes('短拳') || gText('按 [拳]').startsWith('按 '), true, '中文的教程句子不经过英文');
 });
+T('3.5.1 跟着浏览器的语言：浏览器先列中文的进中文、先列英文的进英文、两样都不是的进英文、读不到的进中文；设置里选过的、网址 ?lang= 、测试固定的都比浏览器优先', () => {
+  const cases = [
+    [['zh-CN', 'en'], 'zh'], [['zh-TW'], 'zh'], [['zh-Hant-HK'], 'zh'], [['ZH'], 'zh'],
+    [['en-US', 'zh-CN'], 'en'], [['en'], 'en'], [['ja', 'zh-CN'], 'zh'], [['ko-KR', 'en-GB'], 'en'],
+    [['ja-JP'], 'en'], [['fr', 'de'], 'en'], [[], 'zh'], [undefined, 'zh'], [[''], 'zh'], [[null, 'en'], 'en'],
+  ];
+  for (const [l, want] of cases) eq(browserLang(l), want, JSON.stringify(l));
+  eq(pickLang({ langs: ['en-US'] }), 'en');
+  eq(pickLang({ saved: 'zh', langs: ['en-US'] }), 'zh', '设置里选过中文，英文浏览器也是中文');
+  eq(pickLang({ saved: 'en', langs: ['zh-CN'] }), 'en', '设置里选过英文，中文浏览器也是英文');
+  eq(pickLang({ query: 'en', saved: 'zh', langs: ['zh-CN'] }), 'en', '网址 ?lang=en 比选过的优先');
+  eq(pickLang({ forced: 'zh', query: 'en', saved: 'en', langs: ['en-US'] }), 'zh', '测试、动作台固定的最优先');
+  eq(pickLang({ saved: 'fr', query: 'xx', langs: ['zh-CN'] }), 'zh', '不认识的值不算');
+  eq(LANG, 'zh', '测试页固定中文');
+});
+T('3.5.1 高刷屏的画帧节奏（render.js Pace）：跟得上就每次刷新都画；300Hz 屏幕画一帧要 4 ~ 5 毫秒的，稳定在每 2 次刷新画一帧（150 帧、间隔一样长），要 12 毫秒的每 4 次一帧；60Hz 的屏幕永远一次一帧', () => {
+  // 模拟：屏幕每 V 毫秒刷新一次；这一下画了就花 cost 毫秒（不画 0.3），下一次回调在干完以后的下一次刷新
+  const run = (hz, cost, secs) => {
+    const V = 1000 / hz, P = Object.assign({}, Pace, { V: 0, d: 1, iv: [], ivN: 0, lastDraw: 0, win: [], winT: 0, next: 0, good: 0, probe: 0, wait: 15000 });
+    let t = 1000, last = 1000 - V, draws = 0, prevDraw = 0;
+    const gaps = [], ds = {};
+    for (const end = t + secs * 1000; t < end;) {
+      P.tick(t - last); last = t;
+      const draw = P.due(t);
+      const c = draw ? (typeof cost === 'function' ? cost() : cost) : 0.3;
+      if (draw) { P.drew(t); draws++; if (t > end - 10000 && prevDraw) gaps.push(t - prevDraw); prevDraw = t; }
+      ds[P.d] = (ds[P.d] || 0) + 1;
+      t = Math.max(t + V, Math.ceil((t + c) / V - 1e-9) * V);
+    }
+    return { d: P.d, fps: draws / secs, gaps, ds, V };
+  };
+  const near = (a, b, tol) => Math.abs(a - b) <= tol;
+  const evenness = r => { const g = r.gaps.slice().sort((a, b) => a - b), m = g[g.length >> 1]; return g.filter(x => near(x, m, 0.05)).length / g.length; };
+  for (const c of [2, 8, 15, 30]) { const r = run(60, c, 30); eq(r.d, 1, `60Hz、画一帧 ${c} 毫秒`); }
+  let r = run(300, 2, 30); eq(r.d, 1, '300Hz 跟得上'); ok(near(r.fps, 300, 6), '300Hz 跟得上：一秒 300 帧 ' + r.fps);
+  r = run(300, 5, 60); ok(near(r.fps, 150, 8), '300Hz、一帧 5 毫秒：一秒 150 帧上下 ' + r.fps); ok(evenness(r) > 0.9, '帧和帧之间一样长 ' + evenness(r));
+  r = run(300, () => 2 + Math.random() * 3, 60);
+  eq(r.d, 2, '300Hz、一帧 2 ~ 5 毫秒忽快忽慢 → 每 2 次刷新画一帧'); ok(near(r.fps, 150, 10), '一秒 150 帧上下 ' + r.fps); ok(evenness(r) > 0.85, '最后 10 秒帧和帧之间一样长 ' + evenness(r).toFixed(2));
+  r = run(300, () => 4 + Math.random() * 5, 60);
+  ok(evenness(r) > 0.85, '300Hz、一帧 4 ~ 9 毫秒（有时两拍、有时三拍）→ 稳定成一样长 ' + evenness(r).toFixed(2) + ' d ' + r.d + ' fps ' + r.fps);
+  r = run(144, () => 5 + Math.random() * 5, 30); eq(r.d, 2, '144Hz、一帧 5 ~ 10 毫秒 → 每 2 次（72 帧）'); ok(evenness(r) > 0.85, '144Hz 一样长 ' + evenness(r).toFixed(2));
+  r = run(300, 25, 30); ok(r.d <= 5 && r.fps >= 25, '再慢也不会降到一秒 60 帧的节奏以下（剩下的交给自动画质） d ' + r.d + ' fps ' + r.fps);
+  r = run(240, 3, 30); eq(r.d, 1, '240Hz 跟得上');
+});
 
 (async function runAll() {
   const list = document.getElementById('list');

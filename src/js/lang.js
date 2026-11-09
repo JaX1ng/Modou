@@ -3,7 +3,8 @@
    3.5 语言：中文 / English（Jack：设置里能换英文；换成英文以后界面、教程、说明都是英文的）
    · 中文还是原文，照旧写在代码里；英文是一张对照表 EN_TEXT（js/lang_en.js）：中文 → 英文。
      表里没有的照样显示中文，tests.html 的「英文」那几条测试会把漏的一条一条列出来 —— 加了新的中文，就去 lang_en.js 补一行英文
-   · 换语言：存在 localStorage「modou.lang」，然后重新载入页面（只在主菜单的设置里换；打着的时候不换）。网址带 ?lang=en / ?lang=zh 也行
+   · 换语言：存在 localStorage「modou.lang」，然后重新载入页面（只在主菜单的设置里换；打着的时候不换）。网址带 ?lang=en / ?lang=zh 也行；
+     3.5.1 起没选过的跟着浏览器的语言（browserLang）
    · 页面上的字（index.html 写死的、ui.js / guide.js 塞进去的）：英文时 L10N 先把整页换一遍，之后 MutationObserver 看着，新塞进来的自动换
    · 画在画布上的字（血条、飘字、大字、训练场面板……）：画之前过一遍 TR()
    · 表里的键可以带 {0} {1}：「成功 {0} 次」对得上「成功 3 次」；{0} 抓到的字再查一遍表（「下一课：{0} · {1}」两段都换）；
@@ -12,14 +13,35 @@
    · 不换的：印章（水墨的味道；英文时下面另写一行小字，见 render.js drawSeal）、标题「墨斗」、写了 translate="no" 的元素
    ============================================================ */
 const LANGS = ['zh', 'en'];
+// 3.5.1 跟着浏览器的语言（Jack：根据浏览器的语言，进去默认那个语言）：顺着用户在浏览器 / 系统里排的语言往下找，
+// 先碰到中文（简体、繁体都算）就中文，先碰到英文就英文；都对不上（日语、法语……）给英文；什么都读不到才中文
+function browserLang(list) {
+  const L = Array.from(list || []).map(t => String(t || '').trim().toLowerCase()).filter(Boolean);
+  for (const s of L) { if (s.startsWith('zh')) return 'zh'; if (s.startsWith('en')) return 'en'; }
+  return L.length ? 'en' : 'zh';
+}
+// 用哪种：固定的（测试、动作台、平衡报告）> 网址 ?lang= > 设置里自己选过的 > 浏览器的语言。
+// 网址、设置里选的存起来（modou.lang）；跟着浏览器判断出来的不存 —— 没选过的人换了浏览器语言，游戏跟着变
+function pickLang(o) {
+  for (const v of [o.forced, o.query, o.saved]) if (LANGS.includes(v)) return v;
+  return browserLang(o.langs);
+}
 let LANG = (() => {
-  if (typeof window !== 'undefined' && LANGS.includes(window.MODOU_LANG)) return window.MODOU_LANG;   // 测试、动作台、平衡报告固定中文
-  let q = null;
-  try { q = new URLSearchParams(location.search).get('lang'); } catch (e) {}
-  if (LANGS.includes(q)) { try { localStorage.setItem('modou.lang', q); } catch (e) {} return q; }
-  try { const v = localStorage.getItem('modou.lang'); if (LANGS.includes(v)) return v; } catch (e) {}
-  return 'zh';
+  const o = {};
+  if (typeof window !== 'undefined') o.forced = window.MODOU_LANG;
+  try { o.query = new URLSearchParams(location.search).get('lang'); } catch (e) {}
+  if (!LANGS.includes(o.forced) && LANGS.includes(o.query)) { try { localStorage.setItem('modou.lang', o.query); } catch (e) {} }
+  try { o.saved = localStorage.getItem('modou.lang'); } catch (e) {}
+  try { o.langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]; } catch (e) {}
+  return pickLang(o);
 })();
+// 英文：页面先藏着，L10N 把字换成英文再露出来（不闪一下中文）；万一没换成，3 秒后也露出来。
+// 3.5.1 起 lang.js 在 <head> 里载入（以前是 index.html 头上一小段自己判断一遍，两处容易对不上）
+if (LANG === 'en' && typeof document !== 'undefined' && document.documentElement) {
+  const html = document.documentElement;
+  html.lang = 'en'; html.classList.add('l10n-wait');
+  setTimeout(() => html.classList.remove('l10n-wait'), 3000);
+}
 const EN = typeof EN_TEXT !== 'undefined' ? EN_TEXT : {};
 const HAN_RE = /[\u3000-\u303f\u3400-\u9fff\uf900-\ufaff\uff01-\uff60]/;   // 汉字 + 中文标点（「、」「（」「～」单独一段也要换）
 const T_CACHE = new Map();
@@ -78,6 +100,7 @@ function TR(s) {
   if (r === undefined) {
     r = tFind(s);
     if (r == null) { T_MISS.add(s); r = s; }
+    if (T_CACHE.size >= 5000) T_CACHE.clear();      // 3.5.1 带数字的句子（血量、帧数、倒数……）每种都记一条：记多了清掉重来，不一直涨
     T_CACHE.set(s, r);
   }
   return r;
@@ -151,7 +174,9 @@ const L10N = {
         else this.attrs(r.target);
       }
     }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: this.ATTRS });
-    html.classList.remove('l10n-wait');                // index.html 头上那一小段先把页面藏着，换完再露出来（不闪一下中文）
+    html.classList.remove('l10n-wait');                // 上面先把页面藏着，换完再露出来（不闪一下中文）
   },
 };
-L10N.start();
+// 在 <head> 里载入的时候页面还没有 body：等页面读完（游戏的脚本都跑完了）整页换一遍，之后 MutationObserver 接着看
+if (typeof document !== 'undefined' && !document.body) document.addEventListener('DOMContentLoaded', () => L10N.start(), { once: true });
+else L10N.start();

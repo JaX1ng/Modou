@@ -1462,7 +1462,30 @@ for (const k in LIVE) STAGES[k].live = LIVE[k];
    每帧只贴这几行 —— 贴上去的位置、缩放和整张贴时一样（同一个换算），画出来不变。最底下那层（天 / 远景）整张不透明的话记 c.opaque。
    量的时候按一条一条（ROW_BAND 行）读，读到有东西就停；读不了（浏览器不让）就照旧整张贴 */
 const ROW_PAD = 3, ROW_BAND = 32;
-// 量的时候先把这一层整张抄到一块「专门给读的」画布上（willReadFrequently：放在内存里），在那上面一条一条读 ——
+// 量一层（g：这一层已经整张抄上去的、专门给读的画布）：返回 { rows, opaque }。主线程、Worker 里用的是同一个函数（Worker 的源码就是它的 toString）
+function scanRows(g, w, h, wantOpaque, PAD, BAND) {
+  const band = y => new Uint32Array(g.getImageData(0, y, w, Math.min(BAND, h - y)).data.buffer);   // 一个像素四个字节，全透明 = 0
+  const rowHas = (d, r) => { for (let k = r * w, e = k + w; k < e; k++) if (d[k] !== 0) return true; return false; };
+  let y0 = -1, y1 = -1;
+  for (let y = 0; y < h && y0 < 0; y += BAND) { const d = band(y), n = d.length / w; for (let r = 0; r < n; r++) if (rowHas(d, r)) { y0 = y + r; break; } }
+  if (y0 < 0) return { rows: [0, 0], opaque: false };                                    // 整层是空的
+  for (let y = Math.max(y0, h - BAND); y1 < 0; y = Math.max(y0, y - BAND)) {
+    const d = band(y), n = d.length / w;
+    for (let r = n - 1; r >= 0; r--) if (rowHas(d, r)) { y1 = y + r; break; }
+    if (y === y0) break;
+  }
+  const rows = [Math.max(0, y0 - PAD), Math.min(h, Math.max(y0, y1) + 1 + PAD)];
+  let opaque = false;
+  if (wantOpaque) {                                    // 除了最右两列、最下两行（画的时候不满一个像素的边）都是不透明的
+    opaque = true;
+    for (let y = 0; y < h - 2 && opaque; y += BAND) {
+      const a = g.getImageData(0, y, w, Math.min(BAND, h - 2 - y)).data;
+      for (let i = 3, x = 0; i < a.length; i += 4) { if (a[i] !== 255 && x < w - 2) { opaque = false; break; } if (++x === w) x = 0; }
+    }
+  }
+  return { rows, opaque };
+}
+// 主线程上量（Worker 用不了时）：先把这一层整张抄到一块「专门给读的」画布上（willReadFrequently：放在内存里），在那上面一条一条读 ——
 // 不对这一层本身 getImageData（读多了浏览器会把它挪出显卡，以后每帧贴它反而慢）；量完把这块画布清掉（不占内存）
 function layerRows(c, wantOpaque) {
   c.rows = null; c.opaque = false;
@@ -1473,28 +1496,55 @@ function layerRows(c, wantOpaque) {
     tmp.width = w; tmp.height = h;
     const g = tmp.getContext('2d', { willReadFrequently: true });
     g.drawImage(c, 0, 0);
-    const band = y => new Uint32Array(g.getImageData(0, y, w, Math.min(ROW_BAND, h - y)).data.buffer);   // 一个像素四个字节，全透明 = 0
-    const rowHas = (d, r) => { for (let k = r * w, e = k + w; k < e; k++) if (d[k] !== 0) return true; return false; };
-    let y0 = -1, y1 = -1;
-    for (let y = 0; y < h && y0 < 0; y += ROW_BAND) { const d = band(y), n = d.length / w; for (let r = 0; r < n; r++) if (rowHas(d, r)) { y0 = y + r; break; } }
-    if (y0 < 0) { c.rows = [0, 0]; return; }                                              // 整层是空的
-    for (let y = Math.max(y0, h - ROW_BAND); y1 < 0; y = Math.max(y0, y - ROW_BAND)) {
-      const d = band(y), n = d.length / w;
-      for (let r = n - 1; r >= 0; r--) if (rowHas(d, r)) { y1 = y + r; break; }
-      if (y === y0) break;
-    }
-    c.rows = [Math.max(0, y0 - ROW_PAD), Math.min(h, Math.max(y0, y1) + 1 + ROW_PAD)];
-    if (wantOpaque) {                                    // 除了最右两列、最下两行（画的时候不满一个像素的边）都是不透明的
-      let op = true;
-      for (let y = 0; y < h - 2 && op; y += ROW_BAND) {
-        const a = g.getImageData(0, y, w, Math.min(ROW_BAND, h - 2 - y)).data;
-        for (let i = 3, x = 0; i < a.length; i += 4) { if (a[i] !== 255 && x < w - 2) { op = false; break; } if (++x === w) x = 0; }
-      }
-      c.opaque = op;
-    }
+    const r = scanRows(g, w, h, wantOpaque, ROW_PAD, ROW_BAND);
+    c.rows = r.rows; c.opaque = r.opaque;
   } catch (e) { c.rows = null; c.opaque = false; }
   finally { tmp.width = tmp.height = 0; }
 }
+/* 3.5.1（Jack：网页版越来越卡）量放到 Worker 里：主线程只拍一张 ImageBitmap（有显卡加速时就是显卡上的一张快照，不读回来）递过去，
+   Worker 在自己的画布上抄一遍、一条一条读，读完把结果递回来。以前在主线程里读：有显卡加速的浏览器得把整层从显卡读回内存，
+   主线程要等显卡把手上的活全干完才拿得到（换场景、进出全屏、改窗口大小以后连着卡四下；没有显卡的电脑上一层也要几十毫秒）。
+   量出来的和以前一模一样（同一个 scanRows）；量好之前照旧整张贴（画出来一样）。Worker 用不了（老浏览器、出错）就照旧在主线程量 */
+const LayerScan = {
+  w: null, broken: typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined',
+  seq: 0, wait: new Map(),
+  worker() {
+    if (this.w || this.broken) return this.w;
+    try {
+      const src = `${scanRows.toString()}
+onmessage = function (e) {
+  const m = e.data; let r = null;
+  try { const oc = new OffscreenCanvas(m.bmp.width, m.bmp.height), g = oc.getContext('2d', { willReadFrequently: true });
+    g.drawImage(m.bmp, 0, 0); r = scanRows(g, m.bmp.width, m.bmp.height, m.wantOpaque, m.PAD, m.BAND); oc.width = oc.height = 0; } catch (err) { r = null; }
+  try { m.bmp.close(); } catch (err) {}
+  postMessage({ id: m.id, r: r });
+};`;
+      this.w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      this.w.onmessage = e => { const cb = this.wait.get(e.data.id); this.wait.delete(e.data.id); if (cb) cb(e.data.r); };
+      this.w.onerror = () => this.fail();
+    } catch (e) { this.broken = true; this.w = null; }
+    return this.w;
+  },
+  fail() {                                             // Worker 坏了：等着的都按「量不了」回去（调的人自己在主线程量）
+    this.broken = true;
+    try { if (this.w) this.w.terminate(); } catch (e) {}
+    this.w = null;
+    const cbs = [...this.wait.values()]; this.wait.clear();
+    for (const cb of cbs) cb(undefined);
+  },
+  // 量一层：done(r)，r = { rows, opaque }；null = 这一层读不了（照旧整张贴）；undefined = Worker 用不了（调的人在主线程量）
+  run(c, wantOpaque, done) {
+    const w = this.worker();
+    if (!w || !c.width || !c.height) { done(undefined); return; }
+    createImageBitmap(c).then(bmp => {
+      if (this.broken) { try { bmp.close(); } catch (e) {} done(undefined); return; }
+      const id = ++this.seq;
+      this.wait.set(id, done);
+      try { w.postMessage({ id, bmp, wantOpaque, PAD: ROW_PAD, BAND: ROW_BAND }, [bmp]); }
+      catch (e) { this.wait.delete(id); try { bmp.close(); } catch (e2) {} this.fail(); done(undefined); }
+    }, () => done(undefined));
+  },
+};
 // 贴一层：只贴 c.rows 那几行（没量过就整张贴）。目标位置 = 整张贴时这几行落在的地方
 function drawRows(g, c, x, y, w, h) {
   const r = c.rows;
@@ -1553,9 +1603,17 @@ const Stage = {
     this.layers = { sky, far, mid, ground: gc, near: S.near || null };
     // 2.11 量一下每层哪几行有东西（每帧只贴这几行）；最底下那层（有天就是天，没有就是远景）再看是不是整张不透明。
     // 不在这一帧里量（开局、换窗口大小时不卡一下）：过一会儿一层一层地量，量好之前照旧整张贴（画出来一样）
+    // 3.5.1 量放到 Worker 里（见上面 LayerScan），一层量完再递下一层（Worker 里一次只占一层的内存）；Worker 用不了的那一层照旧在主线程量
     clearTimeout(this.scanT);
     const todo = [sky, far, mid, gc].filter(Boolean), bottom = sky || far, mine = this.layers;
-    const next = () => { const c = this.layers === mine && todo.shift(); if (!c) return; layerRows(c, c === bottom); this.scanT = setTimeout(next, 40); };
+    const next = () => {
+      const c = this.layers === mine && todo.shift(); if (!c) return;
+      LayerScan.run(c, c === bottom, r => {
+        if (r === undefined) layerRows(c, c === bottom);
+        else if (r) { c.rows = r.rows; c.opaque = r.opaque; }
+        if (this.layers === mine) this.scanT = setTimeout(next, LayerScan.broken ? 40 : 0);
+      });
+    };
     this.scanT = setTimeout(next, 300);
     this.built = { id, back: w.back, ground: w.ground, top, vw };
     this.id = id;

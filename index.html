@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>墨斗</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<script>/* 3.5 英文：页面先藏着，js/lang.js 把字换成英文再露出来（不闪一下中文）；万一没换成，3 秒后也露出来 */try{var l=(location.search.match(/[?&]lang=(en|zh)\b/)||[])[1]||localStorage.getItem("modou.lang");if(l==="en"){document.documentElement.lang="en";document.documentElement.className+=" l10n-wait";setTimeout(function(){document.documentElement.classList.remove("l10n-wait")},3000)}}catch(e){}</script>
 <style>
 /* 2.4 字体打包进游戏（Jack：别让上不了谷歌的人用不了）：不再向 Google Fonts 要字体 —— 马善政（毛笔字）、思源黑体（界面字）
    裁成只含游戏里用到的字（fonts/*.woff2，python build.py --fonts 重新生成），和游戏放在一起。
@@ -606,302 +605,7 @@ html[lang=en] .g-start.tri3 .g-dl dd{margin-bottom:8px}
 html[lang=en] .g-mul th{white-space:normal;min-width:5.5em;max-width:9em}
 html[lang=en] .g-mul td.num{white-space:normal;max-width:10em}
 </style>
-</head>
-<body>
-<main class="wrap">
-  <div class="play" id="play">
-  <div class="topbar">
-    <div class="brand"><b translate="no">墨斗</b><i class="seal" translate="no">拳</i><span>水墨火柴人格斗</span></div>
-    <div class="tools">
-      <button class="tbtn" id="btnPause" type="button" disabled>暂停 Esc</button>
-      <button class="tbtn" id="btnSound" type="button">声音：开</button>
-      <button class="tbtn" id="btnFull" type="button">⛶ 全屏</button>
-    </div>
-  </div>
-
-  <div class="stage" id="stage">
-    <canvas id="cv" width="1200" height="600" aria-label="格斗场"></canvas>
-    <p class="toast" id="toast" role="status" hidden></p>
-
-    <div class="overlay menu" id="menu">
-      <div class="panel">
-        <h1 class="title" translate="no">墨斗<i class="seal">拳</i></h1>
-        <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
-        <!-- 2.11（Jack：主菜单只留模式）：颜色、拳派、场景、难度都进了模式以后在准备页（#prepPanel）里选 -->
-        <div class="row modes">
-          <button class="ibtn" id="btnPve" type="button">人机对战</button>
-          <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
-          <button class="ibtn ghost" id="btnOnline" type="button">联机对战</button>
-        </div>
-        <div class="row modes">
-          <button class="ibtn ghost" id="btnWatch" type="button">观战</button>
-          <button class="ibtn ghost" id="btnTrain" type="button">训练场</button>
-        </div>
-        <div class="row tight">
-          <button class="tbtn dark" id="btnKeys" type="button">⌨ 键位设置</button>
-          <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
-          <button class="tbtn dark" id="btnLegend" type="button">教程</button>
-          <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
-        </div>
-        <p class="hint" id="menuMsg" role="status" hidden></p>
-      </div>
-    </div>
-
-    <div class="overlay dim" id="pause" hidden>
-      <div class="panel">
-        <p class="big">暂停</p>
-        <div class="row">
-          <button class="ibtn" id="btnResume" type="button">继续</button>
-          <button class="ibtn ghost" id="btnRestart" type="button">重开</button>
-          <button class="ibtn ghost" id="btnPauseKeys" type="button">键位</button>
-          <button class="ibtn ghost" id="btnPauseDrill" type="button" hidden>说明</button>
-          <button class="ibtn ghost" id="btnPauseSet" type="button">设置</button>
-          <button class="ibtn ghost" id="btnPauseLegend" type="button">教程</button>
-          <button class="ibtn ghost" id="btnQuit" type="button">回菜单</button>
-        </div>
-        <button class="tbtn dark" id="btnPauseFull" type="button" hidden>退出全屏</button>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="online" hidden>
-      <div class="panel net">
-        <p class="big sm">联机对战</p>
-        <p class="hint" id="netIntro">两边输入同一个房间码就能连上（或者把邀请链接发给对方，他点开就进）。找对方时经过公共信令服务器（只传连接信息），连上以后两台电脑点对点直连，打的时候不经过服务器。</p>
-        <div class="netbox" id="netRoom">
-          <label class="step" for="roomCode">房间码（两边一样就行，随便起，比如「墨斗1022」）</label>
-          <div class="codebox"><input id="roomCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="输入房间码"><button class="cbtn" id="btnRoomJoin" type="button">进房间</button></div>
-          <p class="status sm" id="roomStatus" role="status"></p>
-          <div class="row tight" id="roomTools" hidden>
-            <button class="cbtn ghost" id="btnInvite" type="button">复制邀请链接</button>
-            <button class="cbtn ghost" id="btnRoomLeave" type="button">换个房间</button>
-          </div>
-        </div>
-        <details class="relay" id="relayBox">
-          <summary>中继服务器 <span id="relaySum">未设置</span><small>两台设备直连不通时用（网络有防火墙、对称型 NAT 时常见）</small></summary>
-          <p class="hint">有的网络（有防火墙、对称型 NAT）不允许两台设备直接连接。填一个 TURN 中继服务器，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，连接码会带过去。</p>
-          <textarea id="relayText" rows="4" spellcheck="false" placeholder="把中继后台复制的 ICE 数组整段粘进来&#10;（也可以粘 Metered 的 API 链接，或每行「turn:地址:端口 用户名 密码」）"></textarea>
-          <div class="row tight">
-            <button class="cbtn" id="btnRelaySave" type="button">保存并测试</button>
-            <button class="cbtn ghost" id="btnRelayClear" type="button">清除</button>
-          </div>
-          <p class="status sm" id="relayStatus" role="status"></p>
-        </details>
-        <details class="relay" id="manualBox">
-          <summary>手动连接 · 局域网<small>两台设备在同一个局域网里（连着同一个 Wi-Fi / 路由器）时用：复制粘贴连接码直接连，不经过任何服务器。不在一个局域网的用上面的房间码</small></summary>
-        <div class="row" id="netChoose">
-          <button class="ibtn" id="btnHost" type="button">我来建房</button>
-          <button class="ibtn ghost" id="btnJoin" type="button">我去加入</button>
-        </div>
-        <div class="netbox" id="netHost" hidden>
-          <label class="step" for="hostCode">① 把连接码整段发给对方</label>
-          <div class="codebox"><textarea id="hostCode" readonly rows="3" placeholder="正在生成…"></textarea><button class="cbtn" id="copyHost" type="button">复制</button></div>
-          <label class="step" for="hostAnswer">② 粘贴对方发回的应答码</label>
-          <div class="codebox"><textarea id="hostAnswer" rows="3" placeholder="粘贴应答码"></textarea><button class="cbtn" id="btnConnect" type="button">连接</button></div>
-        </div>
-        <div class="netbox" id="netJoin" hidden>
-          <label class="step" for="joinCode">① 粘贴房主发来的连接码</label>
-          <div class="codebox"><textarea id="joinCode" rows="3" placeholder="粘贴连接码"></textarea><button class="cbtn" id="btnMakeAnswer" type="button">生成</button></div>
-          <label class="step" for="joinAnswer">② 把应答码整段发回给房主，然后等着</label>
-          <div class="codebox"><textarea id="joinAnswer" readonly rows="3" placeholder="先完成第 ① 步"></textarea><button class="cbtn" id="copyJoin" type="button">复制</button></div>
-          <p class="hint" id="netWait" hidden>发完就等着，别关这个页面。房主点「连接」后会自动连上（最多等 5 分钟）。</p>
-        </div>
-        </details>
-        <div class="netbox" id="netLobby" hidden>
-          <p class="status" id="netStatus">已连接</p>
-          <p class="step">选你的拳派 · <span id="netOppStyle">对方：格斗术</span></p>
-          <div class="styles sm" id="netStyles"></div>
-          <p class="step">选你的颜色（对方选了的那个会变暗，点不了）</p>
-          <div class="swatches" id="netLooks"></div>
-          <p class="step" id="netStageHint">场景（房主选）</p>
-          <div class="stages sm" id="netStages"></div>
-          <button class="ibtn" id="btnNetStart" type="button">开始对战</button>
-        </div>
-        <p class="err" id="netErr" role="alert"></p>
-        <button class="ibtn ghost" id="btnNetBack" type="button">返回菜单</button>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="keysPanel" hidden>
-      <div class="panel keyset">
-        <p class="big sm">键位设置</p>
-        <div class="seg" role="group" aria-label="改哪一套键位"><button type="button" data-who="0" aria-pressed="true">单人</button><button type="button" data-who="1" aria-pressed="false">双人·玩家一</button><button type="button" data-who="2" aria-pressed="false">双人·玩家二</button></div>
-        <p class="hint" id="keyWhoHint">单人：人机、联机、训练场用这一套。</p>
-        <p class="hint">点一个格子，再按想用的键，或者按鼠标按键（右键、中键、侧键在哪按都行；左键要再点一下这一格）。按 Esc 取消，按退格清空这一格。设置存在这台电脑的浏览器里，换新版本文件也还在。</p>
-        <div class="dashmode"><span>冲刺怎么按</span><div class="seg" role="group" aria-label="冲刺怎么按"><button type="button" data-dashm="tap" aria-pressed="true">双击左 / 右</button><button type="button" data-dashm="key" aria-pressed="false">按冲刺键</button><button type="button" data-dashm="both" aria-pressed="false">两种都用</button></div></div>
-        <p class="hint" id="dashHint"></p>
-        <table class="keytable"><thead><tr><th>动作</th><th>键位一</th><th>键位二</th></tr></thead><tbody id="keyRows"></tbody></table>
-        <p class="err" id="keyMsg" role="alert"></p>
-        <p class="hint" id="keyInfo"></p>
-        <div class="row">
-          <button class="ibtn" id="btnKeysSave" type="button">保存</button>
-          <button class="ibtn ghost" id="btnKeysReset" type="button">恢复默认</button>
-          <button class="ibtn ghost" id="btnKeysCancel" type="button">取消</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="setPanel" hidden>
-      <div class="panel looks">
-        <p class="big sm">设置</p>
-        <p class="step">音量</p>
-        <div class="volrow">
-          <button class="cbtn ghost" id="volDown" type="button" data-nosnd aria-label="小声一点">−</button>
-          <input type="range" id="volRange" min="0" max="100" step="5" value="50" aria-label="音量">
-          <button class="cbtn ghost" id="volUp" type="button" data-nosnd aria-label="大声一点">＋</button>
-          <b id="volVal">50</b>
-        </div>
-        <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>
-        <!-- 3.5 语言：两种语言都写着，谁都找得到；换了页面会重新载入（js/lang.js），所以只在主菜单进来的设置里能换 -->
-        <p class="step" translate="no">语言 · Language</p>
-        <div class="seg langseg" role="group" aria-label="语言 Language" translate="no"><button type="button" data-lang="zh" aria-pressed="true">中文</button><button type="button" class="en-face" data-lang="en" aria-pressed="false">English</button></div>
-        <p class="hint" id="langHint" hidden>对局中换不了语言：回主菜单再换（换语言会重新载入页面）。</p>
-        <div id="dispBox" hidden>
-          <p class="step">画面</p>
-          <div class="seg" role="group" aria-label="画面"><button type="button" data-disp="fullscreen" aria-pressed="false">全屏</button><button type="button" data-disp="borderless" aria-pressed="false">全屏窗口</button><button type="button" data-disp="window" aria-pressed="false">窗口</button></div>
-          <p class="hint" id="dispHint"></p>
-        </div>
-        <div class="row"><button class="ibtn" id="btnSetDone" type="button">确认</button></div>
-      </div>
-    </div>
-
-    <!-- 2.11 准备页（人机、双人、观战、训练场共用一张）：场景一排小图、两边各一块（小人 + 拳派卡 + 颜色格；人机的电脑那边还有难度）。
-         选的都记住，下次进来默认就是上次的；联机还是在联机大厅里选（房主定场景） -->
-    <div class="overlay dim scroll" id="prepPanel" hidden>
-      <div class="panel prep">
-        <p class="big sm" id="prepTitle">人机对战</p>
-        <div class="prep-stage" id="prepStageBox">
-          <p class="step">场景</p>
-          <div class="stages sm" id="prepStages"></div>
-        </div>
-        <p class="hint" id="prepStageFix" hidden>训练场的场景固定在练武场</p>
-        <div class="prep-sides" id="prepSides"></div>
-        <p class="hint" id="prepKeys"></p>
-        <div class="row">
-          <button class="ibtn" id="btnPrepGo" type="button">开始</button>
-          <button class="ibtn ghost" id="btnPrepBack" type="button">返回</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2.2 破招练习：选课（分组 → 对手的招 → 破法）、一课的说明、过关 -->
-    <div class="overlay dim scroll" id="drillPanel" hidden>
-      <div class="panel drills">
-        <div class="dp-head">
-          <div class="dp-title"><p class="big sm">破招练习</p><p class="hint" id="drillSum">选对手的一招，再选一种破法 —— 木桩一遍一遍出这一招，你照着破。每种破法单独练，成功 3 次就过关。</p></div>
-          <button class="ibtn ghost" id="btnDrillClose" type="button">回训练场</button>
-        </div>
-        <nav class="dp-tabs" id="drillTabs" role="tablist" aria-label="招的分组"></nav>
-        <div class="dlist" id="drillList"></div>
-      </div>
-    </div>
-
-    <div class="overlay dim scroll" id="drillIntro" hidden>
-      <div class="panel drill">
-        <div class="di-top">
-          <div class="di-op" id="diOp"></div>
-          <div class="di-main">
-            <p class="step" id="diTopic"></p>
-            <p class="big sm" id="diName"></p>
-            <ol class="dhow" id="diHow"></ol>
-          </div>
-        </div>
-        <p class="dwhy" id="diWhy"></p>
-        <p class="dneed" id="diNeed"></p>
-        <p class="hint dother" id="diOther"></p>
-        <div class="row">
-          <button class="ibtn" id="btnDrillGo" type="button">开始练习</button>
-          <button class="ibtn ghost" id="btnDrillDemo" type="button">看演示</button>
-          <button class="ibtn ghost" id="btnDrillList" type="button">换一课</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="overlay dim" id="drillPass" hidden>
-      <div class="panel dpass">
-        <i class="seal dp-seal" translate="no">过关</i><span class="seal-cap en-only">Cleared</span>
-        <p class="step" id="dpTopic"></p>
-        <p class="big sm" id="dpName"></p>
-        <p class="hint" id="dpInfo"></p>
-        <div class="row">
-          <button class="ibtn" id="btnPassNext" type="button">下一课</button>
-          <button class="ibtn ghost" id="btnPassAgain" type="button">再练一次</button>
-          <button class="ibtn ghost" id="btnPassPick" type="button">换一课</button>
-          <button class="ibtn ghost" id="btnPassFree" type="button">自由练</button>
-        </div>
-        <p class="hint" id="dpNext"></p>
-      </div>
-    </div>
-
-    <div class="overlay dim" id="result" hidden>
-      <div class="panel">
-        <p class="big" id="resTitle">墨 胜</p>
-        <div class="stats" id="resStats"></div>
-        <div class="row">
-          <button class="ibtn" id="btnAgain" type="button">再战一局</button>
-          <p class="hint" id="resWait" hidden>等房主开下一局…</p>
-          <button class="ibtn ghost" id="btnMenu" type="button">回菜单</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="trainbar" id="trainbar" hidden>
-    <span class="tgroup" id="freeTools">
-      <button class="tbtn drillgo" id="btnDrills" type="button"><b>破招练习</b><small id="drillCount">一招一招练怎么破</small></button>
-      <span class="tsep" aria-hidden="true"></span>
-      <span class="tlabel">木桩</span>
-      <span class="seg dark" role="group" aria-label="木桩动作">
-        <button type="button" data-dm="stand" aria-pressed="true">站着</button>
-        <button type="button" data-dm="crouch" aria-pressed="false">蹲着</button>
-        <button type="button" data-dm="block" aria-pressed="false">站挡</button>
-        <button type="button" data-dm="lowblock" aria-pressed="false">蹲挡</button>
-        <button type="button" data-dm="random" aria-pressed="false">乱挡</button>
-        <button type="button" data-dm="jump" aria-pressed="false">一直跳</button>
-      </span>
-      <button class="tbtn" id="btnQi" type="button" aria-pressed="false">无限气：关</button>
-      <button class="tbtn" id="btnTrainReset" type="button">复位</button>
-    </span>
-    <span class="tgroup" id="drillTools" hidden>
-      <span class="tlabel drillname" id="drillLabel"></span>
-      <button class="tbtn" id="btnDrillInfo" type="button">说明</button>
-      <button class="tbtn" id="btnDrillReDemo" type="button">演示</button>
-      <button class="tbtn" id="btnDrillCue" type="button" aria-pressed="true" title="木桩出招前倒数 3 · 2 · 1，每一招一抬手头上闪「!」">出招提示：开</button>
-      <button class="tbtn" id="btnDrillPick" type="button">换一课</button>
-      <button class="tbtn" id="btnDrillQuit" type="button">退出练习</button>
-    </span>
-  </div>
-
-  <div class="manual" id="manual" role="dialog" aria-label="教程" hidden></div>
-
-  <div class="touch" id="touch" hidden>
-    <div class="pad">
-      <button class="tc u" data-a="up" type="button" aria-label="跳">跳</button>
-      <button class="tc l" data-a="left" type="button" aria-label="左">◀</button>
-      <button class="tc d" data-a="down" type="button" aria-label="蹲">蹲</button>
-      <button class="tc r" data-a="right" type="button" aria-label="右">▶</button>
-    </div>
-    <div class="acts">
-      <button class="tc" data-a="block" type="button">挡</button>
-      <button class="tc" data-a="grab" type="button">拿</button>
-      <button class="tc" data-a="dash" type="button" aria-label="冲刺">冲</button>
-      <button class="tc" data-a="jab" type="button">拳</button>
-      <button class="tc" data-a="heavy" type="button">重</button>
-      <button class="tc" data-a="kick" type="button">踢</button>
-    </div>
-  </div>
-  </div>
-
-  <!-- 2.2 教程（js/guide.js 填内容）：网页版在游戏下面分页看；软件版、网页全屏时用 #manual 面板。2.10 按拳派分书：通用一本、每一派一本 -->
-  <section class="guide" id="guide" aria-label="教程">
-    <header class="g-head">
-      <h2>教程<i class="seal" translate="no">谱</i></h2>
-      <nav class="g-books" role="tablist" aria-label="选哪一本：通用或者哪一派"></nav>
-      <nav class="g-tabs" role="tablist" aria-label="教程分页"></nav>
-    </header>
-    <div class="g-page"></div>
-  </section>
-</main>
-
+<!-- 3.5 语言：在 <head> 里先定是中文还是英文（3.5.1 没选过的跟着浏览器），英文先把页面藏起来、换完字再露出来 -->
 <script>
 'use strict';
 /* 3.5 英文对照表（js/lang.js 用）：中文原文 → 英文。
@@ -2878,7 +2582,8 @@ const EN_TEXT = {
    3.5 语言：中文 / English（Jack：设置里能换英文；换成英文以后界面、教程、说明都是英文的）
    · 中文还是原文，照旧写在代码里；英文是一张对照表 EN_TEXT（js/lang_en.js）：中文 → 英文。
      表里没有的照样显示中文，tests.html 的「英文」那几条测试会把漏的一条一条列出来 —— 加了新的中文，就去 lang_en.js 补一行英文
-   · 换语言：存在 localStorage「modou.lang」，然后重新载入页面（只在主菜单的设置里换；打着的时候不换）。网址带 ?lang=en / ?lang=zh 也行
+   · 换语言：存在 localStorage「modou.lang」，然后重新载入页面（只在主菜单的设置里换；打着的时候不换）。网址带 ?lang=en / ?lang=zh 也行；
+     3.5.1 起没选过的跟着浏览器的语言（browserLang）
    · 页面上的字（index.html 写死的、ui.js / guide.js 塞进去的）：英文时 L10N 先把整页换一遍，之后 MutationObserver 看着，新塞进来的自动换
    · 画在画布上的字（血条、飘字、大字、训练场面板……）：画之前过一遍 TR()
    · 表里的键可以带 {0} {1}：「成功 {0} 次」对得上「成功 3 次」；{0} 抓到的字再查一遍表（「下一课：{0} · {1}」两段都换）；
@@ -2887,14 +2592,35 @@ const EN_TEXT = {
    · 不换的：印章（水墨的味道；英文时下面另写一行小字，见 render.js drawSeal）、标题「墨斗」、写了 translate="no" 的元素
    ============================================================ */
 const LANGS = ['zh', 'en'];
+// 3.5.1 跟着浏览器的语言（Jack：根据浏览器的语言，进去默认那个语言）：顺着用户在浏览器 / 系统里排的语言往下找，
+// 先碰到中文（简体、繁体都算）就中文，先碰到英文就英文；都对不上（日语、法语……）给英文；什么都读不到才中文
+function browserLang(list) {
+  const L = Array.from(list || []).map(t => String(t || '').trim().toLowerCase()).filter(Boolean);
+  for (const s of L) { if (s.startsWith('zh')) return 'zh'; if (s.startsWith('en')) return 'en'; }
+  return L.length ? 'en' : 'zh';
+}
+// 用哪种：固定的（测试、动作台、平衡报告）> 网址 ?lang= > 设置里自己选过的 > 浏览器的语言。
+// 网址、设置里选的存起来（modou.lang）；跟着浏览器判断出来的不存 —— 没选过的人换了浏览器语言，游戏跟着变
+function pickLang(o) {
+  for (const v of [o.forced, o.query, o.saved]) if (LANGS.includes(v)) return v;
+  return browserLang(o.langs);
+}
 let LANG = (() => {
-  if (typeof window !== 'undefined' && LANGS.includes(window.MODOU_LANG)) return window.MODOU_LANG;   // 测试、动作台、平衡报告固定中文
-  let q = null;
-  try { q = new URLSearchParams(location.search).get('lang'); } catch (e) {}
-  if (LANGS.includes(q)) { try { localStorage.setItem('modou.lang', q); } catch (e) {} return q; }
-  try { const v = localStorage.getItem('modou.lang'); if (LANGS.includes(v)) return v; } catch (e) {}
-  return 'zh';
+  const o = {};
+  if (typeof window !== 'undefined') o.forced = window.MODOU_LANG;
+  try { o.query = new URLSearchParams(location.search).get('lang'); } catch (e) {}
+  if (!LANGS.includes(o.forced) && LANGS.includes(o.query)) { try { localStorage.setItem('modou.lang', o.query); } catch (e) {} }
+  try { o.saved = localStorage.getItem('modou.lang'); } catch (e) {}
+  try { o.langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language]; } catch (e) {}
+  return pickLang(o);
 })();
+// 英文：页面先藏着，L10N 把字换成英文再露出来（不闪一下中文）；万一没换成，3 秒后也露出来。
+// 3.5.1 起 lang.js 在 <head> 里载入（以前是 index.html 头上一小段自己判断一遍，两处容易对不上）
+if (LANG === 'en' && typeof document !== 'undefined' && document.documentElement) {
+  const html = document.documentElement;
+  html.lang = 'en'; html.classList.add('l10n-wait');
+  setTimeout(() => html.classList.remove('l10n-wait'), 3000);
+}
 const EN = typeof EN_TEXT !== 'undefined' ? EN_TEXT : {};
 const HAN_RE = /[\u3000-\u303f\u3400-\u9fff\uf900-\ufaff\uff01-\uff60]/;   // 汉字 + 中文标点（「、」「（」「～」单独一段也要换）
 const T_CACHE = new Map();
@@ -2953,6 +2679,7 @@ function TR(s) {
   if (r === undefined) {
     r = tFind(s);
     if (r == null) { T_MISS.add(s); r = s; }
+    if (T_CACHE.size >= 5000) T_CACHE.clear();      // 3.5.1 带数字的句子（血量、帧数、倒数……）每种都记一条：记多了清掉重来，不一直涨
     T_CACHE.set(s, r);
   }
   return r;
@@ -3026,11 +2753,309 @@ const L10N = {
         else this.attrs(r.target);
       }
     }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: this.ATTRS });
-    html.classList.remove('l10n-wait');                // index.html 头上那一小段先把页面藏着，换完再露出来（不闪一下中文）
+    html.classList.remove('l10n-wait');                // 上面先把页面藏着，换完再露出来（不闪一下中文）
   },
 };
-L10N.start();
+// 在 <head> 里载入的时候页面还没有 body：等页面读完（游戏的脚本都跑完了）整页换一遍，之后 MutationObserver 接着看
+if (typeof document !== 'undefined' && !document.body) document.addEventListener('DOMContentLoaded', () => L10N.start(), { once: true });
+else L10N.start();
 </script>
+</head>
+<body>
+<main class="wrap">
+  <div class="play" id="play">
+  <div class="topbar">
+    <div class="brand"><b translate="no">墨斗</b><i class="seal" translate="no">拳</i><span>水墨火柴人格斗</span></div>
+    <div class="tools">
+      <button class="tbtn" id="btnPause" type="button" disabled>暂停 Esc</button>
+      <button class="tbtn" id="btnSound" type="button">声音：开</button>
+      <button class="tbtn" id="btnFull" type="button">⛶ 全屏</button>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="cv" width="1200" height="600" aria-label="格斗场"></canvas>
+    <p class="toast" id="toast" role="status" hidden></p>
+
+    <div class="overlay menu" id="menu">
+      <div class="panel">
+        <h1 class="title" translate="no">墨斗<i class="seal">拳</i></h1>
+        <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
+        <!-- 2.11（Jack：主菜单只留模式）：颜色、拳派、场景、难度都进了模式以后在准备页（#prepPanel）里选 -->
+        <div class="row modes">
+          <button class="ibtn" id="btnPve" type="button">人机对战</button>
+          <button class="ibtn ghost" id="btnPvp" type="button">双人对战</button>
+          <button class="ibtn ghost" id="btnOnline" type="button">联机对战</button>
+        </div>
+        <div class="row modes">
+          <button class="ibtn ghost" id="btnWatch" type="button">观战</button>
+          <button class="ibtn ghost" id="btnTrain" type="button">训练场</button>
+        </div>
+        <div class="row tight">
+          <button class="tbtn dark" id="btnKeys" type="button">⌨ 键位设置</button>
+          <button class="tbtn dark" id="btnSettings" type="button">⚙ 设置</button>
+          <button class="tbtn dark" id="btnLegend" type="button">教程</button>
+          <button class="tbtn dark" id="btnExit" type="button" hidden>退出游戏</button>
+        </div>
+        <p class="hint" id="menuMsg" role="status" hidden></p>
+      </div>
+    </div>
+
+    <div class="overlay dim" id="pause" hidden>
+      <div class="panel">
+        <p class="big">暂停</p>
+        <div class="row">
+          <button class="ibtn" id="btnResume" type="button">继续</button>
+          <button class="ibtn ghost" id="btnRestart" type="button">重开</button>
+          <button class="ibtn ghost" id="btnPauseKeys" type="button">键位</button>
+          <button class="ibtn ghost" id="btnPauseDrill" type="button" hidden>说明</button>
+          <button class="ibtn ghost" id="btnPauseSet" type="button">设置</button>
+          <button class="ibtn ghost" id="btnPauseLegend" type="button">教程</button>
+          <button class="ibtn ghost" id="btnQuit" type="button">回菜单</button>
+        </div>
+        <button class="tbtn dark" id="btnPauseFull" type="button" hidden>退出全屏</button>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="online" hidden>
+      <div class="panel net">
+        <p class="big sm">联机对战</p>
+        <p class="hint" id="netIntro">两边输入同一个房间码就能连上（或者把邀请链接发给对方，他点开就进）。找对方时经过公共信令服务器（只传连接信息），连上以后两台电脑点对点直连，打的时候不经过服务器。</p>
+        <div class="netbox" id="netRoom">
+          <label class="step" for="roomCode">房间码（两边一样就行，随便起，比如「墨斗1022」）</label>
+          <div class="codebox"><input id="roomCode" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="输入房间码"><button class="cbtn" id="btnRoomJoin" type="button">进房间</button></div>
+          <p class="status sm" id="roomStatus" role="status"></p>
+          <div class="row tight" id="roomTools" hidden>
+            <button class="cbtn ghost" id="btnInvite" type="button">复制邀请链接</button>
+            <button class="cbtn ghost" id="btnRoomLeave" type="button">换个房间</button>
+          </div>
+        </div>
+        <details class="relay" id="relayBox">
+          <summary>中继服务器 <span id="relaySum">未设置</span><small>两台设备直连不通时用（网络有防火墙、对称型 NAT 时常见）</small></summary>
+          <p class="hint">有的网络（有防火墙、对称型 NAT）不允许两台设备直接连接。填一个 TURN 中继服务器，直连不通时数据经它转发。<b>只要一边填</b>：用房间码时把「邀请链接」发给对方，链接会把中继带过去；手动连接时房主填，连接码会带过去。</p>
+          <textarea id="relayText" rows="4" spellcheck="false" placeholder="把中继后台复制的 ICE 数组整段粘进来&#10;（也可以粘 Metered 的 API 链接，或每行「turn:地址:端口 用户名 密码」）"></textarea>
+          <div class="row tight">
+            <button class="cbtn" id="btnRelaySave" type="button">保存并测试</button>
+            <button class="cbtn ghost" id="btnRelayClear" type="button">清除</button>
+          </div>
+          <p class="status sm" id="relayStatus" role="status"></p>
+        </details>
+        <details class="relay" id="manualBox">
+          <summary>手动连接 · 局域网<small>两台设备在同一个局域网里（连着同一个 Wi-Fi / 路由器）时用：复制粘贴连接码直接连，不经过任何服务器。不在一个局域网的用上面的房间码</small></summary>
+        <div class="row" id="netChoose">
+          <button class="ibtn" id="btnHost" type="button">我来建房</button>
+          <button class="ibtn ghost" id="btnJoin" type="button">我去加入</button>
+        </div>
+        <div class="netbox" id="netHost" hidden>
+          <label class="step" for="hostCode">① 把连接码整段发给对方</label>
+          <div class="codebox"><textarea id="hostCode" readonly rows="3" placeholder="正在生成…"></textarea><button class="cbtn" id="copyHost" type="button">复制</button></div>
+          <label class="step" for="hostAnswer">② 粘贴对方发回的应答码</label>
+          <div class="codebox"><textarea id="hostAnswer" rows="3" placeholder="粘贴应答码"></textarea><button class="cbtn" id="btnConnect" type="button">连接</button></div>
+        </div>
+        <div class="netbox" id="netJoin" hidden>
+          <label class="step" for="joinCode">① 粘贴房主发来的连接码</label>
+          <div class="codebox"><textarea id="joinCode" rows="3" placeholder="粘贴连接码"></textarea><button class="cbtn" id="btnMakeAnswer" type="button">生成</button></div>
+          <label class="step" for="joinAnswer">② 把应答码整段发回给房主，然后等着</label>
+          <div class="codebox"><textarea id="joinAnswer" readonly rows="3" placeholder="先完成第 ① 步"></textarea><button class="cbtn" id="copyJoin" type="button">复制</button></div>
+          <p class="hint" id="netWait" hidden>发完就等着，别关这个页面。房主点「连接」后会自动连上（最多等 5 分钟）。</p>
+        </div>
+        </details>
+        <div class="netbox" id="netLobby" hidden>
+          <p class="status" id="netStatus">已连接</p>
+          <p class="step">选你的拳派 · <span id="netOppStyle">对方：格斗术</span></p>
+          <div class="styles sm" id="netStyles"></div>
+          <p class="step">选你的颜色（对方选了的那个会变暗，点不了）</p>
+          <div class="swatches" id="netLooks"></div>
+          <p class="step" id="netStageHint">场景（房主选）</p>
+          <div class="stages sm" id="netStages"></div>
+          <button class="ibtn" id="btnNetStart" type="button">开始对战</button>
+        </div>
+        <p class="err" id="netErr" role="alert"></p>
+        <button class="ibtn ghost" id="btnNetBack" type="button">返回菜单</button>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="keysPanel" hidden>
+      <div class="panel keyset">
+        <p class="big sm">键位设置</p>
+        <div class="seg" role="group" aria-label="改哪一套键位"><button type="button" data-who="0" aria-pressed="true">单人</button><button type="button" data-who="1" aria-pressed="false">双人·玩家一</button><button type="button" data-who="2" aria-pressed="false">双人·玩家二</button></div>
+        <p class="hint" id="keyWhoHint">单人：人机、联机、训练场用这一套。</p>
+        <p class="hint">点一个格子，再按想用的键，或者按鼠标按键（右键、中键、侧键在哪按都行；左键要再点一下这一格）。按 Esc 取消，按退格清空这一格。设置存在这台电脑的浏览器里，换新版本文件也还在。</p>
+        <div class="dashmode"><span>冲刺怎么按</span><div class="seg" role="group" aria-label="冲刺怎么按"><button type="button" data-dashm="tap" aria-pressed="true">双击左 / 右</button><button type="button" data-dashm="key" aria-pressed="false">按冲刺键</button><button type="button" data-dashm="both" aria-pressed="false">两种都用</button></div></div>
+        <p class="hint" id="dashHint"></p>
+        <table class="keytable"><thead><tr><th>动作</th><th>键位一</th><th>键位二</th></tr></thead><tbody id="keyRows"></tbody></table>
+        <p class="err" id="keyMsg" role="alert"></p>
+        <p class="hint" id="keyInfo"></p>
+        <div class="row">
+          <button class="ibtn" id="btnKeysSave" type="button">保存</button>
+          <button class="ibtn ghost" id="btnKeysReset" type="button">恢复默认</button>
+          <button class="ibtn ghost" id="btnKeysCancel" type="button">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="setPanel" hidden>
+      <div class="panel looks">
+        <p class="big sm">设置</p>
+        <p class="step">音量</p>
+        <div class="volrow">
+          <button class="cbtn ghost" id="volDown" type="button" data-nosnd aria-label="小声一点">−</button>
+          <input type="range" id="volRange" min="0" max="100" step="5" value="50" aria-label="音量">
+          <button class="cbtn ghost" id="volUp" type="button" data-nosnd aria-label="大声一点">＋</button>
+          <b id="volVal">50</b>
+        </div>
+        <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>
+        <!-- 3.5 语言：两种语言都写着，谁都找得到；换了页面会重新载入（js/lang.js），所以只在主菜单进来的设置里能换 -->
+        <p class="step" translate="no">语言 · Language</p>
+        <div class="seg langseg" role="group" aria-label="语言 Language" translate="no"><button type="button" data-lang="zh" aria-pressed="true">中文</button><button type="button" class="en-face" data-lang="en" aria-pressed="false">English</button></div>
+        <p class="hint" id="langHint" hidden>对局中换不了语言：回主菜单再换（换语言会重新载入页面）。</p>
+        <div id="dispBox" hidden>
+          <p class="step">画面</p>
+          <div class="seg" role="group" aria-label="画面"><button type="button" data-disp="fullscreen" aria-pressed="false">全屏</button><button type="button" data-disp="borderless" aria-pressed="false">全屏窗口</button><button type="button" data-disp="window" aria-pressed="false">窗口</button></div>
+          <p class="hint" id="dispHint"></p>
+        </div>
+        <div class="row"><button class="ibtn" id="btnSetDone" type="button">确认</button></div>
+      </div>
+    </div>
+
+    <!-- 2.11 准备页（人机、双人、观战、训练场共用一张）：场景一排小图、两边各一块（小人 + 拳派卡 + 颜色格；人机的电脑那边还有难度）。
+         选的都记住，下次进来默认就是上次的；联机还是在联机大厅里选（房主定场景） -->
+    <div class="overlay dim scroll" id="prepPanel" hidden>
+      <div class="panel prep">
+        <p class="big sm" id="prepTitle">人机对战</p>
+        <div class="prep-stage" id="prepStageBox">
+          <p class="step">场景</p>
+          <div class="stages sm" id="prepStages"></div>
+        </div>
+        <p class="hint" id="prepStageFix" hidden>训练场的场景固定在练武场</p>
+        <div class="prep-sides" id="prepSides"></div>
+        <p class="hint" id="prepKeys"></p>
+        <div class="row">
+          <button class="ibtn" id="btnPrepGo" type="button">开始</button>
+          <button class="ibtn ghost" id="btnPrepBack" type="button">返回</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2.2 破招练习：选课（分组 → 对手的招 → 破法）、一课的说明、过关 -->
+    <div class="overlay dim scroll" id="drillPanel" hidden>
+      <div class="panel drills">
+        <div class="dp-head">
+          <div class="dp-title"><p class="big sm">破招练习</p><p class="hint" id="drillSum">选对手的一招，再选一种破法 —— 木桩一遍一遍出这一招，你照着破。每种破法单独练，成功 3 次就过关。</p></div>
+          <button class="ibtn ghost" id="btnDrillClose" type="button">回训练场</button>
+        </div>
+        <nav class="dp-tabs" id="drillTabs" role="tablist" aria-label="招的分组"></nav>
+        <div class="dlist" id="drillList"></div>
+      </div>
+    </div>
+
+    <div class="overlay dim scroll" id="drillIntro" hidden>
+      <div class="panel drill">
+        <div class="di-top">
+          <div class="di-op" id="diOp"></div>
+          <div class="di-main">
+            <p class="step" id="diTopic"></p>
+            <p class="big sm" id="diName"></p>
+            <ol class="dhow" id="diHow"></ol>
+          </div>
+        </div>
+        <p class="dwhy" id="diWhy"></p>
+        <p class="dneed" id="diNeed"></p>
+        <p class="hint dother" id="diOther"></p>
+        <div class="row">
+          <button class="ibtn" id="btnDrillGo" type="button">开始练习</button>
+          <button class="ibtn ghost" id="btnDrillDemo" type="button">看演示</button>
+          <button class="ibtn ghost" id="btnDrillList" type="button">换一课</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay dim" id="drillPass" hidden>
+      <div class="panel dpass">
+        <i class="seal dp-seal" translate="no">过关</i><span class="seal-cap en-only">Cleared</span>
+        <p class="step" id="dpTopic"></p>
+        <p class="big sm" id="dpName"></p>
+        <p class="hint" id="dpInfo"></p>
+        <div class="row">
+          <button class="ibtn" id="btnPassNext" type="button">下一课</button>
+          <button class="ibtn ghost" id="btnPassAgain" type="button">再练一次</button>
+          <button class="ibtn ghost" id="btnPassPick" type="button">换一课</button>
+          <button class="ibtn ghost" id="btnPassFree" type="button">自由练</button>
+        </div>
+        <p class="hint" id="dpNext"></p>
+      </div>
+    </div>
+
+    <div class="overlay dim" id="result" hidden>
+      <div class="panel">
+        <p class="big" id="resTitle">墨 胜</p>
+        <div class="stats" id="resStats"></div>
+        <div class="row">
+          <button class="ibtn" id="btnAgain" type="button">再战一局</button>
+          <p class="hint" id="resWait" hidden>等房主开下一局…</p>
+          <button class="ibtn ghost" id="btnMenu" type="button">回菜单</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="trainbar" id="trainbar" hidden>
+    <span class="tgroup" id="freeTools">
+      <button class="tbtn drillgo" id="btnDrills" type="button"><b>破招练习</b><small id="drillCount">一招一招练怎么破</small></button>
+      <span class="tsep" aria-hidden="true"></span>
+      <span class="tlabel">木桩</span>
+      <span class="seg dark" role="group" aria-label="木桩动作">
+        <button type="button" data-dm="stand" aria-pressed="true">站着</button>
+        <button type="button" data-dm="crouch" aria-pressed="false">蹲着</button>
+        <button type="button" data-dm="block" aria-pressed="false">站挡</button>
+        <button type="button" data-dm="lowblock" aria-pressed="false">蹲挡</button>
+        <button type="button" data-dm="random" aria-pressed="false">乱挡</button>
+        <button type="button" data-dm="jump" aria-pressed="false">一直跳</button>
+      </span>
+      <button class="tbtn" id="btnQi" type="button" aria-pressed="false">无限气：关</button>
+      <button class="tbtn" id="btnTrainReset" type="button">复位</button>
+    </span>
+    <span class="tgroup" id="drillTools" hidden>
+      <span class="tlabel drillname" id="drillLabel"></span>
+      <button class="tbtn" id="btnDrillInfo" type="button">说明</button>
+      <button class="tbtn" id="btnDrillReDemo" type="button">演示</button>
+      <button class="tbtn" id="btnDrillCue" type="button" aria-pressed="true" title="木桩出招前倒数 3 · 2 · 1，每一招一抬手头上闪「!」">出招提示：开</button>
+      <button class="tbtn" id="btnDrillPick" type="button">换一课</button>
+      <button class="tbtn" id="btnDrillQuit" type="button">退出练习</button>
+    </span>
+  </div>
+
+  <div class="manual" id="manual" role="dialog" aria-label="教程" hidden></div>
+
+  <div class="touch" id="touch" hidden>
+    <div class="pad">
+      <button class="tc u" data-a="up" type="button" aria-label="跳">跳</button>
+      <button class="tc l" data-a="left" type="button" aria-label="左">◀</button>
+      <button class="tc d" data-a="down" type="button" aria-label="蹲">蹲</button>
+      <button class="tc r" data-a="right" type="button" aria-label="右">▶</button>
+    </div>
+    <div class="acts">
+      <button class="tc" data-a="block" type="button">挡</button>
+      <button class="tc" data-a="grab" type="button">拿</button>
+      <button class="tc" data-a="dash" type="button" aria-label="冲刺">冲</button>
+      <button class="tc" data-a="jab" type="button">拳</button>
+      <button class="tc" data-a="heavy" type="button">重</button>
+      <button class="tc" data-a="kick" type="button">踢</button>
+    </div>
+  </div>
+  </div>
+
+  <!-- 2.2 教程（js/guide.js 填内容）：网页版在游戏下面分页看；软件版、网页全屏时用 #manual 面板。2.10 按拳派分书：通用一本、每一派一本 -->
+  <section class="guide" id="guide" aria-label="教程">
+    <header class="g-head">
+      <h2>教程<i class="seal" translate="no">谱</i></h2>
+      <nav class="g-books" role="tablist" aria-label="选哪一本：通用或者哪一派"></nav>
+      <nav class="g-tabs" role="tablist" aria-label="教程分页"></nav>
+    </header>
+    <div class="g-page"></div>
+  </section>
+</main>
+
 <script>
 'use strict';
 /* 全局常量。调手感（物理、伤害倍率、倒地时长、攻防节奏、联机参数）先看这里，招式数值在 moves.js */
@@ -3046,7 +3071,7 @@ L10N.start();
 // 3.1.3：太极拳待机后腿抖（脚踩实以为够不着、原地一直迈步）修好（只是画面）
 // 3.2.0（2026-11-02 深夜）：规则改了两处（轻拳挡住不掉血；太极的捋在挡住的硬直里也记、也成立），电脑六档重做「被压制」（Jack：一直按轻拳能赢所有难度的太极；量出来格斗术的电脑
 //   连终极都被格斗术一直按拳打成 12:0）—— 中版本：手感会变（挡着不流血、电脑会守会反）
-const VERSION = '3.5.0';
+const VERSION = '3.5.1';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -4120,10 +4145,13 @@ function drawBody(J, col, band, bp0, paths0) {
     ctx.save(); ctx.clip(path);
     paint(T.base, path);
     // 亮边：这几块合起来涂亮色，再往 n 的反方向挪 w 涂回本色 —— n 那一侧剩下一道 w 宽的亮边
+    // 3.5.1（Jack：网页版越来越卡）整层的亮边（p 就是这一层的外形）不再按 p 剪第二遍：上面已经按它剪过了。
+    // 剪裁是画人最贵的一步（一个人一帧 15 次，这样的占 8 次）；只是外形边上抗锯齿的那一圈像素深浅差一点点，放大三倍对比也看不出来
     const rim = (list, n, w, base) => {
       if (!list.length || w <= 0) return;
       const p = list.length === parts.length ? path : polysPath(list);
-      ctx.save(); ctx.clip(p); paint(T.hl, p);
+      ctx.save(); if (p !== path) ctx.clip(p);
+      paint(T.hl, p);
       ctx.translate(-n[0] * w, -n[1] * w); paint(base || T.base, p); ctx.restore();
     };
     if (L === 'torso') {
@@ -13712,6 +13740,7 @@ function withCtx(c2d, fn) { const keep = ctx; ctx = c2d; try { return fn(); } fi
    （devicePixelRatio：高分屏、Windows 缩放 125%/150%、浏览器缩放都算进去；画布太大时封顶，保证帧率）。
    W / H 还是 1200 / 600：规则里用到的（双人对战两人最远距离）不跟着屏幕变。背景、地面在 stage.js */
 let scale = 1, pxr = 1, VW = W, VH = H, FY = FLOOR;
+let cvGen = 0;                                      // 3.5.1 画布被重设过几次（重设 = 清空；暂停时不画的那段也得马上重画，见 ui.js Show）
 const viewFor = (cw, ch) => {                         // CSS 宽高 → 逻辑画面（测试也用）
   const asp = cw / Math.max(1, ch);
   const vw = asp >= W / H ? H * asp : W, vh = asp >= W / H ? H : W / asp;
@@ -13730,7 +13759,7 @@ function resize() {
   const v = viewFor(cw, ch);
   VW = v.vw; VH = v.vh; FY = v.fy;
   cv.width = Math.round(cw * k); cv.height = Math.round(ch * k);
-  scale = cw / VW; pxr = k;
+  scale = cw / VW; pxr = k; cvGen++;
 }
 /* 3.1.1（Jack：网页版还是有点卡）自动降分辨率：一直掉帧 —— 最近一秒半里四分之一以上的帧比 25 毫秒还慢（不到 40 帧/秒）—— 画布的分辨率降一档（×0.85，慢得多就 ×0.72），
    最低到每个 CSS 像素 AUTORES_MIN 个像素（高分屏先从 2 倍、3 倍往下降，普通屏最多糊一点点）。降了一档却没快起来（慢的不是画的像素多）就退回去、不再往下降；
@@ -13765,6 +13794,46 @@ const AutoRes = {
     if (this.probeT > 0) this.probeT -= 500;
     this.good = slow === 0 ? this.good + 500 : 0;
     if (this.good >= 15000 && this.res < this.cap - 1e-3) { this.good = 0; this.probeT = 10000; this.set(Math.min(this.cap, this.res / 0.85)); }
+  },
+};
+/* 3.5.1 高刷屏（Jack 的笔记本是 300Hz）：以前屏幕刷新一次就画一帧 —— 300Hz 的屏幕一秒要画 300 帧，一帧只有 3.3 毫秒，
+   画不完就掉帧，而且掉得不均匀（这一下隔 3.3、下一下隔 6.7、再下一下又 3.3），看着一顿一顿的；每加一点东西就更卡一点。
+   现在量着：一直跟不上（最近一秒半里四分之一以上的帧比该到的晚一拍以上）就改成每 2 次刷新画一帧，还跟不上每 3 次……最少一秒 60 帧
+   （60Hz 的屏幕本来就一次一帧，什么都不变；跟得上的电脑也什么都不变）。帧和帧之间一样长，比忽快忽慢的掉帧顺得多。
+   逻辑照样一秒 240 步、照样每次刷新都走（按键照样马上算，不会晚），只是少画几帧，画的时候照旧在两步之间插值。
+   稳了 15 秒再试着多画一点，试了又跟不上就退回来，下次等更久（最多两分钟） */
+const Pace = {
+  V: 0, d: 1, iv: [], ivN: 0,                  // V：屏幕多久刷新一次（最近的帧间隔里短的那一头）；d：每几次刷新画一帧
+  lastDraw: 0, win: [], winT: 0, next: 0, good: 0, probe: 0, wait: 15000,
+  dMax() { return this.V > 0 ? Math.max(1, Math.floor(17.5 / this.V)) : 1; },     // 最少一秒 60 帧上下
+  reset() { this.lastDraw = 0; this.win.length = 0; this.winT = 0; this.next = 0; this.good = 0; },
+  tick(raw) {                                   // 每次刷新：记帧间隔，估屏幕刷新率（每 30 帧用最近 90 帧里第一成短的那个）
+    if (!(raw > 0) || raw > 100) return;
+    this.iv[this.ivN++ % 90] = raw;
+    if (this.ivN % 30 === 0 && this.iv.length >= 60) {
+      const s = this.iv.slice().sort((a, b) => a - b);
+      this.V = s[Math.floor(s.length * 0.1)];
+      if (this.d > this.dMax()) this.d = this.dMax();
+    }
+  },
+  due(now) { return this.d <= 1 || !this.lastDraw || now - this.lastDraw >= (this.d - 0.5) * this.V; },
+  drew(now) {                                    // 画了一帧：这一帧比该到的晚没晚（晚了一拍以上），半秒看一次要不要改 d
+    const I = this.lastDraw ? now - this.lastDraw : 0;
+    this.lastDraw = now;
+    if (!(I > 0) || I > 250 || !this.V) return;
+    const W = this.win; W.push(I > (this.d + 0.25) * this.V ? I : -I); this.winT += I;   // 比计划的晚了大半拍以上算晚（屏幕间隔要是估成了两拍，晚一拍也看得出来）
+    while (this.winT - Math.abs(W[0]) >= 1500) this.winT -= Math.abs(W.shift());
+    if (this.winT < 1400 || (this.next -= I) > 0) return;
+    this.next = 500;
+    let late = 0; for (const x of W) if (x > 0) late++;
+    const frac = late / W.length, dm = this.dMax();
+    if (this.probe > 0) {                        // 刚试着多画：又跟不上就退回来，下次等更久
+      this.probe -= 500;
+      if (frac > 0.1) { this.d++; this.probe = 0; this.wait = Math.min(120000, this.wait * 2); this.good = 0; W.length = 0; this.winT = 0; return; }
+    }
+    if (frac > 0.25 && this.d < dm) { this.d++; this.good = 0; this.probe = 0; W.length = 0; this.winT = 0; return; }
+    this.good = frac < 0.03 ? this.good + 500 : 0;
+    if (this.good >= this.wait && this.d > 1) { this.d--; this.good = 0; this.probe = 3000; W.length = 0; this.winT = 0; }
   },
 };
 // 给场景用：这一帧画面多大、地线在哪、最大放大倍数（地面层按这个分辨率画）
@@ -16131,7 +16200,30 @@ for (const k in LIVE) STAGES[k].live = LIVE[k];
    每帧只贴这几行 —— 贴上去的位置、缩放和整张贴时一样（同一个换算），画出来不变。最底下那层（天 / 远景）整张不透明的话记 c.opaque。
    量的时候按一条一条（ROW_BAND 行）读，读到有东西就停；读不了（浏览器不让）就照旧整张贴 */
 const ROW_PAD = 3, ROW_BAND = 32;
-// 量的时候先把这一层整张抄到一块「专门给读的」画布上（willReadFrequently：放在内存里），在那上面一条一条读 ——
+// 量一层（g：这一层已经整张抄上去的、专门给读的画布）：返回 { rows, opaque }。主线程、Worker 里用的是同一个函数（Worker 的源码就是它的 toString）
+function scanRows(g, w, h, wantOpaque, PAD, BAND) {
+  const band = y => new Uint32Array(g.getImageData(0, y, w, Math.min(BAND, h - y)).data.buffer);   // 一个像素四个字节，全透明 = 0
+  const rowHas = (d, r) => { for (let k = r * w, e = k + w; k < e; k++) if (d[k] !== 0) return true; return false; };
+  let y0 = -1, y1 = -1;
+  for (let y = 0; y < h && y0 < 0; y += BAND) { const d = band(y), n = d.length / w; for (let r = 0; r < n; r++) if (rowHas(d, r)) { y0 = y + r; break; } }
+  if (y0 < 0) return { rows: [0, 0], opaque: false };                                    // 整层是空的
+  for (let y = Math.max(y0, h - BAND); y1 < 0; y = Math.max(y0, y - BAND)) {
+    const d = band(y), n = d.length / w;
+    for (let r = n - 1; r >= 0; r--) if (rowHas(d, r)) { y1 = y + r; break; }
+    if (y === y0) break;
+  }
+  const rows = [Math.max(0, y0 - PAD), Math.min(h, Math.max(y0, y1) + 1 + PAD)];
+  let opaque = false;
+  if (wantOpaque) {                                    // 除了最右两列、最下两行（画的时候不满一个像素的边）都是不透明的
+    opaque = true;
+    for (let y = 0; y < h - 2 && opaque; y += BAND) {
+      const a = g.getImageData(0, y, w, Math.min(BAND, h - 2 - y)).data;
+      for (let i = 3, x = 0; i < a.length; i += 4) { if (a[i] !== 255 && x < w - 2) { opaque = false; break; } if (++x === w) x = 0; }
+    }
+  }
+  return { rows, opaque };
+}
+// 主线程上量（Worker 用不了时）：先把这一层整张抄到一块「专门给读的」画布上（willReadFrequently：放在内存里），在那上面一条一条读 ——
 // 不对这一层本身 getImageData（读多了浏览器会把它挪出显卡，以后每帧贴它反而慢）；量完把这块画布清掉（不占内存）
 function layerRows(c, wantOpaque) {
   c.rows = null; c.opaque = false;
@@ -16142,28 +16234,55 @@ function layerRows(c, wantOpaque) {
     tmp.width = w; tmp.height = h;
     const g = tmp.getContext('2d', { willReadFrequently: true });
     g.drawImage(c, 0, 0);
-    const band = y => new Uint32Array(g.getImageData(0, y, w, Math.min(ROW_BAND, h - y)).data.buffer);   // 一个像素四个字节，全透明 = 0
-    const rowHas = (d, r) => { for (let k = r * w, e = k + w; k < e; k++) if (d[k] !== 0) return true; return false; };
-    let y0 = -1, y1 = -1;
-    for (let y = 0; y < h && y0 < 0; y += ROW_BAND) { const d = band(y), n = d.length / w; for (let r = 0; r < n; r++) if (rowHas(d, r)) { y0 = y + r; break; } }
-    if (y0 < 0) { c.rows = [0, 0]; return; }                                              // 整层是空的
-    for (let y = Math.max(y0, h - ROW_BAND); y1 < 0; y = Math.max(y0, y - ROW_BAND)) {
-      const d = band(y), n = d.length / w;
-      for (let r = n - 1; r >= 0; r--) if (rowHas(d, r)) { y1 = y + r; break; }
-      if (y === y0) break;
-    }
-    c.rows = [Math.max(0, y0 - ROW_PAD), Math.min(h, Math.max(y0, y1) + 1 + ROW_PAD)];
-    if (wantOpaque) {                                    // 除了最右两列、最下两行（画的时候不满一个像素的边）都是不透明的
-      let op = true;
-      for (let y = 0; y < h - 2 && op; y += ROW_BAND) {
-        const a = g.getImageData(0, y, w, Math.min(ROW_BAND, h - 2 - y)).data;
-        for (let i = 3, x = 0; i < a.length; i += 4) { if (a[i] !== 255 && x < w - 2) { op = false; break; } if (++x === w) x = 0; }
-      }
-      c.opaque = op;
-    }
+    const r = scanRows(g, w, h, wantOpaque, ROW_PAD, ROW_BAND);
+    c.rows = r.rows; c.opaque = r.opaque;
   } catch (e) { c.rows = null; c.opaque = false; }
   finally { tmp.width = tmp.height = 0; }
 }
+/* 3.5.1（Jack：网页版越来越卡）量放到 Worker 里：主线程只拍一张 ImageBitmap（有显卡加速时就是显卡上的一张快照，不读回来）递过去，
+   Worker 在自己的画布上抄一遍、一条一条读，读完把结果递回来。以前在主线程里读：有显卡加速的浏览器得把整层从显卡读回内存，
+   主线程要等显卡把手上的活全干完才拿得到（换场景、进出全屏、改窗口大小以后连着卡四下；没有显卡的电脑上一层也要几十毫秒）。
+   量出来的和以前一模一样（同一个 scanRows）；量好之前照旧整张贴（画出来一样）。Worker 用不了（老浏览器、出错）就照旧在主线程量 */
+const LayerScan = {
+  w: null, broken: typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined',
+  seq: 0, wait: new Map(),
+  worker() {
+    if (this.w || this.broken) return this.w;
+    try {
+      const src = `${scanRows.toString()}
+onmessage = function (e) {
+  const m = e.data; let r = null;
+  try { const oc = new OffscreenCanvas(m.bmp.width, m.bmp.height), g = oc.getContext('2d', { willReadFrequently: true });
+    g.drawImage(m.bmp, 0, 0); r = scanRows(g, m.bmp.width, m.bmp.height, m.wantOpaque, m.PAD, m.BAND); oc.width = oc.height = 0; } catch (err) { r = null; }
+  try { m.bmp.close(); } catch (err) {}
+  postMessage({ id: m.id, r: r });
+};`;
+      this.w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      this.w.onmessage = e => { const cb = this.wait.get(e.data.id); this.wait.delete(e.data.id); if (cb) cb(e.data.r); };
+      this.w.onerror = () => this.fail();
+    } catch (e) { this.broken = true; this.w = null; }
+    return this.w;
+  },
+  fail() {                                             // Worker 坏了：等着的都按「量不了」回去（调的人自己在主线程量）
+    this.broken = true;
+    try { if (this.w) this.w.terminate(); } catch (e) {}
+    this.w = null;
+    const cbs = [...this.wait.values()]; this.wait.clear();
+    for (const cb of cbs) cb(undefined);
+  },
+  // 量一层：done(r)，r = { rows, opaque }；null = 这一层读不了（照旧整张贴）；undefined = Worker 用不了（调的人在主线程量）
+  run(c, wantOpaque, done) {
+    const w = this.worker();
+    if (!w || !c.width || !c.height) { done(undefined); return; }
+    createImageBitmap(c).then(bmp => {
+      if (this.broken) { try { bmp.close(); } catch (e) {} done(undefined); return; }
+      const id = ++this.seq;
+      this.wait.set(id, done);
+      try { w.postMessage({ id, bmp, wantOpaque, PAD: ROW_PAD, BAND: ROW_BAND }, [bmp]); }
+      catch (e) { this.wait.delete(id); try { bmp.close(); } catch (e2) {} this.fail(); done(undefined); }
+    }, () => done(undefined));
+  },
+};
 // 贴一层：只贴 c.rows 那几行（没量过就整张贴）。目标位置 = 整张贴时这几行落在的地方
 function drawRows(g, c, x, y, w, h) {
   const r = c.rows;
@@ -16222,9 +16341,17 @@ const Stage = {
     this.layers = { sky, far, mid, ground: gc, near: S.near || null };
     // 2.11 量一下每层哪几行有东西（每帧只贴这几行）；最底下那层（有天就是天，没有就是远景）再看是不是整张不透明。
     // 不在这一帧里量（开局、换窗口大小时不卡一下）：过一会儿一层一层地量，量好之前照旧整张贴（画出来一样）
+    // 3.5.1 量放到 Worker 里（见上面 LayerScan），一层量完再递下一层（Worker 里一次只占一层的内存）；Worker 用不了的那一层照旧在主线程量
     clearTimeout(this.scanT);
     const todo = [sky, far, mid, gc].filter(Boolean), bottom = sky || far, mine = this.layers;
-    const next = () => { const c = this.layers === mine && todo.shift(); if (!c) return; layerRows(c, c === bottom); this.scanT = setTimeout(next, 40); };
+    const next = () => {
+      const c = this.layers === mine && todo.shift(); if (!c) return;
+      LayerScan.run(c, c === bottom, r => {
+        if (r === undefined) layerRows(c, c === bottom);
+        else if (r) { c.rows = r.rows; c.opaque = r.opaque; }
+        if (this.layers === mine) this.scanT = setTimeout(next, LayerScan.broken ? 40 : 0);
+      });
+    };
     this.scanT = setTimeout(next, 300);
     this.built = { id, back: w.back, ground: w.ground, top, vw };
     this.id = id;
@@ -19448,10 +19575,44 @@ for (const btn of touchEl.querySelectorAll('.tc')) {
 /* 帧数表、克制总表、破解表：2.2 起在 guide.js（教程「查表」那一页 / 软件版教程）里，直接读 MOVES */
 
 /* ---------- 主循环 ---------- */
+/* 3.5.1（Jack：网页版越来越卡）没人看的帧不画：
+   · 游戏画面整个滚出了窗口（往下看教程的时候）：逻辑照走，画面不画；滚回来（差 160 像素进窗口就算）接着画；
+   · 暂停着（暂停、破招练习的选课 / 说明 / 过关……）：画面是定住的，每一帧画出来都一样 —— 刚暂停、每次按键点鼠标、窗口变了以后照画一秒
+     （镜头停稳、面板上的字换了都画得上），之后不画，等不暂停了接着画。
+   只是不画看不见的、一模一样的帧，画出来的东西不变；不画的这段时间自动画质不计（不会以为很顺去升分辨率） */
+const Show = {
+  vis: true, until: 0, wasPaused: false, drawn: true, gen: -1,
+  wake(ms) { this.until = Math.max(this.until, performance.now() + (ms || 1000)); },
+  want(now) {
+    if (game.paused !== this.wasPaused) { this.wasPaused = game.paused; this.wake(); }
+    if (cvGen !== this.gen) { this.gen = cvGen; this.wake(); }     // 画布重设过（窗口变了、全屏、自动画质）：画布被清空了，得重画
+    return this.vis && (!game.paused || game.mode === 'online' || now < this.until);
+  },
+};
+if (window.IntersectionObserver) {
+  new IntersectionObserver(es => { const v = es[es.length - 1].isIntersecting; if (v && !Show.vis) Show.wake(); Show.vis = v; }, { rootMargin: '160px' }).observe(cv);
+}
+for (const ev of ['keydown', 'keyup', 'pointerdown', 'pointerup']) window.addEventListener(ev, () => Show.wake(), { capture: true, passive: true });   // 滚轮不算（滚选课的列表画面不变）
+window.addEventListener('resize', () => Show.wake());
+document.addEventListener('visibilitychange', () => Show.wake());
+// 网址加 ?fps：左上角一行小字 —— 一秒画几帧、屏幕多少 Hz、每几次刷新画一帧、画布多大、自动画质的倍数、一帧 JS 多少毫秒（调性能用，平时没有）
+const FpsHud = /[?&]fps\b/.test(location.search) ? (() => {
+  const el = document.createElement('div');
+  el.setAttribute('translate', 'no');
+  el.style.cssText = 'position:fixed;left:6px;top:6px;z-index:99999;font:12px/1.4 ui-monospace,Consolas,monospace;background:rgba(23,24,26,.72);color:#ebeae2;padding:2px 7px;border-radius:4px;pointer-events:none;white-space:pre';
+  document.body.appendChild(el);
+  return { el, n: 0, js: 0, t0: performance.now() };
+})() : null;
 let last = performance.now(), acc = 0, rafAvg = FRAME_MS, aligned = true;
 function loop(now) {
-  AutoRes.watch(now - last);                       // 3.1.1 自动降分辨率（render.js）：一直掉帧就降一点分辨率
-  let dt = Math.min(100, now - last); last = now;
+  const t0 = FpsHud ? performance.now() : 0;
+  const show = Show.want(now), raw = now - last;
+  if (show && !Show.drawn) { lastRT = 0; Stage.liveLast = 0; Pace.reset(); }   // 停画以后重新画的第一帧：镜头、动的背景从这一帧接着走（不一下补上停的那段）
+  Pace.tick(raw);
+  const draw = show && Pace.due(now);
+  // 3.1.1 自动降分辨率（render.js）：一直掉帧就降一点分辨率。量的是画出来的帧和帧之间隔多久；不画的那段时间（滚出去、暂停）传 0 = 不计
+  if (draw) AutoRes.watch(Pace.lastDraw ? now - Pace.lastDraw : 0); else if (!show) AutoRes.watch(0);
+  let dt = Math.min(100, raw); last = now;
   // 2.0.1 / 2.6 帧率：逻辑一秒 SIM_HZ（240）步，和屏幕刷新率无关。rafAvg = 屏幕大概多久刷新一次：
   // 刚好是整数步（60Hz = 4 步、120Hz = 2 步、240Hz = 1 步）就把这一下对齐成正好那么多步，画面不插值（不多一点延迟；
   // 60Hz 屏幕间隔在 16.7ms 上下抖，不对齐的话偶尔一下走 3 步、下一下走 5 步，画面一顿）；
@@ -19468,8 +19629,17 @@ function loop(now) {
     if (n >= 5 * SUB) acc = 0;
     RA = !aligned || game.timeScale < 1 ? clamp(acc / STEP_MS, 0, 1) : 1;        // KO 慢镜头时也插（不然几帧才动一下）
   }
-  render();
+  if (draw) { render(); Pace.drew(now); }
+  Show.drawn = show;
   Ach.watch();
+  if (FpsHud) {
+    const H = FpsHud; H.js += performance.now() - t0; if (draw) H.n++;
+    if (now - H.t0 >= 500) {
+      const s = (now - H.t0) / 1000;
+      H.el.textContent = `${Math.round(H.n / s)} fps | ${Pace.V ? Math.round(1000 / Pace.V) : '?'} Hz | 1/${Pace.d} | ${cv.width}x${cv.height} | res ${AutoRes.res.toFixed(2)} | JS ${(H.js / Math.max(1, H.n)).toFixed(1)} ms`;
+      H.n = 0; H.js = 0; H.t0 = now;
+    }
+  }
   requestAnimationFrame(loop);
 }
 // 联机时页面切到后台（换标签页、最小化、去回微信），浏览器会暂停画面刷新，游戏就不往前走，

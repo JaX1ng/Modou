@@ -709,10 +709,13 @@ function drawBody(J, col, band, bp0, paths0) {
     ctx.save(); ctx.clip(path);
     paint(T.base, path);
     // 亮边：这几块合起来涂亮色，再往 n 的反方向挪 w 涂回本色 —— n 那一侧剩下一道 w 宽的亮边
+    // 3.5.1（Jack：网页版越来越卡）整层的亮边（p 就是这一层的外形）不再按 p 剪第二遍：上面已经按它剪过了。
+    // 剪裁是画人最贵的一步（一个人一帧 15 次，这样的占 8 次）；只是外形边上抗锯齿的那一圈像素深浅差一点点，放大三倍对比也看不出来
     const rim = (list, n, w, base) => {
       if (!list.length || w <= 0) return;
       const p = list.length === parts.length ? path : polysPath(list);
-      ctx.save(); ctx.clip(p); paint(T.hl, p);
+      ctx.save(); if (p !== path) ctx.clip(p);
+      paint(T.hl, p);
       ctx.translate(-n[0] * w, -n[1] * w); paint(base || T.base, p); ctx.restore();
     };
     if (L === 'torso') {
