@@ -91,6 +91,8 @@ FONT_FACES = [
     ("Noto Sans SC", 400, "noto-sans-sc", "400Regular/NotoSansSC_400Regular.ttf", "NotoSansSC-Regular.woff2", True),
     ("Noto Sans SC", 500, "noto-sans-sc", "500Medium/NotoSansSC_500Medium.ttf", "NotoSansSC-Medium.woff2", True),
     ("Noto Sans SC", 700, "noto-sans-sc", "700Bold/NotoSansSC_700Bold.ttf", "NotoSansSC-Bold.woff2", True),
+    # 3.5 英文时的毛笔字（只有英文字母；中文照旧落到马善政）：css/style.css 的 html[lang=en] 和 config.js 的 BRUSH 用它
+    ("Kaushan Script", 400, "kaushan-script", "400Regular/KaushanScript_400Regular.ttf", "KaushanScript-Regular.woff2", False),
 ]
 # 字体许可证（包里有 LICENSE_FONT 就原样复制；没有就用 desktop/build/OFL-1.1.txt + 这里的版权行）
 FONT_LICENSES = [
@@ -98,6 +100,9 @@ FONT_LICENSES = [
      "Copyright 2018 The Ma Shan Zheng Project Authors (https://github.com/googlefonts/mashanzheng)"),
     ("noto-sans-sc", "OFL-NotoSansSC.txt",
      "Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'"),
+    ("kaushan-script", "OFL-KaushanScript.txt",
+     "Copyright (c) 2011, Pablo Impallari (www.impallari.com|impallari@gmail.com), Copyright (c) 2011, Igino Marini. "
+     "(www.ikern.com|mail@iginomarini.com), with Reserved Font Name Kaushan Script."),
 ]
 def fail(msg):
     sys.exit("\n[build.py --desktop] " + msg)

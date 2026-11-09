@@ -1183,6 +1183,11 @@ function wcDrawCue(c2d, F, V) {
   const ch = m.lap || m.lapT > 0 ? '拉' : SHAPE_NAME[m.rollT > 0 ? m.rollTo : m.shape] || '黐';
   c2d.fillStyle = F.color; c2d.font = `17px ${BRUSH}`; c2d.textAlign = 'center'; c2d.textBaseline = 'middle';
   c2d.fillText(ch, x, y + 1);
+  const en = Tc('hand', ch);                       // 3.5 英文：圈里照旧是那个字，圈底下另写手型的粤语拼法（Tan / Bong / Fook / Lap / Chi）
+  if (en !== ch) {
+    c2d.font = `11px ${BRUSH}`; c2d.lineJoin = 'round'; c2d.lineWidth = 2.5; c2d.strokeStyle = 'rgba(244,243,236,.85)';
+    c2d.strokeText(en, x, y + 22); c2d.fillText(en, x, y + 22);
+  }
   c2d.restore();
 }
 

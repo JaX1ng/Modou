@@ -19,6 +19,7 @@
     "steamworks.js": "0.4.0"
   },
   "devDependencies": {
+    "@expo-google-fonts/kaushan-script": "0.4.1",
     "@expo-google-fonts/ma-shan-zheng": "0.4.3",
     "@expo-google-fonts/noto-sans-sc": "0.4.4",
     "electron": "44.9.3",

@@ -137,6 +137,7 @@ Keys.load();
 // 2.5.1 选了「两种都用」：写成「双击 [前] 或按 [冲]」
 function dashWords(s, set) {
   const m = (set || Keys.solo).dashMode;
+  if (LANG === 'en') return dashWordsEn(s, m);
   if (m === 'both') return s.replace(/双击 \[前\]（或 \[后\]）/g, '双击 [前]（或 [后]），或按 [冲]').replace(/朝对手双击 \[前\]/g, '朝对手双击 [前]（或按 [冲]）')
     .replace(/双击 \[前\](?!（)/g, '双击 [前] 或按 [冲]').replace(/双击方向/g, '双击方向或按冲刺键');
   if (m !== 'key') return s;
@@ -144,10 +145,21 @@ function dashWords(s, set) {
     .replace(/朝对手双击 \[前\]/g, '按 [冲]').replace(/双击 \[前\]/g, '按 [冲]')
     .replace(/双击方向/g, '按冲刺键').replace(/双击冲进来/g, '冲刺冲进来').replace(/朝你双击/g, '朝你冲刺');
 }
+// 3.5 英文版（先 TR() 换成英文再换这个）：lang_en.js 里讲冲刺统一写成 double-tap [前] (or [后]) / double-tap [前] / double-tap a direction 这三种；
+// 讲对面（木桩、电脑）冲进来的直接写 dashes in，不跟着你的键位换
+function dashWordsEn(s, m) {
+  const P = (d, w) => (d === 'D' ? w[0].toUpperCase() : w[0]) + w.slice(1);       // 句首大写照留
+  if (m === 'both') return s.replace(/[Dd]ouble-tap \[前\] \(or \[后\]\)/g, '$&, or press [冲]')
+    .replace(/[Dd]ouble-tap \[前\](?! \(or)/g, '$& or press [冲]').replace(/[Dd]ouble-tap a direction/g, '$& or press the dash key');
+  if (m !== 'key') return s;
+  return s.replace(/([Dd])ouble-tap \[前\] \(or \[后\]\)/g, (x, d) => P(d, 'press [冲] (hold [后] as you press it = dash back)'))
+    .replace(/([Dd])ouble-tap \[前\]/g, (x, d) => P(d, 'press [冲]')).replace(/([Dd])ouble-tap a direction/g, (x, d) => P(d, 'press the dash key'));
+}
 // 鼠标按键（1.7.0）：记成 Mouse0~4（MouseEvent.button）。3、4 是侧键（一般是「后退」「前进」）
 const MOUSE_NAME = ['鼠标左键', '鼠标中键', '鼠标右键', '鼠标侧键·后', '鼠标侧键·前'];
-// 键的显示名
-function keyName(c) {
+// 键的显示名（3.5 英文时过一遍 TR()：空格 → Space、小键盘5 → Num 5）
+function keyName(c) { return TR(keyName0(c)); }
+function keyName0(c) {
   if (!c) return '—';
   let m;
   if ((m = /^Mouse(\d)$/.exec(c))) return MOUSE_NAME[+m[1]] || '鼠标键' + m[1];

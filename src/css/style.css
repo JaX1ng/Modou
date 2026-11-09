@@ -561,3 +561,26 @@ html.desktop .guide{display:none}
 .g-combo.wide{grid-column:1/-1}
 .g-combo.wide .gc-strip{flex-wrap:wrap}
 @media (max-width:720px){.ps-hex{display:none}}
+
+/* ---------- 3.5 英文（js/lang.js 给 <html> 写 lang="en"）：毛笔字的英文字母用 Kaushan Script，中文（印章、标题「墨斗」）照旧落到马善政 ---------- */
+html[lang=en]{--brush:"Kaushan Script","Ma Shan Zheng","Kaiti SC","STKaiti","KaiTi",serif}
+html.l10n-wait body{visibility:hidden}
+.en-only{display:none}
+html[lang=en] .en-only{display:revert}
+.langseg .en-face{font-family:"Kaushan Script",serif}
+html[lang=en] .g-combo.ko h4::after{content:'KO'}
+.seal-cap{font:400 22px/1 var(--brush);color:var(--cinnabar);margin:-4px 0 6px}
+/* 英文比中文长：字距收一点、窄的格子放宽或者字小一号 */
+html[lang=en] .sub{letter-spacing:.08em;padding-left:0}
+html[lang=en] .mn-h span{letter-spacing:.08em}
+html[lang=en] .di-op small{letter-spacing:.06em}
+html[lang=en] .kr{grid-template-columns:5.6em auto 1fr}
+html[lang=en] .sw{font-size:15px}
+html[lang=en] .swatches.sm .sw{font-size:12.5px}
+html[lang=en] .styles.sm.many .styl{font-size:15px}
+html[lang=en] .tri-k{font-size:15px}
+html[lang=en] .g-dl dt{white-space:normal;max-width:10em}
+html[lang=en] .g-start.tri3 .g-dl{grid-template-columns:1fr;gap:2px}
+html[lang=en] .g-start.tri3 .g-dl dd{margin-bottom:8px}
+html[lang=en] .g-mul th{white-space:normal;min-width:5.5em;max-width:9em}
+html[lang=en] .g-mul td.num{white-space:normal;max-width:10em}

@@ -894,13 +894,15 @@ const Drill = {
 Drill.load();
 // 文字里的 [拳] 之类换成按键：html = true 给界面用（<kbd>），否则给画面上的字用
 const DRILL_KEYS = { 拳: 'jab', 重: 'heavy', 踢: 'kick', 拿: 'grab', 挡: 'block', 蹲: 'down', 跳: 'up', 冲: 'dash' };
+// 3.5 英文：整句先换成英文（英文句子里照样写 [拳] 这些），再换按键；画面上的字（html = false）没有 MutationObserver 帮忙，这里自己换
 function drillText(s, html) {
-  return dashWords(s, Keys.solo).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => {
+  const en = LANG === 'en';
+  return dashWords(TR(s), Keys.solo).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => {
     if (k === '前' || k === '后') {       // 方向：看你站在他哪一边（左 / 右键里朝着他 / 背着他的那个）
-      const dirs = `${keyName((Keys.solo.left || [])[0])} / ${keyName((Keys.solo.right || [])[0])}`;
-      return html ? `<kbd class="lt" title="${dirs} 里${k === '前' ? '朝着' : '背着'}他的那个">${k === '前' ? '朝他' : '背他'}</kbd>` : `「${k === '前' ? '朝他' : '背他'}」`;
+      const dirs = `${keyName((Keys.solo.left || [])[0])} / ${keyName((Keys.solo.right || [])[0])}`, w = k === '前' ? '朝他' : '背他';
+      return html ? `<kbd class="lt" title="${dirs} 里${k === '前' ? '朝着' : '背着'}他的那个">${w}</kbd>` : en ? TR(w) : `「${w}」`;
     }
     const key = keyName((Keys.solo[DRILL_KEYS[k]] || [])[0]);
-    return html ? `<kbd class="lt">${key}</kbd><b>${k}</b>` : `「${k}」(${key})`;
+    return html ? `<kbd class="lt">${key}</kbd><b>${k}</b>` : en ? `${TR(k)} (${key})` : `「${k}」(${key})`;
   });
 }

@@ -55,7 +55,7 @@ Hooks.matchOver = () => {
     `<div><b>${st[0].specials} / ${st[1].specials}</b>招式命中 ${nm}</div>` +
     `<div><b>${st[0].blocks} / ${st[1].blocks}</b>格挡 ${nm}</div>` +
     `<div><b>${st[0].parries} / ${st[1].parries}</b>卸力 ${nm}</div>` +
-    `<div><b>${st[0].clashes}</b>拼招</div>` +
+    `<div><b>${st[0].clashes}</b>${Tc('stat', '拼招')}</div>` +           // 3.5 英文：这里是复数 Clashes
     `<div><b>${st[0].presses} / ${st[1].presses}</b>压制 ${nm}</div>` +
     `<div><b>${st[0].punishes} / ${st[1].punishes}</b>防守反击 ${nm}</div>` +
     `<div><b>${st[0].escapes} / ${st[1].escapes}</b>挣脱 ${nm}</div>`;
@@ -118,7 +118,7 @@ function renderDrillList() {
   if (!drillTab) { try { drillTab = localStorage.getItem('modou.drillTab'); } catch (e) {} }
   if (Drill.cur) drillTab = groupOf(Drill.cur.def.topic);
   if (!DRILL_GROUPS.some(g => g[0] === drillTab)) drillTab = DRILL_GROUPS[0][0];
-  $('drillTabs').innerHTML = DRILL_GROUPS.map(([gid, name, tids]) => `<button type="button" role="tab" data-dg="${gid}" aria-selected="${gid === drillTab}">${name}<small>${tids.length}</small></button>`).join('');
+  $('drillTabs').innerHTML = DRILL_GROUPS.map(([gid, name, tids]) => `<button type="button" role="tab" data-dg="${gid}" aria-selected="${gid === drillTab}">${Tc('group', name)}<small>${tids.length}</small></button>`).join('');
   const tids = DRILL_GROUPS.find(g => g[0] === drillTab)[2];
   $('drillList').innerHTML = tids.map(tid => {
     const t = DRILL_TOPICS.find(x => x[0] === tid), list = DRILLS.filter(d => d.topic === tid);
@@ -235,8 +235,15 @@ function setVol(v, hear, save) {
 }
 // 2.1、2.3 音量刻度上挪过（现在的 50 = 2.2 的 70 = 2.0.2 的 112）：以前存过的换算成新刻度，听着和以前一样响（fx.js Sound.volFromStore）
 function savedVol() { try { return Sound.volFromStore(k => localStorage.getItem(k)); } catch (e) { return 50; } }
-function openSettings(from) { setBack = from; setVol(Sound.vol, false); showOverlay(setEl); }
+function openSettings(from) { setBack = from; setVol(Sound.vol, false); langSync(); showOverlay(setEl); }
 function closeSettings() { showOverlay(setBack === 'pause' ? pauseEl : menu); }
+// 3.5 语言（js/lang.js）：换了就重新载入页面，所以只在主菜单进来的设置里能换（暂停里进来的灰着，写一句为什么）
+function langSync() {
+  const live = setBack !== 'menu';
+  for (const b of document.querySelectorAll('[data-lang]')) { b.setAttribute('aria-pressed', String(b.dataset.lang === LANG)); b.disabled = live && b.dataset.lang !== LANG; }
+  $('langHint').hidden = !live;
+}
+for (const b of document.querySelectorAll('[data-lang]')) b.addEventListener('click', () => { if (b.dataset.lang !== LANG && setBack === 'menu') setLang(b.dataset.lang); });
 $('btnSettings').addEventListener('click', () => openSettings('menu'));
 $('btnPauseSet').addEventListener('click', () => openSettings('pause'));
 $('btnSetDone').addEventListener('click', closeSettings);
@@ -321,7 +328,7 @@ $('btnInvite').addEventListener('click', async e => {
   const btn = e.currentTarget;
   const link = await inviteLink(Net.code, hasTurn(Relay.list) ? Relay.list : null);
   try { await navigator.clipboard.writeText(link); btn.textContent = '已复制'; toast(hasTurn(Relay.list) ? '邀请链接带着你的中继，对方点开就连，不用自己填' : Desk ? '把链接发给对方：他点开就在浏览器里进这个房间（网页版、软件版能一起玩）' : '把链接发给对方，他点开就进这个房间', 3200); }
-  catch (err) { window.prompt('复制这个链接发给对方：', link); }
+  catch (err) { window.prompt(TR('复制这个链接发给对方：'), link); }
   setTimeout(() => { btn.textContent = '复制邀请链接'; }, 1600);
 });
 async function copyFrom(id, btn) {
@@ -447,9 +454,9 @@ function renderKeys() {
   const dm = k.dashMode, tap = dm === 'tap';                                      // 冲刺：2.4 双击方向（冲刺键那一行不用）/ 冲刺键；2.5.1 两种都用
   for (const b of document.querySelectorAll('[data-dashm]')) b.setAttribute('aria-pressed', String(b.dataset.dashm === dm));
   const L = keyName(k.left[0] || k.left[1]), R = keyName(k.right[0] || k.right[1]);
-  $('dashHint').textContent = tap ? `双击左 / 右（${L}${L} / ${R}${R}）往那边冲；按着挡朝对手双击 = 闪身。冲刺键那一行不用。`
+  $('dashHint').textContent = tap ? Tf('双击左 / 右（{0}{0} / {1}{1}）往那边冲；按着挡朝对手双击 = 闪身。冲刺键那一行不用。', L, R)   // 3.5 Tf 见 lang.js
     : dm === 'key' ? '按冲刺键往按着的方向冲（不按方向就往前；按着挡按 = 闪身）。双击方向不再冲刺。'
-    : `两种都能冲：双击左 / 右（${L}${L} / ${R}${R}），或者按冲刺键（往按着的方向冲，不按方向就往前）；按着挡时这么按 = 闪身。`;
+    : Tf('两种都能冲：双击左 / 右（{0}{0} / {1}{1}），或者按冲刺键（往按着的方向冲，不按方向就往前）；按着挡时这么按 = 闪身。', L, R);
   $('keyRows').innerHTML = ACTIONS.map(([a, n]) => {
     const off = a === 'dash' && tap;
     return `<tr${off ? ' class="off"' : ''}><td>${n}</td>` + [0, 1].map(i => {
@@ -552,7 +559,7 @@ const STYLE_LINE = {
 function styleCard(id, o) {
   const sm = !!o.sm, w = sm ? 52 : 92;
   if (id === 'random') return `<button type="button" class="styl rand" data-style="random" aria-pressed="${!!o.on}"><span class="sicon"><i>?</i></span><b>随机</b>${sm ? '' : '<small>每局随机一派</small>'}</button>`;
-  return `<button type="button" class="styl" data-style="${id}" aria-pressed="${!!o.on}">${iconSlot({ pose: 'stance', style: id }, w, w, 'sicon')}<b>${STYLES[id].name}</b>` +
+  return `<button type="button" class="styl" data-style="${id}" aria-pressed="${!!o.on}">${iconSlot({ pose: 'stance', style: id }, w, w, 'sicon')}<b>${sm ? Tc('card', STYLES[id].name) : STYLES[id].name}</b>` +   // 3.5 英文：小卡片上螳螂拳写 Mantis
     (sm ? '' : `<small>${STYLE_LINE[id] || ''}</small>`) + '</button>';
 }
 function styleRow(el, cur, o) {
@@ -1083,11 +1090,13 @@ function boot(data) {
   Sound.init();
   if (!Desk) Guide.init();                            // 2.2 页面下面的教程（软件版没有这一块，用「教程」面板）
   resize(); startAttract();
+  try { if (sessionStorage.getItem('modou.reopen') === 'settings') { sessionStorage.removeItem('modou.reopen'); if (!location.hash || location.hash.length < 2) openSettings('menu'); } } catch (e) {}   // 3.5 刚换完语言：设置面板接着开着
   openInvite();
   Ach.drills();
   if (document.fonts && document.fonts.load) {
     document.fonts.load('40px "Ma Shan Zheng"', '墨斗靛朱赭松黛紫苍随机第一二三四五回合战胜负已分时间到平局决胜局连击进步冲拳冲天炮鞭腿旋风腿坠山击飞踢接腿摔擒拿连珠快拳后手直拳摆拳势破挡闪拆破招空中倒地久被两败俱伤本重打等待对方联机不同步拼克制化解霸体卸失衡推开震爆气满可泼墨寸劲转身蹬扫堂托天掌沉肩靠过肩下段上蹲站要拳重腿对必杀压起手顶肘劈山落步冲盖砸二起脚坠山闪背后不住迎击势桩练习回满打截踩抄抱提膝别挣脱借力滚身反绽住翻断挨着撞掉线栽葱朱日远山松崖飞瀑竹林夜月桃花园大漠孤烟练武场训地狱极难')
       .catch(() => {});
+    if (LANG === 'en') document.fonts.load('40px "Kaushan Script"', 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789').catch(() => {});
   }
   requestAnimationFrame(t => { last = t; requestAnimationFrame(loop); });
 }

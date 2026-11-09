@@ -397,6 +397,14 @@ function drawSeal(x, y, text, size, rot, alpha, sc, specks, col) {
     ctx.fillText(text[i], cx, cy + size * 0.05);
   }
   if (specks) { ctx.fillStyle = C.paper; for (const [sx, sy, sr] of specks) { ctx.beginPath(); ctx.arc(sx * w, sy * h, sr, 0, Math.PI * 2); ctx.fill(); } }
+  // 3.5 英文：印章照旧是中文（水墨的味道），底下另写一行英文小字（招名），和印章一起歪、一起淡
+  const cap = LANG === 'en' ? TR(text) : text;
+  if (cap !== text) {
+    const cy = h / 2 + size * 0.14;
+    ctx.font = `${Math.round(Math.max(13, size * 0.62))}px ${BRUSH}`; ctx.textBaseline = 'top';
+    ctx.lineJoin = 'round'; ctx.lineWidth = Math.max(2.5, size * 0.12); ctx.strokeStyle = 'rgba(244,243,236,.85)'; ctx.strokeText(cap, 0, cy);
+    ctx.fillStyle = col || C.cin; ctx.fillText(cap, 0, cy);
+  }
   ctx.restore();
 }
 // 训练场上面那块面板（训练 / 破招练习）在画面上的位置：面板每帧画的时候记下来，印章用（2.3）
@@ -475,15 +483,16 @@ function hpBar(F, side) {
   ctx.fillStyle = C.ink; ctx.fillRect(qx + ql / 2 - 1, qy - 2, 2, qh + 4);
   ctx.textBaseline = 'middle'; ctx.textAlign = side < 0 ? 'left' : 'right';
   ctx.font = `15px ${BRUSH}`; ctx.fillStyle = half ? F.color : '#55564f';
-  ctx.fillText(full ? '气满 · 可' + F.moves.super.label : half ? '气 · 可爆气' : '气', dir > 0 ? qx + ql + 8 : qx - 8, qy + 3);   // 咏春拳的大招是连环寸拳
+  ctx.fillText(TR(full ? '气满 · 可' + F.moves.super.label : half ? '气 · 可爆气' : '气'), dir > 0 ? qx + ql + 8 : qx - 8, qy + 3);   // 咏春拳的大招是连环寸拳
   // 名字
   ctx.textBaseline = 'alphabetic';
   ctx.textAlign = side < 0 ? 'left' : 'right';
   ctx.fillStyle = F.color; ctx.font = `30px ${BRUSH}`;
-  ctx.fillText(F.name, x0 + dir * 2, 78);
-  const nmW = ctx.measureText(F.name).width;
+  const fName = TR(F.name);                                              // 3.5 英文：颜色名（墨 → Ink）
+  ctx.fillText(fName, x0 + dir * 2, 78);
+  const nmW = ctx.measureText(fName).width;
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f';
-  ctx.fillText(F.label ? F.label + ' · ' + styleOf(F).name : styleOf(F).name, x0 + dir * (nmW + 10), 74);   // 2.9 带上拳派
+  ctx.fillText(TR(F.label ? F.label + ' · ' + styleOf(F).name : styleOf(F).name), x0 + dir * (nmW + 10), 74);   // 2.9 带上拳派
   ctx.textAlign = 'center';
   // 回合胜点（五局三胜：三个点；训练场没有回合，不画）
   for (let i = 0; i < (game.mode === 'train' ? 0 : WIN_ROUNDS); i++) {
@@ -498,11 +507,12 @@ function hpBar(F, side) {
     ctx.globalAlpha = a; ctx.textAlign = side < 0 ? 'left' : 'right';
     const num = String(F.combo);
     ctx.font = `46px ${BRUSH}`; const nw = ctx.measureText(num).width;
-    ctx.font = `22px ${BRUSH}`; const lw = ctx.measureText('连击').width;
+    const cw = TR('连击');
+    ctx.font = `22px ${BRUSH}`; const lw = ctx.measureText(cw).width;
     const left = side < 0 ? x0 + 2 : x0 - 2 - lw - 8 - nw;
     ctx.textAlign = 'left';
     ctx.font = `46px ${BRUSH}`; ctx.fillStyle = F.color; ctx.fillText(num, left, 128);          // 2.0.1 连击数：连的那个人的颜色
-    ctx.font = `22px ${BRUSH}`; ctx.fillStyle = F.color; ctx.fillText('连击', left + nw + 8, 126);
+    ctx.font = `22px ${BRUSH}`; ctx.fillStyle = F.color; ctx.fillText(cw, left + nw + 8, 126);
     ctx.globalAlpha = 1;
   }
 }
@@ -519,14 +529,24 @@ function drawHud() {
   ctx.font = `16px ${BRUSH}`; ctx.fillStyle = C.ink;
   hudBox = null;
   if (game.mode === 'train') { if (Drill.cur) drawDrillPanel(); else drawTrainPanel(); }
-  else ctx.fillText(roundName(), VW / 2, 88);
+  else ctx.fillText(TR(roundName()), VW / 2, 88);
 }
-// 画布上的字按宽度折行
+// 画布上的字按宽度折行（3.5 英文按词折，不在词中间断开）
 function wrapText(text, maxW) {
+  if (LANG === 'en') return wrapWords(text, maxW);
   const out = []; let line = '';
   for (const ch of text) {
     if (ctx.measureText(line + ch).width > maxW && line) { out.push(line); line = ch === ' ' ? '' : ch; }
     else line += ch;
+  }
+  if (line) out.push(line);
+  return out;
+}
+function wrapWords(text, maxW) {
+  const out = []; let line = '';
+  for (const w of text.split(/ +/)) {
+    const t = line ? line + ' ' + w : w;
+    if (line && ctx.measureText(t).width > maxW) { out.push(line); line = w; } else line = t;
   }
   if (line) out.push(line);
   return out;
@@ -557,8 +577,9 @@ function paperPanel(x, y, w, h, accent) {
 // 面板左上的朱印小签（「训练」「破招」「演示」）：56 × 32
 function sealTag(x, y, text) {
   rrect(x, y, 56, 32, 4); ctx.fillStyle = C.cin; ctx.fill();
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = `22px ${BRUSH}`; ctx.fillStyle = C.paper;
-  ctx.fillText(text, x + 28, y + 17);
+  const t = Tc('seal', text);                                          // 3.5 英文：Train / Drill / Demo（字小一号才放得下）
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.font = `${t === text ? 22 : 18}px ${BRUSH}`; ctx.fillStyle = C.paper;
+  ctx.fillText(t, x + 28, y + 17);
 }
 // 过关印章的白点（固定的，不用随机数）
 const PASS_SPECKS = [[-0.3, 0.22, 1.3], [0.26, -0.3, 1.7], [0.12, 0.4, 1], [-0.22, -0.12, 1.1], [0.34, 0.16, 1.4], [-0.38, -0.36, 0.9], [0.05, -0.05, 0.8]];
@@ -582,7 +603,7 @@ function drawDrillPanel() {
   let rightW;
   if (c.demo) {
     ctx.textAlign = 'right'; ctx.font = `600 13px ${UIF}`; ctx.fillStyle = C.cin;
-    const t = '电脑替你按 · Esc 跳过';
+    const t = TR('电脑替你按 · Esc 跳过');
     ctx.fillText(t, x + w - pad, y + 30); rightW = ctx.measureText(t).width;
   } else {
     for (let i = 0; i < d.need; i++) {
@@ -599,7 +620,7 @@ function drawDrillPanel() {
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   if (la < 1) {
     ctx.globalAlpha = 1 - la; ctx.fillStyle = C.ink;
-    ctx.fillText(fitLine(`${d.topicName} · ${d.name}`, tw, '', [26, 23, 20], BRUSH), tx, y + 30);
+    ctx.fillText(fitLine(TR(`${d.topicName} · ${d.name}`), tw, '', [26, 23, 20], BRUSH), tx, y + 30);
   }
   if (la > 0) {
     ctx.globalAlpha = la;
@@ -647,14 +668,16 @@ function drawDrillCue() {
     ctx.beginPath(); ctx.arc(0, 0, 27, 0, Math.PI * 2); ctx.fillStyle = 'rgba(246,245,238,.88)'; ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(23,24,26,.18)'; ctx.stroke();
     ctx.beginPath(); ctx.arc(0, 0, 27, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac); ctx.strokeStyle = col; ctx.lineWidth = 4.5; ctx.lineCap = 'round'; ctx.stroke();
-    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${size || 34}px ${BRUSH}`; ctx.fillText(label, 0, 2);
+    const lb = TR(label);                                               // 3.5 英文：「起」→ Up（小一号）
+    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${lb === label ? size || 34 : 22}px ${BRUSH}`; ctx.fillText(lb, 0, 2);
     ctx.restore();
   };
   const pop = (text, age, col) => {
     const k = age < 5 ? 1.6 - 0.6 * EASE.out(age / 5) : 1, a = Math.min(1, (20 - age) / 8);
     ctx.save(); ctx.translate(hx, hy); ctx.scale(k, k); ctx.globalAlpha = Math.max(0, a);
     ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
-    ctx.fillStyle = C.paper; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `34px ${BRUSH}`; ctx.fillText(text, 0, 2);
+    const tt = TR(text);                                                // 3.5 英文：「出」→ Go!（小一号）
+    ctx.fillStyle = C.paper; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = `${tt === text ? 34 : 24}px ${BRUSH}`; ctx.fillText(tt, 0, 2);
     ctx.restore();
   };
   const cue = Drill.cue;
@@ -683,7 +706,7 @@ function drawDrillCue() {
   }
   // 被动课：他等着你
   if (cue && !c.demo && def.react && !def.scene && !c.rep && (op.actionable() || op.state === 'block')) {
-    const t = def.trigger === 'jump' ? '等你跳过来' : '等你出招';
+    const t = TR(def.trigger === 'jump' ? '等你跳过来' : '等你出招');
     ctx.save(); ctx.globalAlpha = 0.6 + 0.25 * Math.sin(c.frame * 0.08);
     ctx.font = `22px ${BRUSH}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     const tw2 = ctx.measureText(t).width + 22;
@@ -703,21 +726,21 @@ function drawTrainPanel() {
   sealTag(x + pad, y + 13, '训练');
   // 右上：木桩的血
   ctx.textAlign = 'right'; ctx.font = `500 12px ${UIF}`; ctx.fillStyle = '#6b6c66';
-  const hpT = `木桩 ${Math.max(0, Math.round(D.hp))} / ${D.maxHp} · 三成以下回满`;
+  const hpT = TR(`木桩 ${Math.max(0, Math.round(D.hp))} / ${D.maxHp} · 三成以下回满`);
   ctx.fillText(hpT, right, y + 30);
   const tw = right - ctx.measureText(hpT).width - 18 - tx;
   // 第一行：这一招 + 系 + 帧数（还没打中过就写「随便打」）
   ctx.textAlign = 'left';
-  const name = I ? I.label : '随便打';
-  const sub = !I ? '打中木桩，这里写这一招的帧数、帧差、伤害'
-    : [I.tier ? `${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}` : '', I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : ''].filter(Boolean).join('　');
+  const name = TR(I ? I.label : '随便打');
+  const sub = TR(!I ? '打中木桩，这里写这一招的帧数、帧差、伤害'
+    : [I.tier ? `${TIER_NAME[I.lead] || ''}·${TIER_NAME[I.tier] || ''}` : '', I.S != null ? `前摇 ${I.S} · 判定 ${I.A} · 后摇 ${I.R}` : ''].filter(Boolean).join('　'));
   const nm = fitLine(name, tw, '', [26, 22], BRUSH);
   ctx.fillStyle = C.ink; ctx.fillText(nm, tx, y + 30);
   const nw = ctx.measureText(nm).width + 14;
   if (sub && tw - nw > 40) { ctx.fillStyle = '#6b6c66'; ctx.fillText(fitLine(sub, tw - nw, '500', [13, 12], UIF), tx + nw, y + 31); }
   // 下面三行：左边小字是哪一项（在朱印底下那一列，右对齐），右边是数
-  const row = (k, yy) => { ctx.textAlign = 'right'; ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(k, x + pad + 56, yy); ctx.textAlign = 'left'; };
-  const val = (v, yy, col, x0) => { ctx.fillStyle = col || C.ink; const t = fitLine(v, right - (x0 || tx), '500', [15, 14, 13], UIF); ctx.fillText(t, x0 || tx, yy); return ctx.measureText(t).width; };
+  const row = (k, yy) => { ctx.textAlign = 'right'; ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#6b6c66'; ctx.fillText(TR(k), x + pad + 56, yy); ctx.textAlign = 'left'; };
+  const val = (v, yy, col, x0) => { ctx.fillStyle = col || C.ink; const t = fitLine(TR(v), right - (x0 || tx), '500', [15, 14, 13], UIF); ctx.fillText(t, x0 || tx, yy); return ctx.measureText(t).width; };
   const r1 = y + 66, r2 = y + 88, r3 = y + 110;
   if (!I) {
     row('提示', r1); val('下面能换木桩的动作（站、蹲、挡、乱挡、一直跳），还能开无限气', r1);
@@ -764,7 +787,7 @@ function drawOffscreen(me, op) {
   ctx.fillStyle = op.color; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(-8, -15); ctx.lineTo(-3, 0); ctx.lineTo(-8, 15); ctx.closePath(); ctx.fill();
   ctx.restore();
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = op.color; ctx.font = `20px ${BRUSH}`; ctx.fillText(op.name, x + (right ? -6 : 6), y + 44);
+  ctx.fillStyle = op.color; ctx.font = `20px ${BRUSH}`; ctx.fillText(TR(op.name), x + (right ? -6 : 6), y + 44);
   ctx.fillStyle = '#55564f'; ctx.font = `500 12px ${UIF}`; ctx.fillText(Math.round(Math.abs(op.x - me.x) / 10) * 10 + '', x + (right ? -6 : 6), y + 64);
 }
 let lastRT = 0, shakeF = -1, shX = 0, shY = 0;
@@ -815,7 +838,7 @@ function render() {
 }
 // 浏览器把声音挂起了：提示一下（按任意键就会叫醒，见 fx.js Sound.wake）
 function drawSoundHint() {
-  const t = '声音被浏览器暂停了 · 按任意键或点一下画面就恢复';
+  const t = TR('声音被浏览器暂停了 · 按任意键或点一下画面就恢复');
   ctx.font = `500 13px ${UIF}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   const w = ctx.measureText(t).width + 24;
   ctx.fillStyle = 'rgba(23,24,26,.72)'; ctx.fillRect(16, VH - 46, w, 26);
@@ -933,14 +956,14 @@ function drawNetStatus() {
     const left = Math.max(0, Math.ceil((Net.reconnectUntil - performance.now()) / 1000));
     const y0 = VH * 0.343;
     ctx.fillStyle = 'rgba(235,234,226,.82)'; ctx.fillRect(VW / 2 - 190, y0, 380, 80);
-    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('对方掉线 · 重连中', VW / 2, y0 + 30);
-    ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f'; ctx.fillText(`连回来就接着打（还等 ${left} 秒）`, VW / 2, y0 + 60);
+    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText(TR('对方掉线 · 重连中'), VW / 2, y0 + 30);
+    ctx.font = `500 13px ${UIF}`; ctx.fillStyle = '#55564f'; ctx.fillText(TR(`连回来就接着打（还等 ${left} 秒）`), VW / 2, y0 + 60);
   } else if (Net.stall > 30) {
     const y0 = VH * 0.36;
     ctx.fillStyle = 'rgba(235,234,226,.75)'; ctx.fillRect(VW / 2 - 140, y0, 280, 60);
-    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText('等待对方…', VW / 2, y0 + 30);
+    ctx.fillStyle = C.ink; ctx.font = `30px ${BRUSH}`; ctx.fillText(TR('等待对方…'), VW / 2, y0 + 30);
   }
   ctx.font = `500 13px ${UIF}`; ctx.fillStyle = Net.desync ? C.cin : 'rgba(23,24,26,.5)';
   const rb = Net.rb, roll = rb && rb.stats.rollbacks ? ` · 回滚 ${(rb.stats.frames / SUB / Math.max(1, rb.stats.rollbacks)).toFixed(1)} 帧/次` : '';
-  ctx.fillText(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${+(Net.delay / SUB).toFixed(2)} 帧${roll}`, VW / 2, VH - 22);
+  ctx.fillText(TR(Net.desync ? '联机不同步：双方画面可能不一致' : `${Net.via === 'relay' ? '经中继 · ' : ''}往返 ${Math.round(Net.rtt)} 毫秒 · 输入延迟 ${+(Net.delay / SUB).toFixed(2)} 帧${roll}`), VW / 2, VH - 22);
 }

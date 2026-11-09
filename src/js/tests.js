@@ -4875,6 +4875,87 @@ T('3.4 连招中途不倒（Jack：有些连招打一半人就倒了，后面那
   ok(!bad.length, bad.slice(0, 6).join('\n'));
 });
 
+// 3.5 英文（js/lang.js、js/lang_en.js）：当场换成英文查一遍（查完换回中文，别的测试照旧是中文）
+function withEn(fn) {
+  const was = LANG; setLangLive('en'); T_MISS.clear();
+  try { return fn(); } finally { setLangLive(was); }
+}
+// 一段 HTML 里所有带中文的字（文字节点 + title / aria-label / placeholder）过一遍 TR，返回查不到的
+function enMissIn(html) {
+  const box = document.createElement('div'); box.innerHTML = html;
+  const out = [], walk = document.createTreeWalker(box, 5);
+  const chk = v => { if (v && HAN_RE.test(v) && !L10N.english(v)) { const before = T_MISS.size; TR(v); if (T_MISS.size > before) out.push(v); } };
+  for (let n = walk.nextNode(); n; n = walk.nextNode()) {
+    if (n.nodeType === 3) { if (!n.parentElement.closest('[translate="no"]')) chk(n.nodeValue); }
+    else for (const a of ['title', 'aria-label', 'placeholder']) chk(n.getAttribute(a));
+  }
+  return out;
+}
+T('3.5 英文：教程（每一本、每一页、两种排法、三种冲刺按法）每一句都有英文，按键占位 [拳] 都换成了键', () => {
+  const miss = withEn(() => {
+    const out = [], keep = Keys.solo.dashMode;
+    try {
+      for (const dm of ['tap', 'key', 'both']) {
+        Keys.solo.dashMode = dm;
+        for (const B of GUIDE_BOOKS) for (const P of B.pages) for (const mode of ['web', 'man']) {
+          const html = P.body(mode);
+          ok(!/\[[拳重踢拿挡蹲跳前后冲]\]/.test(html), `${B.name} · ${P.name}（${mode}）里还有没换成按键的 [拳]`);
+          for (const m of enMissIn(html)) out.push(`${B.name} · ${P.name}：${m}`);
+        }
+        for (const B of GUIDE_BOOKS) { out.push(...enMissIn(`<b>${B.name}</b>`)); for (const P of B.pages) out.push(...enMissIn(`<b>${Tc('page', P.name)}</b>`)); }
+      }
+    } finally { Keys.solo.dashMode = keep; }
+    return out;
+  });
+  ok(!miss.length, `没有英文的 ${miss.length} 句（在 js/lang_en.js 补）：\n` + [...new Set(miss)].slice(0, 8).join('\n'));
+});
+T('3.5 英文：破招练习（每一课的名字、步骤、为什么、对手的招）、招式名、印章、拳派、颜色、场景、难度都有英文', () => {
+  const miss = withEn(() => {
+    const out = [], chk = (v, where) => { if (typeof v !== 'string' || !HAN_RE.test(v)) return; const b = T_MISS.size; TR(v); if (T_MISS.size > b) out.push(`${where}：${v}`); };
+    for (const d of DRILLS) {
+      chk(d.name, '破招练习'); chk(d.topicName, '破招练习');
+      for (const t of d.how.concat([d.why])) { const s = drillText(t, false); if (HAN_RE.test(s.replace(/[拳重踢拿挡蹲跳前后冲]/g, ''))) out.push(`破招练习 ${d.id}：${t}`); out.push(...enMissIn(gText(t))); }
+    }
+    for (const t of DRILL_TOPICS) { chk(t[1], '破招练习'); chk(t[2], '破招练习'); }
+    for (const g of DRILL_GROUPS) chk(Tc('group', g[1]), '破招练习分组');
+    for (const id of STYLE_IDS) {
+      const ST = STYLES[id]; chk(ST.name, '拳派'); chk(Tc('card', ST.name), '拳派'); if (typeof STYLE_LINE !== 'undefined') chk(STYLE_LINE[id], '拳派');   // STYLE_LINE 在 ui.js（tests.html 不加载）
+      for (const k in ST.moves) { const m = ST.moves[k]; chk(m.label, ST.name); chk(m.stamp, ST.name + ' 印章'); chk(m.endStamp, ST.name + ' 印章'); chk(m.tag, ST.name + ' 飘字'); }
+    }
+    for (const k in TIER_NAME) chk(TIER_NAME[k], '系');
+    for (const k in LEVEL_NAME) chk(LEVEL_NAME[k], '难度');
+    for (const p of PALETTE) chk(p.name, '颜色');
+    for (const k in STAGES) chk(STAGES[k].name, '场景');
+    for (const ax of HEX_AXES) { chk(ax.name, '六边形'); chk(ax.what, '六边形'); }
+    for (const v of Object.values(CATCH_NAME).concat(Object.values(REEL_LABEL))) chk(v, '咏春 / 反击');
+    for (const [k, e, v] of COUNTERS) { chk(k, '破解表'); chk(e, '破解表'); chk(v, '破解表'); }
+    for (const c of ['Space', 'Enter', 'ShiftLeft', 'Numpad5', 'NumpadAdd', 'Mouse2', 'Mouse4', 'Backspace']) chk(keyName0(c), '键名');
+    game.wins = [2, 2]; chk(roundName(), '回合'); game.wins = [0, 0]; for (let r = 1; r <= 9; r++) { game.round = r; chk(roundName(), '回合'); } game.round = 1;
+    for (const s of ['时间到', '两败俱伤', '胜负已分', '战', '平局', '本回合重打', '墨 胜', '电脑 · 终极', '气满 · 可泼墨', '气 · 可爆气', '连击']) chk(s, '画面上的字');
+    return out;
+  });
+  ok(!miss.length, `没有英文的 ${miss.length} 句（在 js/lang_en.js 补）：\n` + [...new Set(miss)].slice(0, 8).join('\n'));
+});
+T('3.5 英文：对照表本身 —— 每一条英文里的 {0} 和 [拳] 这些占位和中文对得上；冲刺的三种英文说法换得对；中文时一个字都不换', () => {
+  const bad = [];
+  const ph = s => (s.match(/\{r?\d\}/g) || []).map(x => x.replace('r', '')).sort().join();
+  const ks = s => (s.match(/\[[拳重踢拿挡蹲跳前后冲]\]/g) || []).sort().join();
+  for (const [k, v] of Object.entries(EN)) {
+    if (k.includes('|')) continue;
+    if ([...new Set(ph(k).split(','))].join() !== [...new Set(ph(v).split(','))].join()) bad.push(`占位 {n}：${k} → ${v}`);
+    if (v !== k && ks(k) !== ks(v)) bad.push(`按键占位：${k} → ${v}`);
+  }
+  ok(!bad.length, bad.slice(0, 6).join('\n'));
+  withEn(() => {
+    eq(dashWords('Double-tap [前] to dash in.', { dashMode: 'key' }), 'Press [冲] to dash in.');
+    eq(dashWords('hold Block and double-tap [前] — Slip', { dashMode: 'both' }), 'hold Block and double-tap [前] or press [冲] — Slip');
+    eq(dashWords('double-tap [前] (or [后])', { dashMode: 'key' }), 'press [冲] (hold [后] as you press it = dash back)');
+    eq(TR('第三回合'), 'Round 3'); eq(TR('墨 胜'), 'Ink Wins'); eq(TR('木桩 120 / 300 · 三成以下回满'), 'Dummy 120 / 300 · refills below 30%');
+  });
+  for (const s of ['短拳', '墨 胜', '第三回合', '气满 · 可泼墨']) eq(TR(s), s, '中文时照原样');
+  eq(gText('按 [拳]').includes('短拳') || gText('按 [拳]').startsWith('按 '), true, '中文的教程句子不经过英文');
+});
+
 (async function runAll() {
   const list = document.getElementById('list');
   let pass = 0;

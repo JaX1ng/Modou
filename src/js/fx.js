@@ -137,7 +137,8 @@ function dust(x, y, n, big) {
 // 飘字（2.0.1：每句都有颜色归属）。own = 谁的：一个人 = 他的身体色；[A, B] = 两人各半（「拼」「拆」这种平手的，左半边是站在左边那个人的颜色）。
 // text 也可以分几段 [[字, 人], …]：「挡 -3」里「挡」是挡的人的颜色，「-3」是打的人的颜色（伤害数字一律是打的人的颜色）
 function tag(x, y, text, own, size = 20) {
-  const parts = Array.isArray(text) ? text.map(([t, o]) => [t, colOf(o)]) : null, str = parts ? parts.map(p => p[0]).join('') : text;
+  // 3.5 英文：飘字在这里一次换好（TR() 见 js/lang.js；「挡 -3」这种分段的一段一段换）
+  const parts = Array.isArray(text) ? text.map(([t, o]) => [TR(t), colOf(o)]) : null, str = parts ? parts.map(p => p[0]).join('') : TR(text);
   const cols = Array.isArray(own) ? (own[0].x <= own[1].x ? own : [own[1], own[0]]).map(colOf) : [colOf(own)];
   for (let k = 0; k < 6; k++) {
     const hit = FX.some(e => e.type === 'tag' && e.max - e.life < 22 && Math.abs(e.x - x) < 70 && Math.abs(e.y - y) < size);
@@ -155,7 +156,8 @@ function stamp(x, y, text, size = 30, own) {
   Sound.stamp();
 }
 // 画面正中的大字：回合、时间到这种没有归属（墨色）；「某某 胜」用赢的人的颜色
-const announce = (text, sub, life = 70, size = 120, own) => addFx({ type: 'announce', text, sub, life, size, col: colOf(own) });
+// 3.5 英文：大字在这里换好（「第一回合」→ Round 1、「战」→ Fight!）；印章不换（stamp 照旧是中文，render.js drawSeal 在下面另写一行英文）
+const announce = (text, sub, life = 70, size = 120, own) => addFx({ type: 'announce', text: TR(text), sub: sub && TR(sub), life, size, col: colOf(own) });
 
 // 2.6 特效每步（DT 帧）走一次：寿命、速度都还是按帧写的，每步走 DT 那么多；每帧乘一次的衰减换成每步乘 rootDT
 const FXK = { drop: rootDT(0.985), spark: rootDT(0.86), dust: rootDT(0.94), grow: rootDT(1.025), qv: rootDT(0.985), qr: rootDT(0.985) };

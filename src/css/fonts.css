@@ -6,3 +6,5 @@
 @font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/NotoSansSC-Regular.woff2) format("woff2")}
 @font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:500;font-display:swap;src:url(../fonts/NotoSansSC-Medium.woff2) format("woff2")}
 @font-face{font-family:"Noto Sans SC";font-style:normal;font-weight:700;font-display:swap;src:url(../fonts/NotoSansSC-Bold.woff2) format("woff2")}
+/* 3.5 英文时的毛笔字（英文字母；中文照旧用马善政），OFL 许可证 fonts/OFL-KaushanScript.txt */
+@font-face{font-family:"Kaushan Script";font-style:normal;font-weight:400;font-display:swap;src:url(../fonts/KaushanScript-Regular.woff2) format("woff2")}

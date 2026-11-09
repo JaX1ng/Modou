@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>墨斗</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<script>/* 3.5 英文：页面先藏着，js/lang.js 把字换成英文再露出来（不闪一下中文）；万一没换成，3 秒后也露出来 */try{var l=(location.search.match(/[?&]lang=(en|zh)\b/)||[])[1]||localStorage.getItem("modou.lang");if(l==="en"){document.documentElement.lang="en";document.documentElement.className+=" l10n-wait";setTimeout(function(){document.documentElement.classList.remove("l10n-wait")},3000)}}catch(e){}</script>
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
@@ -12,7 +13,7 @@
 <main class="wrap">
   <div class="play" id="play">
   <div class="topbar">
-    <div class="brand"><b>墨斗</b><i class="seal">拳</i><span>水墨火柴人格斗</span></div>
+    <div class="brand"><b translate="no">墨斗</b><i class="seal" translate="no">拳</i><span>水墨火柴人格斗</span></div>
     <div class="tools">
       <button class="tbtn" id="btnPause" type="button" disabled>暂停 Esc</button>
       <button class="tbtn" id="btnSound" type="button">声音：开</button>
@@ -26,7 +27,7 @@
 
     <div class="overlay menu" id="menu">
       <div class="panel">
-        <h1 class="title">墨斗<i class="seal">拳</i></h1>
+        <h1 class="title" translate="no">墨斗<i class="seal">拳</i></h1>
         <p class="sub">拳克腿 · 腿克重 · 重克拳</p>
         <!-- 2.11（Jack：主菜单只留模式）：颜色、拳派、场景、难度都进了模式以后在准备页（#prepPanel）里选 -->
         <div class="row modes">
@@ -152,6 +153,10 @@
           <b id="volVal">50</b>
         </div>
         <p class="hint">中间（50）是默认；拉到 0 就没声。调的时候响一声给你听。记在这台电脑上。</p>
+        <!-- 3.5 语言：两种语言都写着，谁都找得到；换了页面会重新载入（js/lang.js），所以只在主菜单进来的设置里能换 -->
+        <p class="step" translate="no">语言 · Language</p>
+        <div class="seg langseg" role="group" aria-label="语言 Language" translate="no"><button type="button" data-lang="zh" aria-pressed="true">中文</button><button type="button" class="en-face" data-lang="en" aria-pressed="false">English</button></div>
+        <p class="hint" id="langHint" hidden>对局中换不了语言：回主菜单再换（换语言会重新载入页面）。</p>
         <div id="dispBox" hidden>
           <p class="step">画面</p>
           <div class="seg" role="group" aria-label="画面"><button type="button" data-disp="fullscreen" aria-pressed="false">全屏</button><button type="button" data-disp="borderless" aria-pressed="false">全屏窗口</button><button type="button" data-disp="window" aria-pressed="false">窗口</button></div>
@@ -215,7 +220,7 @@
 
     <div class="overlay dim" id="drillPass" hidden>
       <div class="panel dpass">
-        <i class="seal dp-seal">过关</i>
+        <i class="seal dp-seal" translate="no">过关</i><span class="seal-cap en-only">Cleared</span>
         <p class="step" id="dpTopic"></p>
         <p class="big sm" id="dpName"></p>
         <p class="hint" id="dpInfo"></p>
@@ -291,7 +296,7 @@
   <!-- 2.2 教程（js/guide.js 填内容）：网页版在游戏下面分页看；软件版、网页全屏时用 #manual 面板。2.10 按拳派分书：通用一本、每一派一本 -->
   <section class="guide" id="guide" aria-label="教程">
     <header class="g-head">
-      <h2>教程<i class="seal">谱</i></h2>
+      <h2>教程<i class="seal" translate="no">谱</i></h2>
       <nav class="g-books" role="tablist" aria-label="选哪一本：通用或者哪一派"></nav>
       <nav class="g-tabs" role="tablist" aria-label="教程分页"></nav>
     </header>
@@ -299,6 +304,8 @@
   </section>
 </main>
 
+<script src="js/lang_en.js"></script>
+<script src="js/lang.js"></script>
 <script src="js/config.js"></script>
 <script src="js/body.js"></script>
 <script src="js/pose.js"></script>

@@ -12,7 +12,7 @@
 // 3.1.3：太极拳待机后腿抖（脚踩实以为够不着、原地一直迈步）修好（只是画面）
 // 3.2.0（2026-11-02 深夜）：规则改了两处（轻拳挡住不掉血；太极的捋在挡住的硬直里也记、也成立），电脑六档重做「被压制」（Jack：一直按轻拳能赢所有难度的太极；量出来格斗术的电脑
 //   连终极都被格斗术一直按拳打成 12:0）—— 中版本：手感会变（挡着不流血、电脑会守会反）
-const VERSION = '3.4.0';
+const VERSION = '3.5.0';
 
 /* 2.6 时间（Jack：帧逻辑别和实际帧率绑死 —— 软件版能跑更高帧率，时间也能算得更细）：
    以前逻辑一秒算 60 次，所有时长都是 1/60 秒的整数倍（前摇 5 帧想加 5% 都加不了）。现在：
@@ -325,7 +325,8 @@ const PALETTE = [
   { id: 'slate', name: '苍', color: '#5d666b', text: '#b8321d' },
 ];
 const lookOf = id => PALETTE.find(p => p.id === id) || null;
-const BRUSH = '"Ma Shan Zheng","Kaiti SC","STKaiti","KaiTi",serif';
+// 3.5 英文时毛笔字的英文字母用 Kaushan Script（马善政的英文字母像手写体、F 像 J），中文（印章）照旧落到马善政
+const BRUSH = (typeof LANG !== 'undefined' && LANG === 'en' ? '"Kaushan Script",' : '') + '"Ma Shan Zheng","Kaiti SC","STKaiti","KaiTi",serif';
 const UIF = '"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif';
 // 2.1 肘、膝换弯向时每帧最多挪多少（-1 → +1 要 5 帧；只是画面，见 fighter.js fk()）
 const IK_FLIP = 0.4;

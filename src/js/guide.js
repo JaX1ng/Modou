@@ -90,7 +90,8 @@ function gKbd(ch, set) {
   }
   return `<kbd class="kc"><b>${ch}</b><span>${gEsc(gKey(G_ACT[ch], set))}</span></kbd>`;
 }
-const gText = (s, set) => gEsc(dashWords(s, set)).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => gKbd(k, set));
+// 3.5 英文：整句先换成英文（T，见 js/lang.js；英文句子里照样写 [拳] [前] 这些），再换冲刺的说法、换按键
+const gText = (s, set) => gEsc(dashWords(TR(s), set)).replace(/\[([拳重踢拿挡蹲跳前后冲])\]/g, (m, k) => gKbd(k, set));
 // 连招的按法：'jab' 'heavy' 'kick' 'd:kick'（蹲着按）'f:jab'（朝他按着方向按）…… → 一串字（键位在页面上方写一次）
 const COMBO_TOK = { jab: '拳', heavy: '重', kick: '踢', grab: '拿', 'd:kick': '蹲踢', 'd:jab': '蹲拳', 'd:heavy': '蹲重', 'd:grab': '蹲拿', 'f:jab': '前拳', 'f:heavy': '前重', 'f:kick': '前踢', 'b:jab': '后拳', 'b:heavy': '后重' };
 const comboKeys = (keys, times) => keys.map(k => `<i class="tok${k.startsWith('d:') ? ' low' : ''}">${COMBO_TOK[k]}</i>`).join('<i class="sep">›</i>') + (times ? `<i class="tok times">${times}</i>` : '');
@@ -193,7 +194,7 @@ function relTableHtml() {
   const T = ['light', 'heavy', 'kick'], cls = [];
   for (const lead of T) for (const tier of T) {
     const names = Object.values(MOVES).filter(d => d.lead === lead && d.tier === tier && !d.script).map(d => d.label);
-    cls.push({ lead, tier, name: TIER_NAME[lead] + TIER_NAME[tier], eg: [...new Set(names)].join('、') || '—' });
+    cls.push({ lead, tier, name: Tc('rel', TIER_NAME[lead] + TIER_NAME[tier]), eg: [...new Set(names)].join('、') || '—' });   // 3.5 英文：「重拳」在这里是重起手 + 拳主系，不是招名
   }
   const SYM = { 1: ['克', 'w2'], 0.5: ['压', 'w1'], 0: ['平', 'eq'], '-0.5': ['被压', 'l1'], '-1': ['被克', 'l2'] };
   let h = '<thead><tr><th>我＼对手</th>' + cls.map(c => `<th title="${c.eg}">${c.name}</th>`).join('') + '</tr></thead><tbody>';
@@ -207,12 +208,13 @@ function relTableHtml() {
 const relLegend = '<span class="chip w2">克</span>单方面打中 <span class="chip w1">压</span>两边都中、你占大便宜 <span class="chip eq">平</span>拼招 <span class="chip l1">被压</span> <span class="chip l2">被克</span>';
 // 两个克制圈（网页版：三角；软件版：一排）
 function triHtml(a, nodes, mode) {
-  if (mode === 'man') return `<div class="mn-tri">${nodes.map(n => `<div>${n.icon(84)}<b>${n.name}</b></div>`).join('<span>克</span>')}<span>克</span><div class="mn-tri-end">${nodes[0].icon(84)}<b>${nodes[0].name}</b></div></div>`;
+  const K = Tc('tri', '克');                     // 3.5 英文：圈上的「克」写 beats（表格里的「克」是 Beat）
+  if (mode === 'man') return `<div class="mn-tri">${nodes.map(n => `<div>${n.icon(84)}<b>${n.name}</b></div>`).join(`<span>${K}</span>`)}<span>${K}</span><div class="mn-tri-end">${nodes[0].icon(84)}<b>${nodes[0].name}</b></div></div>`;
   return `<div class="tri-wrap">
     <svg class="tri-arrows" viewBox="0 0 300 260" aria-hidden="true"><defs><marker id="ga${a}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--cinnabar)"/></marker></defs>
       <path d="M118 52 Q60 92 66 156" marker-end="url(#ga${a})"/><path d="M96 214 Q150 246 204 214" marker-end="url(#ga${a})"/><path d="M234 156 Q240 92 182 52" marker-end="url(#ga${a})"/></svg>
     ${nodes.map((n, i) => `<div class="tri-node n${i}">${n.icon(76)}<b>${n.name}</b></div>`).join('')}
-    ${nodes.map((n, i) => `<span class="tri-k k${i}">克</span>`).join('')}</div>`;
+    ${nodes.map((n, i) => `<span class="tri-k k${i}">${K}</span>`).join('')}</div>`;
 }
 
 /* ============================================================
@@ -938,7 +940,7 @@ const Guide = {
     const B = bookOf(this.book);
     if (!B.pages.some(p => p.id === this.tab)) this.tab = B.pages[0].id;
     this.el.querySelector('.g-books').innerHTML = GUIDE_BOOKS.map(b => `<button type="button" role="tab" data-gb="${b.id}" aria-selected="${b.id === this.book}">${b.name}</button>`).join('');
-    this.el.querySelector('.g-tabs').innerHTML = B.pages.map(p => `<button type="button" role="tab" data-gt="${p.id}" aria-selected="${p.id === this.tab}">${p.name}</button>`).join('');
+    this.el.querySelector('.g-tabs').innerHTML = B.pages.map(p => `<button type="button" role="tab" data-gt="${p.id}" aria-selected="${p.id === this.tab}">${Tc('page', p.name)}</button>`).join('');   // 3.5 英文：页名用复数（Moves / Combos）
     const page = this.el.querySelector('.g-page');
     page.innerHTML = this.page(B.id, this.tab);
     page.dataset.page = B.id + '-' + this.tab;
@@ -1019,9 +1021,9 @@ const Manual = {
     const B = bookOf(this.book);
     if (!B.pages.some(p => p.id === this.ch)) this.ch = B.pages[0].id;
     this.el.querySelector('.mn-books').innerHTML = GUIDE_BOOKS.map(b => `<button type="button" role="tab" data-mb="${b.id}" aria-selected="${b.id === this.book}">${b.name}</button>`).join('');
-    this.el.querySelector('.mn-chs').innerHTML = B.pages.map((p, i) => `<button type="button" role="tab" data-mc="${p.id}" aria-selected="${p.id === this.ch}"><i>${CH_NO[i]}</i>${p.name}</button>`).join('');
+    this.el.querySelector('.mn-chs').innerHTML = B.pages.map((p, i) => `<button type="button" role="tab" data-mc="${p.id}" aria-selected="${p.id === this.ch}"><i>${CH_NO[i]}</i>${Tc('page', p.name)}</button>`).join('');
     const main = this.el.querySelector('.mn-main'), i = B.pages.findIndex(p => p.id === this.ch);
-    main.innerHTML = `<header class="mn-h"><span>${B.name} · 第${CH_NO[i]}章</span><h2>${B.pages[i].name}</h2></header>` + this.chapter(B.id, this.ch);
+    main.innerHTML = `<header class="mn-h"><span>${B.name} · 第${CH_NO[i]}章</span><h2>${Tc('page', B.pages[i].name)}</h2></header>` + this.chapter(B.id, this.ch);
     main.scrollTop = 0;
     PoseIcon.fill(main);
   },
