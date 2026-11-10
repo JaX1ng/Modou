@@ -153,7 +153,10 @@ function startMatch(mode) {
   Hooks.matchStart();
 }
 function startRound() {
+  // 4.0 气带到下一回合（一场里；第一回合从 0 起）：以前每回合清零，一回合打下来气攒不满，大招几乎用不上
+  const qi = game.round > 1 ? [F1.qi, F2.qi] : null;
   resetFighters();
+  if (qi) { F1.qi = qi[0]; F2.qi = qi[1]; }
   game.phase = 'intro'; game.phaseT = 0; game.timer = ROUND_FRAMES; game.winner = -1;
 }
 function endRound(winner, reason) {

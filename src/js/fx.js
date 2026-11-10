@@ -728,7 +728,8 @@ function qiRing(F, n, k) {
 function emitQi(F) {
   // 连击的火：连上就往上涨（快），断了很快退掉（2.0.2：半秒多就没了；以前要一秒多，打完了还一直烧着）
   // 2.6 每步调一次：往目标挪的快慢按 lk() 换算，冒火的条数 ×DT（每帧冒几条照旧）
-  const tgt = F.comboLive ? comboHeat(F.combo) : 0, h0 = F.heat || 0;
+  // 4.0「疾」的状态里（螳螂拳的七星连环）身上一直有气（看得出这六秒他是快的），快完了淡下去
+  const tgt = Math.max(F.comboLive ? comboHeat(F.combo) : 0, F.hasteT > 0 ? (F.hasteT > 40 ? 0.9 : 0.45) : 0), h0 = F.heat || 0;
   F.heat = h0 + (tgt - h0) * lk(tgt > h0 ? 0.3 : 0.08);
   if (F.heat < 0.02 && tgt === 0) F.heat = 0;
   const { a, glow } = qiLevel(F);

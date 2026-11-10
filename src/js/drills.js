@@ -582,7 +582,7 @@ const DRILLS = [
     win: R => R.op('burst', e => e.blocked), miss: R => R.op('burst', e => e.hit) ? '被爆倒了 —— 打两下就举手挡' : null },
   /* —— 泼墨 —— */
   { id: 'super.punish', topic: 'super', name: '挡住打收招（×1.5）', at: 110, act: (st, me) => st.i === 0 ? TAP('heavy') | TAP('kick') : st.i > 3 && me.actionable() ? 'done' : 0, opQi: 100,
-    how: ['按住 [挡] 挡住泼墨（只掉三成）', '泼墨收招很长：一能动就 [拳] [拳] [重]'],
+    how: ['按住 [挡] 挡住泼墨（只掉一成）', '泼墨收招很长：一能动就 [拳] [拳] [重]'],
     why: '泼墨是击倒招：挡住后反击 ×1.5',
     demo: punishAfterBlock(), win: R => R.my('hit', e => /挡后反击/.test(e.how)) },
   { id: 'super.parry', topic: 'super', name: '卸力', at: 110, act: (st, me) => st.i === 0 ? TAP('heavy') | TAP('kick') : st.i > 3 && me.actionable() ? 'done' : 0, opQi: 100,

@@ -25,9 +25,11 @@ const lk = k => LK_CACHE[k] || (LK_CACHE[k] = lerpK(k));
 const RIB_N = 8, RIB_SEG = 5.1, RIB_DAMP = rootDT(0.8);
 const RIB_WIND = 0.15, RIB_GUST = [0.024, 0.03];   // 风往身后吹多大；一阵一阵晃的两层（慢的那层两三秒一下）
 // 对手正起跳下蹲：马上要跳出去的水平速度（和 update 里 jumpsquat 那段一样算）
+// 4.0 每一派跳得不一样（拳派表的 jumpV / jumpVx：起跳的速度、横着的速度各乘多少；重力大家一样）
+const jumpVOf = F => JUMP_V * (styleOf(F).jumpV || 1), jumpVxOf = F => JUMP_VX * (styleOf(F).jumpVx || 1);
 function takeoffVx(o) {
-  const dir = dirOf(o.inp.held);
-  return o.takeoffV > 0 && dir !== -o.facing ? o.facing * Math.max(o.takeoffV * RUN_CARRY, JUMP_VX) : dir * JUMP_VX;
+  const dir = dirOf(o.inp.held), jx = jumpVxOf(o);
+  return o.takeoffV > 0 && dir !== -o.facing ? o.facing * Math.max(o.takeoffV * RUN_CARRY * (styleOf(o).jumpVx || 1), jx) : dir * jx;
 }
 /* ---------- 跑步循环 ----------
    一条腿一个周期 u∈[0,1)：0 脚在身前落地 → 0~RUN_ST 踩地往后蹬（脚相对髋匀速后移 = 跑速，不打滑）
@@ -134,7 +136,8 @@ class Fighter {
     this.dashEnd = -999; this.info = null; this.comboDmg = 0; this.maxComboDmg = 0; this.prevCombo = null; this.freeAt = -999;
     this.chain = []; this.chainIdle = 99; this.slowJab = 0; this.airUsed = false; this.lowBlock = false;
     this.stunT = 0; this.hurtHeavy = false; this.grabbed = false; this.downPhase = null; this.lieT = LIE_GROUND; this.landT = 4; this.riseT = RISE;
-    this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.comboSeen = '|'; this.rushStamped = false;   // 3.1 comboSeen：这一套里挨过哪几招（同一招再用打折）
+    this.combo = 0; this.comboT = 0; this.comboLive = false; this.comboTaken = 0; this.comboSeen = '|'; this.rushStamped = false;
+    this.brkKey = null; this.brkLock = false; this.grabGuard = false; this.grabSafeT = 0; this.hasteT = 0;   // 4.0 hasteT：「疾」还剩几帧（出手、收手都快；螳螂拳的七星连环）   // 4.0 拆招：这一套里硬直中按的键（null 没按 / 'mash' 乱按）；猜错过，这一套不能再拆   // 3.1 comboSeen：这一套里挨过哪几招（同一招再用打折）
     this.clock = 0; this.serial = 0; this.walkPhase = 0; this.runT = 0; this.airT = 0; this.leapJump = false;
     this.carried = false; this.carry0 = 0; this.carryRot = 0; this.slam = false; this.qiGlow = 0; this.heat = 0; this.hitFlash = 0; this.hitShake = 0;
     this.lieKind = 0; this.gwalk = 0; this.slipGot = false;   // 2.0：躺姿（画面）、边挡边走（画面）、闪身躲过了重拳（接着回身肘）
@@ -182,7 +185,7 @@ class Fighter {
     const m = this.move;
     if (this.state !== 'attack' || !m || !m.def.armor || m.armorLeft <= 0) return false;
     const a = m.def.armor;
-    return m.t >= a.from && m.t < m.S + 1 && (!tier || a.vs.includes(tier));
+    return m.t >= a.from && m.t < (a.to === undefined ? m.S : a.to) + 1 && (!tier || a.vs.includes(tier));   // 4.0 a.to：霸体到第几帧（脚本动作没有前摇，另外写）
   }
   facingTo(other) { return (other.x - this.x) * this.facing >= -4; }
   isBlocking() { return (this.state === 'block' || this.state === 'blockstun') && !this.airborne; }
@@ -246,7 +249,7 @@ class Fighter {
         }
         if (oam) dt += DT;
         ox += okv * KB_DAMP.c; okv *= KB_DAMP.r;
-        if (squat > 0) { ox += o.facing * o.takeoffV * DT; squat -= DT; if (squat > 1e-9) return; ov = takeoffVx(o); ovz = JUMP_V; oz = 0.01; oAir = true; ocap = Math.max(AIR_DRIFT, Math.abs(ov)); }
+        if (squat > 0) { ox += o.facing * o.takeoffV * DT; squat -= DT; if (squat > 1e-9) return; ov = takeoffVx(o); ovz = jumpVOf(o); oz = 0.01; oAir = true; ocap = Math.max(AIR_DRIFT, Math.abs(ov)); }
         if (!oAir) return;
         let cx = DT;
         if (odv) {                                           // 坠山
@@ -434,6 +437,7 @@ class Fighter {
     // 2.9「顺」：连得越多出手越快（每顺一级前摇少 FLOW_S，最少 FLOW_S_MIN；见 combat.js flow）。按拍子出的招（beat）快慢看拍子，不在这里减
     if (d.flow && !d.beat && this.flow > 0) S = Math.max(Math.min(S, FLOW_S_MIN), grid(S - FLOW_S * this.flow));
     if (opt && opt.S !== undefined) S = Math.max(1, grid(opt.S));
+    if (this.hasteT > 0 && !d.script && d.tier !== 'super') S = Math.max(2, grid(S * HASTE_S));   // 4.0 疾：出手快
     if (this.state === 'run') this.kvx += this.facing * this.runSpeed() * 0.5;   // 跑动中出招带惯性
     // 冲势：冲刺途中（无敌帧快结束时）或冲刺刚结束出的第一招
     const fromDash = this.state === 'attack' && this.move && this.move.name === 'dash';
@@ -441,8 +445,17 @@ class Fighter {
     const dashIn = !air && !d.script && d.kind !== 'push' && this.facing === this.dashFace && (fromDash || this.clock - this.dashEnd < DASH_IN_WIN + 1);
     if (dashIn) { this.kvx += this.facing * 5; this.dashEnd = -999; dashInFx(this); }
     this.slipGot = false;
+    // 4.0 追身：连招里（上一下打中了、他还在硬直里）接这一招够不着 —— 前摇里自己往前追上去（最多 CHASE_MAX），算上他还要被推出去多远
+    let chase = 0;
+    const pm = this.move, o = this.opp;
+    if (!air && !d.script && d.kind !== 'grab' && pm && this.state === 'attack' && !o.airborne && ((pm.hit && o.state === 'hit' && o.comboTaken > 0) || (d.chase && (pm.hit || pm.blocked)))) {   // d.chase：被挡住也追（咏春大招的后几段）
+      let rem = 1; for (let i = Math.min(12, S | 0); i > 0; i--) rem *= 0.82;      // 击退每帧剩 82%（只用乘法：联机两边算出来一样）
+      const gap = (o.x - this.x) * this.facing + o.kvx * this.facing * (1 - rem) / 0.18;
+      const eff = d.reach + (d.lunge && d.lunge[2] > 0 ? d.lunge[2] : 0) - CHASE_PAD;
+      if (gap > eff) chase = Math.min(CHASE_MAX, gap - eff);
+    }
     this.move = { def: d, name, t: 0, S, hit: false, blocked: false, done: false, air, slowed, serial: ++this.serial,
-      armorLeft: d.armor ? d.armor.n : 0, press: kind, dashIn };
+      armorLeft: d.armor ? d.armor.n : 0, press: kind, dashIn, chase, haste: this.hasteT > 0 && !d.script && d.tier !== 'super' };
     this.stompFor = -1;
     this.state = 'attack'; this.runT = 0;
     if (d.cost) this.qi -= d.cost;
@@ -454,21 +467,30 @@ class Fighter {
     if (d.ender) this.chain = [];
     this.trail.length = 0;
     Sound.whoosh(d.kind === 'jab' || d.kind === 'push' ? 0.4 : 1);
-    if (name === 'super') { superFx(this); Sound.burst(); }
+    if (d.script) { this.move.hit = true; this.move.done = true; }     // 4.0 脚本动作当大招（螳螂拳的七星连环）：不打人
+    if (name === 'super') { if (!d.script) superFx(this); Sound.burst(); }
     return true;
   }
   startScript(name) {
-    this.move = { def: this.moves[name], name, t: 0, S: 0, hit: true, blocked: false, done: true, air: false, serial: ++this.serial, armorLeft: 0, press: null };
+    const sd = this.moves[name];
+    this.move = { def: sd, name, t: 0, S: 0, hit: true, blocked: false, done: true, air: false, serial: ++this.serial, armorLeft: sd.armor ? sd.armor.n : 0, press: null };   // 4.0 脚本动作也能带霸体（太极拳的进步：armor.to = 霸体到第几帧）
     this.state = 'attack'; this.trail.length = 0; this.runT = 0;
   }
   // 爆气：挨打的时候（受击硬直里，被擒住不行）按「重+踢」。2.1 起格挡硬直里不能爆
   tryBurst() {
     if (this.qi < QI_BURST || this.grabbed || !this.pairPressed('heavy', 'kick')) return false;
-    this.qi -= QI_BURST; this.stunT = 0; this.reel = false; this.clashed = false; this.stagger = false; this.comboTaken = 0; this.stuck = false; this.shook = false;
+    this.qi -= QI_BURST; this.stunT = 0; this.reel = false; this.clashed = false; this.stagger = false; this.comboTaken = 0; this.brkKey = null; this.brkLock = false; this.stuck = false; this.shook = false;
     this.facing = this.opp.x >= this.x ? 1 : -1;
     this.startScript('burst');
     burstFx(this); Sound.burst();
     return true;
+  }
+  // 4.0 拆招：这一套过了实连的那几下以后，硬直里按的第一个键记下来（猜他下一下按什么）；又按了别的键 = 乱按。
+  // 他下一下打到的时候 combat.js applyHit 来对：对了拆开，错了多挨、这一套不能再拆。咏春拳用它自己的接招（ownBreak），不走这里
+  breakPress() {
+    if (this.brkLock || this.grabbed || this.carried || this.stuck || styleOf(this).ownBreak) return;
+    if (this.comboTaken < sureOf(this.opp)) return;
+    for (let k; (k = this.takePress(['jab', 'heavy', 'kick', 'grab']));) this.brkKey = this.brkKey && this.brkKey !== k ? 'mash' : k;
   }
   // 挣脱（1.8.0）：被擒住的头 HOLD_ESC 帧里按「拿」（提前几帧按的也算）
   tryEscape() {
@@ -524,7 +546,9 @@ class Fighter {
     if (this.slowJab > 0) this.slowJab = Math.max(0, this.slowJab - DT);
     if (this.state !== 'attack') { this.chainIdle += DT; if (this.flow && this.chainIdle >= FLOW_IDLE && this.state !== 'parry') this.flow = 0; }   // 2.9 停手了：顺断了
     if (this.comboT > 0) this.comboT = Math.max(0, this.comboT - DT);
-    if (this.state !== 'hit' && this.state !== 'down' && this.state !== 'ko') this.comboTaken = 0;
+    if (this.grabSafeT > 0) this.grabSafeT = Math.max(0, this.grabSafeT - DT);
+    if (this.hasteT > 0) { this.hasteT = Math.max(0, this.hasteT - DT); const ST0 = styleOf(this); if (ST0.hasteStep) ST0.hasteStep(this); }   // 4.0 疾：一步一步数着
+    if (this.state !== 'hit' && this.state !== 'down' && this.state !== 'ko') { this.comboTaken = 0; this.brkKey = null; this.brkLock = false; this.grabGuard = false; }
     if (locked) this.inp.buf.length = 0;
     const h = this.inp.held;
     // 输入边沿：刚按下格挡（卸力判定窗口）、同一方向双击（闪步）
@@ -556,10 +580,11 @@ class Fighter {
           const dir = dirOf(h);
           let vx;
           const running = this.takeoffV > 0 && dir !== -this.facing;
-          if (running) vx = this.facing * Math.max(this.takeoffV * RUN_CARRY, JUMP_VX);   // 带着跑速飞出去（跳得最远）
-          else vx = dir * JUMP_VX;                                                       // 站着按方向跳
+          const jx = jumpVxOf(this);                                                     // 4.0 每一派跳得不一样（jumpV / jumpVx）
+          if (running) vx = this.facing * Math.max(this.takeoffV * RUN_CARRY * (styleOf(this).jumpVx || 1), jx);   // 带着跑速飞出去（跳得最远）
+          else vx = dir * jx;                                                            // 站着按方向跳
           if (dir) this.facing = dir;
-          this.vz = JUMP_V; this.alt = 0.01; this.vx = vx; this.vxCap = Math.max(AIR_DRIFT, Math.abs(vx));
+          this.vz = jumpVOf(this); this.alt = 0.01; this.vx = vx; this.vxCap = Math.max(AIR_DRIFT, Math.abs(vx));
           this.state = 'air'; this.airUsed = false; this.airT = 0; this.takeoffV = 0;   // 1.7.0 起不翻跟头，跑着跳用「飞身」姿势
           this.leapJump = running;                       // 只管画面：跑着起跳整段用飞身姿势（1.9.0 以前跑得不够快会用举手的姿势）
           Sound.whoosh(0.3);
@@ -585,8 +610,10 @@ class Fighter {
       case 'hit':
         if (!locked && this.tryEscape()) break;
         if (!locked && this.tryBurst()) break;
+        if (!locked) this.breakPress();
         if ((this.stunT -= DT) <= 0) {
           this.freeAt = this.clock;      // 这一步刚恢复，还来不及挡：这一步打中仍算连上
+          if (this.grabGuard) this.grabSafeT = GRAB_SAFE;   // 4.0 刚从「被拿过」的硬直里出来：GRAB_SAFE 帧里抓不住（不然采手 → 采手卡着他能动的那一帧，还是死循环）
           this.grabbed = false; this.reel = false; this.clashed = false; this.carried = false; this.stagger = false; this.stuck = false; this.shook = false; this.luPull = false; this.mtHeld = false;   // 踉跄完了：又会自动面向对手
           if (this.airborne) { this.state = 'air'; this.airUsed = true; this.vx = 0; } else this.state = 'idle';
         }
@@ -682,6 +709,7 @@ class Fighter {
     const o = this.opp;
     // 连环寸拳（咏春拳的大招）：第一拳打中以后一拳一拳地打（这时候招式自己的时间停着，打完一串再收招）
     if (m.flurry) { flurryStep(this, m); if (m.flurry) return; }
+    if (m.chase && m.t < m.S && !lungeStop((o.x - this.x) * this.facing, o)) this.x += this.facing * m.chase / m.S * DT;   // 4.0 追身（连招里够不着就追上去）
     if (d.lunge && !m.air) {
       // 前冲：贴到对手身上就停，不冲过人（1.9.4，冲刺、闪身除外）。闪身冲多远写在这一招身上（lungePx）
       const [a, b] = d.lunge, px = m.lungePx !== undefined ? m.lungePx : d.lunge[2], tb = this.baseTime(k);
@@ -697,12 +725,12 @@ class Fighter {
     if (d.dive && k === m.S && !m.hit && !m.blocked) this.aimDive(m);   // 坠山出脚的那一刻：重新瞄（1.9.4）
     if (m.name === 'dash') {
       // 冲刺第 DASH_CANCEL 帧起可以直接按招打出去（带冲势）
-      if (!locked && k >= DASH_CANCEL) { const kk = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (kk && this.startAttack(kk, false)) return; }
+      if (!locked && k >= (d.cancelAt === undefined ? DASH_CANCEL : d.cancelAt)) { const kk = this.takePress(['jab', 'heavy', 'kick', 'grab']); if (kk && this.startAttack(kk, false)) return; }   // 4.0 每一派的冲刺第几帧起能出招不一样（cancelAt）
       if (k === 0) { dust(this.x - this.facing * 20, FLOOR, 5); burst(this.x - this.facing * 30, FLOOR - 40, -this.facing, 4, 30, 2.5, pal(this).qi); }
       if (k > 0 && k < 10 && k % 2 === 0) dashLines(this);
       if (k === 10) { dust(this.x + this.facing * 24, FLOOR, 6); Sound.land(); }
     }
-    if (m.name === 'super') superStep(this, m, k);              // 2.7 泼墨：蓄力时墨往掌心收、出掌那一下掌前面炸开墨花（只是画面）
+    if (m.name === 'super' && !d.script) superStep(this, m, k);              // 2.7 泼墨：蓄力时墨往掌心收、出掌那一下掌前面炸开墨花（只是画面）
     const held = o.grabbed && o.state === 'hit';
     // 擒住 / 提膝 / 别腿摔 / 抱腿摔：把对手往怀里带（贴身好接后续）
     if (held && (m.name === 'hold' || m.name === 'knee' || m.name === 'trip' || m.name === 'tackle')) {
@@ -734,10 +762,14 @@ class Fighter {
     if (m.name === 'burst' && k === d.evWave) this.burstWave();
     if (d.dive && (m.hit || m.blocked)) m.bounce = (m.bounce || 0) + DT;   // 坠山踩中后翻跟头的进度（画面用，帧）
     if (m.hold) m.hold = false; else m.t += DT;                       // 2.10 hold：这一步时间不走（咏春拳的寸拳蓄劲时停在那儿）
-    if (m.t >= m.S + d.A + d.R + (m.pen || 0)) {
+    if (m.t >= m.S + d.A + (m.haste ? grid(d.R * HASTE_R) : d.R) + (m.pen || 0)) {
       if (d.flow && !m.hit) this.flow = 0;                             // 2.9 顺：打空了就断了
       if (m.name === 'dash') this.dashEnd = this.clock;
       if (m.name === 'slip') this.slipEnd = this.clock;
+      // 4.0 打空了的招不算进连段：没碰到人（没打中、没被挡、没被霸体吃）就收完了，这一串到此为止，下一下从起手招算。
+      //   以前打空一拳、0.4 秒里再按踢出来的是鞭腿（拳 → 踢的变招：比腿踢快七帧、还接得上二起脚）—— 远远地空挥一拳「垫」一下，中距离就多了一批只该在连招里出现的快招
+      //   （平衡实验室的一招鲜筛查量出来的：空拳垫鞭腿接二起脚，打困难的电脑占到六成到九成）
+      if (!d.script && !d.noChain && !(m.hit || m.blocked || m.absorbed)) { this.chain = []; this.rushStamped = false; }
       this.move = null; this.chainIdle = 0;
       if (this.airborne) { this.state = 'air'; this.airUsed = true; } else this.state = 'idle';
     }

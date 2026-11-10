@@ -44,6 +44,8 @@ const AutoRes = {
   res: 1, cap: 1, floor: 0, full: 1,     // res 现在的倍数（1 = 不降）；cap 往上最多试到哪；floor 往下最多降到哪（降了没用的那一档以上）；full 不降时的像素比
   ring: [], sum: 0, cool: 2000, next: 0, good: 0, probeT: 0, before: 0, check: false,   // cool：刚打开的头两秒（字体、背景在画）不算
   set(r) { this.res = r; this.ring.length = 0; this.sum = 0; this.cool = 700; this.next = 0; resize(); },
+  // 4.0 还能不能再降：降到最低了、或者降了没快起来（floor）—— 画帧的节拍（Pace）看这个决定要不要退到 60 帧
+  bottom() { const next = Math.max(this.res * 0.85, AUTORES_MIN / this.full); return !(next >= this.floor && next < this.res - 1e-3); },
   watch(dt) {
     if (document.hidden || !(dt > 0) || dt > 1000) { this.ring.length = 0; this.sum = 0; this.cool = 500; return; }
     if (this.cool > 0) { this.cool -= dt; return; }
@@ -51,7 +53,8 @@ const AutoRes = {
     while (this.sum - R[0] >= 1500) this.sum -= R.shift();
     if (this.sum < 1400 || (this.next -= dt) > 0) return;
     this.next = 500;                                         // 半秒看一次
-    let slow = 0; for (const x of R) if (x > AUTORES_SLOW) slow++;
+    const SLOW = Pace.slowMs();                               // 4.0 晚了一拍的线跟着画帧的节拍走（60Hz 屏幕 25 毫秒，锁 120 帧时 12.5 毫秒上下）
+    let slow = 0; for (const x of R) if (x > SLOW) slow++;
     const frac = slow / R.length, avg = this.sum / R.length;
     if (this.check) {                                        // 刚降了一档：快起来没有
       this.check = false;
@@ -60,7 +63,7 @@ const AutoRes = {
     if (frac > 0.25) {
       if (this.probeT > 0) this.cap = this.res * 0.85;       // 刚升上来又掉帧：退回来，以后别再往上试
       this.good = 0; this.probeT = 0;
-      this.stepK = avg > 2 * AUTORES_SLOW ? 0.72 : 0.85;
+      this.stepK = avg > 2 * SLOW ? 0.72 : 0.85;
       const next = Math.max(this.res * this.stepK, AUTORES_MIN / this.full);
       if (next >= this.floor && next < this.res - 1e-3) { this.before = avg; this.check = true; this.set(next); }
       return;
@@ -70,44 +73,89 @@ const AutoRes = {
     if (this.good >= 15000 && this.res < this.cap - 1e-3) { this.good = 0; this.probeT = 10000; this.set(Math.min(this.cap, this.res / 0.85)); }
   },
 };
-/* 3.5.1 高刷屏（Jack 的笔记本是 300Hz）：以前屏幕刷新一次就画一帧 —— 300Hz 的屏幕一秒要画 300 帧，一帧只有 3.3 毫秒，
-   画不完就掉帧，而且掉得不均匀（这一下隔 3.3、下一下隔 6.7、再下一下又 3.3），看着一顿一顿的；每加一点东西就更卡一点。
-   现在量着：一直跟不上（最近一秒半里四分之一以上的帧比该到的晚一拍以上）就改成每 2 次刷新画一帧，还跟不上每 3 次……最少一秒 60 帧
-   （60Hz 的屏幕本来就一次一帧，什么都不变；跟得上的电脑也什么都不变）。帧和帧之间一样长，比忽快忽慢的掉帧顺得多。
-   逻辑照样一秒 240 步、照样每次刷新都走（按键照样马上算，不会晚），只是少画几帧，画的时候照旧在两步之间插值。
-   稳了 15 秒再试着多画一点，试了又跟不上就退回来，下次等更久（最多两分钟） */
+/* 4.0（Jack：每台电脑的刷新率不一样，先锁在 120 帧；打击的逻辑和画面的帧率照旧完全分开）画帧节奏：一秒画 FPS_LOCK（120）帧。
+   · 逻辑还是一秒 240 步、每次屏幕刷新都走（按键不晚），这里只管「这一次刷新画不画」，画的时候照旧在两步之间插值；
+   · 屏幕不到 120Hz（60 / 75 / 90 / 100Hz）：浏览器一次刷新最多画一帧，画多了也显示不出来 —— 每次刷新都画，就是屏幕的刷新率（60Hz 的屏幕是 60 帧，这是硬件的上限）；
+   · 屏幕正好是 120 的整数倍（240 / 360 / 480Hz）：每 2 / 3 / 4 次刷新画一帧，帧和帧之间一样长；
+   · 别的高刷屏（144 / 165 / 300Hz）：攒时间，攒够 1/120 秒画一帧（300Hz 是隔 3 次、隔 2 次轮着来，一秒正好 120 帧；每一帧画的都是它出现那一刻的位置，不会忽快忽慢）；
+   · 跟不上 120（一秒半里四分之一以上的帧晚了一拍）：不再像 3.5.1 那样少画（每 2、3 次刷新画一帧，最少 60），先交给自动画质降一点分辨率把 120 保住；
+     分辨率降到头了还是跟不上（没有显卡的机器），才退到 60 帧的节拍（half；稳了 20 秒再试回 120，又跟不上就退回来、下次等两倍久）。
+   3.5.1 的做法（量着降：150 → 100 → 75 → 60）去掉了。网址加 ?hz=数字 可以临时换一个锁的帧率（调试用，0 = 不锁，屏幕刷新一次画一帧） */
+const FPS_URL = (() => { const m = /[?&]hz=(\d+)/.exec(typeof location !== 'undefined' ? location.search : ''); return m ? +m[1] : -1; })();
 const Pace = {
-  V: 0, d: 1, iv: [], ivN: 0,                  // V：屏幕多久刷新一次（最近的帧间隔里短的那一头）；d：每几次刷新画一帧
-  lastDraw: 0, win: [], winT: 0, next: 0, good: 0, probe: 0, wait: 15000,
-  dMax() { return this.V > 0 ? Math.max(1, Math.floor(17.5 / this.V)) : 1; },     // 最少一秒 60 帧上下
-  reset() { this.lastDraw = 0; this.win.length = 0; this.winT = 0; this.next = 0; this.good = 0; },
-  tick(raw) {                                   // 每次刷新：记帧间隔，估屏幕刷新率（每 30 帧用最近 90 帧里第一成短的那个）
-    if (!(raw > 0) || raw > 100) return;
+  lock: FPS_URL >= 0 ? FPS_URL : FPS_LOCK,     // 锁在一秒几帧（0 = 不锁）
+  V: 0, iv: [], ivN: 0,                        // V：屏幕多久刷新一次（最近的帧间隔里短的那一头）
+  mode: 'every', n: 1, d: 1,                   // every 每次刷新都画 / div 每 n 次画一帧 / acc 攒时间；d：平均几次刷新画一帧（?fps 那一行看的）
+  cnt: 0, phase: 0, lastDraw: 0,
+  half: false, win: [], winT: 0, next: 0, good: 0, wait: 20000, probe: 0,
+  T() { return this.lock > 0 ? 1000 / this.lock * (this.half ? 2 : 1) : 0; },   // 两帧之间该隔多久
+  reset() { this.lastDraw = 0; this.cnt = 0; this.phase = 0; this.win.length = 0; this.winT = 0; this.next = 0; this.good = 0; this.startProbe(); },
+  plan() {
+    const T = this.T(), V = this.V;
+    if (!T || !V || V >= T - 0.7) { this.mode = 'every'; this.n = 1; this.d = 1; return; }
+    const n = Math.round(T / V);
+    if (Math.abs(n * V - T) <= 0.05 * T) { this.mode = 'div'; this.n = n; this.d = n; }
+    else { this.mode = 'acc'; this.n = Math.ceil(T / V - 0.05); this.d = +(T / V).toFixed(2); }
+  },
+  // 量屏幕多久刷新一次。画不过来的时候每次回调都在画，回调之间隔的是「画完以后的下一次刷新」，量出来比屏幕真的间隔长
+  // （300Hz 的屏幕一帧要画 11 毫秒，看上去像 75Hz）—— 所以刚打开、停画以后重新画、量出来的和记着的差得多的时候，
+  // 空转几次刷新不画（pr），空转的回调之间隔的才是屏幕真的间隔。空转一次五六次刷新（300Hz 十几毫秒），对不上的时候最多 5 秒一次、没变就越等越久
+  pr: 6, pv: [], prAt: 0, prWait: 5000, clockT: 0,
+  startProbe() { this.pr = 6; this.pv.length = 0; },
+  tick(raw) {
+    this.cnt++;
+    if (!(raw > 0) || raw > 100) { if (this.pr > 0) this.pv.length = 0; return; }
+    this.clockT += raw;
+    this.phase = Math.min(this.phase + raw, 4 * (this.T() || raw));
+    if (this.pr > 0) {
+      if (this.pr < 6) this.pv.push(raw);         // 第一下可能还带着上一帧画的时间，不算
+      if (--this.pr === 0 && this.pv.length) {
+        const v = Math.min(...this.pv), same = this.V && Math.abs(v - this.V) < 0.12 * this.V;
+        this.prWait = same ? Math.min(60000, this.prWait * 2) : 5000;
+        this.V = v; this.prAt = this.clockT; this.iv.length = 0; this.ivN = 0; this.plan();
+      }
+      return;
+    }
     this.iv[this.ivN++ % 90] = raw;
     if (this.ivN % 30 === 0 && this.iv.length >= 60) {
-      const s = this.iv.slice().sort((a, b) => a - b);
-      this.V = s[Math.floor(s.length * 0.1)];
-      if (this.d > this.dMax()) this.d = this.dMax();
+      const s = this.iv.slice().sort((a, b) => a - b), est = s[Math.floor(s.length * 0.1)];
+      if (!this.V) { this.V = est; this.plan(); }
+      else if (Math.abs(est - this.V) > 0.2 * this.V && this.clockT - this.prAt >= this.prWait) this.startProbe();   // 对不上：换了屏幕，或者只是画不过来 —— 空转量一次
     }
   },
-  due(now) { return this.d <= 1 || !this.lastDraw || now - this.lastDraw >= (this.d - 0.5) * this.V; },
-  drew(now) {                                    // 画了一帧：这一帧比该到的晚没晚（晚了一拍以上），半秒看一次要不要改 d
-    const I = this.lastDraw ? now - this.lastDraw : 0;
-    this.lastDraw = now;
-    if (!(I > 0) || I > 250 || !this.V) return;
-    const W = this.win; W.push(I > (this.d + 0.25) * this.V ? I : -I); this.winT += I;   // 比计划的晚了大半拍以上算晚（屏幕间隔要是估成了两拍，晚一拍也看得出来）
+  due(now) {
+    if (this.pr > 0) return false;                // 空转量屏幕
+    if (!this.lastDraw || this.mode === 'every') return true;
+    if (this.mode === 'div') return now - this.lastDraw >= (this.n - 0.5) * this.V;   // 按时间数（画了一帧以后的回调可能已经隔了好几次刷新）
+    return this.phase >= this.T() - Math.min(0.4, this.V * 0.1);   // 留一点点余量（刷新的时间戳有零点几毫秒的抖）；早画的那一点下面从 phase 里扣回来
+  },
+  // 自动画质用：画出来的两帧隔了这么久以上 = 晚了一拍（60Hz 的屏幕是 25 毫秒，和 3.1.1 一样；120 帧的节拍是 12.5 毫秒上下）
+  slowMs() { return this.V ? (this.n + 0.5) * this.V : 25; },
+  drew(now) {
+    const I = this.lastDraw ? now - this.lastDraw : 0, T = this.T();
+    this.lastDraw = now; this.cnt = 0;
+    if (this.mode === 'acc') { this.phase -= T; if (this.phase < -1 || this.phase > T) this.phase = 0; } else this.phase = 0;
+    if (!(I > 0) || I > 250 || !this.V || !T) return;
+    // 跟不跟得上：半秒看一次最近一秒半
+    const W = this.win; W.push(I > this.slowMs() ? I : -I); this.winT += I;
     while (this.winT - Math.abs(W[0]) >= 1500) this.winT -= Math.abs(W.shift());
     if (this.winT < 1400 || (this.next -= I) > 0) return;
     this.next = 500;
     let late = 0; for (const x of W) if (x > 0) late++;
-    const frac = late / W.length, dm = this.dMax();
-    if (this.probe > 0) {                        // 刚试着多画：又跟不上就退回来，下次等更久
-      this.probe -= 500;
-      if (frac > 0.1) { this.d++; this.probe = 0; this.wait = Math.min(120000, this.wait * 2); this.good = 0; W.length = 0; this.winT = 0; return; }
+    const frac = late / W.length;
+    if (this.half) {                             // 退到 60 帧的节拍以后：稳了一阵试回 120
+      this.good = frac < 0.03 ? this.good + 500 : 0;
+      if (this.good >= this.wait) { this.half = false; this.probe = 4000; this.good = 0; W.length = 0; this.winT = 0; this.plan(); }
+      return;
     }
-    if (frac > 0.25 && this.d < dm) { this.d++; this.good = 0; this.probe = 0; W.length = 0; this.winT = 0; return; }
-    this.good = frac < 0.03 ? this.good + 500 : 0;
-    if (this.good >= this.wait && this.d > 1) { this.d--; this.good = 0; this.probe = 3000; W.length = 0; this.winT = 0; }
+    if (this.probe > 0) {                        // 刚试回 120：又跟不上就退回来，下次等两倍久（最多两分钟）
+      this.probe -= 500;
+      if (frac > 0.2) { this.half = true; this.probe = 0; this.wait = Math.min(120000, this.wait * 2); this.good = 0; W.length = 0; this.winT = 0; this.plan(); }
+      return;
+    }
+    // 一直跟不上，自动画质也降到头了（或者降了没用）：退到一半的节拍，帧和帧之间一样长，比忽快忽慢顺
+    this.bad = frac > 0.3 ? (this.bad || 0) + 500 : 0;
+    if (this.bad >= 3000 && AutoRes.bottom() && this.mode !== 'every') { this.half = true; this.bad = 0; this.good = 0; W.length = 0; this.winT = 0; this.plan(); }
   },
 };
 // 给场景用：这一帧画面多大、地线在哪、最大放大倍数（地面层按这个分辨率画）

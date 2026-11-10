@@ -225,20 +225,20 @@ const WMOVES = {
       [2, { hy: 42, tor: 36, dx: 18, head: -10, fh: [56, 38], fpa: 30, fs: 0.45, bh: [48, 42], bpa: 40, bs: 0.45, ff: [44, 0], bf: [-34, 0], tw: 10 }], [3, W_LOW]] }),
 
   /* ---- 跳起来（上段：蹲着挡不住；飞撑脚能蹲下躲） ---- */
-  airJab: WM({ kind: 'jab', label: '飞身冲拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 11, R: 6, dmg: 6, reach: 94, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.4, stop: 5, power: .45,
+  airJab: WM({ kind: 'jab', label: '飞身冲拳', tier: 'air', lead: 'light', height: 'high', open: true, S: 3, A: 10, R: 5, dmg: 5, reach: 94, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.4, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
     keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.55, J_(JT, { rot: 2, tor: 4, fh: [22, -4], fp: 0, bh: [20, 6], tw: 20 })],
       [1, { rot: 18, tor: 24, head: -6, dx: 6, fh: [56, 12], fp: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }, 'back'],
       [2, { rot: 20, tor: 26, head: -6, dx: 6, fh: [54, 15], fp: 0, bh: [24, 6], ff: [16, 42], bf: [-28, 28], tw: 30 }], [3, JD]] }),
   // 3.1 飞身盖肘（Jack：三派跳起来按重长得太像 —— 都是整个人往前翻着砸）：咏春不翻身 —— 人在空中立着、两膝收起来护住中线，
   // 后手的肘先抬过头（拳收在耳边），再以肩为轴往前下方盖下去，肘尖领着、拳留在脸边，打在他锁骨、脸上（标指里的盖肘 kop jarn），前手竖掌护在胸前
-  airHeavy: WM({ kind: 'heavy', label: '飞身盖肘', stamp: '盖肘', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 8, A: 10, R: 9, dmg: 10, reach: 100, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 4.5, stop: 8, shake: 5, power: .9, heavy: true,
-    limb: 'be', fx: 'chop', air: true,
+  airHeavy: WM({ kind: 'heavy', label: '飞身盖肘', stamp: '盖肘', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 7, A: 9, R: 8, dmg: 9, reach: 100, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 4.5, stop: 8, shake: 5, power: .9, heavy: true,
+    limb: 'be', fx: 'chop', air: true, reelHit: true,   // 4.0 盖肘压住他的手：打中他失衡一下（落地好接）
     keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })],
       [0.7, { rot: -4, tor: -8, head: -2, fh: [24, 4], fp: 1, fpa: -80, fpr: 0.2, bh: [-2, -18], bp: 0, be: 1, ff: [20, 58], bf: [-2, 48], tw: -36 }],
       [1, { rot: 8, tor: 12, head: 0, dx: 30, fh: [22, 18], fp: 1, fpa: -70, fpr: 0.2, bh: [20, -10], bp: 0, be: 1, ff: [24, 50], bf: [4, 44], tw: 60 }, 'out'],
       [2, { rot: 10, tor: 16, head: 0, dx: 30, fh: [22, 20], fp: 1, fpa: -70, fpr: 0.2, bh: [20, -6], bp: 0, be: 1, ff: [24, 48], bf: [2, 42], tw: 62 }], [3, J_(JD, { fp: 1, bp: 1 })]] }),
-  airKick: WM({ kind: 'kick', label: '飞撑脚', stamp: '飞撑脚', tier: 'air', lead: 'kick', height: 'high', open: true, S: 7, A: 11, R: 8, dmg: 9, reach: 110, vreach: AIR_VREACH, stun: 17, bstun: 10, kb: 5, stop: 7, shake: 4, power: .85,
+  airKick: WM({ kind: 'kick', label: '飞撑脚', stamp: '飞撑脚', tier: 'air', lead: 'kick', height: 'high', open: true, S: 6, A: 10, R: 8, dmg: 8, reach: 110, vreach: AIR_VREACH, stun: 17, bstun: 10, kb: 10, stop: 7, shake: 4, power: .85,
     limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
     keys: [[0, J_(JT, { fp: 1, bp: 1, fh: [26, 10], bh: [16, 14] })], [0.6, { rot: -6, tor: 10, head: -4, ff: [10, 60], bf: [-6, 46], fh: [34, -16], bh: [18, -6], tw: 10 }],
       [1, { rot: 12, tor: -32, head: 12, dx: 16, ff: [98, 26], ft: 30, bf: [-14, 50], fh: [30, -14], bh: [16, -6], tw: 10 }, 'back'],
@@ -275,7 +275,7 @@ const WMOVES = {
     keys: [[0, W_LOW], [0.6, { hy: 72, tor: -6, head: 6, dx: 4, ff: [30, 60], bf: [-22, 0] }],
       [1, { hy: 62, tor: 18, head: -8, dx: 22, ff: [76, 4], bf: [-26, 0] }, 'out'], [2, { hy: 62, tor: 18, head: -8, dx: 22, ff: [76, 2], bf: [-26, 0] }], [3, {}]] }),
   // 追形（冲刺）：压低身子、两只掌还护在前面，贴着地往前一窜
-  dash: WM({ kind: 'script', label: '追形', S: 0, A: 0, R: 16, script: true, lunge: [0, 10, 96], inv: [0, 8],
+  dash: WM({ kind: 'script', label: '追形', S: 0, A: 0, R: 11, script: true, lunge: [0, 7, 66], inv: [0, 4], cancelAt: 3,   // 4.0 追形：碎步，短、快、第 3 帧起就能出手（两下才抵别人一下那么远，无敌也短）
     keys: [[0, { hy: 62, tor: 14, head: -2, ff: [32, 0], bf: [-28, 0], tw: 24 }],
       [0.12, { hy: 58, tor: 22, head: -6, dx: 8, ff: [50, 8], bf: [-60, 12], fh: [46, -4], bh: [28, 2], tw: 24 }, 'out'],
       [0.45, { hy: 56, tor: 20, head: -4, dx: 10, ff: [52, 2], bf: [-60, 6], fh: [46, -4], bh: [28, 2], tw: 24 }],
@@ -298,12 +298,38 @@ const WMOVES = {
     keys: [[0, { tor: 24, hy: 54, head: 10, fh: [16, 10], bh: [10, 12], tw: 0 }],
       [0.14, { tor: -12, head: -16, hy: 76, fh: [50, -14], fpa: -84, fs: 0.7, bh: [-34, -10], bpa: -100, bs: 0.7, ff: [40, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
       [0.5, { tor: -10, head: -14, hy: 74, fh: [48, -12], fpa: -84, fs: 0.7, bh: [-32, -8], bpa: -100, bs: 0.7, ff: [40, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
-  // 连环寸拳（大招，气满按重 + 踢）：往下一沉（出手前几帧打击无敌），第一拳打中 = 一串左右交替的寸拳把人钉住，最后一记寸拳打飞
-  super: WM({ kind: 'heavy', label: '连环寸拳', stamp: '连环寸拳', tier: 'super', S: 6, A: 3, R: 20, dmg: 4, reach: 92, stun: 20, bstun: 14, kb: 1, stop: 5, shake: 4, power: 1, heavy: true,
-    limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 6, 14], sinv: [0, 6], cost: QI_MAX, launch: 6, ender: true, noCancel: true, antiAir: 40,
-    flurry: { n: 10, every: 2.25, dmg: 3, last: 20, kb: 1.2, lastKb: 9, endStamp: '寸拳' }, pierce: true,   // 3.1 一下 4 → 3：以前每下按连击衰减越打越少（一串 50 上下），现在每下一样疼 —— 3 × 10 + 20 = 50（和泼墨一样）
+  /* 4.0 连环寸拳（大招，气满按重 + 踢）= 五段连环（Jack：大招可以是一大套连招，考验对面每一段怎么防）：
+     第一段中段（站着蹲着都挡得住，起手那几帧打击无敌），打中 / 被挡住都接着出后面四段 —— 每一段上段（标指戳脸：蹲着挡不住）或者下段（低掌按腹：站着挡不住），
+     出招的人在上一段里按 拳 = 上、踢 = 下（不按就上下轮着来）；第五段是寸拳，打中打倒。每一段挨了打的硬直、挡住的硬直都比下一段到得早两三帧 ——
+     挡的人每一段都能重新挡（挡对高低）、松开再按卸力、冲刺闪开；挡错一段挨一段。全中 12 + 13 × 3 + 22 = 73，被挡住一段只削 WC_SUP_CHIP 成。
+     哪一段打空了（他闪开了）这一串就到此为止。段和段之间的那两三帧里他的拳、推挡打不断（霸体吃一下），卸力卸得掉 */
+  super: WM({ kind: 'heavy', label: '连环寸拳', stamp: '连环寸拳', tier: 'super', S: 6, A: 3, R: 20, dmg: 12, reach: 92, stun: 12, bstun: 12, kb: 1, stop: 5, shake: 4, power: 1, heavy: true,
+    limb: 'fh', fx: 'rush', ghost: true, lunge: [1, 6, 14], sinv: [0, 6], cost: QI_MAX, noCancel: true, antiAir: 40, pierce: true, chip: WC_SUP_CHIP, sup: true,
     keys: [[0, {}], [0.4, { tor: 2, dx: -4, hy: 63, tw: 10, fh: [26, 0], fp: 0, bh: [18, 4], bp: 0, ff: [30, 0], bf: [-34, 0] }, 'out'],
       [1, WJ(W_PF, { dx: 12, hy: 64, fh: [56, -4] }), 'back'], [2, WJ(W_PF, { dx: 12, hy: 64, fh: [56, -4] })], [3, {}]] }),
+  // 上段（标指）：手先抬过头顶再戳下来 —— 看得见是上段
+  wSupH: WM({ kind: 'heavy', label: '标指', tier: 'super', height: 'high', S: 11, A: 3, R: 16, dmg: 13, reach: 100, stun: 12, bstun: 12, kb: 1, stop: 5, shake: 3, power: .8, heavy: true,
+    limb: 'fh', fx: 'jab', ghost: true, lunge: [2, 11, 16], noCancel: true, pierce: true, chip: WC_SUP_CHIP, sup: true, chase: true, armor: { n: 1, from: 0, vs: ['light', 'push'] },
+    keys: [[0, {}], [0.55, { tor: -4, dx: -2, hy: 70, tw: -10, fh: [22, -46], fpa: -20, fpr: 0.5, fs: 0, bh: [26, -2], ff: [30, 0], bf: [-32, 0] }, 'out'],
+      [1, { tor: 12, dx: 14, hy: 67, tw: 40, fh: [62, -22], fpa: 18, fpr: 0.15, fs: 0, bh: [24, -3], ff: [38, 0], bf: [-30, 0] }, 'back'],
+      [2, { tor: 12, dx: 14, hy: 67, tw: 40, fh: [62, -22], fpa: 18, fpr: 0.15, fs: 0, bh: [24, -3], ff: [38, 0], bf: [-30, 0] }], [3, {}]] }),
+  // 下段（低掌）：身子先沉下去再按出去 —— 看得见是下段
+  wSupL: WM({ kind: 'heavy', label: '低掌', tier: 'super', height: 'low', S: 11, A: 3, R: 16, dmg: 13, reach: 96, stun: 12, bstun: 12, kb: 1, stop: 5, shake: 3, power: .8, heavy: true,
+    limb: 'fh', fx: 'low', ghost: true, lunge: [2, 11, 16], noCancel: true, pierce: true, chip: WC_SUP_CHIP, sup: true, chase: true, armor: { n: 1, from: 0, vs: ['light', 'push'] },
+    keys: [[0, {}], [0.55, WJ(W_LOW, { hy: 46, tor: 30, fh: [22, 14], fpa: -50 }), 'out'],
+      [1, WJ(W_LOW, { tor: 24, dx: 10, hy: 48, tw: 28, fh: [52, 26], fpa: -40, fpr: 0.5, fs: 0.1, bh: [22, 2] }), 'back'],
+      [2, WJ(W_LOW, { tor: 24, dx: 10, hy: 48, tw: 28, fh: [52, 26], fpa: -40, fpr: 0.5, fs: 0.1, bh: [22, 2] })], [3, {}]] }),
+  // 第五段：寸拳收尾（上 / 下各一个），打中打倒
+  wSupHE: WM({ kind: 'heavy', label: '寸拳', stamp: '寸拳', tier: 'super', height: 'high', S: 11, A: 3, R: 22, dmg: 22, reach: 100, stun: 20, bstun: 14, kb: 9, stop: 12, shake: 9, power: 1.2, heavy: true,
+    limb: 'bh', fx: 'heavy', ghost: true, lunge: [2, 11, 18], noCancel: true, pierce: true, chip: WC_SUP_CHIP, sup: true, chase: true, launch: 6, ender: true, armor: { n: 1, from: 0, vs: ['light', 'push'] },
+    keys: [[0, {}], [0.55, { tor: -4, dx: -4, hy: 70, tw: 24, bh: [10, -44], bp: 0, fh: [30, -6], ff: [30, 0], bf: [-34, 0] }, 'out'],
+      [1, { tor: 16, dx: 20, hy: 64, head: -2, tw: -40, bh: [60, -20], bp: 0, fh: [28, -3], fpa: -86, ff: [46, 0], bf: [-30, 0] }, 'back'],
+      [2, { tor: 16, dx: 20, hy: 64, head: -2, tw: -40, bh: [60, -20], bp: 0, fh: [28, -3], fpa: -86, ff: [46, 0], bf: [-30, 0] }], [3, {}]] }),
+  wSupLE: WM({ kind: 'heavy', label: '寸拳', stamp: '寸拳', tier: 'super', height: 'low', S: 11, A: 3, R: 22, dmg: 22, reach: 96, stun: 20, bstun: 14, kb: 9, stop: 12, shake: 9, power: 1.2, heavy: true,
+    limb: 'bh', fx: 'low', ghost: true, lunge: [2, 11, 18], noCancel: true, pierce: true, chip: WC_SUP_CHIP, sup: true, chase: true, launch: 6, ender: true, armor: { n: 1, from: 0, vs: ['light', 'push'] },
+    keys: [[0, {}], [0.55, WJ(W_LOW, { hy: 46, tor: 30, tw: 20, bh: [8, 10], bp: 0 }), 'out'],
+      [1, WJ(W_LOW, { tor: 26, dx: 14, hy: 48, tw: -36, bh: [56, 24], bp: 0, fh: [22, 2] }), 'back'],
+      [2, WJ(W_LOW, { tor: 26, dx: 14, hy: 48, tw: -36, bh: [56, 24], bp: 0, fh: [22, 2] })], [3, {}]] }),
 
   /* ---- 搭手（手搭上了；见下面「搭手」）---- */
   // 搭手本身：手搭着，等你按（姿势按手型现画，见 wcTarget）。tch：引擎不管它的时间，由 touchStep 管
@@ -383,8 +409,6 @@ const WMOVES = {
     keys: [[0, { tor: 2, hy: 68, tw: 24, fh: [42, -8], bh: [22, -4] }], [1, {}]] }),
 };
 // 连环寸拳打中以后那一串：左右手交替；最后一记寸拳
-WMOVES.super.flurry.poses = [wmk(WJ(W_PF, { dx: 14, hy: 64, tor: 10 })), wmk(WJ(W_PR, { dx: 14, hy: 64, tor: 10 }))];
-WMOVES.super.flurry.endPose = wmk({ tor: 16, dx: 20, hy: 62, head: -2, tw: -36, bh: [58, -2], bp: 0, fh: [30, -3], fpa: -86, ff: [46, 0], bf: [-30, 0] });
 
 /* 架势（fighter.js target 用；搭手的手型在 wcTarget 里现画） */
 const WPOSE = {
@@ -568,6 +592,7 @@ function wcInput(F, where, locked) {
   }
   if (where !== 'attack') return false;
   const m = F.move, d = m.def, k = m.t + DT - 1;
+  if (d.sup) return supStep(F, m, locked);                          // 4.0 大招五段
   if (d.tch) return touchStep(F, m, k, locked);
   if (d.lap) return lapStep(F, m, k);
   if (m.name === 'tLat') return latStep(F, m, locked);
@@ -578,6 +603,20 @@ function wcInput(F, where, locked) {
     if (kk) { const r = wcPress(F, m, kk); if (r !== null) { F.takePress([kk]); return r; } }
   }
   return false;
+}
+
+// 4.0 大招五段（连环寸拳）：这一段里按 拳 / 重 = 下一段上段，踢 / 拿 = 下段（不按就上下轮着来）；判定一完、这一段打中或者被挡住了，就接下一段
+function supStep(F, m, locked) {
+  const d = m.def, n = m.supN || 1;
+  if (!locked) { const k = F.takePress(['jab', 'heavy', 'kick', 'grab']); if (k) m.supNext = k === 'jab' || k === 'heavy' ? 'H' : 'L'; }
+  if (n >= WC_SUP_N || m.t < m.S + d.A + 1 || !(m.hit || m.blocked)) return false;
+  const o = F.opp;
+  if (o.state === 'down' || o.state === 'ko' || F.state !== 'attack') return false;
+  const nx = m.supNext || (m.supLast === 'H' ? 'L' : 'H');
+  F.facing = o.x >= F.x ? 1 : -1;
+  if (!F.beginMove((nx === 'H' ? 'wSupH' : 'wSupL') + (n + 1 >= WC_SUP_N ? 'E' : ''), null)) return false;
+  F.move.supN = n + 1; F.move.supLast = nx;
+  return true;
 }
 
 /* ============================================================
@@ -610,6 +649,7 @@ const catchGrade = (need, key) => !need ? 'miss' : key === need ? 'hit' : key ==
 // 接不住的：擒拿、推挡、坠山落膝、大招、连环寸拳那一串、下段的手上招。low = 蹲着接（耕手）：只接地上的腿（扫堂腿这种下段的也行）；站着接不住下段
 function catchKeyOf(A, m, d, low) {
   if (d.script || d.push || d.dive || d.flurry || d.tier === 'super' || d.kind === 'grab') return null;
+  if (m.jinUsed > 0) return null;                                      // 4.0 太极拳带着劲发出来的招（蓄过、有劲）：劲大，接不住（和 pierce 一个道理）
   const leg = d.kind === 'kick' || d.limb === 'ff' || d.limb === 'bf', air = !!(m.air || A.airborne);
   if (low) return leg && !air ? 'grab' : null;
   if (d.height === 'low') return null;
@@ -641,7 +681,8 @@ function wcDefend(A, B, c, I) {
   }
   // ② 挨打、被挡住的硬直里按住挡 + 键（新的黐手破连）：他这一下打过来之前 WC_CATCH_HIT 帧以内按的键 —— 按对了接住，按错了、几个键乱按 ×WC_WRONG_MUL。
   //    顺三级以上的连环冲拳太快，接不住（按了也是按错）
-  if ((B.state === 'hit' || B.state === 'blockstun') && B.inp.held.block && !(B.airborne || B.grabbed || B.stuck || B.stagger || B.reel || B.clashed || B.carried)) {
+  // 4.0 挨打的硬直里接 = 咏春拳的拆招：一样要过了实连的那几下（sureOf；咏春的手快，比别的派早 WC_BRK_EARLY 下就能接）、接错了这一套不能再接（brkLock）；挡住的硬直里照旧随时能接
+  if ((B.state === 'blockstun' || (B.state === 'hit' && !B.brkLock && B.comboTaken >= sureOf(A) - WC_BRK_EARLY)) && B.inp.held.block && !(B.airborne || B.grabbed || B.stuck || B.stagger || B.reel || B.clashed || B.carried)) {
     const buf = B.inp.buf, recent = buf.filter(e => CATCH_KEYS.includes(e.a) && B.clock - e.t < WC_CATCH_HIT + 1);
     if (recent.length) {
       for (let i = buf.length - 1; i >= 0; i--) if (recent.includes(buf[i])) buf.splice(i, 1);   // 这几下按键用掉了（接没接住都是）
@@ -650,6 +691,7 @@ function wcDefend(A, B, c, I) {
       const g = keys.size === 1 ? catchGrade(need, recent[0].a) : 'miss';
       if (g === 'hit') { catchHit(A, B, c, need, low); return true; }
       if (g === 'flat') { cev('catchFlat', B, A, { name: m.name }); return false; }   // 平：这一下照常（挡住的硬直里就是挡住；挨打的硬直里本来就挡不住，照旧挨）
+      if (B.state === 'hit') B.brkLock = true;
       return catchMiss(A, B, keys.size > 1 ? 'mash' : 'key');
     }
   }
@@ -1215,6 +1257,7 @@ const W_BENCH_GROUPS = [
 ];
 STYLES.wc = {
   id: 'wc', name: '咏春拳', moves: WMOVES, relation: wcRelation, cancel: {}, variant: wcVariant, poses: WPOSE, base: WBASE,
+  sure: 5, ownBreak: true, jumpV: 0.8, jumpVx: 0.92,   // 4.0 小跳：跳得矮（最高六成多）、落得快，越不过站着的人打过来的手脚，只是快   // 4.0 实连五拳（拳小、连得密）；拆招用自己的接招（按住挡 + 键）
   chainMax: 8, blockHeavy: null, blockWalk: WC_WALK, parry: false, catchGuard: true,   // 2.11 catchGuard：挡着的时候按拳不是截打 / 推挡（是接招，见 wcDefend）
   input: wcInput, canCancel: wcCanCancel, defend: wcDefend, strike: wcStrike, clash: wcClash, grab: wcGrab, stunOf: wcStun,
   target: wcTarget, drawCue: wcDrawCue, touchShape: wcTouchShape,

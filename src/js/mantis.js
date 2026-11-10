@@ -159,17 +159,17 @@ const MMOVES = {
 
   /* ---- 一串里（打中 / 被挡住马上按；连打不过两下，要么刁、要么收势，见 mtVariant / mtCanCancel）---- */
   // 撕手：勾手从上往前下一撕 —— 拳在一串里，两只手轮着撕（上一下前手打的这一下后手）
-  mtSiF: MM({ kind: 'jab', label: '撕手', tag: '撕手', S: 4, A: 3, R: 7, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2, stop: 4, power: .3,
+  mtSiF: MM({ kind: 'jab', label: '撕手', tag: '撕手', S: 4, A: 3, R: 7, dmg: 6, reach: 94, stun: 13, bstun: 7, kb: 2, stop: 4, power: .3,
     limb: 'fh', fx: 'jab2', lunge: [1, 4, 6],
     keys: [[0, {}], [0.4, MP_SIF0], [1, MP_SIF, 'back'], [2, MP_SIF], [3, {}]] }),
-  mtSiB: MM({ kind: 'jab', label: '撕手', tag: '撕手', S: 4, A: 3, R: 7, dmg: 5, reach: 94, stun: 13, bstun: 7, kb: 2, stop: 4, power: .3,
+  mtSiB: MM({ kind: 'jab', label: '撕手', tag: '撕手', S: 4, A: 3, R: 7, dmg: 6, reach: 94, stun: 13, bstun: 7, kb: 2, stop: 4, power: .3,
     limb: 'bh', fx: 'jab2', lunge: [1, 4, 6],
     keys: [[0, {}], [0.4, MP_SIB0], [1, MP_SIB, 'back'], [2, MP_SIB], [3, {}]] }),
   // 翻腕砍：掌刃横着砍颈、胸 —— 重在一串里，两只手轮着砍
-  mtKanF: MM({ kind: 'heavy', label: '翻腕砍', stamp: '翻腕砍', S: 6, A: 4, R: 11, dmg: 9, reach: 98, stun: 16, bstun: 10, kb: 4, stop: 6, shake: 4, power: .7, heavy: true,
+  mtKanF: MM({ kind: 'heavy', label: '翻腕砍', stamp: '翻腕砍', S: 6, A: 4, R: 11, dmg: 10, reach: 98, stun: 16, bstun: 10, kb: 4, stop: 6, shake: 4, power: .7, heavy: true,
     limb: 'fh', fx: 'palm', lunge: [1, 6, 10],
     keys: [[0, {}], [0.45, MP_KANF0], [1, MP_KANF, 'back'], [2, MP_KANF], [3, {}]] }),
-  mtKanB: MM({ kind: 'heavy', label: '翻腕砍', stamp: '翻腕砍', S: 6, A: 4, R: 11, dmg: 9, reach: 98, stun: 16, bstun: 10, kb: 4, stop: 6, shake: 4, power: .7, heavy: true,
+  mtKanB: MM({ kind: 'heavy', label: '翻腕砍', stamp: '翻腕砍', S: 6, A: 4, R: 11, dmg: 10, reach: 98, stun: 16, bstun: 10, kb: 4, stop: 6, shake: 4, power: .7, heavy: true,
     limb: 'bh', fx: 'palm', lunge: [1, 6, 10],
     keys: [[0, {}], [0.45, MP_KANB0], [1, MP_KANB, 'back'], [2, MP_KANB], [3, {}]] }),
   // 提膝（一串里按踢）
@@ -182,7 +182,7 @@ const MMOVES = {
     limb: 'fh', fx: 'jab', lunge: [0, 2, 4],
     keys: [[0, {}], [1, MP_DIAO, 'out'], [2, MP_DIAO2], [3, {}]] }),
   // 寸打（刁以后按拳）：后手竖拳贴身一崩 —— 最快的一下
-  mtCun: MM({ kind: 'jab', label: '寸打', tag: '寸打', S: 3, A: 3, R: 7, dmg: 6, reach: 90, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
+  mtCun: MM({ kind: 'jab', label: '寸打', tag: '寸打', S: 3, A: 3, R: 7, dmg: 7, reach: 90, stun: 13, bstun: 7, kb: 2.4, stop: 4, power: .35,
     limb: 'bh', fx: 'jab2', lunge: [1, 3, 6],
     keys: [[0, MP_CUN0], [1, MP_CUN, 'back'], [2, MP_CUN], [3, {}]] }),
   // 穿心掌（刁以后按重）：后手立掌直穿胸口
@@ -224,26 +224,26 @@ const MMOVES = {
   scoop: MM({ kind: 'script', label: '搂腿', S: 0, A: 0, R: 24, script: true, keys: [[0, {}], [1, {}]] }),
 
   /* ---- 跳起来（上段：蹲着挡不住；腾空勾踢能蹲下躲）---- */
-  airJab: MM({ kind: 'jab', label: '飞崩', tier: 'air', lead: 'light', height: 'high', open: true, S: 4, A: 12, R: 6, dmg: 7, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
+  airJab: MM({ kind: 'jab', label: '飞崩', tier: 'air', lead: 'light', height: 'high', open: true, S: 3, A: 11, R: 5, dmg: 6, reach: 98, vreach: AIR_VREACH, stun: 15, bstun: 9, kb: 2.6, stop: 5, power: .45,
     limb: 'fh', fx: 'airSwing', air: true,
     keys: [[0, J_(JT, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90, fh: [26, 10], bh: [16, 14] })], [0.55, J_(JT, { rot: 2, tor: 4, fh: [20, -6], fp: 0, fhk: 0, bh: [20, 6], bp: 1, bhk: 1, bpa: 90, tw: 20 })],
       [1, { rot: 18, tor: 24, head: -6, dx: 6, fh: [58, 10], fp: 0, fhk: 0, fv: 0, fw: 12, bh: [22, 6], bp: 1, bhk: 1, bpa: 90, ff: [16, 42], bf: [-28, 28], tw: 34 }, 'back'],
       [2, { rot: 20, tor: 26, head: -6, dx: 6, fh: [56, 12], fp: 0, fhk: 0, fv: 0, fw: 12, bh: [22, 6], bp: 1, bhk: 1, bpa: 90, ff: [16, 42], bf: [-28, 28], tw: 34 }], [3, J_(JD, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90 })]] }),
   // 腾空劈：跳起来掌举过头顶、劈下来（不翻身，整个人立着）
-  airHeavy: MM({ kind: 'heavy', label: '腾空劈', stamp: '腾空劈', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 10, A: 11, R: 10, dmg: 12, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
-    limb: 'fh', fx: 'palm', air: true,
+  airHeavy: MM({ kind: 'heavy', label: '腾空劈', stamp: '腾空劈', tier: 'air', lead: 'heavy', height: 'high', open: true, S: 8, A: 11, R: 9, dmg: 9, reach: 104, vreach: AIR_VREACH, stun: 19, bstun: 12, kb: 5, stop: 9, shake: 6, power: 1, heavy: true,
+    limb: 'fh', fx: 'palm', air: true, onHit(A, B) { mtAirHook(A, B); },   // 4.0 腾空劈：劈下来顺手一勾，打中他失衡（勾住了：落地第一下是「勾打」）
     keys: [[0, J_(JT, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90, fh: [26, 10], bh: [16, 14] })],
       [0.3, { rot: -4, tor: 2, head: -6, tw: 12, fh: [4, -46], fp: 1, fhk: 0, fpa: -120, fpr: 0.3, fe: -1, bh: [18, 0], bp: 1, bhk: 1, bpa: 90, ff: [18, 50], bf: [-10, 40] }],
       [1, { rot: 10, tor: 24, head: 8, dx: 12, tw: 38, fh: [50, 14], fp: 1, fhk: 0, fpa: 34, fpr: 0, fe: 1, bh: [16, -2], bp: 1, bhk: 1, bpa: 90, ff: [26, 36], bf: [-28, 32] }, 'out'],
       [2, { rot: 12, tor: 26, head: 8, dx: 12, tw: 40, fh: [48, 18], fp: 1, fhk: 0, fpa: 34, fpr: 0, fe: 1, bh: [16, -2], bp: 1, bhk: 1, bpa: 90, ff: [26, 34], bf: [-28, 30] }], [3, J_(JD, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90 })]] }),
-  airKick: MM({ kind: 'kick', label: '腾空勾踢', stamp: '腾空勾踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 9, A: 13, R: 9, dmg: 11, reach: 120, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
-    limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true,
+  airKick: MM({ kind: 'kick', label: '腾空勾踢', stamp: '腾空勾踢', tier: 'air', lead: 'kick', height: 'high', open: true, S: 8, A: 12, R: 8, dmg: 8, reach: 120, vreach: AIR_VREACH, stun: 18, bstun: 11, kb: 6, stop: 8, shake: 5, power: .9,
+    limb: 'ff', fx: 'airKick', air: true, ghost: true, evadeCrouch: true, launch: 3, rebound: [5.2, 6.5],   // 4.0 腾空勾踢：勾倒他、自己往回弹开（打了就走，不接连招）
     keys: [[0, J_(JT, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90, fh: [26, 10], bh: [16, 14] })], [0.6, { rot: -4, tor: 8, head: -4, ff: [14, 56], bf: [-8, 44], fh: [30, -12], fp: 1, fhk: 1, fpa: 50, bh: [14, -8], bp: 1, bhk: 1, bpa: 90, tw: 10 }],
       [1, { rot: 10, tor: -24, head: 12, dx: 16, ff: [96, 34], ft: 42, bf: [-16, 48], fh: [36, -24], fp: 1, fhk: 1, fpa: 50, bh: [20, -22], bp: 1, bhk: 1, bpa: 90, tw: 10 }, 'back'],
       [2, { rot: 10, tor: -24, head: 12, dx: 16, ff: [96, 34], ft: 42, bf: [-16, 48], fh: [36, -24], fp: 1, fhk: 1, fpa: 50, bh: [20, -22], bp: 1, bhk: 1, bpa: 90, tw: 10 }], [3, J_(JD, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90 })]] }),
   // 坠枝（空中蹲 + 踢）：先往上一腾，再勾手指尖朝下往下插（主系「坠」：专破蹲着的、对空；怕站着的拳）
-  dive: MM({ kind: 'kick', label: '坠枝', stamp: '坠枝', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 10, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
-    limb: 'ff', fx: 'dive', air: true, ghost: true, dive: true, aaProof: true,
+  dive: MM({ kind: 'kick', label: '坠枝', stamp: '坠枝', tier: 'dive', lead: 'kick', height: 'high', S: 15, A: 40, R: 8, dmg: 8, reach: 84, vreach: 64, stun: 19, bstun: 10, kb: 2, stop: 8, shake: 6, power: .9,
+    limb: 'ff', fx: 'dive', air: true, ghost: true, dive: true, aaProof: true, rebound: [6.4, 8],   // 4.0 坠枝：踩一脚就往回弹出去两三个身位（别的派踩中落在他面前接连招）
     keys: [[0, J_(JT, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90, fh: [26, 10], bh: [16, 14] })], [0.7, { rot: -6, tor: 10, head: 4, ff: [20, 58], bf: [-10, 46], fh: [24, -30], fp: 1, fhk: 1, fpa: -90, bh: [-16, -26], bp: 1, bhk: 1, bpa: 90, tw: 0 }],
       [1, { rot: -34, tor: 16, head: 10, ff: [40, 32], bf: [-22, 30], fh: [44, 26], fp: 1, fhk: 1, fpa: 90, bh: [-30, -12], bp: 1, bhk: 1, bpa: 90, tw: 0 }, 'out'],
       [2, { rot: -34, tor: 16, head: 10, ff: [40, 32], bf: [-22, 30], fh: [44, 26], fp: 1, fhk: 1, fpa: 90, bh: [-30, -12], bp: 1, bhk: 1, bpa: 90, tw: 0 }], [3, J_(JD, { fp: 1, bp: 1, fhk: 1, bhk: 1, fpa: 60, bpa: 90 })]] }),
@@ -266,7 +266,7 @@ const MMOVES = {
     keys: [[0, { hy: 50, tor: 14, ff: [30, 0], bf: [-30, 0] }], [0.6, { hy: 72, tor: -6, head: 6, dx: 4, ff: [30, 60], bf: [-22, 0] }],
       [1, { hy: 62, tor: 18, head: -8, dx: 22, ff: [76, 4], bf: [-26, 0] }, 'out'], [2, { hy: 62, tor: 18, head: -8, dx: 22, ff: [76, 2], bf: [-26, 0] }], [3, {}]] }),
   // 蹦步进（冲刺）：两脚一蹬往前一蹦（猴步）
-  dash: MM({ kind: 'script', label: '蹦步进', S: 0, A: 0, R: 16, script: true, lunge: [0, 10, 96], inv: [0, 8],
+  dash: MM({ kind: 'script', label: '蹦步进', S: 0, A: 0, R: 13, script: true, lunge: [0, 8, 124], inv: [0, 5], cancelAt: 6,   // 4.0 蹦步进：一蹦老远（别人一倍又三成），快，无敌短
     keys: [[0, { hy: 58, tor: 14, head: -2, tw: 10, ff: [36, 0], bf: [-36, 0] }],
       [0.15, { hy: 66, tor: 22, head: -6, dx: 10, air: 7, tw: 10, ff: [42, 12], bf: [-40, 16], ...M_HI, ...M_CH }, 'out'],
       [0.5, { hy: 62, tor: 18, head: -4, dx: 12, air: 2, tw: 10, ff: [50, 2], bf: [-50, 6], ...M_HI, ...M_CH }],
@@ -296,11 +296,13 @@ const MMOVES = {
       [0.14, { tor: -12, head: -16, hy: 76, ...mHand('f', [50, -14], 'hook', -40, 0.8), ...mHand('b', [-34, -10], 'hook', -140, 0.8), ff: [40, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
       [0.5, { tor: -10, head: -14, hy: 74, ...mHand('f', [48, -12], 'hook', -40, 0.8), ...mHand('b', [-32, -8], 'hook', -140, 0.8), ff: [40, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
   // 螳螂扑蝉（大招，气满按重 + 踢）：蹲身蓄势，扑进去两只螳螂手一起勾进去 —— 打中把人发出去
-  super: MM({ kind: 'heavy', label: '螳螂扑蝉', stamp: '螳螂扑蝉', tier: 'super', S: 9, A: 6, R: 22, dmg: 48, reach: 130, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
-    limb: 'fh', fx: 'splash', ghost: true, lunge: [4, 9, 40], launch: 7, ender: true, noCancel: true, cost: QI_MAX, antiAir: 40,
-    keys: [[0, {}], [0.3, { hy: 54, tor: 18, head: -4, dx: -4, tw: 6, ff: [36, 0], bf: [-44, 0], fe: 1, be: 1, ...mHand('f', [24, -20], 'hook', -20, 0.8), ...mHand('b', [18, -28], 'hook', -20, 0.8) }, 'out'],
-      [1, { hy: 62, tor: 28, head: -2, dx: 34, tw: 12, ff: [56, 0], bf: [-40, 2], fe: 1, be: 1, ...mHand('f', [60, -4], 'hook', 64, 0.8, 0.4), ...mHand('b', [54, 6], 'hook', 64, 0.8, 0.4) }, 'back'],
-      [2, { hy: 62, tor: 28, head: -2, dx: 34, tw: 12, ff: [56, 0], bf: [-40, 2], fe: 1, be: 1, ...mHand('f', [60, -4], 'hook', 64, 0.8, 0.4), ...mHand('b', [54, 6], 'hook', 64, 0.8, 0.4) }], [3, {}]] }),
+  /* 4.0 七星连环 = 一段时间的状态（Jack：大招可以时间更持久、形式更独特）：气满按重 + 踢，两手一抖（evFury 帧起、前几帧无敌），进「疾」MT_FURY 帧（6 秒）——
+     出手 ×HASTE_S、收手 ×HASTE_R，连着打不限两下（不用刁）、不喘、蹦步退不用等、实连多 MT_FURY_SURE 下；本身不打人。气条一路往下掉 = 还剩多久（期间不涨气、爆不了气）。
+     对面：这六秒别让它贴上来（退、跳、挡着等它过去：它的架子还是薄的）、擒拿、爆气照旧；它没打着人这一格气就白花了 */
+  super: MM({ kind: 'script', label: '七星连环', S: 0, A: 0, R: 12, script: true, inv: [0, 9], evFury: 3, cost: QI_MAX, tier: 'super', fury: true,
+    keys: [[0, { hy: 56, tor: 16, head: -4, tw: 6, ff: [36, 0], bf: [-44, 0], fe: 1, be: 1, ...mHand('f', [24, -20], 'hook', -20, 0.8), ...mHand('b', [18, -28], 'hook', -20, 0.8) }],
+      [0.35, { hy: 64, tor: 4, head: -6, tw: -10, ff: [34, 0], bf: [-40, 0], fe: 1, be: 1, ...mHand('f', [40, -40], 'hook', 30, 0.8), ...mHand('b', [-6, -34], 'hook', 30, 0.8) }, 'out'],
+      [0.7, { hy: 60, tor: 12, head: -4, tw: 8, ff: [36, 0], bf: [-42, 0], fe: 1, be: 1, ...mHand('f', [38, -16], 'hook', 10, 0.8), ...mHand('b', [12, 10], 'hook', 10, 0.8) }], [1, {}]] }),
 };
 
 
@@ -327,6 +329,15 @@ function mtDirVs(F, O, near) {
 }
 // 一串里的样子：结尾连着打了几下（拳 / 重 / 踢；刁、勾搂算一个断点）
 const MT_STRIKE = { jab: 1, heavy: 1, kick: 1 };
+// 4.0 腾空劈打中：顺手勾住 —— 他失衡（和勾住一样记成 hook：下一下打中是「勾打」×MT_HOOK_MUL），硬直至少 MT_AIR_HOOK 帧
+const MT_AIR_HOOK = TFH(18);
+function mtAirHook(A, B) {
+  if (B.state !== 'hit' || B.airborne) return;
+  B.reel = true; B.reelKind = 'hook'; B.reelBy = A.idx; B.reelKD = false; B.stunT = Math.max(B.stunT, MT_AIR_HOOK);
+  if (!game.quiet && B.J) tag(B.x, B.J.head[1] - 30, '勾住', A, 20);
+}
+// 4.0 七星连环里（疾）：连着打不限两下
+const mtRunMax = F => F && F.hasteT > 0 ? 99 : MT_RUN_MAX;
 function mtRun(c) { let n = 0; for (let i = c.length - 1; i >= 0 && MT_STRIKE[c[i]]; i--) n++; return n; }
 // 上一下是哪只手打的（一串里两只手轮着出）：前手 / 前脚算前，后手算后
 const mtFrontLast = F => !!F && !/^b/.test(F.mtLastLimb || 'bh');
@@ -339,7 +350,7 @@ function mtVariant(kind, chain, air, mod, F) {
   const c = chain.filter(x => x !== 'pc'), last = c[c.length - 1], run = mtRun(c);
   if (kind === 'grab') return mod === 'down' ? 'lowGrab' : F && F.state === 'attack' && MT_STRIKE[last] ? 'mtDiao' : 'grab';   // 一串里打中 / 被挡住以后接着按拿 = 刁手（站着按的照旧是勾搂）
   if (mod === 'down') {
-    if (kind === 'jab') return last && run >= MT_RUN_MAX ? null : 'mtLiao';
+    if (kind === 'jab') return last && run >= mtRunMax(F) ? null : 'mtLiao';
     return { heavy: 'mtTiao', kick: 'mtSao' }[kind] || null;
   }
   const dc = F ? mtDirVs(F, F.opp, true) : 0;
@@ -350,7 +361,7 @@ function mtVariant(kind, chain, air, mod, F) {
   }
   if (kind === 'heavy' && dc === 1) return 'mtShuangFeng';           // 收势
   if (last === 'grab') return { jab: 'mtCun', heavy: 'mtChuan', kick: 'mtXiC' }[kind] || null;   // 刁以后（勾住、采住以后）
-  if (run >= MT_RUN_MAX) return null;                                // 连打不过两下
+  if (run >= mtRunMax(F)) return null;                               // 连打不过两下（4.0 七星连环里不限）
   if (kind === 'jab') return mtFrontLast(F) ? 'mtSiB' : 'mtSiF';
   if (kind === 'heavy') return mtFrontLast(F) ? 'mtKanB' : 'mtKanF';
   return 'mtXiC';
@@ -367,7 +378,7 @@ function mtCanCancel(F, kind) {
   if (c.length >= COMBO_MAX || !(MT_CANCEL[m.def.kind] || []).includes(kind)) return false;
   const last = c[c.length - 1];
   if (kind === 'grab') return !!MT_STRIKE[last];
-  if (mtRun(c) >= MT_RUN_MAX) return kind !== 'jab';
+  if (mtRun(c) >= mtRunMax(F)) return kind !== 'jab';
   return true;
 }
 
@@ -397,7 +408,7 @@ function mtInput(F, where, locked) {
   if (where === 'neutral') {
     F.mtBackPrev = mtBack(F);
     // 一串已经连着打了两下（接不上了）：再按就是另起一串（不然停手以后 0.4 秒里按拳什么都出不来）
-    if (F.chain.length && mtRun(F.chain.filter(x => x !== 'pc')) >= MT_RUN_MAX) F.chain = [];
+    if (F.chain.length && mtRun(F.chain.filter(x => x !== 'pc')) >= mtRunMax(F)) F.chain = [];
     return false;
   }
   if (where !== 'attack') return false;
@@ -406,6 +417,8 @@ function mtInput(F, where, locked) {
   const back = !locked && !m.mtBack0 && mtBack(F);
   if (d.script) {
     if (m.name === 'mtGouZhu' || m.name === 'mtCai') return mtPullStep(F, m, k);
+    // 4.0 七星连环：两手一抖那一帧起进「疾」MT_FURY 帧（气条跟着剩下的时间往下掉，见拳派表的 hasteStep）
+    if (d.fury && !m.furyOn && k >= d.evFury) { m.furyOn = true; F.hasteT = MT_FURY; if (!game.quiet) { burstFx(F); if (F.J) stamp(F.J.head[0] - F.facing * 52, F.J.head[1] - 46, '七星连环', 30, F); } F.stats.supers++; }
     return false;
   }
   // 刁手：打中了 —— 他接着挨打的硬直续上（招自己的 stun）、失衡（下一下 ×MT_DIAO_MUL 刁打），刁着手往回带到面前；被挡住了只往回带（挡住的照旧挡住）
@@ -421,10 +434,10 @@ function mtInput(F, where, locked) {
   if (!m.air && !m.mtWinded && m.t >= m.S + d.A + 1) {
     m.mtWinded = true;
     const n = mtChainLen(F);
-    if (n >= 3) { m.pen = (m.pen || 0) + grid(MT_WIND * (n - 2)); if (!game.quiet && F.J) tag(F.J.head[0] - F.facing * 12, F.J.head[1] - 40, '喘', F, 15); }
+    if (n >= 3 && !(F.hasteT > 0)) { m.pen = (m.pen || 0) + grid(MT_WIND * (n - 2)); if (!game.quiet && F.J) tag(F.J.head[0] - F.facing * 12, F.J.head[1] - 40, '喘', F, 15); }
   }
   // 蹦步退：打中 / 被挡住以后（判定出来了）按一下后 —— 收招换成往后一蹦（打空了不能蹦）
-  if (back && !m.air && d.kind !== 'grab' && d.kind !== 'push' && (m.hit || m.blocked) && m.t >= m.S + 1 && !d.noHop && F.clock - (F.mtHopAt === undefined ? -999 : F.mtHopAt) >= MT_HOP_COOL) {
+  if (back && !m.air && d.kind !== 'grab' && d.kind !== 'push' && (m.hit || m.blocked) && m.t >= m.S + 1 && !d.noHop && (F.hasteT > 0 || F.clock - (F.mtHopAt === undefined ? -999 : F.mtHopAt) >= MT_HOP_COOL)) {
     mtHop(F);
     return true;
   }
@@ -616,6 +629,9 @@ const M_BENCH_GROUPS = [
 ];
 STYLES.mantis = {
   id: 'mantis', name: '螳螂拳', moves: MMOVES, relation: mtRelation, cancel: MT_CANCEL, variant: mtVariant, poses: MPOSE, base: MBASE,
+  sure: F => 4 + (F.hasteT > 0 ? MT_FURY_SURE : 0),   // 4.0 实连四下（一下一下轻、打得快）；七星连环里多两下
+  jumpV: 0.88, jumpVx: 1.3,   // 4.0 蹦：跳得矮一点、平着蹿出去快三成
+  hasteStep(F) { F.qi = Math.round(QI_MAX * F.hasteT / MT_FURY * 10) / 10; },   // 七星连环：气条 = 还剩多久
   blockHeavy: 'mtGua', parry: false, runMul: MT_RUN,   // 没有卸力（勾是它的卸力）；挡住按重是挂捶；跑得快一成
   input: mtInput, canCancel: mtCanCancel, defend: mtDefend, grab: mtGrab, target: mtTarget, drawCue: mtDrawCue,
   benchGroups: M_BENCH_GROUPS, benchHit: ['mtBeng', 'mtTan', 'mtChe', 'mtLiao', 'mtPi', 'mtGuaDa', 'mtTiao', 'mtGou', 'mtXi', 'mtSao', 'mtSiF', 'mtSiB', 'mtKanF', 'mtKanB', 'mtXiC',

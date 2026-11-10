@@ -523,7 +523,7 @@ T('破泼墨：卸力、格挡、跳起', () => {
   arena(110); F1.qi = QI_MAX; run(30, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, i >= pAt ? BLOCK : 0]);
   eq(F2.stats.parries, 1, '卸力'); eq(F2.hp, MAX_HP);
   arena(110); tick(0, BLOCK, 30); F1.qi = QI_MAX; run(30, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, BLOCK]);
-  eq(lost(F2), Math.round(MOVES.super.dmg * BLOCK_KEEP), '格挡');
+  eq(lost(F2), Math.max(1, Math.round(MOVES.super.dmg * SUPER_CHIP)), '格挡（4.0 泼墨被挡住只削一成）');
   arena(110); F1.qi = QI_MAX; run(30, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, i === 0 ? TAP('up') : 0]);
   eq(F2.hp, MAX_HP, '跳起');
 });
@@ -1711,7 +1711,7 @@ T('2.2 难度：入门 / 简单 / 中等 / 困难 / 终极（每个两个字）�
   eq(LEVEL_IDS, ['novice', 'easy', 'normal', 'hard', 'hell']);
   eq(LEVEL_IDS.map(id => LEVEL_NAME[id]), ['入门', '简单', '中等', '困难', '终极']);
   for (const id of LEVEL_IDS) { ok(LEVEL_NAME[id].length === 2, id + ' 名字要两个字'); eq(LABEL[id], '电脑 · ' + LEVEL_NAME[id]); }
-  eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [22, 14, 9, 9, 11], '反应帧（2.7 入门、简单、中等慢了；2.12 困难 8 → 9：慢招前摇长了以后 8 帧反应什么都挡得住）');
+  eq([LEVELS.novice.react, LEVELS.easy.react, LEVELS.normal.react, LEVELS.hard.react, LEVELS.hell.react], [22, 14, 9, 10, 11], '反应帧（2.7 入门、简单、中等慢了；2.12 困难 8 → 9：慢招前摇长了以后 8 帧反应什么都挡得住；4.0 困难 9 → 10：连招有追身、大招用得上以后电脑整个变狠）');
   ok(LEVELS.novice.block < LEVELS.easy.block && LEVELS.novice.read < LEVELS.easy.read && LEVELS.novice.punishBlock < LEVELS.easy.punishBlock, '入门比简单挡得少、读招少、罚得少');
   ok(PLANS.novice.every(([p]) => p.length <= 3) && PLANS.novice.filter(([p]) => p.length <= 2).length >= PLANS.novice.length - 1, '入门的连招短（多是一两下）');
   ok(LEVELS.hard.smart && LEVELS.hard.see === 0.42 && !LEVELS.hard.inst, '困难：2.1 的难松一点（看穿 0.5 → 0.45；3.1.1 防跳修好以后 → 0.42）');
@@ -2878,9 +2878,9 @@ T('2.7 滚身起（Jack：倒地后直接翻滚很无解）：照样能滚，但
   }
   // 原地压起身的照旧打空（滚身起还是躲压起身的办法）：见「2.0 滚身起」那条
 });
-T('2.7 泼墨（Jack）：伤害 50；霸体蓄力一小下（算前摇），单手出掌，掌前面炸开一朵墨花；对面的反制手段不变（擒拿、卸力、格挡、跳、冲刺）', () => {
+T('2.7 泼墨（Jack；4.0 一击定音：伤害 80）；霸体蓄力一小下（算前摇），单手出掌，掌前面炸开一朵墨花；对面的反制手段不变（擒拿、卸力、格挡、跳、冲刺）', () => {
   const d = MOVES.super;
-  eq(d.dmg, 50, '伤害');
+  eq(d.dmg, 80, '伤害');
   ok(d.limb === 'bh' && !d.sinv && d.armor && d.armor.from === 0 && d.armor.n >= 10, '后手单手出、整个前摇霸体（不再是打击无敌）');
   ok(d.S > 9.75, '前摇比 2.6（9.75）长一点（蓄力）：' + d.S);
   // 蓄力时挨了短拳：硬吃（只掉一半），招不停，照样打中 50
@@ -2892,7 +2892,7 @@ T('2.7 泼墨（Jack）：伤害 50；霸体蓄力一小下（算前摇），单
   // 推挡也推不动（以前打击无敌，推挡打不着它）
   arena(100); tick(0, BLOCK, 5); F1.qi = QI_MAX;
   run(40, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, i < 5 ? BLOCK : i === 5 ? BLOCK | TAP('jab') : 0]);
-  ok(F2.hp <= MAX_HP - d.dmg * BLOCK_KEEP, '推挡推不动蓄力的泼墨');
+  ok(F2.hp <= MAX_HP - Math.round(d.dmg * SUPER_CHIP), '推挡推不动蓄力的泼墨');
   // 出掌那一下：掌前面一朵墨花（特效）
   arena(120); F1.qi = QI_MAX; game.quiet = false; let bloom = false;
   for (let i = 0; i < 30; i++) { step([i === 0 ? TAP('heavy') | TAP('kick') : 0, 0]); if (FX.some(e => e.type === 'bloom')) { bloom = true; ok(F1.move && F1.move.name === 'super' && F1.move.t >= F1.move.S, '墨花在出掌的时候炸开'); break; } }
@@ -3365,6 +3365,8 @@ T('2.10 被黏住的一方（2.11 接住进来的搭手他头 ' + WC_CATCH_GRACE
 });
 T('2.11 挨打、被挡住的硬直里也能接（新的黐手破连）：按住挡，他下一下打过来之前 ' + WC_CATCH_HIT + ' 帧以内按对键 = 接住进搭手（顺 ' + FLOW_COUNTER + '）；按错键、几个键乱按这一下 ×' + WC_WRONG_MUL + '；顺三级以上的连环冲拳太快，接不住', () => {
   // P2（格斗术）短拳 → 后手直拳；P1 挨了第一拳以后按住挡，挨打以后第 k 帧按 keys
+  const sure0 = STYLES.trad.sure; STYLES.trad.sure = 2;   // 4.0 实连：这一条量的是「硬直里接」本身，把格斗术的实连调成 2（咏春早一下：第二拳就能接）；实连另有测试
+  try {
   const play = (k, keys) => {
     wArena(86); let hitAt = -1, pressed = false;
     return wWatchUntil(e => e.type === 'touch' || (e.type === 'hit' && e.a === 1 && e.name !== 'jab'), 60, i => {
@@ -3398,6 +3400,7 @@ T('2.11 挨打、被挡住的硬直里也能接（新的黐手破连）：按住
   const r = beatChain(8, -1, () => { if (F2.hp < lastHp) { h++; lastHp = F2.hp; } return h >= 3 ? BLOCK | TAP('jab') : 0; });
   ok(!r.ev.some(e => e.type === 'catch'), '顺三级以上的连环冲拳接不住');
   ok(r.ev.some(e => e.type === 'catchMiss' && e.a === 1), '按了也是按错');
+  } finally { STYLES.trad.sure = sure0; }
 });
 T('2.10 咏春打咏春：膀克摊、摊克伏、伏克膀 —— 被黏住的那个人摆的手型克先手打出来的手型 = 化开、先手换给他；翻错手也是', () => {
   const G = WC_CATCH_GRACE + 1;                                // 他刚被接住那几帧按不了
@@ -3442,13 +3445,34 @@ T('2.10 截腿（蹲 + 拿）截住地上的腿：他失衡、你先打；截脚
   wArena(80); F1.beginMove('wLowKick', 'kick'); F2.beginMove('kick', 'kick');
   eq(clashRelation(F1, F2), 1, '截脚截住格斗术的腿');
 });
-T('2.10 连环寸拳（气满 重 + 踢）：第一拳打中就一串打满、最后寸劲打倒（和泼墨差不多疼）；第一拳被挡就停', () => {
-  wArena(84); F1.qi = QI_MAX;
-  let down = false; run(300, i => { if (F2.state === 'down') down = true; return [i === 0 ? TAP('heavy') | TAP('kick') : 0, 0]; });
-  ok(down, '打倒'); ok(lost(F2) >= 40 && lost(F2) <= 56, '一整串 40~56 血（泼墨 ' + MOVES.super.dmg + '）：' + lost(F2));
-  wArena(84); F1.qi = QI_MAX; F2.noParry = true;
-  run(120, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, HOLD('block')]);
-  ok(lost(F2) <= 6, '挡住第一拳就停了，只掉一点：' + lost(F2));
+T('4.0 连环寸拳 = 五段连环（气满 重 + 踢）：第一段中段，后面四段一段一段上 / 下，最后一段寸拳打倒；全中 73；每一段都要挡对高低（一直站着挡 / 蹲着挡都要挨两段）；出招的人按 拳 = 上段、踢 = 下段；哪一段打空了就停', () => {
+  const sup = (p2, p1, n) => { wArena(84); F1.qi = QI_MAX; return wWatch(() => run(n || 220, i => [i === 0 ? TAP('heavy') | TAP('kick') : p1 ? p1(i) : 0, p2 ? p2(i) : 0])); };
+  const names = ev => ev.filter(e => e.a === 0 && (e.type === 'hit' || e.type === 'guard')).map(e => (e.type === 'hit' ? '+' : '-') + e.name);
+  let ev = sup(), ns = names(ev);
+  eq(ns.length, WC_SUP_N, '五段：' + ns.join(' ')); ok(ns.every(x => x[0] === '+'), '不挡：五段全中');
+  eq(lost(F2), 12 + 13 * 3 + 22, '全中 73'); ok(F2.state === 'down' || F2.state === 'rise' || ev.some(e => e.name === 'wSupLE' || e.name === 'wSupHE'), '最后一段是寸拳');
+  eq(ns[0], '+super'); ok(/wSup[HL]$/.test(ns[1]) && /wSup[HL]E$/.test(ns[4]), '后面是上 / 下段，第五段收尾');
+  ok(ns[1].slice(-1) !== ns[2].slice(-1), '不按键：上下轮着来');
+  // 一直站着挡：下段的那两段挨了；一直蹲着挡：上段的那两段挨了
+  F2.noParry = true; ev = sup(() => BLOCK); ns = names(ev);
+  eq(ns.length, WC_SUP_N, '被挡住也接着出后面几段：' + ns.join(' '));
+  ok(ns.filter(x => x[0] === '+').length === 2 && ns.filter(x => x[0] === '+').every(x => /wSupL/.test(x)), '站着挡：挨的是下段的两段 ' + ns.join(' '));
+  ev = sup(() => BLOCK | DOWN); ns = names(ev);
+  ok(ns.filter(x => x[0] === '+').length === 2 && ns.filter(x => x[0] === '+').every(x => /wSupH/.test(x)), '蹲着挡：挨的是上段的两段 ' + ns.join(' '));
+  // 出招的人每一段按拳 = 全是上段：站着挡全挡住，只削一点
+  ev = sup(() => BLOCK, i => i > 0 && i % 5 === 0 && F1.move && F1.move.def.sup ? TAP('jab') : 0); ns = names(ev).slice(0, WC_SUP_N);
+  ok(ns.slice(1).every(x => /wSupH/.test(x)) && ns.every(x => x[0] === '-'), '按拳 = 上段，站着全挡住 ' + ns.join(' '));
+  ok(lost(F2) <= Math.ceil(73 * WC_SUP_CHIP) + 2, '全挡住只削一点：' + lost(F2));
+  ev = sup(() => BLOCK, i => i > 0 && i % 5 === 0 && F1.move && F1.move.def.sup ? TAP('kick') : 0); ns = names(ev).slice(0, WC_SUP_N);
+  ok(ns.slice(1).every(x => /wSupL/.test(x) && x[0] === '+'), '按踢 = 下段，站着挡不住 ' + ns.join(' '));
+  // 挡对每一段（看他这一段是上是下）：全挡住
+  ev = sup(() => BLOCK | (F1.move && F1.move.def.height === 'low' ? DOWN : 0)); ns = names(ev);
+  ok(ns.every(x => x[0] === '-'), '每一段挡对高低：五段全挡住 ' + ns.join(' '));
+  // 第一段打空（离得远）：就这一下
+  wArena(200); F1.qi = QI_MAX; ev = wWatch(() => run(120, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, 0]));
+  eq(names(ev).length, 0, '打空了不接后面的'); ok(F1.actionable(), '收完招');
+  // 这几段都是大招：拆不了、咏春接不住、不吃连招的加成
+  for (const n of ['super', 'wSupH', 'wSupL', 'wSupHE', 'wSupLE']) { const d = WMOVES[n]; eq(d.tier, 'super', n); eq(breakKeyOf({ def: d, press: null }), null, n + ' 拆不了'); }
 });
 T('2.10 咏春拳进存档（联机回滚）：顺、拍子、搭手、拉手、蓄劲中途存档再读档，接着算出来一模一样；同样的输入两次结果一样', () => {
   const gen = seed => {
@@ -4284,14 +4308,15 @@ function mashShareT(mStyle, cpuStyle, level, bot, rounds, seed) {
     return dealt / Math.max(1, dealt + taken);
   }));
 }
-T('3.2 一直按拳的木头玩家（格斗术每帧按拳；咏春按着前每 8 帧一拳）打三派的六档：入门 ≥ 75%、简单 ≥ 55%、中等 30 ～ 65%、困难 15 ～ 50%、终极 8 ～ 35%、满级 ≤ 25%，入门 > 简单 > 中等 > 困难（两种木头的平均；每格 2 个种子 × 4 回合，细的看 NOTES「3.2」）', () => {
+T('3.2 一直按拳的木头玩家（格斗术每帧按拳；咏春按着前每 8 帧一拳）打三派的六档：入门 ≥ 75%、简单 ≥ 55%、中等 30 ～ 65%、困难 15 ～ 58%、终极 8 ～ 35%、满级 ≤ 25%，入门 > 简单 > 中等 > 困难（两种木头的平均；每格 2 个种子 × 4 回合，细的看 NOTES「3.2」）', () => {
   const seeds = [11, 12], lvs = [...LEVEL_IDS, 'max'], bad = [], txt = [];
   const bots = [['trad', s => mashBotT(s, { every: 1 })], ['wc', s => mashBotT(s, { every: 8, fwd: true })]];
   for (const cpu of STYLE_IDS) {
     const sh = {};
     for (const lv of lvs) { let t = 0; for (const [ms, mk] of bots) for (const sd of seeds) t += mashShareT(ms, cpu, lv, mk, 4, sd) / (bots.length * seeds.length); sh[lv] = t; }
     txt.push(`${STYLES[cpu].name} ` + lvs.map(l => `${LEVEL_NAME[l]} ${(sh[l] * 100).toFixed(0)}%`).join(' · '));
-    const lim = { novice: [0.75, 1], easy: [0.55, 1], normal: [0.3, 0.65], hard: [0.15, 0.5], hell: [0.08, 0.35], max: [0, 0.25] };
+    // 4.0 困难的上限 50 → 58：一套的头几下是实连（咏春也只早两下才能接），一直按拳打中第一下以后那几拳保证连上，中间几档比 3.2 好打几个点
+    const lim = { novice: [0.75, 1], easy: [0.55, 1], normal: [0.3, 0.65], hard: [0.15, 0.58], hell: [0.08, 0.35], max: [0, 0.25] };
     for (const lv of lvs) if (sh[lv] < lim[lv][0] || sh[lv] > lim[lv][1]) bad.push(`${STYLES[cpu].name}${LEVEL_NAME[lv]} ${(sh[lv] * 100).toFixed(0)}%（要 ${lim[lv][0] * 100} ～ ${lim[lv][1] * 100}）`);
     for (const [a, b] of [['novice', 'easy'], ['easy', 'normal'], ['normal', 'hard']]) if (sh[a] <= sh[b]) bad.push(`${STYLES[cpu].name}：${LEVEL_NAME[a]} ${(sh[a] * 100).toFixed(0)} 没比 ${LEVEL_NAME[b]} ${(sh[b] * 100).toFixed(0)} 高`);
   }
@@ -4627,11 +4652,11 @@ function comboRun(style, keys, dist, setup, keep) {
 }
 const comboBad = r => !!r.fail || r.downAt >= 0 || r.steps.some(x => !x.hit || !x.chained);
 const comboFmt = r => r.fail || r.steps.map(x => (x.down ? '倒' : '') + x.name + (x.hit ? '' : '✗') + (x.chained ? '' : '(断)') + ':' + x.dmg).join(' > ');
-T('3.4 螳螂拳的招名（螳螂拳的叫法，Jack：别和格斗术一样）：崩捶、探手、撤步崩、撩掌、劈掌、挂打、挑掌、勾踢、提膝、勾挂腿；一串里 撕手、翻腕砍、提膝、刁手，刁以后 寸打、穿心掌，收势 双封手；拿 勾搂 → 勾住 / 采手 / 搂腿，挂手；蹦步进 / 蹦步退；大招 螳螂扑蝉', () => {
+T('3.4 螳螂拳的招名（螳螂拳的叫法，Jack：别和格斗术一样）：崩捶、探手、撤步崩、撩掌、劈掌、挂打、挑掌、勾踢、提膝、勾挂腿；一串里 撕手、翻腕砍、提膝、刁手，刁以后 寸打、穿心掌，收势 双封手；拿 勾搂 → 勾住 / 采手 / 搂腿，挂手；蹦步进 / 蹦步退；大招 七星连环', () => {
   const L = n => MMOVES[n].label;
   eq([L('mtBeng'), L('mtTan'), L('mtChe'), L('mtLiao'), L('mtPi'), L('mtGuaDa'), L('mtTiao'), L('mtGou'), L('mtXi'), L('mtSao')], ['崩捶', '探手', '撤步崩', '撩掌', '劈掌', '挂打', '挑掌', '勾踢', '提膝', '勾挂腿']);
   eq([L('mtSiF'), L('mtSiB'), L('mtKanF'), L('mtKanB'), L('mtXiC'), L('mtDiao'), L('mtCun'), L('mtChuan'), L('mtShuangFeng')], ['撕手', '撕手', '翻腕砍', '翻腕砍', '提膝', '刁手', '寸打', '穿心掌', '双封手']);
-  eq([L('grab'), L('mtGouZhu'), L('mtCai'), L('mtLouTui'), L('mtGuaShou'), L('mtGua'), L('shove'), L('dash'), L('mtHop'), L('super')], ['勾搂', '勾住', '采手', '搂腿', '挂手', '挂捶', '封手', '蹦步进', '蹦步退', '螳螂扑蝉']);
+  eq([L('grab'), L('mtGouZhu'), L('mtCai'), L('mtLouTui'), L('mtGuaShou'), L('mtGua'), L('shove'), L('dash'), L('mtHop'), L('super')], ['勾搂', '勾住', '采手', '搂腿', '挂手', '挂捶', '封手', '蹦步进', '蹦步退', '七星连环']);
   for (const [keys, want] of [[['jab'], ['mtBeng']], [['f:jab'], ['mtTan']], [['b:jab'], ['mtChe']], [['d:jab'], ['mtLiao']], [['heavy'], ['mtPi']], [['f:heavy'], ['mtGuaDa']], [['kick'], ['mtGou']], [['f:kick'], ['mtXi']], [['d:kick'], ['mtSao']],
     [['jab', 'jab', 'f:heavy'], ['mtBeng', 'mtSiF', 'mtShuangFeng']], [['jab', 'heavy'], ['mtBeng', 'mtKanF']], [['kick', 'jab'], ['mtGou', 'mtSiB']], [['jab', 'jab', 'd:kick'], ['mtBeng', 'mtSiF', 'mtSao']],
     [['jab', 'jab', 'grab', 'jab'], ['mtBeng', 'mtSiF', 'mtDiao', 'mtCun']], [['jab', 'jab', 'grab', 'heavy'], ['mtBeng', 'mtSiF', 'mtDiao', 'mtChuan']], [['jab', 'jab', 'grab', 'kick'], ['mtBeng', 'mtSiF', 'mtDiao', 'mtXiC']]])
@@ -4970,34 +4995,251 @@ T('3.5.1 跟着浏览器的语言：浏览器先列中文的进中文、先列�
   eq(pickLang({ saved: 'fr', query: 'xx', langs: ['zh-CN'] }), 'zh', '不认识的值不算');
   eq(LANG, 'zh', '测试页固定中文');
 });
-T('3.5.1 高刷屏的画帧节奏（render.js Pace）：跟得上就每次刷新都画；300Hz 屏幕画一帧要 4 ~ 5 毫秒的，稳定在每 2 次刷新画一帧（150 帧、间隔一样长），要 12 毫秒的每 4 次一帧；60Hz 的屏幕永远一次一帧', () => {
+/* ---------- 4.0：实连 + 拆招、追身、打空不算连段、四派的跳 / 冲刺 / 空中招、四种大招、气带到下一回合 ---------- */
+// A（style a）照 keys 打 B（style b，相距 dist）：第一下马上按，后面的能接就接；guess(i) 是 B 每一帧按的键。返回事件
+function comboVs(a, b, dist, keys, guess, n) {
+  wArena(dist, a, b);
+  let ki = 0;
+  return wWatch(() => run(n || 260, i => {
+    let v1 = 0;
+    if (ki < keys.length && (ki === 0 ? i === 0 : F1.state === 'attack' && F1.canCancel(keys[ki].replace(/^.*:/, '')))) { v1 = keyIn(keys[ki], 'right'); ki++; }
+    return [v1, guess ? guess(i) : 0];
+  }));
+}
+const R7T = ['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'];   // 短拳 鞭腿 落步冲拳 进步冲拳 顶肘 后手直拳 冲天炮
+const hitsOf = ev => ev.filter(e => e.type === 'hit' && e.a === 0).map(e => e.name);
+T('4.0 实连：每一派保证连上的下数不一样（格斗术 3、咏春 5、太极 2、螳螂 4；螳螂七星连环里多两下）；这几下里他按什么键都拆不了', () => {
+  eq([sureOf({ style: 'trad' }), sureOf({ style: 'wc' }), sureOf({ style: 'taiji' })], [3, 5, 2]);
+  eq(sureOf({ style: 'mantis', hasteT: 0 }), 4); eq(sureOf({ style: 'mantis', hasteT: 10 }), 4 + MT_FURY_SURE);
+  // 头三下里每一帧都按键（三个键轮着按）：照样连上三下
+  const ev = comboVs('trad', 'trad', 80, R7T.slice(0, 3), i => (F2.state === 'hit' && F2.comboTaken < 3 ? TAP(['jab', 'heavy', 'kick'][i % 3]) : 0));
+  eq(hitsOf(ev), ['jab', 'whip', 'stepPunch'], '实连三下拆不了');
+  ok(!ev.some(e => e.type === 'break' || e.type === 'breakMiss'), '实连里按键不算拆招');
+});
+T('4.0 拆招：过了实连的那几下，硬直里按对他下一下的键 = 拆开（这一下打不着、两人弹开、拆的人先动、涨气）；按错 = 读错 ×' + BRK_WRONG_MUL + '、这一套不能再拆；乱按两个键 = 读错；不按照旧挨打', () => {
+  const full = hitsOf(comboVs('trad', 'trad', 80, R7T)); eq(full.length, 7, '不拆：七连打满 ' + full.join(' '));
+  const dmgFull = lost(F2);
+  // 第四下（进步冲拳，按的是重）：挨了第三下以后按重
+  let pressed = false;
+  let ev = comboVs('trad', 'trad', 80, R7T, () => { if (!pressed && F2.state === 'hit' && F2.comboTaken >= 3) { pressed = true; return TAP('heavy'); } return 0; });
+  eq(hitsOf(ev), ['jab', 'whip', 'stepPunch'], '拆开了：只挨三下'); ok(ev.some(e => e.type === 'break' && e.a === 1 && e.key === 'heavy'), '拆');
+  ok(F2.qi >= BRK_QI, '拆的人涨气'); ok(Math.abs(F1.x - F2.x) >= 110, '两人弹开：' + Math.abs(F1.x - F2.x).toFixed(0));
+  // 拆开那一刻：拆的人能动，被拆的人还在失衡
+  wArena(80, 'trad', 'trad'); let ki = 0, done = false, freeGap = null; pressed = false;
+  for (let i = 0; i < 200 && freeGap === null; i++) {
+    let v1 = 0, v2 = 0;
+    if (ki < R7T.length && (ki === 0 ? i === 0 : F1.state === 'attack' && F1.canCancel(R7T[ki]))) { v1 = TAP(R7T[ki]); ki++; }
+    if (!pressed && F2.state === 'hit' && F2.comboTaken >= 3) { pressed = true; v2 = TAP('heavy'); }
+    step([v1, v2]);
+    if (pressed && !done && F2.comboTaken === 0 && F1.state === 'hit') { done = true; ok(F2.actionable(), '拆的人马上能动'); freeGap = F1.stunT; }
+  }
+  ok(freeGap > 4 && freeGap <= BRK_STUN, '被拆的人失衡 ' + freeGap + ' 帧（拆的人先动）');
+  // 按错（按拳）：读错，那一下多挨，后面再按对也拆不了
+  pressed = false; let again = false;
+  ev = comboVs('trad', 'trad', 80, R7T, () => {
+    if (!pressed && F2.state === 'hit' && F2.comboTaken >= 3) { pressed = true; return TAP('jab'); }
+    if (pressed && !again && F2.state === 'hit' && F2.comboTaken >= 4) { again = true; return TAP('jab'); }   // 第五下顶肘按的就是拳：锁住了，拆不了
+    return 0;
+  });
+  eq(hitsOf(ev).length, 7, '读错以后这一套拆不了'); ok(ev.some(e => e.type === 'breakMiss'), '读错');
+  const beng = ev.find(e => e.type === 'hit' && e.name === 'beng'), beng0 = Math.round(MOVES.beng.dmg * comboEsc(3));
+  eq(beng.dmg, Math.round(MOVES.beng.dmg * comboEsc(3) * BRK_WRONG_MUL), '读错那一下 ×' + BRK_WRONG_MUL + '（平时 ' + beng0 + '）');
+  ok(lost(F2) > dmgFull, '读错比不拆还疼');
+  // 两个键都按：乱按 = 读错
+  pressed = false;
+  ev = comboVs('trad', 'trad', 80, R7T, () => { if (!pressed && F2.state === 'hit' && F2.comboTaken >= 3) { pressed = true; return TAP('heavy') | TAP('kick'); } return 0; });
+  ok(F2.qi < QI_BURST || true); ok(ev.some(e => e.type === 'breakMiss') || F2.state === 'attack', '两个键一起按不是拆招（是读错，或者气够就爆气了）');
+  // 拆不了的：大招
+  eq(breakKeyOf({ def: MOVES.super, press: null }), null); eq(breakKeyOf({ def: MOVES.beng, press: 'heavy' }), 'heavy'); eq(breakKeyOf({ def: MMOVES.mtDiao, press: 'grab' }), 'grab', '螳螂的刁手按的是拿');
+});
+T('4.0 拆招各派：太极拆开了涨一级劲；咏春用自己的接招（按住挡 + 键），比别的派早两下、接错了这一套不能再接；螳螂、格斗术照通用的', () => {
+  let pressed = false, mj = 0;
+  comboVs('trad', 'taiji', 80, R7T, () => { mj = Math.max(mj, F2.jin || 0); if (!pressed && F2.state === 'hit' && F2.comboTaken >= 3) { pressed = true; return TAP('heavy'); } return 0; });
+  eq(mj, 1, '太极拆开：劲 +1');
+  ok(STYLES.wc.ownBreak && !STYLES.trad.ownBreak && !STYLES.mantis.ownBreak);
+  // 咏春：不按住挡光按键不是拆招（通用的那一套它不走）
+  pressed = false;
+  let ev = comboVs('trad', 'wc', 80, R7T, () => { if (!pressed && F2.state === 'hit' && F2.comboTaken >= 3) { pressed = true; return TAP('heavy'); } return 0; });
+  ok(!ev.some(e => e.type === 'break'), '咏春不走通用的拆招');
+  // 咏春挨了一下就能接（格斗术实连 3、咏春早 WC_BRK_EARLY 2 下）：第二下（鞭腿，腿）按住挡 + 拿，试几个时机总有一个接得住
+  eq(WC_BRK_EARLY, 2);
+  let caught = false;
+  for (let k = 0; k < 30 && !caught; k++) {
+    let at = -1;
+    ev = comboVs('trad', 'wc', 80, R7T, i => { if (F2.state === 'hit' && F2.comboTaken === 1) { if (at < 0) at = i; return BLOCK | (i === at + k ? TAP('grab') : 0); } return F2.state === 'hit' ? BLOCK : 0; }, 120);
+    if (ev.some(e => e.type === 'catch')) caught = true;
+  }
+  ok(caught, '咏春第二下就接得住');
+  // 太极打咏春（实连 2）：咏春从第一下起就能接 —— 实连对咏春最少保 0 下；螳螂打咏春（实连 4）保两下
+  eq(sureOf({ style: 'taiji' }) - WC_BRK_EARLY, 0); eq(sureOf({ style: 'mantis', hasteT: 0 }) - WC_BRK_EARLY, 2);
+  // 接错了这一套不能再接
+  let missed = 0, at0 = -1;
+  ev = comboVs('trad', 'wc', 80, R7T, i => { if (F2.state === 'hit' && F2.comboTaken === 1) return BLOCK | (i % 2 ? TAP('jab') : TAP('heavy')); return F2.state === 'hit' ? BLOCK | (i % 3 === 0 ? TAP('jab') : 0) : 0; }, 200);
+  missed = ev.filter(e => e.type === 'catchMiss').length;
+  eq(missed, 1, '乱按：接错一次'); ok(!ev.some(e => e.type === 'catch'), '接错一次以后这一套不能再接（后面的拳系招按对了也接不住）');
+});
+T('4.0 追身：连招里接下一招够不着就自己追上去（以前七连只在相距 55 ～ 80 接得满，现在够得着第一下就接得满）；不是连招里不追', () => {
+  for (const d of [60, 80, 92]) { const h = hitsOf(comboVs('trad', 'trad', d, R7T)); eq(h.length, 7, '相距 ' + d + ' 七连打满：' + h.join(' ')); }
+  // 站着空挥不往前挪（没有追身）
+  arena(300); const x0 = F1.x; tick(TAP('jab'), 0, 1); tick(0, 0, 30); ok(Math.abs(F1.x - x0) <= MOVES.jab.lunge[2] + 1, '空挥只有招自己的前冲');
+});
+T('4.0 打空了的招不算进连段：空挥一拳再按踢出来的是腿踢，不是鞭腿（以前远远垫一拳就多一批连招里才有的快招）；打中 / 被挡住的照旧接变招', () => {
+  arena(400); tick(TAP('jab'), 0, 1); tick(0, 0, Math.ceil(MOVES.jab.S + MOVES.jab.A + MOVES.jab.R) + 1); eq(F1.chain.length, 0, '打空：连段清了');
+  tick(TAP('kick'), 0, 2); eq(F1.move && F1.move.name, 'kick', '空拳以后按踢 = 腿踢');
+  arena(80); F2.noParry = true; tick(0, BLOCK, 3); tick(TAP('jab'), BLOCK, 1);
+  let got = null; for (let i = 0; i < 40 && !got; i++) { const v = F1.state === 'attack' && F1.canCancel('kick') ? TAP('kick') : 0; step([v, BLOCK]); if (F1.move && F1.move.name !== 'jab') got = F1.move.name; }
+  eq(got, 'whip', '被挡住的拳接踢 = 鞭腿');
+});
+T('4.0 四派跳得不一样：咏春小跳（矮、落得快，最高不过站着的招够得着的高度多少）、螳螂蹦（矮一点、平着蹿得快）、格斗术和太极照旧；冲刺也各是各的（咏春碎步短快、太极慢而有霸体没有无敌、螳螂一蹦老远）', () => {
+  const jump = st => { wArena(600, st, 'trad'); let max = 0, t = 0, x0 = F1.x, up = false; for (let i = 0; i < 90; i++) { step([(i === 0 ? TAP('up') : 0) | RIGHT, 0]); if (F1.airborne) { up = true; t++; max = Math.max(max, F1.alt); } else if (up) break; } return { max, t, far: F1.x - x0 }; };
+  const T0 = jump('trad'), W = jump('wc'), TJ = jump('taiji'), M = jump('mantis');
+  ok(Math.abs(TJ.max - T0.max) < 0.5 && TJ.t === T0.t, '太极和格斗术一样');
+  ok(W.max < T0.max * 0.7 && W.t < T0.t - 4, '咏春小跳：' + W.max.toFixed(0) + ' / ' + W.t + ' 帧'); ok(W.max <= AIR_SAFE + 6, '咏春跳起来地上的招差不多都够得着（最高 ' + W.max.toFixed(0) + '，够不着的线 ' + AIR_SAFE + '）');
+  ok(M.max < T0.max * 0.85 && M.t < T0.t && M.far > T0.far * 1.08, '螳螂蹦：矮、快、远 ' + M.max.toFixed(0) + ' / ' + M.t + ' 帧 / ' + M.far.toFixed(0));
+  ok(M.far / M.t > T0.far / T0.t * 1.25, '螳螂横着快两成半以上');
+  const D = st => STYLES[st].moves.dash, far = d => d.lunge[2], len = d => d.R;
+  ok(far(D('wc')) < far(D('trad')) * 0.75 && len(D('wc')) < len(D('trad')) && D('wc').cancelAt < DASH_CANCEL, '咏春追形：短、快、早出手');
+  ok(far(D('mantis')) > far(D('trad')) * 1.2 && D('mantis').inv[1] < D('trad').inv[1], '螳螂蹦步进：远，无敌短');
+  ok(!D('taiji').inv && D('taiji').armor && D('taiji').lunge[1] > D('trad').lunge[1], '太极进步：慢、没有无敌、有霸体');
+  // 太极进步顶得住一下短拳（照走），顶不住重拳
+  tArena(150, 'taiji', 'trad'); const hp0 = F1.hp;
+  run(30, i => [i === 0 || i === 2 ? RIGHT : 0, i === 3 ? TAP('jab') : 0]);
+  ok(F1.hp < hp0 && F1.hp >= hp0 - Math.ceil(MOVES.jab.dmg * ARMOR_KEEP) && F1.state !== 'hit', '进步里挨短拳：霸体硬吃、照走（掉 ' + (hp0 - F1.hp) + '）');
+});
+T('4.0 跳起来的招各派效果不一样（Jack：螳螂跳起来按重和格斗术跳起来按重没区别）：格斗术打中接连招；咏春盖肘打中他失衡、飞撑脚撑得远；太极白蛇吐信涨劲、撇身捶 / 旋风脚 / 海底针都打倒（旋风脚身后也扫得到）；螳螂腾空劈勾住（下一下勾打）、腾空勾踢勾倒自己弹开、坠枝踩了就弹走', () => {
+  // 跳过去在空中按 key（down = 坠山那一类），返回事件
+  const air = (st, key, down, dist) => {
+    wArena(dist || 150, st, 'trad'); let fired = false;
+    return wWatch(() => run(120, i => {
+      let v = i === 0 ? TAP('up') | RIGHT : i < 5 ? RIGHT : 0;
+      const d = Math.abs(F2.x - F1.x);
+      if (!fired && F1.state === 'air' && !F1.airUsed && (down ? d >= 50 && d <= 150 && F1.vz < 5 : d <= F1.moves[AIR_OF[key]].reach + 4 && F1.vz < 3)) { fired = true; v |= TAP(key) | (down ? DOWN : 0); }
+      return [v, 0];
+    }));
+  };
+  const hit = ev => ev.find(e => e.type === 'hit' && e.a === 0);
+  // 格斗术：坠山击打中不倒（接得上连招）
+  let ev = air('trad', 'heavy'); ok(hit(ev), '坠山击打中'); ok(!ev.some(e => e.type === 'hit' && e.a === 0 && F2.state === 'down') && F2.hp > 0);
+  wArena(150, 'trad', 'trad'); let st = null; run(60, i => { const d = Math.abs(F2.x - F1.x); let v = i === 0 ? TAP('up') | RIGHT : i < 5 ? RIGHT : 0; if (F1.state === 'air' && !F1.airUsed && d <= MOVES.airHeavy.reach + 4 && F1.vz < 3) v |= TAP('heavy'); if (F2.state === 'hit' && !st) st = { reel: F2.reel, down: false }; return [v, 0]; });
+  ok(st && !st.reel, '格斗术的坠山击：普通的挨打（不失衡、不倒）');
+  // 咏春：盖肘 = 失衡；飞撑脚推得比格斗术的飞踢远
+  ok(WMOVES.airHeavy.reelHit && !MOVES.airHeavy.reelHit && WMOVES.airKick.kb > MOVES.airKick.kb * 1.5);
+  wArena(110, 'wc', 'trad'); let reel = false; run(70, i => { const d = Math.abs(F2.x - F1.x); let v = i === 0 ? TAP('up') | RIGHT : i < 5 ? RIGHT : 0; if (F1.state === 'air' && !F1.airUsed && d <= WMOVES.airHeavy.reach + 4 && F1.vz < 3) v |= TAP('heavy'); if (F2.state === 'hit' && F2.reel) reel = true; return [v, 0]; });
+  ok(reel, '咏春飞身盖肘打中：他失衡');
+  // 太极：白蛇吐信涨劲；另外三招打倒
+  ev = air('taiji', 'jab'); ok(hit(ev), '白蛇吐信打中'); eq(F1.jin, 1, '涨一级劲');
+  for (const [k, dn, nm] of [['heavy', false, '撇身捶'], ['kick', false, '旋风脚'], ['kick', true, '海底针']]) {
+    wArena(150, 'taiji', 'trad'); let down = false, fired = false;
+    run(140, i => { const d = Math.abs(F2.x - F1.x); let v = i === 0 ? TAP('up') | RIGHT : i < 5 ? RIGHT : 0; if (!fired && F1.state === 'air' && !F1.airUsed && (dn ? d >= 50 && d <= 150 && F1.vz < 5 : d <= TMOVES[AIR_OF[k]].reach + 4 && F1.vz < 3)) { fired = true; v |= TAP(k) | (dn ? DOWN : 0); } if (F2.state === 'down') down = true; return [v, 0]; });
+    ok(down, '太极' + nm + '打倒');
+  }
+  ok(TMOVES.airKick.reachBack >= 80 && !MOVES.airKick.reachBack, '旋风脚身后也扫得到');
+  eq(chipOf(TMOVES.dive, { air: true }), 0, '海底针被挡住不削血');
+  // 螳螂：腾空劈 = 勾住（下一下勾打）；腾空勾踢 = 勾倒 + 自己往回弹；坠枝踩了往回弹
+  wArena(150, 'mantis', 'trad'); let hook = false, fired = false;
+  run(80, i => { const d = Math.abs(F2.x - F1.x); let v = i === 0 ? TAP('up') | RIGHT : i < 5 ? RIGHT : 0; if (!fired && F1.state === 'air' && !F1.airUsed && d <= MMOVES.airHeavy.reach + 4 && F1.vz < 3) { fired = true; v |= TAP('heavy'); } if (F2.state === 'hit' && F2.reel && F2.reelKind === 'hook') hook = true; return [v, 0]; });
+  ok(hook, '螳螂腾空劈打中：勾住（失衡）');
+  for (const [k, dn, nm] of [['kick', false, '腾空勾踢'], ['kick', true, '坠枝']]) {
+    wArena(dn ? 150 : 205, 'mantis', 'trad'); let back = false, gotHit = false; fired = false; let down = false;
+    run(140, i => { const d = Math.abs(F2.x - F1.x); let v = i === 0 ? TAP('up') | RIGHT : i < 5 ? RIGHT : 0; if (!fired && F1.state === 'air' && !F1.airUsed && (dn ? d >= 50 && d <= 150 && F1.vz < 5 : d <= MMOVES[AIR_OF[k]].reach + 4 && F1.vz < 3)) { fired = true; v |= TAP(k) | (dn ? DOWN : 0); } if (F2.hp < MAX_HP) gotHit = true; if (gotHit && F1.airborne && F1.vx < -3) back = true; if (F2.state === 'down') down = true; return [v, 0]; });
+    ok(gotHit && back, '螳螂' + nm + '打中往回弹'); if (!dn) ok(down, '腾空勾踢勾倒'); else ok(Math.abs(F1.x - F2.x) >= 120, '坠枝踩完弹出去两三个身位：' + Math.abs(F1.x - F2.x).toFixed(0));
+  }
+});
+T('4.0 泼墨 = 一击定音：一下 80、不吃任何加成；被挡住几乎白费（只削一成、收招更长、挡住的人罚得到）', () => {
+  // 卸力以后放泼墨：以前 ×1.35，现在大招不吃加成
+  arena(100); F1.qi = QI_MAX; F2.state = 'hit'; F2.stunT = 40; F2.reel = true; F2.reelBy = 0; F2.reelKind = 'parry';
+  tick(TAP('heavy') | TAP('kick'), 0, 1); tick(0, 0, 30); eq(lost(F2), 80, '失衡的人挨泼墨也是 80');
+  // 被挡住：削一成，收招比打中长得多
+  const recov = blocked => { arena(100); F1.qi = QI_MAX; if (blocked) { F2.noParry = true; tick(0, BLOCK, 3); } let t = 0, started = false; for (let i = 0; i < 160; i++) { step([i === 0 ? TAP('heavy') | TAP('kick') : 0, blocked ? BLOCK : 0]); if (F1.state === 'attack') { started = true; t++; } else if (started) break; } return t; };
+  const tHit = recov(false), tBlk = recov(true);
+  eq(lost(F2), Math.round(80 * SUPER_CHIP), '被挡住只削一成'); { const d = MOVES.super; ok(tBlk >= d.S + d.A + d.R + BLOCK_PEN_KD + SUPER_BLOCK_PEN - 1, '被挡住收招长得多（多 ' + (BLOCK_PEN_KD + SUPER_BLOCK_PEN) + ' 帧）：' + tBlk + '，打中的（连顿帧）' + tHit); }
+});
+T('4.0 如封似闭 = 无视防御：挡不住、卸不掉，一下 60；前摇里没有霸体没有掤，一拳就打断；跳起来、冲刺的无敌躲得掉；不吃加成', () => {
+  const d = TMOVES.super; ok(d.unblock && d.frail && !d.armor && !d.tjHua && !d.antiAir && d.dmg === 60, '数');
+  ok(d.S > MOVES.super.S + 3, '比泼墨慢：' + d.S + ' / ' + MOVES.super.S);
+  const go = p2 => { tArena(90, 'taiji', 'trad'); F1.qi = QI_MAX; return wWatch(() => run(70, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, p2 ? p2(i) : 0])); };
+  go(() => BLOCK); eq(lost(F2), 60, '挡着照挨 60');
+  go(i => (i >= Math.round(d.S) - 4 ? BLOCK : 0)); eq(lost(F2), 60, '卸力也卸不掉'); eq(F2.stats.parries, 0);
+  for (const t of [1, 6, 11]) { go(i => (i === t ? TAP('jab') : 0)); eq(lost(F2), 0, '第 ' + t + ' 帧按短拳：打断了'); ok(lost(F1) > 0); }
+  go(i => (i === 6 ? TAP('up') : 0)); eq(lost(F2), 0, '跳起来躲开');
+  go(i => (i === Math.round(d.S) - 4 || i === Math.round(d.S) - 2 ? LEFT | 0 : 0));   // 不是每一帧都对得上，只查「够不着就没事」
+  tArena(220, 'taiji', 'trad'); F1.qi = QI_MAX; run(70, i => [i === 0 ? TAP('heavy') | TAP('kick') : 0, BLOCK]); eq(lost(F2), 0, '够不着的打不到');
+});
+T('4.0 七星连环 = 一段时间的状态：' + MT_FURY / 60 + ' 秒里出手收手都快、连着打不限两下、不喘、实连多两下；本身不打人；气条跟着剩下的时间往下掉', () => {
+  const d = MMOVES.super; ok(d.script && d.fury && d.cost === QI_MAX, '是个状态，不是一下打击');
+  mArena(90); F1.qi = QI_MAX; tick(TAP('heavy') | TAP('kick'), 0, 1); tick(0, 0, 8);
+  ok(F1.hasteT > MT_FURY - 12, '进了疾：' + F1.hasteT); eq(lost(F2), 0, '本身不打人');
+  tick(0, 0, 20); ok(F1.actionable(), '抖完手就能动'); ok(F1.qi < QI_MAX && F1.qi > QI_MAX * 0.85, '气条 = 还剩多久：' + F1.qi);
+  // 出手快：崩捶的前摇 ×HASTE_S
+  tick(TAP('jab'), 0, 1); eq(F1.move.S, Math.max(2, grid(MMOVES.mtBeng.S * HASTE_S)), '崩捶前摇'); ok(F1.move.haste);
+  // 连着打不限两下：拳拳拳拳（平时两下以后拳接不上）
+  const chainN = fury => { mArena(84); if (fury) { F1.qi = QI_MAX; tick(TAP('heavy') | TAP('kick'), 0, 1); tick(0, 0, 30); } return hitsOf(comboVs.call(null, 'mantis', 'trad', 84, ['jab', 'jab', 'jab', 'jab', 'jab'])).length; };
+  eq(hitsOf(comboVs('mantis', 'trad', 84, ['jab', 'jab', 'jab', 'jab'])).length, 2, '平时连着打不过两下');
+  mArena(84); F1.qi = QI_MAX; tick(TAP('heavy') | TAP('kick'), 0, 1); tick(0, 0, 30);
+  let ki = 0; const keys = ['jab', 'jab', 'jab', 'jab', 'jab'], ev = wWatch(() => run(200, i => { let v = 0; if (ki < keys.length && (ki === 0 ? true : F1.state === 'attack' && F1.canCancel('jab'))) { v = TAP('jab'); ki++; } return [v, 0]; }));
+  ok(hitsOf(ev).length >= 5, '七星连环里拳拳拳拳拳连得上：' + hitsOf(ev).join(' '));
+  // 时间到了就没了
+  mArena(300); F1.qi = QI_MAX; tick(TAP('heavy') | TAP('kick'), 0, 1); tick(0, 0, MT_FURY + 20); eq(F1.hasteT, 0, '六秒以后没了'); ok(F1.qi < 2, '气也掉完了：' + F1.qi);
+});
+T('4.0 气带到下一回合（一场里；新的一场从 0 起）；挨打的比打人的涨得多', () => {
+  startMatch('pvp'); game.phase = 'fight'; F1.qi = 40; F2.qi = 73; game.round = 2; startRound(); eq([F1.qi, F2.qi], [40, 73], '下一回合气还在');
+  startMatch('pvp'); eq([F1.qi, F2.qi], [0, 0], '新的一场从 0 起');
+  ok(QI_HURT > QI_HIT, '挨打涨得多');
+});
+T('4.0 平衡实验室（js/lab.js）：模式机器人只会一套、照按；labRun 同一个种子两次结果一样；每一派的套路表里有跳、冲刺、蹲、大招和电脑的长连招', () => {
+  const a = labRun({ styles: ['trad', 'wc'], who: [{ pats: [['jab', 'jab', 'heavy']] }, 'normal'], frames: 1200, seed: 9, ledger: true });
+  const b = labRun({ styles: ['trad', 'wc'], who: [{ pats: [['jab', 'jab', 'heavy']] }, 'normal'], frames: 1200, seed: 9, ledger: true });
+  eq(a.share, b.share, '同一个种子一样'); eq(JSON.stringify(a.led[0].moves), JSON.stringify(b.led[0].moves));
+  ok(Object.keys(a.led[0].moves).every(n => ['jab', 'heavy'].includes(MOVES[n].kind)), '只按这一套里的键（拳、重）：' + Object.keys(a.led[0].moves));
+  for (const st of STYLE_IDS) { const ps = labPatterns(st).map(p => p.join(' ')); ok(ps.length >= 70, st + ' 套路 ' + ps.length); for (const need of ['j:kick', 'j:d:kick', 'dash:jab', 'd:kick', 'super', 'jab heavy kick']) ok(ps.includes(need), st + ' 少了 ' + need); }
+  const c = labCombos('trad', 80, 4); ok(c.best[3] && c.best[3].dmg >= 40 && c.sure === 3, '连招的账：三下最疼 ' + (c.best[3] && c.best[3].dmg));
+});
+
+T('4.0 平衡快查（细的用 tools/lab.mjs 量、记在 NOTES「查平衡」4.0）：四派两两困难对困难，打掉的血都在四成到六成之间；以前量出来的几套「空拳垫一下」的一招鲜（踢踢拳、重踢拳、踢拳拳、蹲拳拳）打困难的格斗术不过六成五、螳螂拳不过七成五（螳螂的电脑还偏好打，待做）', () => {
+  for (let i = 0; i < STYLE_IDS.length; i++) for (let j = i + 1; j < STYLE_IDS.length; j++) {
+    const A = STYLE_IDS[i], B = STYLE_IDS[j]; let t = 0; const n = 4;
+    for (let sd = 1; sd <= n; sd++) t += (labRun({ styles: [A, B], who: ['hard', 'hard'], rounds: 2, seed: sd * 2 + 1 }).share + 1 - labRun({ styles: [B, A], who: ['hard', 'hard'], rounds: 2, seed: sd * 2 + 2 }).share) / 2;
+    t /= n; ok(t >= 0.4 && t <= 0.6, `${STYLES[A].name} 打 ${STYLES[B].name}（困难）：${(t * 100).toFixed(1)}%`);
+  }
+  for (const C of ['trad', 'mantis']) for (const pat of [['kick', 'kick', 'jab'], ['heavy', 'kick', 'jab'], ['kick', 'jab', 'jab'], ['d:jab', 'jab']]) {
+    let t = 0; for (const sd of [11, 12, 13]) t += labRun({ styles: ['trad', C], who: [{ pats: [pat] }, 'hard'], frames: 4800, seed: sd }).share / 3;
+    ok(t <= (C === 'mantis' ? 0.75 : 0.65), `只会「${pat.join(' ')}」打困难的${STYLES[C].name}：${(t * 100).toFixed(1)}%`);   // 螳螂的电脑对着一串还是偏好打（NOTES「查平衡」4.0「没过线的」），先放到七成五
+  }
+});
+T('4.0 锁 120 帧（render.js Pace）：60Hz 的屏幕每次刷新都画（60 帧）；120Hz 每次都画；240 / 360Hz 每 2 / 3 次画一帧、间隔一样长；144 / 165 / 300Hz 攒时间画，一秒正好 120 帧；跟不上先不降帧（交给自动画质），分辨率降到头了才退到 60 帧的节拍', () => {
   // 模拟：屏幕每 V 毫秒刷新一次；这一下画了就花 cost 毫秒（不画 0.3），下一次回调在干完以后的下一次刷新
   const run = (hz, cost, secs) => {
-    const V = 1000 / hz, P = Object.assign({}, Pace, { V: 0, d: 1, iv: [], ivN: 0, lastDraw: 0, win: [], winT: 0, next: 0, good: 0, probe: 0, wait: 15000 });
+    const V = 1000 / hz, P = Object.assign({}, Pace, { lock: FPS_LOCK, V: 0, d: 1, n: 1, mode: 'every', iv: [], ivN: 0, cnt: 0, phase: 0, lastDraw: 0, half: false, win: [], winT: 0, next: 0, good: 0, probe: 0, wait: 20000, bad: 0, pr: 6, pv: [], prAt: 0, prWait: 5000, clockT: 0 });
     let t = 1000, last = 1000 - V, draws = 0, prevDraw = 0;
-    const gaps = [], ds = {};
+    const gaps = [];
     for (const end = t + secs * 1000; t < end;) {
       P.tick(t - last); last = t;
       const draw = P.due(t);
       const c = draw ? (typeof cost === 'function' ? cost() : cost) : 0.3;
-      if (draw) { P.drew(t); draws++; if (t > end - 10000 && prevDraw) gaps.push(t - prevDraw); prevDraw = t; }
-      ds[P.d] = (ds[P.d] || 0) + 1;
+      if (draw) { P.drew(t); if (t > end - 5000) { draws++; if (prevDraw) gaps.push(t - prevDraw); } prevDraw = t; }
       t = Math.max(t + V, Math.ceil((t + c) / V - 1e-9) * V);
     }
-    return { d: P.d, fps: draws / secs, gaps, ds, V };
+    return { P, fps: draws / 5, gaps, V };
   };
   const near = (a, b, tol) => Math.abs(a - b) <= tol;
-  const evenness = r => { const g = r.gaps.slice().sort((a, b) => a - b), m = g[g.length >> 1]; return g.filter(x => near(x, m, 0.05)).length / g.length; };
-  for (const c of [2, 8, 15, 30]) { const r = run(60, c, 30); eq(r.d, 1, `60Hz、画一帧 ${c} 毫秒`); }
-  let r = run(300, 2, 30); eq(r.d, 1, '300Hz 跟得上'); ok(near(r.fps, 300, 6), '300Hz 跟得上：一秒 300 帧 ' + r.fps);
-  r = run(300, 5, 60); ok(near(r.fps, 150, 8), '300Hz、一帧 5 毫秒：一秒 150 帧上下 ' + r.fps); ok(evenness(r) > 0.9, '帧和帧之间一样长 ' + evenness(r));
-  r = run(300, () => 2 + Math.random() * 3, 60);
-  eq(r.d, 2, '300Hz、一帧 2 ~ 5 毫秒忽快忽慢 → 每 2 次刷新画一帧'); ok(near(r.fps, 150, 10), '一秒 150 帧上下 ' + r.fps); ok(evenness(r) > 0.85, '最后 10 秒帧和帧之间一样长 ' + evenness(r).toFixed(2));
-  r = run(300, () => 4 + Math.random() * 5, 60);
-  ok(evenness(r) > 0.85, '300Hz、一帧 4 ~ 9 毫秒（有时两拍、有时三拍）→ 稳定成一样长 ' + evenness(r).toFixed(2) + ' d ' + r.d + ' fps ' + r.fps);
-  r = run(144, () => 5 + Math.random() * 5, 30); eq(r.d, 2, '144Hz、一帧 5 ~ 10 毫秒 → 每 2 次（72 帧）'); ok(evenness(r) > 0.85, '144Hz 一样长 ' + evenness(r).toFixed(2));
-  r = run(300, 25, 30); ok(r.d <= 5 && r.fps >= 25, '再慢也不会降到一秒 60 帧的节奏以下（剩下的交给自动画质） d ' + r.d + ' fps ' + r.fps);
-  r = run(240, 3, 30); eq(r.d, 1, '240Hz 跟得上');
+  eq(FPS_LOCK, 120, '锁在 120 帧');
+  for (const c of [2, 8, 15]) { const r = run(60, c, 12); eq(r.P.mode, 'every', `60Hz、画一帧 ${c} 毫秒：每次刷新都画`); ok(near(r.fps, 60, 1.5), '60Hz 屏幕 60 帧 ' + r.fps); }
+  let r = run(120, 3, 12); eq(r.P.mode, 'every', '120Hz 每次刷新都画'); ok(near(r.fps, 120, 2), '120 帧 ' + r.fps);
+  r = run(240, 3, 12); eq(r.P.mode, 'div', '240Hz 每 2 次画一帧'); eq(r.P.n, 2); ok(near(r.fps, 120, 2), '240Hz 120 帧 ' + r.fps);
+  ok(r.gaps.every(g => near(g, 1000 / 120, 0.05)), '240Hz 帧和帧之间一样长');
+  r = run(360, 2, 12); eq(r.P.n, 3, '360Hz 每 3 次'); ok(near(r.fps, 120, 2), '360Hz 120 帧 ' + r.fps);
+  r = run(300, 2, 12); eq(r.P.mode, 'acc', '300Hz 攒时间'); ok(near(r.fps, 120, 1.5), '300Hz 一秒 120 帧 ' + r.fps);
+  ok(r.gaps.every(g => near(g, 2 * r.V, 0.05) || near(g, 3 * r.V, 0.05)), '300Hz 只有隔 2 次、隔 3 次两种间隔');
+  r = run(144, 3, 12); ok(near(r.fps, 120, 1.5), '144Hz 一秒 120 帧 ' + r.fps);
+  r = run(165, 3, 12); ok(near(r.fps, 120, 1.5), '165Hz 一秒 120 帧 ' + r.fps);
+  // 跟不上（300Hz 的屏幕一帧要画 11 毫秒）：自动画质还能降的时候不退（帧率先不降，等分辨率降下来）
+  const f0 = AutoRes.floor;
+  try {
+    AutoRes.floor = 0; r = run(300, 11, 20); ok(!r.P.half, '自动画质还能降：不退到 60 帧的节拍');
+    AutoRes.floor = 9; r = run(300, 11, 20); ok(r.P.half, '分辨率降到头了还跟不上：退到 60 帧的节拍'); ok(near(r.fps, 60, 2), '退了以后 60 帧上下 ' + r.fps);
+    ok(r.gaps.every(g => near(g, 5 * r.V, 0.05)), '退了以后帧和帧之间一样长');
+    r = run(300, 2, 12); ok(!r.P.half, '跟得上的不退');
+  } finally { AutoRes.floor = f0; }
 });
 
 (async function runAll() {

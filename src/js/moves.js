@@ -391,13 +391,15 @@ const MOVES = {
     keys: [[0, { tor: 28, hy: 54, head: 10, fh: [8, 12], bh: [4, 14], tw: 0 }],
       [0.14, { tor: -18, head: -22, hy: 78, fh: [42, -54], bh: [-40, -52], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 6, tw: 0 }, 'out'],
       [0.5, { tor: -14, head: -18, hy: 76, fh: [40, -48], bh: [-38, -46], fe: -1, be: -1, ff: [42, 0], bf: [-42, 0], air: 2, tw: 0 }], [1, {}]] }),
+  // 4.0（Jack：四派的大招伤害、动作都差不多，要做出各自的形式）格斗术的泼墨 = 一击定音：一下 80（全场最疼的一下），前摇再长一点（看得见），
+  //   被挡住几乎白费（只削一成 SUPER_CHIP、收招再多 SUPER_BLOCK_PEN，挡住的人罚满）；卸力、擒拿、跳、冲刺照旧破它；不吃任何加成（破招、反击、连招都不乘）
   // 泼墨：气满时按「重+踢」，出手前打击无敌。2.1（Jack：伤害太低）22 → 40
   // 2.7（Jack：伤害 50；霸体蓄力一小下（算前摇），单手出去，手前面带额外特效；对面的反制手段不变）：
   //   前摇 8 → 10（基准帧）：先沉身蓄力 —— 后手收到腰边、前手往前领着，整个前摇都是霸体（什么打击都硬吃、只掉一半，招不停；
   //   以前是打击无敌，打它一样没用），快蓄满时往前冲一步，后手一掌单手推出去（拧腰送肩）；掌前面炸开一朵墨花（fx.js superStrikeFx）。
   //   擒拿照样抓得住（霸体防不了拿）、卸力、格挡（三成）、挡住后反击 ×1.5、跳起来躲、冲刺无敌躲 —— 和以前一样
-  super: M({ kind: 'heavy', label: '泼墨', stamp: '泼墨', tier: 'super', S: 10, A: 6, R: 22, dmg: 50, reach: 136, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
-    limb: 'bh', fx: 'splash', ghost: true, lunge: [6, 10, 34], armor: { n: 99, from: 0, vs: ['light', 'heavy', 'kick', 'aa', 'air', 'dive', 'push'] },
+  super: M({ kind: 'heavy', label: '泼墨', stamp: '泼墨', tier: 'super', S: 12, A: 6, R: 24, dmg: 80, reach: 136, stun: 24, bstun: 15, kb: 8, stop: 16, shake: 12, power: 1.2, heavy: true,
+    limb: 'bh', fx: 'splash', ghost: true, lunge: [8, 12, 34], chip: SUPER_CHIP, blockPen: SUPER_BLOCK_PEN, armor: { n: 99, from: 0, vs: ['light', 'heavy', 'kick', 'aa', 'air', 'dive', 'push'] },
     launch: 8, ender: true, noCancel: true, cost: QI_MAX, antiAir: 40,
     keys: [[0, {}], [0.2, { tor: 2, dx: -4, hy: 64, head: 4, tw: 24, bh: [-12, 22], fh: [28, -8], ff: [28, 0], bf: [-38, 0] }, 'out'],
       [0.75, { tor: -6, dx: -8, hy: 60, head: 6, tw: 36, bh: [-22, 28], fh: [32, -10], ff: [30, 0], bf: [-42, 0] }],
@@ -460,9 +462,9 @@ const COUNTERS = [   // 2.10 [名, 有哪些, 怎么破]：教程里不用括号
   ['霸体', '重拳、沉肩靠', '腿系；擒拿；连打两三下：重拳只吃一下，沉肩靠两下'],
   ['跑动、冲刺', '', '迎击：打在全速跑过来、或冲刺收尾的人身上 ×1.2；腿踢射程长，正好迎上去'],
   ['冲势', '冲刺后第一招', '卸力，冲进来的时机好猜；出克它那一系的招；冲刺收尾时先打它 = 迎击'],
-  ['连段压制', '', '推挡、卸力、截击、爆气；连击衰减，同一套四五下就断'],
+  ['连段压制', '', '被挡住的一串：推挡、卸力、截击；挨打的一串：头几下是实连、拆不了，之后猜他下一下按的键拆招，或者花半格气爆气'],
   ['爆气', '', '它只在挨打时能爆，花半格气：连招别拖太长，看它气条过了一半就收着打；面朝它格挡只吃三成、被推开一点，它的后摇能打；站远一点够不着；冲刺无敌躲开'],
-  ['泼墨', '', `它出手前擒拿抓住它，蓄力那一下是霸体，打它没用，拿得住；卸力；格挡只掉三成，挡住后反击 ×${PUNISH_KD_MUL}；跳起躲开；冲刺无敌`],
+  ['泼墨', '', `它出手前擒拿抓住它，蓄力那一下是霸体，打它没用，拿得住；卸力；格挡只掉一成，挡住后反击 ×${PUNISH_KD_MUL}；跳起躲开；冲刺无敌`],
   ['滚身起', '', '往你脚下滚到你身后：看见了转身出拳还来得及，它滚完站起来那几帧比原地起身还久；往后滚得近一点：反应快的话看见了马上冲过去出短拳也打得到，反应慢就只能它一起身就猜着冲过去，猜错了冲过头，回身打够不着'],
   ['起身', '', '被打倒的一方站起来那几帧挨得了打、动不了：对面短拳这种快招算好时机必中，重拳、腿要提前出，这是压起身；被压的按住方向滚身起躲开，压早了的打空，轮到你反打'],
   ['闪身', '边挡边冲刺', `它只躲得过重系的手上招：出短拳、腿、下段、擒拿截住它 ×${SLIP_CAUGHT_MUL}；对着按住挡的人别老想用重拳砸开，被它钻过去就是回身肘、背对着挨打`],
@@ -520,11 +522,19 @@ const reachOf = k => ({ jab: 96, heavy: 112, kick: 128, grab: 84, 'd:jab': 92, '
      加新派的时候这些都要按新的一派重新算，清单见 NOTES「拳派」
    ============================================================ */
 const STYLES = {
-  trad: { id: 'trad', name: '格斗术', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant },
+  trad: { id: 'trad', name: '格斗术', moves: MOVES, relation, cancel: CANCEL, variant: pickVariant, sure: 3 },
 };
 const STYLE_DEFAULT = 'trad';
 const MATCHUPS = {};                     // 跨派的规矩（以后加）：'trad|taiji': { relation(dA, dB) { … } }
 const styleOf = F => STYLES[(F && F.style) || STYLE_DEFAULT];
+// 4.0 实连：打这个人（A 是出招的）的一套连招头几下保证连上（拆不了）；每一派自己的数
+const sureOf = A => { const n = styleOf(A).sure; return n === undefined ? SURE_HITS : typeof n === 'function' ? n(A) : n; };
+// 4.0 拆招要按哪个键 = 他这一下按的键（拳 / 重 / 踢 / 拿）；拆不了的招（大招、一串寸拳、脚本动作、推挡）返回 null
+function breakKeyOf(m) {
+  const d = m.def;
+  if (d.script || d.flurry || d.tier === 'super' || d.kind === 'push' || d.noBreak) return null;
+  return ['jab', 'heavy', 'kick', 'grab'].includes(m.press) ? m.press : ['jab', 'heavy', 'kick', 'grab'].includes(d.kind) ? d.kind : null;
+}
 // 两个人的招撞在一起谁克谁（combat.js 交手）：同一派照这一派的 relation；不同派查 MATCHUPS（反过来写的那一对取负号）
 function clashRelation(A, B) {
   const a = A.style || STYLE_DEFAULT, b = B.style || STYLE_DEFAULT;

@@ -57,6 +57,9 @@ const slipDodges = m => !m.air && m.def.tier === 'heavy' && m.def.kind === 'heav
 function grabIntent(A, B) {
   const m = A.move;
   if (A.state !== 'attack' || !m || m.def.kind !== 'grab' || m.done || !A.inActive() || B.invuln()) return null;
+  // 4.0 刚被拿过（擒住、拉手、勾住、采手）还在那一下的硬直里：不能接着再拿（平衡实验室筛出来的：螳螂拳采手放开他还有九帧硬直，够再采一次 ——
+  //   一直按拿就是采手 → 采手 → 采手的死循环，打哪一派哪一档的电脑都是 95% 以上，3.3 起就有）。拿完要接就接打击
+  if ((B.state === 'hit' && B.grabGuard) || B.grabSafeT > 0) return null;
   const dist = (B.x - A.x) * A.facing;
   const bm = B.state === 'attack' ? B.move : null;
   const kicking = !!bm && bm.def.kind === 'kick' && !bm.def.dive && bm.t >= 3 && bm.t < bm.S + bm.def.A + 1 && B.facingTo(A);
@@ -143,8 +146,8 @@ function resolve(a, b) {
   if (sa && sb) exchange(a, b);
   else if (sa) strikeOn(a, b);
   else if (sb) strikeOn(b, a);
-  if (ga && a.state === 'attack' && a.move && a.move.def.kind === 'grab' && !a.move.done && !b.invuln()) doGrab(a, b, ga);
-  if (gb && b.state === 'attack' && b.move && b.move.def.kind === 'grab' && !b.move.done && !a.invuln()) doGrab(b, a, gb);
+  if (ga && a.state === 'attack' && a.move && a.move.def.kind === 'grab' && !a.move.done && !b.invuln()) { doGrab(a, b, ga); if (b.state === 'hit') b.grabGuard = true; }
+  if (gb && b.state === 'attack' && b.move && b.move.def.kind === 'grab' && !b.move.done && !a.invuln()) { doGrab(b, a, gb); if (a.state === 'hit') a.grabGuard = true; }
   for (const [A, B] of [[a, b], [b, a]]) {
     if (A.comboLive && !(B.state === 'hit' || B.state === 'down' || B.state === 'ko' || B.state === 'blockstun')) A.comboLive = false;
     if (B.state === 'down' && B.downPhase !== 'fall') A.comboLive = false;
@@ -155,6 +158,8 @@ function exchange(A, B) {
   A.holdPose = B.holdPose = true;
   if (airKick(A) && groundKick(B)) return tumble(A, B);
   if (airKick(B) && groundKick(A)) return tumble(B, A);
+  // 4.0 frail（如封似闭）：两边同一帧打到，它不占大招的便宜 —— 对面是普通的招就各打各的（它的无视防御照打，对面那一下也照挨）
+  if (A.move.def.frail !== B.move.def.frail) { const X = A.move.def.frail ? B : A, Y = X === A ? B : A; applyHit(X, Y, null); if (Y.state === 'attack' && Y.move && !Y.move.done) applyHit(Y, X, null); return; }
   const ch = styleOf(A).clash || styleOf(B).clash;              // 2.10 这一派撞上了有自己的说法（咏春拳：标指挑开手上的招）
   if (ch && ch(A, B)) return;
   const r = clashRelation(A, B);             // 2.7.1 拳派：同一派照这一派的克制；不同派要专门算（moves.js MATCHUPS）
@@ -167,7 +172,7 @@ function exchange(A, B) {
 function strikeOn(A, B) {
   if (A.move.def.push) return B.armored('push') ? absorb(A, B, contactPoint(A, B)) : shoveHit(A, B);   // 2.7 泼墨蓄力的霸体连推挡也吃（以前打击无敌，推挡也推不动）
   if (groundKick(A) && airKick(B)) return tumble(B, A);       // 地上出腿迎上空中的腿：顶回去
-  if (committed(B, A, TRADE_LEAD)) return exchange(A, B);
+  if (committed(B, A, TRADE_LEAD) && !(B.move.def.frail && B.move.t < B.move.S + 1)) return exchange(A, B);   // 4.0 frail 的招还没出手就被打到 = 打断，不算交手
   if (readBeat(B, A)) return evade(A, B);
   applyHit(A, B, null);
 }
@@ -175,7 +180,7 @@ function strikeOn(A, B) {
 // → A 这一下被化解打空，B 的招照常打出并算克制。重拳对短拳走「霸体」，不走这里
 function readBeat(B, A) {
   const m = B.move, ta = A.move.def.tier;
-  if (B.state !== 'attack' || !m || m.done || m.def.script || m.t < 3 || m.t >= m.S + 1) return false;
+  if (B.state !== 'attack' || !m || m.done || m.def.script || m.def.frail || m.t < 3 || m.t >= m.S + 1) return false;   // 4.0 frail：前摇里谁的一下都打得断的招（如封似闭），化解不了别人
   if (beats(m.def.tier, ta) <= 0 || (m.def.armor && m.def.armor.vs.includes(ta))) return false;
   return committed(B, A, BEAT_LEAD);
 }
@@ -205,9 +210,18 @@ function applyHit(A, B, how) {
   let xmul = 1;
   if (STB.defend) { const r = STB.defend(A, B, c, { m, d, bm, inStartup, front }); if (r === true) return; if (typeof r === 'number') xmul = r; }
   if (STA.strike && STA.strike(A, B, c, { m, d, bm, inStartup, front })) return;
-  if (STB.parry !== false && B.isBlocking() && front && B.parryReady()) return parry(A, B, c);   // 卸力（咏春拳没有：刚按下挡是拍手）
-  if (B.isBlocking() && front && B.blockHeightOK(d.height)) return guard(A, B, c);
+  const unblock = !!d.unblock;                            // 4.0 无视防御的招（太极拳的大招）：挡不住、也卸不掉
+  if (!unblock && STB.parry !== false && B.isBlocking() && front && B.parryReady()) return parry(A, B, c);   // 卸力（咏春拳没有：刚按下挡是拍手）
+  if (!unblock && B.isBlocking() && front && B.blockHeightOK(d.height)) return guard(A, B, c);
   if (!how && B.armored(d.tier) && !d.pierce && !m.pierce) return absorb(A, B, c);   // 寸拳、连环寸拳、寸劲破体劲大：霸体吃不住（pierce）
+  // 4.0 拆招：这一套过了实连的那几下，他在硬直里按过键 —— 按的就是我这一下的键 = 拆开；不是 / 乱按 / 这一下拆不了 = 读错，多挨、这一套不能再拆
+  if (B.state === 'hit' && B.brkKey && !B.brkLock && B.comboTaken >= sureOf(A)) {
+    const need = d.beat && A.flow >= FLOW_COUNTER ? null : breakKeyOf(m);   // 咏春拳顺起来的连环冲拳太快，拆不了（按了就是读错）；它收势的寸拳、撑脚照样能拆
+    if (need && B.brkKey === need && !B.grabbed && !B.airborne) return breakCombo(A, B, c);
+    B.brkKey = null; B.brkLock = true; xmul *= BRK_WRONG_MUL;
+    if (!game.quiet && B.J) tag(B.x, B.J.head[1] - 40, '读错', A, 18);
+    cev('breakMiss', B, A, { name: m.name, need });
+  }
 
   let label = null, mul = m.air ? AIR_BONUS : 1;
   const beatVs = how === 'beat' && bm ? bm.def.tier : m.beatVs || (inStartup && beats(d.tier, bm.def.tier) > 0 ? bm.def.tier : null);
@@ -241,6 +255,7 @@ function applyHit(A, B, how) {
   if (crash) { label = CRASH_NAME; lmul = punchDive ? DIVE_PUNCH_MUL : Math.max(lmul, BEAT_MUL); }
   else if (d.dive && bm && bm.def.tier === 'aa') { label = '踩断对空'; lmul = DIVE_AA_MUL; diveKD = true; }
   else if (d.dive && lowProfile(B)) { label = '踩蹲'; lmul = DIVE_CROUCH_MUL; }
+  if (d.tier === 'super') { lmul = 1; label = unblock && B.isBlocking() && front ? '破防' : null; }   // 4.0 大招是它自己的数：不吃破招、克制、反击这些加成
   mul *= lmul * xmul;
   if (m.dmgMul) mul *= m.dmgMul;                         // 2.10 这一下另外的加成（咏春拳的寸拳蓄劲）
   if (m.dashIn) mul *= DASH_IN_MUL;
@@ -261,7 +276,9 @@ function applyHit(A, B, how) {
   if (d.tier === 'super') A.stats.supers++;             // 泼墨打中（软件版成就用）
   bumpCombo(A, B);
   B.comboTaken = n + 1; B.comboSeen = (n ? B.comboSeen || '|' : '|') + m.name + '|';
-  A.gainQi(dmg * 0.4 * QI_PER_HP); B.gainQi(dmg * 0.9 * QI_PER_HP);
+  // 4.0 实连的那几下打完了：从下一下起他能拆（头上提一句，挨打的人自己的颜色）
+  if (B.comboTaken === sureOf(A) - (styleOf(B).ownBreak ? WC_BRK_EARLY : 0) && !B.brkLock && B.hp > 0 && B.state === 'hit' && !game.quiet && B.J) tag(B.x, B.J.head[1] - 58, '可拆', B, 17);
+  A.gainQi(dmg * QI_HIT * QI_PER_HP); B.gainQi(dmg * QI_HURT * QI_PER_HP);   // 4.0 打中人涨的气多了（0.4 → QI_HIT）：一回合里大招差不多能攒出来一次
   B.reel = false; B.clashed = false; B.grabbed = false; B.stagger = false; B.stuck = false; B.shook = false;
   if (B.hp <= 0) { B.hp = 0; B.knockDown(5, dir * (d.kb * 0.6 + 2), 40, true); }
   else if (crash) B.knockDown(punchDive ? 2.5 : d.launch || d.launchAir || 4, dir * (d.kb * 0.6 + 2.5), LIE_CRASH, false);
@@ -300,6 +317,9 @@ function applyHit(A, B, how) {
     A.vz = -DIVE_RIDE; A.vx = -dir * clamp((DIVE_LAND_GAP - (B.x - A.x) * dir) / Math.max(1, fall), 0.8, 4);
     if (B.state === 'hit') { A.chain = ['kick']; A.chainIdle = 0; }
   }
+  // 4.0 打中以后往回弹（螳螂拳的空中招：打了就走）；这一招自己另外的反应（onHit）
+  if (d.rebound && m.air) { A.vx = -dir * d.rebound[0]; A.vz = d.rebound[1]; if (A.alt <= 0) A.alt = 0.01; A.chain = []; }
+  if (d.onHit) d.onHit(A, B, m, dmg);
   if (crash) crashFx(B, dir, A);
   if (atWall(B)) A.kvx = -dir * d.kb * 0.7;
   game.freeze = stop((d.stop || 4) + (label ? 2 : 0));
@@ -307,7 +327,7 @@ function applyHit(A, B, how) {
   hitFx(d.fx, c, A, B);
   const relLabel = !!beatVs && label === TIER_NAME[d.tier] + '克' + TIER_NAME[beatVs];   // 「腿克重」这种：不飘字，只进打桩面板
   // 2.0.1 字幕的颜色归属：这一下打出来的东西（加成、失衡、伤害、招式印章）都是出招的人 A 的颜色
-  if (label && !relLabel) tag(B.x + dir * 10, B.J.head[1] - 36, label + ' ×' + lmul, A, 21);
+  if (label && !relLabel) tag(B.x + dir * 10, B.J.head[1] - 36, lmul === 1 ? label : label + ' ×' + lmul, A, 21);
   if (m.dashIn) tag(A.x, A.J.head[1] - 60, '冲势 ×' + DASH_IN_MUL, A, 20);
   note(A, B, dmg, [label, m.dashIn ? '冲势' : null].filter(Boolean).join(' · ') || '打中');
   cev('hit', A, B, { name: m.name, how: A.info.how, dmg, tier: d.tier, height: d.height, air: !!m.air, crash, offBalance, rising, back: backHit,
@@ -326,10 +346,32 @@ function applyHit(A, B, how) {
   else if (d.tag) tag(A.J.head[0] - dir * 10, A.J.head[1] - 38, d.tag, A, 18);
   Sound.hit(d.power || 0.4);
 }
+// 4.0 拆招拆开了：A 这一下打不着，被震开、失衡 BRK_STUN 帧（挨得了打，但两人弹开了，够不着）；B 马上能动（先手）、涨一点气。
+// 不是罚：只是把这一套断在这里、回到中立（要是拆开就能反打一整套，就没人敢往下连了）。各派拆开以后自己的一点说法写在拳派表的 onBreak 里
+function breakCombo(A, B, c) {
+  const m = A.move, d = m.def, dir = A.facing;
+  m.done = true; m.blocked = true;
+  A.state = 'hit'; A.stunT = BRK_STUN; A.move = null; A.chain = []; A.chainIdle = 99; A.runT = 0; A.kvx = -dir * BRK_KB;
+  A.hurtHeavy = false; A.reel = false; A.clashed = true; A.stagger = false; A.grabbed = false; A.comboLive = false; A.flow = 0; A.comboTaken = 0;
+  B.state = 'idle'; B.stunT = 0; B.move = null; B.kvx = dir * BRK_KB_SELF; B.comboTaken = 0; B.brkKey = null; B.brkLock = false;
+  B.reel = false; B.clashed = false; B.stagger = false; B.stuck = false; B.shook = false; B.chain = []; B.chainIdle = 99;
+  B.facing = -dir; B.freeAt = -999;
+  B.gainQi(BRK_QI); B.stats.parries++;
+  const ST = styleOf(B); if (ST.onBreak) ST.onBreak(B, A);
+  A.info = { label: d.label, dmg: 0, how: '被拆', why: '连招过了实连的那几下，他按对了你这一下的键（' + (TIER_KEY_NAME[breakKeyOf(m)] || '') + '）：换着键接，别让他猜着', adv: null, t: A.clock };
+  B.info = { label: '拆招', dmg: 0, how: '拆开', why: '猜对了他这一下按的键：拆开了，你先动', adv: null, t: B.clock };
+  game.freeze = Math.max(game.freeze, stop(8)); game.shake = Math.max(game.shake, 4);
+  if (!game.quiet) { parryFx(B, c); if (B.J) stamp(B.J.head[0] - B.facing * 52, B.J.head[1] - 46, '拆招', 30, B); }
+  cev('break', B, A, { name: m.name, key: breakKeyOf(m) });
+  Sound.parry();
+}
+const TIER_KEY_NAME = { jab: '拳', heavy: '重', kick: '踢', grab: '拿' };
 // 3.2 挡住了掉多少血：轻拳一系、推挡不掉（BLOCK_KEEP_LIGHT 0）；重系、腿系、空中、对空、大招、太极的慢拳（slowGuard）吃 BLOCK_KEEP（最少 1）
 function chipOf(d, m) {
-  const light = !m.air && ((d.tier === 'light' && !d.slowGuard) || d.kind === 'push');
-  const keep = light ? BLOCK_KEEP_LIGHT : BLOCK_KEEP;
+  // 4.0 跳起来的拳（挥拳、飞身冲拳、白蛇吐信、飞崩）挡住也不掉血：以前空中招一律削三成，一直跳过来挥拳、被挡住落地就跑，光靠削血就赢
+  //   （平衡实验室：只会跳过来挥拳打困难的咏春占九成五 —— 他回回挡住，回回掉 3 点，罚不到）
+  const light = (!m.air && ((d.tier === 'light' && !d.slowGuard) || d.kind === 'push')) || (m.air && d.kind === 'jab');
+  const keep = d.chip !== undefined ? d.chip : light ? BLOCK_KEEP_LIGHT : BLOCK_KEEP;   // 4.0 chip：这一招被挡住削几成另外定（泼墨被挡住几乎白费）
   return keep <= 0 ? 0 : Math.max(1, Math.round(d.dmg * (m.air ? AIR_BONUS : 1) * keep));
 }
 function guard(A, B, c) {
@@ -356,6 +398,9 @@ function guard(A, B, c) {
     m.pen = grid(Math.max(0, m.t + fly + 2 - (m.S + d.A + d.R)));
     B.stunT = Math.max(B.stunT, grid(fly + TA(7) - DIVE_BLOCK_ADV));
   }
+  if (d.rebound && m.air && !d.dive) { A.vx = -dir * d.rebound[0]; A.vz = d.rebound[1]; if (A.alt <= 0) A.alt = 0.01; }   // 4.0 被挡住也弹回去
+  if (d.blockPen) m.pen = (m.pen || 0) + d.blockPen;                   // 4.0 被挡住另外多收招（泼墨）
+  if (d.onBlock) d.onBlock(A, B, m);
   m.blocked = true; B.stats.blocks++; A.flow = 0;                     // 被挡住：顺断了
   B.guardOn = m.serial;                                               // 挡住的是哪一招：打它收招算「挡后反击」
   B.stompFor = d.height === 'low' && d.kind === 'kick' && !m.air && B.lowBlock ? m.serial : -1;   // 蹲挡住下段腿：能踩腿

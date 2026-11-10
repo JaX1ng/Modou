@@ -234,12 +234,16 @@ const G_RULES = [
   ['交手', '两边同时打中，先比主系：克制的一方叫「克」，单方面打中。主系一样再比起手：克制的一方叫「压」，被压的吃全额、被打退，压人的只吃三成还能接着打。都一样就是拼招，各掉五成、互相震退。'],
   ['起手和主系', '单招两者一样；连招的起手是第一下，主系是最后一下。'],
   ['高低', '中段站着、蹲着都能挡；下段要蹲着挡；上段要站着挡。每一招是哪一段，看那一派的招式页。'],
-  ['越连越疼', `同一套里每多连一下，这一下多 ${Math.round(COMBO_ESC * 100)}%，第 8 下 ×${comboEsc(7).toFixed(2)}：连得越长越赚，一套最多 ${COMBO_MAX} 下，短拳连着最多 ${JAB_CHAIN_MAX} 下。同一套里同一招再用一次只算一半、硬直也短。挨得越多硬直越短、被推得越远，离得远了后面就接不上。咏春拳的连环冲拳按「顺」算，顺一级 +${Math.round(FLOW_DMG * 100)}%。`],
+  ['实连', '一套连招的头几下是保证的：打中第一下，后面这几下他拆不了，离远了也会自己追上去接上。保证几下各派不一样：格斗术 3 下、咏春拳 5 下、太极拳 2 下、螳螂拳 4 下。'],
+  ['拆招', `过了实连的那几下，挨打的人在硬直里按一个键，猜对面下一下按的是拳、重、踢还是拿。猜对就拆开：那一下打不着，两人弹开，拆的人先动。猜错这一下多挨 ${Math.round((BRK_WRONG_MUL - 1) * 100)}%，而且这一套不能再拆。所以连招的前半截是打的人的，后半截两个人猜：打的人换着键接，挨打的人看他爱按哪个。大招拆不了，咏春拳顺起来的连环冲拳也拆不了。咏春拳拆招用它自己的接招，按住挡再按键，比别的派早两下。`],
+  ['越连越疼', `同一套里每多连一下，这一下多 ${Math.round(COMBO_ESC * 100)}%，第 8 下 ×${comboEsc(7).toFixed(2)}：连得越长越赚，一套最多 ${COMBO_MAX} 下，短拳连着最多 ${JAB_CHAIN_MAX} 下。同一套里同一招再用一次只算一半、硬直也短。咏春拳的连环冲拳按「顺」算，顺一级 +${Math.round(FLOW_DMG * 100)}%。`],
+  ['打空', '招要碰到人才接得出后面的变招：打中、被挡住都算。打空了再按，出来的是起手招。'],
   ['势破', `被挡住的那个人，下一记短拳的前摇多 ${SLOW_JAB_ADD} 帧，头上一个「势」字。`],
   ['朝向', '按着方向不出招就是跑，马上朝那边跑，没有后退。不按左右、格挡的时候自动面向对手；出招时对手在近身范围里，一律朝他打，乱按方向也不打空。'],
-  ['气', `挨打、格挡、打中都会涨，挨打涨得最多。半格 ${QI_BURST} 能爆气，满格 ${QI_MAX} 能放大招。`],
+  ['气', `挨打、格挡、打中都会涨，挨打涨得最多；一场里气带到下一回合。半格 ${QI_BURST} 能爆气，满格 ${QI_MAX} 能放大招。`],
+  ['大招', '气满按重 + 踢。四派的大招是四种东西：格斗术一下最疼，被挡住白费；咏春拳五段，一段一段考对面挡上还是挡下；太极拳挡不住，但是慢、一拳就断；螳螂拳不打人，是六秒的快。大招不吃任何伤害加成，也拆不了。'],
   ['擒拿', '擒拿挡不住。站着的擒拿抓不到蹲着的，蹲着的擒拿抓不到站着的。'],
-  ['跳', `跳起来出招 ×${AIR_BONUS}，每跳只能出一招；落地前来不及出完，就变成落地后马上出。往前蹬的空中腿蹲下躲得开。`],
+  ['跳', `跳起来出招 ×${AIR_BONUS}，每跳只能出一招；落地前来不及出完，就变成落地后马上出。往前蹬的空中腿蹲下躲得开。各派跳得不一样：咏春拳是小跳，矮、落得快；螳螂拳平着蹿出去，快三成；空中的三招各派打中的效果也不一样，看那一派的招式页。`],
 ];
 const G_MULS = [
   ['克', '主系克制，单方面打中', '×' + BEAT_MUL],
@@ -251,14 +255,14 @@ const G_MULS = [
   ['失衡后打中', '卸开、截住腿以后趁他失衡打', '×' + PARRY_MUL],
   ['破绽', '击倒招打空了，打它的收招', '×' + WHIFF_KD_MUL],
   ['截住闪身', '他钻过来的时候被短拳、腿、下段、擒拿打中', '×' + SLIP_CAUGHT_MUL],
-  ['格挡', '挡住重拳、腿、跳起来打的、大招只吃', Math.round(BLOCK_KEEP * 10) + ' 成；轻拳、推挡挡住不掉血'],
+  ['格挡', '挡住重拳、腿、跳起来出的重和腿只吃', Math.round(BLOCK_KEEP * 10) + ' 成；轻拳、推挡、跳起来出的拳挡住不掉血；大招各有各的'],
 ];
 // 身法和倒地：图用格斗术的动作（哪一派都一样的按法）
 const G_BODY = [
   { group: '身法', list: [
-    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `挡住轻拳一滴血不掉；重拳、腿、跳起来打的、大招只吃 ${Math.round(BLOCK_KEEP * 10)} 成。每一派的挡不一样：格斗术刚按下挡的那一下是卸力；咏春拳按住挡再按键是接招，看咏春拳那本。`,
+    { name: '格挡', how: '按住 [挡]', icon: { pose: 'block' }, desc: `挡住轻拳、跳起来出的拳一滴血不掉；重拳、腿、跳起来出的重和腿只吃 ${Math.round(BLOCK_KEEP * 10)} 成；大招各有各的。每一派的挡不一样：格斗术刚按下挡的那一下是卸力；咏春拳按住挡再按键是接招，看咏春拳那本。`,
       more: ['下段要按住 [蹲] 挡，上段要站着挡', '背对着挡不住'] },
-    { name: '冲刺', how: '双击 [前] 或 [后]', icon: { move: 'dash', ph: 0.3 }, desc: '贴地滑出一大步；前几帧谁也打不中你，能穿到对面身后。' },
+    { name: '冲刺', how: '双击 [前] 或 [后]', icon: { move: 'dash', ph: 0.3 }, desc: '贴地滑出一大步；前几帧谁也打不中你，能穿到对面身后。各派的冲刺不一样：咏春拳是碎步，短、快、马上能出手；太极拳慢慢压上去，没有无敌，但是顶得住一下轻拳；螳螂拳一蹦老远，无敌短。' },
     { name: '冲势', how: '冲刺里出招', icon: { move: 'dash', ph: 0.6 }, desc: `冲刺途中、刚冲完出的第一招 ×${DASH_IN_MUL}，被挡也压得住。` },
     { name: '边挡边走', how: '按住 [挡] 再按方向', icon: { pose: 'block' }, desc: '举着手慢慢走，前后都行，一直面朝对手，照样挡得住。' },
     { name: '闪身', how: '按住 [挡]，朝对手双击 [前]', icon: { move: 'slip', ph: 0.3 }, desc: '压低身子从他身边钻过去。只躲得过重拳一类；躲过了自动转身打他背后一下，他背对着你踉跄。',
@@ -292,11 +296,11 @@ const G_MOVES = [
   { id: 'lowGrab', how: '[蹲] + [拿]', icon: { move: 'lowGrab', ph: 1.6 }, tier: '擒拿', dmg: `${TACKLE_DMG}~${SCOOP_DMG}`, desc: '抓蹲着、蹲挡的人；接得住出腿和扫堂腿。抓不到站着的。' },
   { id: 'shoulder', how: '跑起来按 [重]', icon: { move: 'shoulder' }, desc: '能硬吃两下拳，把人撞得老远。' },
   { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '最快的空中招。空中招都是上段，伤害 ×' + AIR_BONUS + '。' },
-  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '跳起来双拳往下砸，伤害高。' },
+  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '跳起来双拳往下砸，伤害高。打中了落地接得上连招。' },
   { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '跳起来一脚蹬过去，射程远。蹲下躲得开。' },
   { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '先往上一腾，再朝人踩下去。专踩蹲着的、踩断托天掌；怕站着的拳。' },
   { id: 'burst', how: '挨打时 [重] + [踢]', icon: { move: 'burst', ph: 0.25 }, tier: '—', height: '—', noFrame: true, dmg: BURST_DMG, desc: `花半格气从身上炸开：对面倒地、掉 ${BURST_DMG} 血。只在挨打时能用。` },
-  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: `必杀，${MOVES.super.dmg} 血。先沉身蓄力，这一下霸体，打它没用、拿得住；再单手一掌推出去。挡住了只掉三成。` },
+  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: `一击定音，${MOVES.super.dmg} 血，全场最疼的一下。先沉身蓄力，这一下霸体，打它没用、拿得住；再单手一掌推出去。被挡住几乎白费：只掉一成，收招很长，等着挨罚。` },
 ];
 const G_COMBOS = [
   { group: '拳起手', note: '短拳快，打中了接什么都来得及', list: [
@@ -324,7 +328,7 @@ const G_COMBOS = [
     { keys: ['d:jab', 'd:kick'], name: '下盘拳接扫堂腿', moves: ['lowJab', 'sweep'], tag: '两下都是下段' },
   ] },
   // 3.1（Jack：连招越连收益越高，可以到六段到八段）：贴身打中以后一口气连下去，后面每一下都比前面疼
-  { group: '长连招', note: '贴身打中了才接得满，一步以内；越往后一下越疼，同一招再用只算一半', list: [
+  { group: '长连招', note: '头三下是实连；第四下起他能拆，换着键接。越往后一下越疼，同一招再用只算一半', list: [
     { keys: ['jab', 'kick', 'jab', 'heavy', 'jab', 'jab', 'heavy'], name: '七连 · 冲天炮', moves: ['jab', 'whip', 'stepPunch', 'beng', 'elbow', 'jab2', 'upper'], tag: '110 上下，单出一记重拳才 16；打上天', ko: true, wide: true },
     { keys: ['kick', 'jab', 'heavy', 'jab', 'kick', 'jab', 'jab', 'heavy'], name: '八连 · 冲天炮', moves: ['kick', 'stepPunch', 'beng', 'elbow', 'whip', 'stepPunch', 'jab2', 'upper'], tag: '125 上下：腿要先踢中；落步冲拳用了两次，第二次只算一半', ko: true, wide: true },
     { keys: ['heavy', 'jab', 'kick', 'jab', 'heavy', 'kick'], name: '重起六连 · 旋风腿', moves: ['heavy', 'elbow', 'whip', 'stepPunch', 'beng', 'whirl'], tag: '107 上下，转身一腿扫倒', ko: true, wide: true },
@@ -397,12 +401,12 @@ const WG_MOVES = [
   { id: 'wLowKick', how: '[蹲] + [踢]', icon: { move: 'wLowKick' }, desc: '脚掌横着截在他膝盖、小腿上。下段。撞上他地上的出腿就截住，踢中他失衡。' },
   { id: 'grab', how: '[拿]', icon: { move: 'grab', ph: 1.6 }, tier: '擒拿', height: '—', dmg: `0~${WC_TRAP_DMG}`, desc: '前手一探扣手腕。他正出拳出掌 = 拉住他打过来的手，挣不脱；站着、挡着的人 = 扣住手腕，刚扣住那一下他挣得开。都进搭手。拉不住腿。' },
   { id: 'lowGrab', how: '[蹲] + [拿]', icon: { move: 'lowGrab', ph: 1.6 }, tier: '擒拿', dmg: 0, desc: '两手往前下方一截：截住地上的出腿，他失衡；也抓得住蹲着的人。抓不到站着的。' },
-  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '跳起来一拳。空中招都是上段。' },
-  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '跳起来一掌往下拍，伤害高。' },
-  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '跳起来一脚撑过去，射程远。蹲下躲得开。' },
+  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '小跳一拳，全场最快的空中招。咏春跳得矮、落得快，躲不开地上的拳脚。空中招都是上段。' },
+  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '小跳起来一肘盖下去，压住他的手。打中他失衡，落地接得上一整串。' },
+  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '小跳一脚撑过去，把人撑出去老远。蹲下躲得开。' },
   { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '先往上一腾，再把膝盖往前下方砸下去。专破蹲着的；怕站着的拳。' },
   { id: 'burst', how: '挨打时 [重] + [踢]', icon: { move: 'burst', ph: 0.25 }, tier: '—', height: '—', noFrame: true, dmg: BURST_DMG, desc: `花半格气，两只掌往外一撑从身上炸开：对面倒地、掉 ${BURST_DMG} 血。` },
-  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, dmg: `${WMOVES.super.dmg} + 连环`, desc: '往下一沉，第一拳打中就是一串左右交替的寸拳把人钉住，最后一记寸劲打飞，霸体也吃不住。第一拳被挡就停。' },
+  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, dmg: `${WMOVES.super.dmg} + 13 × 3 + ${WMOVES.wSupHE.dmg}`, desc: `五段连环。第一段中段；后面四段每一段打上段还是下段由你定：这一段里按拳，下一段打上；按踢，下一段打下；不按就上下轮着来。他每一段都要挡对高低，挡错一段挨一段，第五段寸拳打倒。全中 ${WMOVES.super.dmg + 13 * 3 + WMOVES.wSupHE.dmg}，被挡住的段只削一点。哪一段打空了就停。` },
 ];
 const WG_BEAT = [
   ['拍子', `这一下打到他以后再过一拍，下一下就该打到。拍子开始是 ${WC_BEAT} 帧，越顺越快，最快 ${WC_BEAT_MIN} 帧。一串里的拳和踢都按拍子：拳接踢、踢接拳、踢接踢一样。`],
@@ -518,12 +522,12 @@ const TG_MOVES = [
   { id: 'tjDieCha', how: '[蹲] + [踢]', icon: { move: 'tjDieCha' }, ko: true, desc: '往下一坐，前腿贴地铲出去。下段，打倒。' },
   { id: 'grab', how: '[拿]', icon: { move: 'grab', ph: 1.6 }, tier: '擒拿', height: '—', dmg: `0~13`, desc: '前手一探扣住腕子往回一采。抓住以后看后面的「采」。他正出腿 = 接住腿，搂膝拗步。' },
   { id: 'lowGrab', how: '[蹲] + [拿]', icon: { move: 'lowGrab', ph: 1.6 }, tier: '擒拿', dmg: `0~13`, desc: '蹲下去前手往前下方一搂：接住地上的腿，抓得住蹲着的人。抓不到站着的。' },
-  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '跳起来一掌穿出去。空中招都是上段，不蓄、没有掤。' },
-  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '跳起来一拳往下栽，伤害高。' },
-  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '跳起来转一圈一脚，射程远。蹲下躲得开。' },
-  { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '先往上一腾，再一掌指尖朝下往下插。专破蹲着的；怕站着的拳。' },
+  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '跳起来一掌穿出去，打中涨一级劲。空中招都是上段，不蓄、没有掤。' },
+  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, ko: true, desc: '跳起来转身一捶往下栽。慢、疼，一捶打倒，不接连招。' },
+  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, ko: true, desc: '跳起来转一圈一脚，身前身后都扫得到，越过头顶也打得着；扫倒。蹲下躲得开。' },
+  { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, ko: true, desc: '先往上一腾，再一掌指尖朝下往下插，把人采倒在原地，你落在他身边。被挡住不掉血。专破蹲着的；怕站着的拳。' },
   { id: 'burst', how: '挨打时 [重] + [踢]', icon: { move: 'burst', ph: 0.25 }, tier: '—', height: '—', noFrame: true, dmg: BURST_DMG, desc: `花半格气，两掌往外一分，从身上炸开：对面倒地、掉 ${BURST_DMG} 血。` },
-  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: '两手十字一封、往后一坐，两掌一起发出去。整个前摇都有掤，化多少下都行；打中把人发出去。' },
+  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: `无视防御，${TMOVES.super.dmg} 血。两手十字一封、往后一坐，两掌一起发出去：挡不住、卸不掉，打中把人发出去。全场前摇最长，前摇里没有霸体也没有掤，谁的一拳都打得断；跳开、冲刺、退出射程都躲得掉。用在他失衡、起身、站着死挡的时候。` },
 ];
 const TG_COMBOS = [
   { group: '揽雀尾起手', note: '打中了、化掉了、被挡住了马上按下一招；一串最多五下，每一下也都按得住蓄', list: [
@@ -615,12 +619,12 @@ const MG_MOVES = [
   { id: 'mtSao', how: '[蹲] + [踢]', icon: { move: 'mtSao' }, ko: true, desc: '蹲着一脚勾住他的脚踝往回一挂，勾倒。下段。一串里也是收势。' },
   { id: 'grab', how: '[拿]', icon: { move: 'grab', ph: 1.6 }, tier: '擒拿', height: '—', dmg: `${MT_CAI_DMG}~${MT_HOOK_DMG}`, desc: '伸手一勾：他出手上的招 = 勾住，细的看「勾 · 蹦」那一页；他出腿 = 搂腿摔；他站着、挡着 = 采手。硬直里的人采不住。一串里接着按是刁手。' },
   { id: 'lowGrab', how: '[蹲] + [拿]', icon: { move: 'lowGrab', ph: 1.6 }, tier: '擒拿', dmg: `${MT_CAI_DMG}~${SCOOP_DMG}`, desc: '蹲着往前下方一搂：采蹲着、蹲挡的人；接住地上的腿、扫堂腿摔倒。抓不到站着的。' },
-  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '跳起来一拳崩下去。空中招都是上段。' },
-  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: '腾空一掌劈下来，伤害高。' },
-  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, desc: '腾空一记勾踢，射程远。蹲下躲得开。' },
-  { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '坠枝：先腾一下再斜着踩下来。专破蹲着的；怕站着的拳。' },
+  { id: 'airJab', how: '[跳] 再按 [拳]', icon: { move: 'airJab', alt: 64, ph: 1.6 }, desc: '蹿过去一拳崩下去，快，打中了落地接得上。螳螂跳得平、蹿得快。空中招都是上段。' },
+  { id: 'airHeavy', how: '[跳] 再按 [重]', icon: { move: 'airHeavy', alt: 54, ph: 1.6 }, desc: `腾空一掌劈下来顺手一勾。打中算勾住：他失衡，你落地第一下是勾打 ×${MT_HOOK_MUL}。` },
+  { id: 'airKick', how: '[跳] 再按 [踢]', icon: { move: 'airKick', alt: 60, ph: 1.6 }, ko: true, desc: '腾空一记勾踢把人勾倒，自己往回弹开：打了就走，不接连招。蹲下躲得开。' },
+  { id: 'dive', how: '空中 [蹲] + [踢]', icon: { move: 'dive', alt: 66, ph: 1.4 }, desc: '坠枝：先腾一下再斜着踩下来，踩一脚就往回弹出去两三个身位。专破蹲着的；怕站着的拳。' },
   { id: 'burst', how: '挨打时 [重] + [踢]', icon: { move: 'burst', ph: 0.25 }, tier: '—', height: '—', noFrame: true, dmg: BURST_DMG, desc: `花半格气从身上炸开：对面倒地、掉 ${BURST_DMG} 血。` },
-  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, ko: true, desc: '螳螂扑蝉：整个人扑过去，两手一勾一记重捶。打中把人打飞。' },
+  { id: 'super', how: '气满 [重] + [踢]', icon: { move: 'super' }, desc: `七星连环：两手一抖，接下来 ${MT_FURY / 60} 秒出手收手都快，连着打不限两下、不喘、蹦步不用等，实连多 ${MT_FURY_SURE} 下。本身不打人；气条往下掉就是还剩多久。这几秒里没贴上去，这一格气就白花了。` },
 ];
 // 3.4 连环（Jack：有的连招打一半人就倒了；螳螂拳的连招和格斗术太像）：打打 · 刁 · 打打 · 收 —— 打倒的只在最后一下；setup 是先勾住 / 采住（tests.js 一条一条打木桩查）
 const MG_COMBOS = [
@@ -664,7 +668,7 @@ const MG_TECH = [
   { group: '蹦 · 走', list: [
     { name: '蹦步退', how: '打中 / 被挡住以后按住 [后]', icon: { move: 'mtHop', ph: 0.5 }, desc: `出招命中或者被挡住以后按住后：往后蹦 ${MT_HOP_PX}，一串的硬直不用收完就脱出去。挡住的硬直里按住后也蹦。`,
       more: [`${(MT_HOP_COOL / 60).toFixed(1)} 秒一次`, '打空了不能蹦', '蹦不无敌、不挡：他连珠快拳压着的时候别蹦，蹦到一半被打在空中', '勾搂、刁手、封手、空中招、收势的招打完不蹦'] },
-    { name: '蹦步进', how: '朝对手双击 [前]', icon: { move: 'dash' }, desc: '一下蹦到跟前。跑也比别人快一成。' },
+    { name: '蹦步进', how: '朝对手双击 [前]', icon: { move: 'dash' }, desc: '一下蹦到跟前，比别的派远三成，无敌短。跑也比别人快一成。' },
     { name: '玉环步', how: '按住 [挡] 朝对手双击 [前]', icon: { move: 'slipElbow' }, desc: '侧身从他身边绕过去，只躲得过重拳一类；躲过了自动回身崩，他背对着你踉跄。' },
     { name: '薄挡', how: '[挡]', icon: { pose: 'block' }, desc: `挡住重系、腿系、空中的招、大招多掉 ${Math.round(MT_GUARD_CHIP * 100)}% 血、硬直多 ${Math.round(MT_GUARD_ADD)} 帧、被推得远 ×${MT_GUARD_KB}。轻拳照常。没有卸力。`, more: ['看见重的、腿、跳起来的：蹦开，或者勾', '气短：连到第三下以后停手，收招每多一下慢 ' + MT_WIND + ' 帧'] },
   ] },
@@ -816,7 +820,7 @@ const GUIDE_BOOKS = [
     } },
     { id: 'combos', name: '连招', body(mode) {
       return GX.p(`打中或者被挡住以后马上按下一招就接上了；没打中的话，0.4 秒内接着出也算。连招的<b>起手</b>是第一下、<b>主系</b>是最后一下，交手时按这两个比克制。<span class="g-keys">${['拳', '重', '踢', '蹲'].map(c => gKbd(c)).join(' ')}</span>`, mode) +
-        GX.combos(G_COMBOS, 'trad', mode) + GX.note(`越连越疼：每多连一下 +${Math.round(COMBO_ESC * 100)}%，同一招在一套里再用一次只算一半；一套最多 ${COMBO_MAX} 下。长连招要离得近，一步以内才接得满，远了推开就断。`, mode);
+        GX.combos(G_COMBOS, 'trad', mode) + GX.note(`越连越疼：每多连一下 +${Math.round(COMBO_ESC * 100)}%，同一招在一套里再用一次只算一半；一套最多 ${COMBO_MAX} 下。头三下是实连，够得着第一下就接得满；第四下起他猜对你按的键就拆开，所以后半截别老走同一条路。`, mode);
     } },
     { id: 'tech', name: '攻防', body(mode) { return GX.tech(G_TECH, 'trad', mode); } },
     { id: 'charts', name: '查表', body(mode) {

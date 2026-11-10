@@ -1037,7 +1037,7 @@ if (window.IntersectionObserver) {
 for (const ev of ['keydown', 'keyup', 'pointerdown', 'pointerup']) window.addEventListener(ev, () => Show.wake(), { capture: true, passive: true });   // 滚轮不算（滚选课的列表画面不变）
 window.addEventListener('resize', () => Show.wake());
 document.addEventListener('visibilitychange', () => Show.wake());
-// 网址加 ?fps：左上角一行小字 —— 一秒画几帧、屏幕多少 Hz、每几次刷新画一帧、画布多大、自动画质的倍数、一帧 JS 多少毫秒（调性能用，平时没有）
+// 网址加 ?fps：左上角一行小字 —— 一秒画几帧、屏幕多少 Hz、锁在几帧（4.0：120；括号里是怎么排的、平均每几次刷新画一帧）、画布多大、自动画质的倍数、一帧 JS 多少毫秒（调性能用，平时没有）
 const FpsHud = /[?&]fps\b/.test(location.search) ? (() => {
   const el = document.createElement('div');
   el.setAttribute('translate', 'no');
@@ -1078,7 +1078,7 @@ function loop(now) {
     const H = FpsHud; H.js += performance.now() - t0; if (draw) H.n++;
     if (now - H.t0 >= 500) {
       const s = (now - H.t0) / 1000;
-      H.el.textContent = `${Math.round(H.n / s)} fps | ${Pace.V ? Math.round(1000 / Pace.V) : '?'} Hz | 1/${Pace.d} | ${cv.width}x${cv.height} | res ${AutoRes.res.toFixed(2)} | JS ${(H.js / Math.max(1, H.n)).toFixed(1)} ms`;
+      H.el.textContent = `${Math.round(H.n / s)} fps | ${Pace.V ? Math.round(1000 / Pace.V) : '?'} Hz | lock ${Pace.lock ? Math.round(1000 / Pace.T()) : 'off'} (${Pace.mode} 1/${Pace.d}) | ${cv.width}x${cv.height} | res ${AutoRes.res.toFixed(2)} | JS ${(H.js / Math.max(1, H.n)).toFixed(1)} ms`;
       H.n = 0; H.js = 0; H.t0 = now;
     }
   }
